@@ -1,58 +1,30 @@
 # intrada Development Guidelines
 
-<!-- Rules and invariants only; loads into every session and subagent, so it
-stays under 200 lines. Mechanics and incidents: docs/reference.md. Surface-bound rules live
-in .claude/rules/. A rule leaves when a gate enforces it, when its incident is over 90 days
-old and has not recurred, or when its surface is deleted; silent-breach invariants never
-leave. Last reviewed: 2026-09-14. -->
+<!-- Loads into every session: invariants, gotchas, commands, about 550 words. Everything
+else lives in the path-scoped rules, the skills and the docs below. Trial from 2026-10-13
+(#2595); the undo rule is in docs/harness-log.md. -->
 
-## Focus: two native shells on one core
-
-SwiftUI ([`specs/native-ios.md`](specs/native-ios.md)) ships; Compose in `android/`
-([`specs/android-shell.md`](specs/android-shell.md), #2220) is being built. The web and Tauri
-shells were deleted in 2026-07 (`docs/rebuild-review.md`): never resurrect them. **A request
-implying web work: confirm the platform first.**
-
-## Project
-
-intrada is a **practice notebook** for musicians: build a session from the music library,
-group and reorder what you'll practise, play it through with a timer and rep counting, and
-score how it went. Pillars: **Plan** (library), **Practice** (the built session), **Track**
-(analytics). Direction: [`docs/roadmap.md`](docs/roadmap.md); phase:
-[`docs/where-we-are.md`](docs/where-we-are.md); release: `gh release list`; what is in flight: `just status`, which
-reads GitHub. There is no status file, deliberately.
-
-Crates: `intrada-core` (pure Crux core, no I/O), `intrada-ffi` (UniFFI bridge generating the
-Swift and Kotlin bindings), `intrada-store` (the on-device SQLite store both phones call). `ios/` (iOS 17+), `android/` (API 28+). Rust 2021, MSRV 1.90.
+intrada is a **practice notebook** for musicians: build a session from the library, play it
+through with a timer and rep counting, and score how it went. Two native shells on one Rust
+core: SwiftUI in `ios/` ships, Compose in `android/` is being built (#2220). The web and
+Tauri shells were deleted (`docs/rebuild-review.md`): **a request implying web work, confirm
+the platform first.** Direction: `docs/roadmap.md`; in flight: `just status`.
 
 ## Commands
 
 ```bash
-just check            # CI's Rust and hygiene jobs, bar MSRV and coverage
-just ios              # regen bindings (if core changed) + open Xcode
-just ios-run          # build + launch on simulator + screenshot (seeded data)
-just ios-test         # unit + snapshot (fast tier)
-just ios-test-full    # adds XCUITests; CI runs them on every PR, so /ship does not (#2114)
+just check            # CI's Rust and hygiene jobs, bar MSRV and coverage; run before pushing
+just ios-run          # build + launch on simulator + screenshot (seeded; SEED=0 to persist)
+just ios-test         # unit + snapshot; just ios-fmt-check for ios/
 just android-run      # regen bindings + emulator + screenshot; android-test: JVM + snapshots
 ```
 
-- **Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP build, run or test call.** Xcode's `RenderPreview` is the one exception ([`docs/ios-testing.md`](docs/ios-testing.md)).
-  They carry the destination pin, `CODE_SIGNING_ALLOWED=NO`, the freshness fingerprint and
-  the concurrency guard (#1536, #1537). A passing run prints its own counts; silence is
-  never the evidence. Android: the `android-*` recipes, per `android-quality.md`.
-- **Run `just check` before pushing**, plus `just ios-fmt-check` for `ios/` (fix with
-  `just ios-fmt`); local green means CI green bar MSRV and coverage, so keep the justfile
-  and `ci.yml` in step. Read every compile error before fixing the first.
-- **The simulator is machine-global.** The iOS test and run recipes wait on a machine-wide
-  lock (`scripts/ios-sim-lock.sh`) and leave the sim booted, shutting it after ten idle
-  minutes. Global resets are denied; ask before touching a device outside that flow.
-- **Seed mode skips persistence**: `SEED=0 just ios-run` to test persistence.
-- **Read source with the Read tool, not `cat`.** Path-scoped rules fire on Read.
-
-Recipes, binding regeneration, simulator workflow and environment variables:
-[`docs/reference.md`](docs/reference.md), [`docs/ios-testing.md`](docs/ios-testing.md). The
-graphify graph (`graphify-out/`, main checkout only) answers architecture questions; grep
-for symbols; never rebuild it without `.graphifyignore`.
+- **Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP build, run or
+  test call** (#1536, #1537); `RenderPreview` is the one exception. A passing run prints its
+  counts; silence is never the evidence.
+- **Read source with the Read tool, not `cat`**: path-scoped rules fire on Read, and from a
+  worktree you read them by hand.
+- Mechanics: [`docs/reference.md`](docs/reference.md), [`docs/ios-testing.md`](docs/ios-testing.md).
 
 ## Architecture (non-negotiables)
 
@@ -60,138 +32,30 @@ for symbols; never rebuild it without `.graphifyignore`.
 User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Recognition, Sync) → Shell → I/O
 ```
 
-1. **Core owns all logic.** The shell never understands domain types.
-2. **The shell is a dumb pipe.** It fulfils persistence and renders the `ViewModel`. No
-   business rules, validation, domain decisions or domain state in Swift or Kotlin (UI
-   interaction state only): if you are tempted, it belongs in `intrada-core` as an `Event`
-   or `Command`. Crash recovery: UserDefaults or SharedPreferences (`AppEffect`); local
-   data: the shared `intrada-store` (`PersistenceOperation`).
-3. **Typed bindings, no hand-written FFI.** `Event` / `Effect` / `ViewModel` cross the
-   bridge as generated bincode. Never hand-edit `ios/generated/` or `android/generated/`; fix
-   the Rust type and regenerate both.
+1. **Core owns all logic.** No business rules, validation, domain decisions or domain state in
+   Swift or Kotlin, only UI interaction state; if tempted, it is an `Event` or `Command` in
+   `intrada-core`.
+2. **The shell is a dumb pipe.** It renders the `ViewModel` and fulfils effects: local data
+   through the shared `intrada-store`, crash recovery through an `AppEffect`.
+3. **Typed bindings, no hand-written FFI.** Never hand-edit `ios/generated/` or
+   `android/generated/`; fix the Rust type and regenerate both.
 
-- **Validation** lives in `crates/intrada-core/src/validation.rs`.
-- **Mutate response**: writes commit locally, no refetch. Temp-id for new entities,
-  `*Updated { entity }`, `DeleteConfirmed`.
-- **Swift**: an `@Observable @MainActor` store, not `ObservableObject`; effect handlers run
-  off the main actor and hop back. `try!`, force-unwraps and `as!` are banned like
-  `unwrap()`. Persistence is a core `Effect` driven by `Command`: the shared store executes typed
-  effects, the core decides reads, writes and LWW reconciliation. Singletons go to
-  UserDefaults through an `AppEffect`; each blob must take a versioned key and a Rust
-  wire pin. Every colour, font, spacing and radius is a named token from `Theme.swift`.
+## Gotchas
 
-The offline-first invariants, the UI and tone rules, the per-screen quality bar and the
-silent-failure hazards load from `.claude/rules/` when you read a file they cover, and bind
-whether or not you have seen them.
-
-## Code style
-
-- `cargo fmt` and `cargo clippy -- -D warnings` pass. No `unwrap()` without justification.
-  Prefer established libraries over custom implementations.
-- **Code with no reader gets deleted, not parked** (#1176): not `#[allow(dead_code)]`, not
-  "inert until the feature returns", not a `pub` nobody calls. `git` is the parking space;
-  keep the findings and name the recovery PR. A stub a test reads, or an API a shell calls,
-  has a reader.
-- **Comments: default to none.** The density gate counts them; the kind is yours. Only a
-  one-line section header, a non-obvious WHY citing an issue or incident, or `HACK(#N)` /
-  `FIXME(#N)`. Never one that restates the code or narrates the task. Over two lines, ask
-  whether it should be a name or a type.
-- **British English, no em, en or double dashes**, checked in committed files by
-  `scripts/check-dashes.sh`; they bind PR bodies, issues and comments too, where nothing
-  checks. Copy follows `docs/tone-of-voice.md`, the rest [`docs/style-guide.md`](docs/style-guide.md).
-  **Plain language**: name features by the musician-visible outcome; issue numbers are the
-  only stable handles.
-
-## Testing
-
-**Ship tests with new code.** Non-trivial pure logic includes tests: edge cases, None and
-empty inputs. New iOS test files use Swift Testing; migrate an XCTest file only when already
-touching it, never wholesale; XCUITest stays on XCTest.
-
-- **Before asserting, ask what the value was one line earlier** (#1223); if nothing
-  distinguishes the behaviour present from absent, delete the test. **Mutation-test by
-  deleting the line, not inverting it** (#1423).
-- **A parser or validator gets a table test against its consumer** from inputs a user would
-  produce (#1256); cases you invented agree with your code by construction. Fixtures for a
-  many-field type live in one place (Rust `fixture()` with struct update, Swift a fixture
-  enum with default arguments).
-- **Say so in the PR when you skip tests.** Tier 2+ carries a **Coverage** line naming
-  expected gaps before CI finishes, then checks the Codecov comment against it (70% patch
-  target, informational; `ios/` ignored).
-
-## Gotchas (each has caught us at least once; write-ups in `docs/reference.md`)
-
-- **JSON-only serde attrs break the bincode bridge silently** (#846), and a stub-bridge test
+- **JSON-only serde attrs break the bincode bridge silently** (#846); a stub-bridge test
   cannot catch it: use `LiveBridge`.
 - **A field inside the crash-recovery snapshot invalidates every blob** (#1345): bump
-  `ActiveSession::BLOB_VERSION` first, then re-pin; the shell's key follows it (#1116).
+  `ActiveSession::BLOB_VERSION` first, then re-pin.
 
-## Workflow
+## Where the rest lives
 
-Match ceremony to scope; if unsure, go one tier lighter and drift up.
-
-- **Tier 1, just do it**: bug fixes, copy, style, renames, lint, one-file refactors, docs.
-- **Tier 2, plan comment** (default for feature work): a component or screen on existing
-  patterns, an endpoint on established conventions, a field on a model. Before the first
-  commit a plan of about 150 words goes on the issue as a comment, on the skeleton in the
-  shipping skill's [Plan comments](.claude/skills/intrada-shipping/SKILL.md#plan-comments),
-  approved by Jon and read by the build; one that runs long is Tier 3. The next child of an
-  epic whose body names it posts its plan and builds; Jon reads it with the PR, unless it is
-  on the sensitive surfaces or names a choice he has not made. UI work does Claude Design
-  first, and a new screen starts by reading an existing one, which loads the UI rules.
-- **Tier 3, lightweight spec** (architectural): net-new top-level features, Crux core or
-  non-additive bridge changes, auth or schema changes. The plan comment, then one `specs/<feature>.md`
-  of 100 to 200 lines riding as the first commit of Phase A, never its own PR.
-
-**Domain-sensitivity override**: the `ActiveSession` blob, wire-pinned settings, migrations,
-auth, and any bridge change that is not additive (defined in
-`.claude/rules/sensitive-surfaces.md`) go up at least one tier, stay with the lead, and ship
-as two PRs, core first, screens in the same session, or the core PR waits (#1374). An
-additive bridge change keeps its tier, may go to `task` with its LiveBridge test, and ships
-as one PR whose core commits `reviewer` reads before the screens commits.
-
-**Two strikes, then a decision** (#1890): two corrections on one point stop the change and ask
-if the approach is wrong before a third; `just claim` refuses at two merged PRs titled with it.
-
-**Epics hold the backlog** (#1968): three or more issues with a working order sit under an
-`epic`-labelled parent as GitHub sub-issues (`just epic-add EPIC N...`), one parent each, one
-level deep, the body naming the order. `just status` shows each epic's next open child and
-`just claim` names the epic. A plan that creates issues attaches them; whoever closes the last
-child closes the epic. The rules: [Epics](docs/how-the-work-runs.md#epics).
-
-Test-first for non-UI Tier 2, all Tier 3 and `intrada-core` changes by default: a test
-retrofit to pass agrees with the implementation by construction (#1256). `reviewer` reviews
-every code or test diff, briefed with the issue so it checks the diff against done looks like; triage its
-findings. Rungs, plans and usage: [working with agents](docs/working-with-agents.md). **UI
-verification means driving the app on the simulator**; if you cannot, name the hand check.
-
-### Always
-
-1. **Claim the issue before building it: `just claim N`** (#1214, #1702). It refuses and
-   names the other branch when the issue is already claimed (the `in-flight` label, or its
-   newest "Claimed" comment) or an open PR references it; otherwise it adds the label,
-   comments the branch and moves the board to In progress in one step, so the board never
-   gets stuck between Backlog and Done (#1659). `just pr-open` wraps `gh pr create` and
-   refuses if an issue number in the title has no claim naming the current branch. A
-   handover opener names the issue; the new session claims it.
-2. Find the issue's epic, or the roadmap item, or discuss first; check the
-   [project board](https://github.com/users/jonyardley/projects/2). Read the issue, its epic
-   and what they point at, then state the rung and, for Tier 2 and 3, write the plan comment.
-3. **Always a feature branch in its own worktree, and a PR; a human merges.** Jon starts
-   every session in the main checkout. The session runs `just worktree-new <name>` itself,
-   prefixes every shell command with `cd <worktree> && `, and reads the rules for the files
-   it touches by hand, since cd-ing does not load them (#1720, #1837). A handover is an
-   opener pasted into a new chat in main, never a worktree command. Agents touch the main
-   checkout only to `git fetch origin` (#1686, #1740); who edits where, and the lease:
-   [`docs/worktrees.md`](docs/worktrees.md). Agents never merge or push to main.
-4. **Ship through `/ship`**, which follows
-   [`.claude/skills/intrada-shipping/SKILL.md`](.claude/skills/intrada-shipping/SKILL.md)
-   and watches CI to a conclusion.
-5. **After completing work**: the body's `Closes #N` closes the issue on merge, and the board
-   and the `in-flight` label follow; close by hand only when no PR closed it. Update
-   `docs/roadmap.md` and `docs/where-we-are.md` if a phase changed, this file if architecture
-   did; `just worktree-rm` once merged.
-
-**More than one session at once** follows
-[`.claude/skills/intrada-parallel-streams/SKILL.md`](.claude/skills/intrada-parallel-streams/SKILL.md);
-both skills bind whether or not you loaded them.
+- Code style, comments and testing: `.claude/rules/code-and-tests.md`, loaded on `crates/`,
+  `ios/` and `android/` files. Offline-first, UI, quality bars and the silent-failure
+  surfaces: the other `.claude/rules/`. They bind whether or not you have seen them.
+- Claim, worktree, tiers, plan comments and routing:
+  [`docs/working-with-agents.md`](docs/working-with-agents.md); epics:
+  [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md#epics).
+- Shipping: `/ship` and the `intrada-shipping` skill; more than one session: the
+  `intrada-parallel-streams` skill. Both bind whether or not you loaded them.
+- Writing: British English, no em, en or double dashes, plain language
+  ([`docs/style-guide.md`](docs/style-guide.md), [`docs/tone-of-voice.md`](docs/tone-of-voice.md)).

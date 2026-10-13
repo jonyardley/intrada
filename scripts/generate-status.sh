@@ -211,7 +211,7 @@ if [ -n "$epics_error" ]; then
 fi
 capped "$epics" "$epics_limit"
 echo "    Pick the next slice from an epic. An open issue under none is a"
-echo "    one-off, or a sign a new epic is due (CLAUDE.md, Workflow)."
+echo "    one-off, or a sign a new epic is due (how-the-work-runs.md, Epics)."
 
 section "IN FLIGHT (open PRs)" "$pr_lines"
 capped "$open_prs" "$open_limit"

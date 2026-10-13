@@ -5,7 +5,7 @@ description: Running more than one Claude Code session or subagent against this 
 
 ## Stream rules
 
-The claim protocol in CLAUDE.md stops two streams building the same issue;
+The claim protocol (`just claim`) stops two streams building the same issue;
 these rules stop two streams colliding in the same files. Evidence base: a
 coupling analysis of 400 commits (2026-08): 31% of commits that touch
 `crates/` also touch `ios/`. That figure is about commits that touch the
@@ -62,8 +62,8 @@ crate, which is what most UX issues are (for example #1616, #1617, #1618 and
   `ios/Intrada/DesignSystem/Theme.swift`. Check the four files above before
   assuming two shell-only streams are independent: about half the time they
   are not.
-- **One worktree per session, made by that session** (CLAUDE.md, Always step
-  3): `just worktree-new <name>` branches from fresh `origin/main` and seeds
+- **One worktree per session, made by that session** (`docs/working-with-agents.md`,
+  step 2): `just worktree-new <name>` branches from fresh `origin/main` and seeds
   `ios/generated` and the downloaded Swift packages, not the build folders (#2191). Close the session when its
   task ships. Every session starts in the main checkout and does not restart
   in the worktree: it makes the worktree and prefixes every shell command with

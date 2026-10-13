@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Flag pushes that add too many comments relative to code.
-# See CLAUDE.md "Comments" — code should be self-explanatory; comments are
+# See .claude/rules/code-and-tests.md "Comments": code should be self-explanatory; comments are
 # for non-obvious WHY, not narration. Bypass locally with
 # `SKIP_COMMENT_CHECK=1`; in CI, bypass with the `comments-justified` PR
 # label (#1433). Kotlin counts like Swift: the two shells share one comment
@@ -81,7 +81,7 @@ if [ "$over" = "1" ]; then
    Added comment lines: ${added_comments}
    Added code lines:    ${added_code}
 
-   CLAUDE.md asks for self-explanatory code with minimal comments. Add a
+   .claude/rules/code-and-tests.md asks for self-explanatory code with minimal comments. Add a
    comment only for non-obvious WHY (bug ref, framework quirk, hidden
    invariant) — never to restate WHAT.
 
