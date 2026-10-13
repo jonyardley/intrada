@@ -129,6 +129,7 @@ a personal account opened after 13 November 2023 must run a closed test with
 12 testers opted in for 14 days in a row before it can publish to
 production. The internal testing track has no requirement and is the
 TestFlight equivalent: `release-play.yml` uploads every release tag there.
+Before any build is shared, it is walked against [`docs/android-release-check.md`](../docs/android-release-check.md).
 
 ## Build phases
 
