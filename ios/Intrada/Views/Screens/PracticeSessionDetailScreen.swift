@@ -7,6 +7,8 @@ import SwiftUI
 struct PracticeSessionDetailScreen: View {
   let session: PracticeSessionView
 
+  @Environment(Store.self) private var store
+  @Environment(\.dismiss) private var dismiss
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.scoreRange) private var scoreRange
 
@@ -21,6 +23,9 @@ struct PracticeSessionDetailScreen: View {
             noteCard(notes)
           }
           playedSection
+          // One tap, no confirm: the history offers Undo (T6).
+          DeleteButton(title: "Delete session", action: delete)
+            .accessibilityIdentifier("sessionDetail.delete")
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -28,6 +33,11 @@ struct PracticeSessionDetailScreen: View {
       }
       .scrollEdgeShadow()
     }
+  }
+
+  private func delete() {
+    store.send(.session(.deleteSaved(sessionId: session.id, now: SessionClock.nowRFC3339())))
+    dismiss()
   }
 
   private var subtitle: String {

@@ -5,17 +5,19 @@ enum AppBanner: Equatable, Identifiable {
   case storageUnavailable
   case error(String)
   case notice(String)
+  case undoDelete(String)
 
   static let storageMessage = "Storage unavailable · changes this session won't be saved."
 
-  static func stack(halted: Bool, degraded: Bool, error: String?, notice: String?)
-    -> [AppBanner]
-  {
+  static func stack(
+    halted: Bool, degraded: Bool, error: String?, notice: String?, undoDelete: String?
+  ) -> [AppBanner] {
     var banners: [AppBanner] = []
     if halted { banners.append(.halted) }
     if degraded { banners.append(.storageUnavailable) }
     if let error { banners.append(.error(error)) }
     if let notice { banners.append(.notice(notice)) }
+    if let undoDelete { banners.append(.undoDelete(undoDelete)) }
     return banners
   }
 
@@ -25,6 +27,7 @@ enum AppBanner: Equatable, Identifiable {
     case .storageUnavailable: "storage"
     case .error: "error"
     case .notice: "notice"
+    case .undoDelete: "undoDelete"
     }
   }
 }
@@ -45,7 +48,8 @@ struct AppBannerStack: View {
   private var banners: [AppBanner] {
     AppBanner.stack(
       halted: store.halted, degraded: store.degraded,
-      error: store.viewModel?.error, notice: store.viewModel?.notice)
+      error: store.viewModel?.error, notice: store.viewModel?.notice,
+      undoDelete: store.viewModel?.undoDelete)
   }
 
   @ViewBuilder
@@ -59,6 +63,13 @@ struct AppBannerStack: View {
       GlobalBanner(message: message) { store.send(.clearError) }
     case .notice(let message):
       GlobalBanner(message: message, tone: .notice) { store.send(.clearNotice) }
+    case .undoDelete(let message):
+      GlobalBanner(
+        message: message, tone: .notice,
+        action: .init(label: "Undo") {
+          store.send(.session(.undoDelete(now: SessionClock.nowRFC3339())))
+        }
+      ) { store.send(.session(.dismissUndoDelete)) }
     }
   }
 }

@@ -10,21 +10,30 @@ struct GlobalBanner: View {
     case notice
   }
 
+  /// A one-word way back, such as Undo, shown before the dismiss button.
+  struct Action {
+    let label: String
+    let perform: () -> Void
+  }
+
   let message: String
   var tone: Tone = .danger
+  var action: Action?
   var onDismiss: (() -> Void)?
 
   var body: some View {
-    // `.combine` flattens the dismiss button away, so re-expose it as an
-    // accessibility action — otherwise VoiceOver can't dismiss the banner.
-    if let onDismiss {
-      bar.accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityText)
-        .accessibilityAction(named: "Dismiss", onDismiss)
-    } else {
-      bar.accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityText)
-    }
+    // `.combine` flattens the buttons away, so re-expose them as accessibility
+    // actions, otherwise VoiceOver can't reach them.
+    bar.accessibilityElement(children: .combine)
+      .accessibilityLabel(accessibilityText)
+      .accessibilityActions {
+        if let action {
+          Button(action.label, action: action.perform)
+        }
+        if let onDismiss {
+          Button("Dismiss", action: onDismiss)
+        }
+      }
   }
 
   private var bar: some View {
@@ -36,6 +45,12 @@ struct GlobalBanner: View {
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(ink)
         .frame(maxWidth: .infinity, alignment: .leading)
+      if let action {
+        Button(action.label, action: action.perform)
+          .font(IntradaFont.button)
+          .foregroundStyle(IntradaColor.ink)
+          .buttonStyle(.plain)
+      }
       if let onDismiss {
         Button(action: onDismiss) {
           Image(systemName: "xmark")
