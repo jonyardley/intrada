@@ -1123,8 +1123,17 @@ android-test-ui class="": android-gen
     results=android/app/build/outputs/androidTest-results/connected
     rm -rf "$results"
     status=0
-    only=(); [ -n "{{class}}" ] && only=(-Pandroid.testInstrumentationRunnerArguments.class="com.intrada.android.{{class}}")
-    android/gradlew -q -p android :app:connectedDebugAndroidTest ${only[@]+"${only[@]}"} || status=$?
+    killed=KilledSessionRecoveryTest
+    if [ "{{class}}" != "$killed" ]; then
+        only=(-Pandroid.testInstrumentationRunnerArguments.notClass="com.intrada.android.$killed")
+        [ -n "{{class}}" ] && only+=(-Pandroid.testInstrumentationRunnerArguments.class="com.intrada.android.{{class}}")
+        android/gradlew -q -p android :app:connectedDebugAndroidTest "${only[@]}" || status=$?
+    fi
+    kt=0; kf=0
+    if [ -z "{{class}}" ] || [ "{{class}}" = "$killed" ]; then
+        kt=1
+        bash scripts/android-kill-recovery.sh || { kf=1; status=1; }
+    fi
     for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
         adb shell settings put global "$scale" 1
     done
@@ -1133,6 +1142,7 @@ android-test-ui class="": android-gen
         n() { printf '%s' "$head" | sed -E "s/.* $1=\"([0-9]+)\".*/\1/"; }
         t=$((t + $(n tests))); f=$((f + $(n failures) + $(n errors))); s=$((s + $(n skipped)))
     done < <(find "$results" -name '*.xml' -exec grep -ho '<testsuite [^>]*>' {} + 2>/dev/null)
+    t=$((t + kt)); f=$((f + kf))
     echo "Android UI tests: $t run, $((t - f - s)) passed, $f failed, $s skipped"
     [ "$t" -gt 0 ] || { echo "✗ no UI test results, so nothing ran" >&2; status=1; }
     exit $status
