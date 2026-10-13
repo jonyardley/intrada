@@ -15,11 +15,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A practice comes back after Android kills the app, not just after a close inside one process,
- * where a save that never reached the disk still reads back (#2576). iPhone:
- * SessionRecoveryUITests. `just android-test-ui` leaves this class out of the Gradle run, and
- * `scripts/android-kill-recovery.sh` runs each step in its own instrumentation with `am force-stop`
- * between them.
+ * A practice comes back after Android kills the app (#2576). Kept out of the Gradle run:
+ * `scripts/android-kill-recovery.sh` runs each step on its own, with `am force-stop` between.
  */
 @RunWith(AndroidJUnit4::class)
 class KilledSessionRecoveryTest {
