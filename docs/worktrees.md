@@ -24,7 +24,8 @@ the rest:
 - **Where.** `../intrada-worktrees/<name>`, beside the main checkout.
 - **Warm caches.** A `pre-start` hook runs `wt step copy-ignored`, which
   reflinks the gitignored files the main checkout's `.worktreeinclude` names
-  (`ios/generated/`, `ios/build/spm/`, `.env`, `.claude/settings.local.json`)
+  (`ios/generated/`, `ios/build/spm/`, `.env`, `.claude/settings.local.json`,
+  `android/local.properties`, which the Kotlin language server needs, #2630)
   into the new tree before anything builds. `target/` and the Xcode build
   folders stay out (#2191). The file is read from the main checkout's working
   tree, so a change to it takes effect once that checkout is updated. The

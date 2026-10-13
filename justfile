@@ -400,12 +400,15 @@ usage *args:
 #
 # `references` still finds nothing: a sourcekit-lsp limitation here, not a
 # missing path, so finding callers of a Swift symbol stays a grep job.
+# kotlin-lsp sees no project without `android/local.properties`, so it finds a
+# declaration and no references (#2630); new worktrees copy the file in.
 # One-time per machine and per worktree that wants Swift.
-[doc("Set up rust-analyzer and Swift language server diagnostics, once per machine and worktree")]
+[doc("Set up the Rust, Swift and Kotlin language servers, once per machine and worktree")]
 lsp-setup: _ios-sync
     #!/usr/bin/env bash
     set -euo pipefail
     rustup component add rust-analyzer
+    [ -f android/local.properties ] || echo "sdk.dir=${ANDROID_HOME:-$HOME/Library/Android/sdk}" > android/local.properties
     cd ios
     xcodegen generate
     name="$(just _ios-test-sim-name)"
@@ -420,7 +423,7 @@ lsp-setup: _ios-sync
         -clonedSourcePackagesDirPath build/spm \
         COMPILER_INDEX_STORE_ENABLE=YES CODE_SIGNING_ALLOWED=NO \
         | (cd .. && xcode-build-server parse)
-    echo "✓ rust-analyzer installed; Swift diagnostics, hover and cross-file definition wired"
+    echo "✓ rust-analyzer installed; Swift diagnostics, hover and cross-file definition wired; Android SDK path set for kotlin-lsp"
 
 # ─────────────────────────────────────────────
 # iOS — native SwiftUI app (on the Crux core)

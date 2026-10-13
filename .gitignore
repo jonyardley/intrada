@@ -64,7 +64,7 @@ buildServer.json
 # graphify knowledge-graph output: machine-local, never committed (a re-recorded
 # multi-MB graph.json compounds in history like snapshot PNGs). The canonical
 # graph lives in the main checkout; scope is controlled by the committed
-# .graphifyignore. See CLAUDE.md "Knowledge graph (graphify)".
+# .graphifyignore. See docs/reference.md "Knowledge graph (graphify)".
 graphify-out/
 # Per-developer mise overlay (e.g. RUSTC_WRAPPER=sccache) — see SETUP.md §5.
 # Never committed: mise.toml itself must stay identical for everyone.

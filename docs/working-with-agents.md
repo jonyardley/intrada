@@ -547,7 +547,8 @@ file again; a screenshot is read once and described. `read-guard.sh` denies a
 holds that exact path with an unchanged mtime, and denies one on a text file
 over 400 lines; images are exempt (#1844). Set from 981 of 1,930 text reads
 over one weekend that repeated a file already in the session; one core file
-was read 225 times. `rtk read` covers the rest.
+was read 225 times. `rtk read` covers the rest: rtk is a machine-level hook
+that shortens command output, installed per the README's agent tooling list.
 
 **Context.** `context-watch.sh` warns at 150k, hands the rest of the unit to a
 subagent at 200k and says `/compact` at 400k (`CONTEXT_WARN` and
@@ -587,6 +588,16 @@ indexing build's log instead: diagnostics are honest, hover resolves and
 jump-to-definition works across files. `references` still returns nothing, a
 sourcekit-lsp limitation, so finding the callers of a Swift symbol stays a grep
 job.
+
+Kotlin's server is the `kotlin-lsp` plugin over `brew install --cask
+kotlin-lsp`, and it needs `android/local.properties` naming the Android SDK.
+Without that file it loads no project and finds only a symbol's own
+declaration. `just lsp-setup` writes it, so does Android Studio when it syncs
+the project, and a new worktree copies it from the main checkout (#2630). The server loads the project once, when the session
+first asks it something, so after creating the file restart Claude Code. With
+it, find-references works across files, which Swift's does not. The plugins
+and installs are listed under agent tooling in the
+[README](../README.md#prerequisites).
 
 ## 6. Review
 
