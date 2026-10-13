@@ -106,4 +106,3 @@ Event/Effect/ViewModel shape for a slice before wiring either side.
 - [ ] PR opened through `/ship`; self-review comment posted
 - [ ] Codecov compared against the PR's Coverage line (Tier 2+)
 - [ ] Roadmap updated if a phase changed; deferred items tracked as issues
-- [ ] A human reviews and merges. Agents never merge.

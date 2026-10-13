@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Move an issue's Status on the project board (view 7), so in-flight work
 # actually shows as in-flight instead of sitting in Backlog until it closes.
-# Nothing in the claim/ship workflow moved this field automatically (#1660).
+# Nothing in the claim/ship workflow moved this field automatically (#1659).
 
 set -euo pipefail
 
@@ -12,7 +12,7 @@ status_field_id="PVTSSF_lAHOAAr6vs4A1_pqzgrX99A"
 repo="jonyardley/intrada"
 
 usage() {
-  echo "Usage: $0 <issue-number> <Backlog|Ready|In progress|In review|Done>" >&2
+  echo "Usage: $0 <issue-number> <Backlog|In progress|In review|Done>" >&2
   exit 1
 }
 
@@ -22,7 +22,6 @@ status_name="$2"
 
 case "$status_name" in
 Backlog) option_id="f75ad846" ;;
-Ready) option_id="61e4505c" ;;
 "In progress") option_id="47fc9ee4" ;;
 "In review") option_id="df73e18b" ;;
 Done) option_id="98236657" ;;

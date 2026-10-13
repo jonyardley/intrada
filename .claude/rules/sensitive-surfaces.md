@@ -16,16 +16,24 @@ drops a write, or destroys the only copy of a user's data. Never spell out an
 exploitable gap in a public PR body: say a gap exists and route the detail to
 Jon. Before editing:
 
-1. **Work it at the sensitive surfaces' rung.** This surface is one of the
-   sensitive surfaces in `docs/working-with-agents.md`: Opus 5.5 at `high`
-   (#2044, #2052), which decides the shape and builds it. Check with `/effort`
-   and switch before the first edit.
-2. **Pair the `reviewer` agent on the core diff before the screens half
-   starts**, not only at the end, on its Opus pin.
-3. **Domain-sensitivity override.** This work goes up at least one tier in
-   ceremony, and a change to a bridge shape, a migration or the blob graph
-   ships as two PRs: core first, screens in the same working session, or the
-   core PR waits (a merged core PR with no caller is shell-dead, #1374).
+**Additive or not.** An additive bridge change adds a field, an event variant
+or a view type and renames, removes, reorders or retypes nothing. It keeps its
+tier, may be built by `task` or the lead, and ships as one PR with its LiveBridge
+round-trip test. Everything else here is lead-only: the `ActiveSession`
+crash-recovery blob, any type stored under a wire-pinned settings key (library
+sort, profile, practice defaults: bincode on the device, like the blob), store
+migrations, auth, and any bridge change that is not additive.
+
+1. **Lead-only work runs at the sensitive surfaces' rung**: Opus 5.5 at `high`
+   (#2044, #2052), set with `/effort` before the first edit. An additive change
+   stays on the lead's usual effort.
+2. **Pair the `reviewer` agent on the core diff before the screens**, on its
+   Opus pin, whoever built it.
+3. **One PR or two.** An additive change ships as one PR, the core commits
+   first, and `reviewer` reads them on their own before the screens commits.
+   Lead-only work goes up at least one tier in ceremony and ships as two PRs:
+   core first, screens in the same working session, or the core PR waits (a
+   merged core PR with no caller is shell-dead, #1374).
 
 The hazards, by file:
 

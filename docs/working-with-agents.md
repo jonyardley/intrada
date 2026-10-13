@@ -29,7 +29,7 @@
 | 1. Claim | `just claim N`, and stop if a PR already exists | `scripts/claim-issue.sh`, `just pr-open` |
 | 2. Isolate | `just worktree-new <name>`, then `cd <worktree> && ` on every command | The worktree guard and its lease |
 | 3. Route | Opus 5.5 `medium` in the lead; Opus 5.5 `high` for the sensitive surfaces | `.claude/settings.json`, the agent pins, the spawn guard |
-| 4. Plan | Tier 2 and 3: a plan comment on the issue, approved by Jon | CLAUDE.md Workflow; `reviewer` checks the diff against it |
+| 4. Plan | Tier 2 and 3: a plan comment on the issue, approved by Jon (the next Tier 2 child of a named epic builds at once, unless on the sensitive surfaces or naming a choice Jon has not made) | CLAUDE.md Workflow; `reviewer` checks the diff against it |
 | 5. Build | Settled slices to `task`, gates to `test-runner`, each file read once | The read guard, the bash guard, the context watch |
 | 6. Review | `reviewer` over the local diff, briefed with the worktree and the issue | `/ship` |
 | 7. Ship | `just pr-open` as a draft, CI watched to a conclusion, a human merges | Branch protection, the deny list, the git hooks |
@@ -44,7 +44,7 @@ a hook can enforce loses its prose in the same change.
 |---|---|
 | Starting a unit of work | `just claim N`. It refuses and names the other branch when the issue is already claimed or an open PR references it; otherwise it labels the issue, comments the branch and moves the board to In progress |
 | Asked "what's next" or "what can run in parallel" | Answer from `just status` and the session-start claims list, with no further reads |
-| About to start a third fix on one issue | Stop and name the decision: two corrections on one point stop the change and ask if the approach is wrong before a third, and `just claim` refuses a third claim at two merged PRs (#1890) |
+| About to start a third fix on one issue | Stop and name the decision: two corrections on one point stop the change and ask if the approach is wrong before a third, and `just claim` refuses a third claim at two merged PRs titled with the issue, Dependabot left out (#1890, #2593) |
 
 A claim is the check that the work is not already in flight:
 
@@ -156,9 +156,11 @@ is caught on the simulator, a wrong test fails in CI.
 #2052): `/effort high`, saying so, and `/effort medium` at the boundary. Its
 review (step 6) is `reviewer` on its usual Opus pin, paired from the core diff:
 
-- The shape and the build of anything crossing the bridge, a schema change or
-  migration, the crash-recovery blob or auth. The sensitivity override puts
-  this work on the list whatever the file count.
+- The crash-recovery blob, wire-pinned settings, a schema change or
+  migration, auth, and any bridge change that is not additive
+  (`.claude/rules/sensitive-surfaces.md` defines additive). The sensitivity
+  override puts this work on the list whatever the file count; an additive
+  bridge change stays on the lead's usual rung.
 - The plan comment, the direction call and the bug nobody can explain, when the
   work they are about is on the list above. On their own they are not a
   trigger: a roadmap pivot or a puzzling bug that touches none of those four
@@ -297,13 +299,13 @@ standalone globals: `test-driven-development`, `requesting-code-review`,
 
 | You are | Do |
 |---|---|
-| Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit, on the sensitive surfaces' rung (Opus 5.5 `high`) if the work is on the list and on the lead's own rung if it is not; wait for Jon's approval |
+| Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit, on the sensitive surfaces' rung (Opus 5.5 `high`) if the work is on the list and on the lead's own rung if it is not; wait for Jon's approval, unless it is a Tier 2 issue that is the next child of an epic whose body names it, off the sensitive surfaces, naming no choice Jon has not made |
 | Holding a Tier 1 fix | No plan comment; build it |
 | Handing a task to a new session | `just handover [N]`, which starts the opener with the `/model` and `/effort` lines and names the issue; add the stream by hand when there is more than one |
 
 A Tier 2 or Tier 3 plan lives on its issue as a comment of about 150 words,
 on the skeleton in the shipping skill's
-[Plan comments](../.claude/skills/intrada-shipping/SKILL.md#plan-comments). Jon approves it, the build reads it, and `reviewer` is briefed with
+[Plan comments](../.claude/skills/intrada-shipping/SKILL.md#plan-comments). Jon approves it (the next Tier 2 child of an epic whose body names it builds without waiting), the build reads it, and `reviewer` is briefed with
 the issue so it checks the diff against done looks like. A plan that runs long
 is the signal the issue is really Tier 3, which adds a `specs/<feature>.md`
 riding as the first commit of Phase A.
@@ -363,7 +365,7 @@ Tier 1. One file, no bridge, no schema, no auth, so no override applies.
    ```
    Recording is delete-then-run-twice by design, so a first-run failure is
    expected. Read the diff: the labels should get looser, not move.
-5. Ship. Tier 1 trivia may skip the review agent but still runs the gates.
+5. Ship through `/ship`.
 
 Opener:
 
@@ -388,28 +390,29 @@ the core rejects, and the write is refused with nothing on screen. That is the
 swallowed-update failure the offline-first rule exists to prevent.
 
 Tier 2 on file count, but projecting a bound through the `ViewModel` changes the
-bridge contract, so the domain-sensitivity override puts it up a tier.
+bridge contract. The change is additive (a new projection, nothing renamed or
+retyped), so it keeps its tier and may go to `task`.
 
-1. Contract before code, on the sensitive surfaces: Opus 5.5 at `high`. Pin the
-   `ViewModel` shape first, in one session, and write it into the plan comment
-   before either side is wired.
+1. Contract before code. Pin the `ViewModel` shape first and write it into the
+   plan comment before either side is wired.
 2. This touches `crates/`, so it is the one crate-touching stream this repo
    allows at a time. Do not fan out, and do not start a second stream that
    touches `crates/` while it is in flight; a shell-only stream elsewhere that
    has named its own screens may still run.
-3. Core PR first. TDD is the default for `intrada-core`: write the failing test,
+3. Core commits first. TDD is the default for `intrada-core`: write the failing test,
    then project the bounds. Extend the Rust `assert_round_trips` helper to the
    new view type before any screen reads it, because a stub-bridge test cannot
    catch a bincode wire break (#846).
-4. Get the core PR reviewed before starting the screens. On a multi-surface
-   slice, one review at the end is too late to be cheap.
-5. Screens PR second. Read both bounds from the `ViewModel`, delete both
+4. Get the core commits reviewed before starting the screens. On a
+   multi-surface slice, one review at the end is too late to be cheap.
+5. Screens commits second. Read both bounds from the `ViewModel`, delete both
    hard-coded ranges, and add the test the issue asks for: the offered range
    matches the core's. A shell constant that merely repeats the number is not
    the fix.
 6. Verify on the running app, not just in CI. A core type change means iOS
    tests mean nothing until the UI tests have run, which CI does on the draft.
-7. Ship as two PRs, core then screens, each independently reviewable.
+7. Ship as one PR, core commits first; two PRs only for lead-only work
+   (`.claude/rules/sensitive-surfaces.md`).
 
 Opener for the first session:
 
@@ -417,23 +420,24 @@ Opener for the first session:
 Claim #1512 and stop if a PR already exists. Plan comment first, and do not
 write code this session beyond the contract.
 
-This changes the bridge contract, so run `/effort high` (it is on the
-sensitive surfaces) before you decide anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
+This adds to the bridge contract without renaming or retyping anything, so it
+stays at its tier. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
 and the rep-target bound, and write it into the issue before either side is
 wired. A refused write with nothing on screen is the failure the offline-first
 rule exists to prevent.
 
 This touches crates/, so it is the one crate-touching stream running. Do not
 fan out, and do not start a second stream that touches crates/ while this is
-in flight. Core PR only when we implement: TDD, and extend assert_round_trips
-for the new view type before any screen reads it. Screens are a second PR
-after this one is reviewed.
+in flight. Core commits first when we implement: TDD, and extend
+assert_round_trips and the LiveBridge tests for the new view type before any
+screen reads it. The screens follow on the same branch, in the same PR, once
+reviewer has read the core commits.
 ```
 
-Opener for the screens session, once the core PR is reviewed:
+Opener for the screens slice, once reviewer has read the core commits:
 
 ```text
-Screens half of #1512, core PR #<N> is merged. Grep each file for its
+Screens half of #1512, on the same branch after its core commits. Grep each file for its
 hard-coded range (2...12 in ClickSheet.swift, 3...10 in
 EntrySettingsSheet.swift) and replace both with the bounds read from the
 ViewModel; no need to open either file in full. A shell constant repeating
@@ -493,16 +497,17 @@ Rules on top:
   mechanical-edit agent once wired a binary path to a per-shell directory that
   was gone with the shell; every criterion it was given was true at the moment
   of checking.
-- **The sensitivity override applies to subagents.** A slice touching the
-  bridge, a migration, the blob or auth stays with the lead on the sensitive
-  surfaces' rung.
+- **`task` may build additive core and bridge changes** with a LiveBridge
+  round-trip test, the lead pairing `reviewer` on the core diff. The blob,
+  wire-pinned settings, migrations, auth and non-additive bridge changes stay
+  with the lead on the sensitive surfaces' rung.
 - **Gates run through `test-runner`, never in the lead, and never inside
   `task`.** A failing suite prints thousands of lines that are re-sent on
   every later turn. `guard-bash.sh` denies `just check`, `just ios-test`,
   `just ios-test-full` and `cargo test` inside a `task` transcript; `task`
   confirms the build compiles and hands back a diff. It also stops and
   reports after 60 turns or its second failed build, and refuses a brief
-  naming more than ten files (`.claude/agents/task.md`, #1888).
+  naming more than ten hand-written files (`.claude/agents/task.md`, #1888).
 - **The lead verifies a task's result through `reviewer` and the gate
   counts, never by re-reading its files** (#1846). The report shape in
   `.claude/agents/task.md` is what the lead checks the work against; it opens a
@@ -565,9 +570,9 @@ job.
 
 | You are | Do |
 |---|---|
-| Holding a Tier 2+ diff | `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
+| Holding a diff that changes code or tests | `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
 | Holding a diff on a sensitive surface | The same `reviewer` on its pin, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
-| Holding a small Tier 2 on one file with no sensitive surface | `/code-review` inline in the lead may stand in. Say "comment-policy violations are Blockers" or they survive as nits |
+| Holding a diff of docs, roadmap or harness text only | `/code-review` inline in the lead stands in. Say "comment-policy violations are Blockers" or they survive as nits |
 
 `reviewer` is pinned to Opus 5.5 `high`, a peer who reads the diff, not the
 description. It reads the issue named in its brief and checks the diff
@@ -586,7 +591,7 @@ screens half starts.
 | You are | Do |
 |---|---|
 | About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff, then `just pr-open` as a draft; watch CI to a conclusion in the same turn and read mergeability |
-| The PR is green and reviewed | `gh pr ready`, and `just project-status N "In review"` for the issue |
+| The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its screenshot |
 | The unit has shipped: PR green, issue closed, worktree removed | `/clear` in the same sitting |
 | About to leave the session for over an hour | Finish the unit or `/clear` first; the first turn back re-sends the whole context at write price, and the cold nudge will say so |
 
@@ -595,13 +600,11 @@ and issue body templates are in `.claude/skills/intrada-shipping/SKILL.md`,
 which `/ship` follows. Every deferred item becomes a tracked issue, not a line
 in a PR description. Stacked PRs are supported: open the child with base set
 to the parent's branch, depth 2 maximum; CI runs on them because `ci.yml` has
-no branch filter on `pull_request`. **Agents never merge**, and never push to
-`main`.
+no branch filter on `pull_request`.
 
-A PR body says what the reviewer needs and stops. The weekend's median was 430
-words with three over 1,000, against merges ten minutes after opening. Whether
-that becomes a gate is decided by measuring the PRs after #1634 against its
-586-word baseline, an experiment Jon set on 2026-09-10 with no gate on purpose.
+A PR body says what the reviewer needs and stops. The 2026-09-10 experiment
+with no gate ended with a median of 544 words in the week to 2026-10-13, so
+`just pr-open` now refuses a Tier 1 or 2 body over 350 words (#2593).
 
 **Verification, the standard held.**
 
@@ -611,10 +614,6 @@ that becomes a gate is decided by measuring the PRs after #1634 against its
   verification to save time costs more in rework.
 - Report failures faithfully with the actual output. No "should work".
 - Never report a gate as broken without making it fail.
-- After any push to an open PR, watch the run to a conclusion in the same turn.
-  Read the PR's mergeability, not just the job list: a renamed job leaves the
-  old required context "expected" for ever, which is a hang, not a failure,
-  and is invisible in the checks list (#1542).
 
 **What holds it at the push.**
 
@@ -638,9 +637,9 @@ that becomes a gate is decided by measuring the PRs after #1634 against its
   server-side, and `guard-bash.sh` on Jon's machine matches the same denials
   inside compound commands.
 
-After the merge, CLAUDE.md step 5 closes the loop: close the issue, drop
-`in-flight`, `just project-status N "Done"`, and `just worktree-rm` once
-merged. Seven sessions over four hours, every one Fable or Opus left open
+After the merge, the body's `Closes #N` closes the issue, the board's own
+automation moves it to Done and a workflow drops `in-flight`; `just worktree-rm`
+once merged. Seven sessions over four hours, every one Fable or Opus left open
 across a break, and 194 cold turns costing $233 in the week before, are why
 the unit ends with `/clear`; a launchd timer (`cold-nudge.sh`, machine-local,
 #1842) nudges before the cold turn arrives.

@@ -42,6 +42,10 @@ each sentence means?
    spec can run long when the length is doing work. The reader decides from
    the first screen whether to keep going, so what they need to act goes
    there.
+   In pull request bodies and issues, borrow ASD-STE100's sentence caps: at
+   most 20 words in a sentence that instructs and 25 in one that describes,
+   the active voice, one idea to a sentence. `just pr-open` warns on a longer
+   sentence; its word list is not adopted (#2593).
 5. **Use a list for three or more items.** Put each item on its own line. Keep
    one or two points as prose, because a list of two is slower to read than a
    sentence.

@@ -12,9 +12,9 @@ push and open the PR with the review summary posted at creation. Review as a
 separate step after the push is how it gets skipped: #1550 put four defects on
 main while its reviewer was still thinking.
 
-- **Small Tier 2**, one file with no bridge, DB, auth or migration surface, may
-  take a lighter single-pass review. Anything on the domain-sensitivity list,
-  or spanning files, takes the full agent.
+- **Who reviews.** `reviewer` runs on every diff that changes code or tests,
+  Tier 1 included (#1665). A diff of docs, roadmap or harness text only takes
+  `/code-review` inline.
 - **A new or reshaped bridge type ships with a `LiveBridge` test** in
   `LibraryBridgeTests`, `SessionBridgeTests` or `VariationPlayBridgeTests`.
   A Rust round trip cannot see Rust and Swift disagreeing about the wire
@@ -23,10 +23,8 @@ main while its reviewer was still thinking.
   such test names (#2101); it sees a name, not an assertion, so the reviewer
   still reads what the test checks.
 - **`reviewer` is pinned to Opus 5.5 high**, briefed with the worktree and the
-  issue so it checks the diff against done looks like. Tier 1 and screens-only
-  diffs take the pin, which is no reason to skip review (#1665). A diff on a
-  sensitive surface takes the same pin: Fable was retired 2026-09-23 (#2044),
-  so no review lifts the model.
+  issue so it checks the diff against done looks like. No diff lifts the
+  model: Fable was retired 2026-09-23 (#2044).
 
 **The reviewer never waits, and the lead posts the comment.** Brief it to
 report and yield: no `gh pr comment`, no holding for a PR number, since no PR
@@ -36,17 +34,14 @@ PR creation, saying which agent produced it. While the review runs the lead
 writes the PR body, opens the deferred issues and re-reads the diff; it does
 not sit in a wait.
 
-**Open the PR through `just pr-open "Title (#N)" "Body text" --draft`**, not a
-bare `gh pr create`: it refuses when an issue number in the title has no claim
-naming the current branch (#1702), which is the second way #1694 got built
-twice on 2026-09-11 (the first is skipping `just claim` itself).
-
-**Non-trivial PRs open as drafts.** `gh pr create --draft`, then `gh pr ready`
-only once the self-review comment is posted, its blockers are fixed and the
-deferred issues exist. CI has no draft filter, so this costs nothing. Run
-`just project-status N "In review"` (the issue number, not the PR) alongside
-`gh pr ready`, or the board never leaves "In progress" (#1660). Closing the
-issue at the end of the workflow (CLAUDE.md step 5) is what moves it to Done.
+**Open every PR through `just pr-open "Title (#N)" "Body text" --draft`**, never
+a bare `gh pr create`: it refuses an issue number in the title with no claim
+naming this branch (#1702, the second way #1694 got built twice), and a Tier 1
+or 2 body over the word limit below. Once the review comment is posted, its
+blockers fixed and the deferred issues exist, `just pr-ready PR ISSUE` marks it
+ready and moves the board to In review (#1659); a screen change also waits for
+Jon's yes on its screenshot. The body's `Closes #N` closes the issue on merge,
+and the board follows.
 
 ## Verifying a change on the simulator
 
@@ -63,9 +58,9 @@ what a person has to do by hand. Reaching for it because driving the app looked
 like effort is the failure this rule exists to stop.
 
 A screen change ships with its before and after image, not prose describing
-one, and the after image is the screenshot Jon already approved
-(`.claude/rules/ios-ui.md`: eyes before the PR), never a fresh one taken to
-fill the slot. After pushing the branch, `just pr-visuals` reads the
+one, and the draft's after image is the one Jon approves
+(`.claude/rules/ios-ui.md`: eyes before ready); a no is fixed by a push to the
+open PR. After pushing the branch, `just pr-visuals` reads the
 references it changed and prints the before/after markdown to paste under
 **What it looks like** (#1631); the images are raw.githubusercontent.com URLs
 pinned to the pushed commit, so run it after the push or they point at a
@@ -106,9 +101,9 @@ suggestion.
    they hit rather than that no musician is affected. It ends with one sentence
    on why this approach over the obvious other one. No paths, symbols or code; a `just` recipe name once,
    when the recipe is the outcome.
-2. **Where this could bite**: residual risk in what ships, present tense, one
-   paragraph per risk, each ending in its tracking issue or "deliberate, not
-   tracked". A risk an earlier PR of the same feature stated gets its issue
+2. **Where this could bite** (Tier 3 and the sensitive surfaces only): residual
+   risk in what ships, present tense, one paragraph per risk, each ending in
+   its tracking issue or "deliberate, not tracked". A risk an earlier PR of the same feature stated gets its issue
    number, not a restatement. Never the branch's history. Name the fault class,
    not the fumble. Never spell out an exploitable gap in auth, tokens or user
    data on a public repo; say one exists and route the detail to Jon.
@@ -118,12 +113,15 @@ suggestion.
    with counts; the check that could have failed earns the space. The
    reviewer's findings, the defects fixed on the branch and why a check was
    worth running belong in the self-review comment, not here.
-5. **What changed where**: at most five lines, the files worth opening first,
-   each with why. Identifiers welcome; the diff lists the rest.
+5. **What changed where** (Tier 3 and the sensitive surfaces only): at most five
+   lines, the files worth opening first, each with why. Identifiers welcome; the diff lists the rest.
 
-A Tier 1 or Tier 2 body runs under 400 words before the checklist. Tier 3 and
-domain-sensitive work may run longer, and every paragraph past that is a
-distinct shipped risk or a check that could have failed. The three longest
+A Tier 1 or Tier 2 body runs at most 350 words before the checklist, comments
+not counted: `just pr-open` refuses a longer one that has neither Tier 3
+heading (`SKIP_BODY_CHECK=1` for a justified case), and warns on any sentence
+over 25 words (`docs/style-guide.md`). Tier 3 and sensitive work may run
+longer, and every paragraph past that is a distinct shipped risk or a check
+that could have failed. The three longest
 bodies of 2026-09 (#1612, #1628, #1601) each carried over 100 words of branch
 history in **What I checked**, which is the failure this rule exists to stop.
 Checklist lines that do not apply are deleted, not annotated.
@@ -136,8 +134,11 @@ go last even when they are the reason the issue exists.
 ## Plan comments
 
 A Tier 2 or Tier 3 plan goes on the issue before the first commit, about 150
-words, under these headings. Jon approves it and the build and the reviewer
-read it.
+words, under these headings. Jon approves it before the build, except for a
+Tier 2 issue that is the next child of an epic whose body names it: that plan is posted and the
+build starts, and Jon reads it with the PR, unless the work is on the
+sensitive surfaces or the plan names a choice he has not made. The build and
+the reviewer read it.
 
 ```markdown
 **Done looks like**: two or three checks, as the musician or Jon sees them.

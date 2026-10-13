@@ -41,16 +41,11 @@ just android-run      # regen bindings + emulator + screenshot; android-test: JV
   the concurrency guard (#1536, #1537). A passing run prints its own counts; silence is
   never the evidence. Android: the `android-*` recipes, per `android-quality.md`.
 - **Run `just check` before pushing**, plus `just ios-fmt-check` for `ios/` (fix with
-  `just ios-fmt`); local green means CI green bar MSRV and coverage (`just msrv`,
-  `just coverage`), so keep the justfile and `ci.yml` in step.
-  Read every compile error before fixing the first: `cargo check --all-targets`, and the
-  full `just ios-test` error list.
-- **The simulator is machine-global.** `just ios-test`/`ios-test-full`, and the launch in
-  `just ios-run` (up to 30 minutes, naming the holder), wait on a machine-wide lock (`scripts/ios-sim-lock.sh`) rather than refusing when another session's
-  run is live, and leave their sim booted for the next run, shutting it down after ten idle
-  minutes: a booted device on its own is no longer a signal of anything. Global resets are
-  still denied; a device outside that flow (someone poking at Device Hub by hand) still
-  needs asking about before you touch it.
+  `just ios-fmt`); local green means CI green bar MSRV and coverage, so keep the justfile
+  and `ci.yml` in step. Read every compile error before fixing the first.
+- **The simulator is machine-global.** The iOS test and run recipes wait on a machine-wide
+  lock (`scripts/ios-sim-lock.sh`) and leave the sim booted, shutting it after ten idle
+  minutes. Global resets are denied; ask before touching a device outside that flow.
 - **Seed mode skips persistence**: `SEED=0 just ios-run` to test persistence.
 - **Read source with the Read tool, not `cat`.** Path-scoped rules fire on Read.
 
@@ -97,19 +92,15 @@ whether or not you have seen them.
   "inert until the feature returns", not a `pub` nobody calls. `git` is the parking space;
   keep the findings and name the recovery PR. A stub a test reads, or an API a shell calls,
   has a reader.
-- **Comments: default to none.** The density gate fails a push that adds too many; what it
-  cannot see is the kind. Three are justified: a one-line section header
-  (`// ── Validation ──`), a non-obvious WHY citing a concrete reason (issue, incident,
-  `BUG:` tag), or `HACK(#N)` / `FIXME(#N)` tied to a tracked issue. Never one that restates
-  the code, narrates the task or PR, hedges without an issue, or notes that X "mirrors" Y.
-  `///` on a self-evident item is the same noise. Over two lines, ask whether it should be a
-  name or a type.
-- **British English**; UI copy is written against `docs/tone-of-voice.md`, and PR bodies,
-  commits, issues and docs against [`docs/style-guide.md`](docs/style-guide.md). **No em
-  dashes, en dashes or double dashes**: `scripts/check-dashes.sh` fails double dashes and
-  American spellings on added Markdown lines and em or en dashes on most others. **Plain
-  language**: name features by the musician-visible outcome; issue numbers are the only
-  stable handles.
+- **Comments: default to none.** The density gate counts them; the kind is yours. Only a
+  one-line section header, a non-obvious WHY citing an issue or incident, or `HACK(#N)` /
+  `FIXME(#N)`. Never one that restates the code or narrates the task. Over two lines, ask
+  whether it should be a name or a type.
+- **British English, no em, en or double dashes**, checked in committed files by
+  `scripts/check-dashes.sh`; they bind PR bodies, issues and comments too, where nothing
+  checks. Copy follows `docs/tone-of-voice.md`, the rest [`docs/style-guide.md`](docs/style-guide.md).
+  **Plain language**: name features by the musician-visible outcome; issue numbers are the
+  only stable handles.
 
 ## Testing
 
@@ -144,20 +135,23 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   patterns, an endpoint on established conventions, a field on a model. Before the first
   commit a plan of about 150 words goes on the issue as a comment, on the skeleton in the
   shipping skill's [Plan comments](.claude/skills/intrada-shipping/SKILL.md#plan-comments),
-  approved by Jon and read by the build; one that runs long is Tier 3. UI work does Claude
-  Design first, and a new screen starts by reading an existing one, which loads the UI rules.
+  approved by Jon and read by the build; one that runs long is Tier 3. The next child of an
+  epic whose body names it posts its plan and builds; Jon reads it with the PR, unless it is
+  on the sensitive surfaces or names a choice he has not made. UI work does Claude Design
+  first, and a new screen starts by reading an existing one, which loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features, Crux core or
-  bridge changes, auth or schema changes. The plan comment, then one `specs/<feature>.md`
+  non-additive bridge changes, auth or schema changes. The plan comment, then one `specs/<feature>.md`
   of 100 to 200 lines riding as the first commit of Phase A, never its own PR.
 
-**Domain-sensitivity override**: auth, the bridge contract, DB schema or migrations go up at
-least one tier and onto the sensitive surfaces. **A phase that introduces a bridge shape, a
-migration, or a change inside the `ActiveSession` blob graph ships as two PRs, core first,
-screens in the same working session**, or the core PR waits (#1374); spanning core
-and screens is not itself the trigger. Review the core PR before the screens.
+**Domain-sensitivity override**: the `ActiveSession` blob, wire-pinned settings, migrations,
+auth, and any bridge change that is not additive (defined in
+`.claude/rules/sensitive-surfaces.md`) go up at least one tier, stay with the lead, and ship
+as two PRs, core first, screens in the same session, or the core PR waits (#1374). An
+additive bridge change keeps its tier, may go to `task` with its LiveBridge test, and ships
+as one PR whose core commits `reviewer` reads before the screens commits.
 
 **Two strikes, then a decision** (#1890): two corrections on one point stop the change and ask
-if the approach is wrong before a third; `just claim` refuses the same at two merged PRs.
+if the approach is wrong before a third; `just claim` refuses at two merged PRs titled with it.
 
 **Epics hold the backlog** (#1968): three or more issues with a working order sit under an
 `epic`-labelled parent as GitHub sub-issues (`just epic-add EPIC N...`), one parent each, one
@@ -167,7 +161,7 @@ child closes the epic. The rules: [Epics](docs/how-the-work-runs.md#epics).
 
 Test-first for non-UI Tier 2, all Tier 3 and `intrada-core` changes by default: a test
 retrofit to pass agrees with the implementation by construction (#1256). `reviewer` reviews
-Tier 2+, briefed with the issue so it checks the diff against done looks like; triage its
+every code or test diff, briefed with the issue so it checks the diff against done looks like; triage its
 findings. Rungs, plans and usage: [working with agents](docs/working-with-agents.md). **UI
 verification means driving the app on the simulator**; if you cannot, name the hand check.
 
@@ -177,33 +171,26 @@ verification means driving the app on the simulator**; if you cannot, name the h
    names the other branch when the issue is already claimed (the `in-flight` label, or its
    newest "Claimed" comment) or an open PR references it; otherwise it adds the label,
    comments the branch and moves the board to In progress in one step, so the board never
-   gets stuck between Backlog and Done (#1660). `just pr-open` wraps `gh pr create` and
+   gets stuck between Backlog and Done (#1659). `just pr-open` wraps `gh pr create` and
    refuses if an issue number in the title has no claim naming the current branch. A
-   handover opener names the issue; the new session claims it. Drop the label when the PR
-   closes (automatic on merge; drop it by hand if the PR closes without merging).
+   handover opener names the issue; the new session claims it.
 2. Find the issue's epic, or the roadmap item, or discuss first; check the
    [project board](https://github.com/users/jonyardley/projects/2). Read the issue, its epic
    and what they point at, then state the rung and, for Tier 2 and 3, write the plan comment.
 3. **Always a feature branch in its own worktree, and a PR; a human merges.** Jon starts
    every session in the main checkout. The session runs `just worktree-new <name>` itself,
    prefixes every shell command with `cd <worktree> && `, and reads the rules for the files
-   it touches by hand, since cd-ing does not load them (#1720, #1837). It never hands Jon a
-   worktree command: a handover is an opener pasted into a new chat in main, and that
-   session makes its own worktree. Who may read, build and edit where, and what the
-   worktree lease claims: [`docs/worktrees.md`](docs/worktrees.md). Agents touch the main
-   checkout only to `git fetch origin`; a pull in main is denied by the guard, and
-   `just worktree-new` branches from fresh `origin/main`, so nothing needs the local ref
-   moved (#1686, #1740). Branch protection refuses a push to main and `gh pr merge` is
-   denied in settings. CI green is the session's job: after every push
-   watch the run to a conclusion, react, push again, and surface the PR only when green or
-   stuck. Read the PR's mergeability, not just the job list: a renamed job leaves its old
-   context "expected" for ever (#1542).
+   it touches by hand, since cd-ing does not load them (#1720, #1837). A handover is an
+   opener pasted into a new chat in main, never a worktree command. Agents touch the main
+   checkout only to `git fetch origin` (#1686, #1740); who edits where, and the lease:
+   [`docs/worktrees.md`](docs/worktrees.md). Agents never merge or push to main.
 4. **Ship through `/ship`**, which follows
-   [`.claude/skills/intrada-shipping/SKILL.md`](.claude/skills/intrada-shipping/SKILL.md).
-5. **After completing work**: close the issue, drop `in-flight` and run
-   `just project-status N "Done"` (that is the status update); update `docs/roadmap.md` and
-   `docs/where-we-are.md` if a phase changed, this file if architecture did;
-   `just worktree-rm` once merged.
+   [`.claude/skills/intrada-shipping/SKILL.md`](.claude/skills/intrada-shipping/SKILL.md)
+   and watches CI to a conclusion.
+5. **After completing work**: the body's `Closes #N` closes the issue on merge, and the board
+   and the `in-flight` label follow; close by hand only when no PR closed it. Update
+   `docs/roadmap.md` and `docs/where-we-are.md` if a phase changed, this file if architecture
+   did; `just worktree-rm` once merged.
 
 **More than one session at once** follows
 [`.claude/skills/intrada-parallel-streams/SKILL.md`](.claude/skills/intrada-parallel-streams/SKILL.md);

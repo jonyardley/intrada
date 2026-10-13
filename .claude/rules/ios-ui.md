@@ -21,13 +21,16 @@ and its V-numbered log; its sweep checklist is the review pass for any PR that
 changes a string. Where the two disagree, the design principle wins and the
 tone doc gets a new example.
 
-## Eyes before the PR
+## Eyes before ready
 
-Before `just pr-open` on a change to what a musician sees, the reply shows Jon a
-`just ios-run` screenshot and waits for his word on it: a PR that opens
-without that exchange is the failure this rule exists to stop (#1891; the
-terracotta accent, the metronome drag icon and the header toolbar all
-shipped, and were each reworked, the same way).
+A change to what a musician sees opens as a draft with the `just ios-run`
+screenshot under **What it looks like** and the line "Waiting for Jon's word on
+the screenshot". It goes ready only after Jon says yes to that picture, and
+the ready step replaces that line with "Jon approved the screenshot on
+YYYY-MM-DD"; a no is a push to the open PR. A PR that
+goes ready without that exchange is the failure this rule exists to stop
+(#1891; the terracotta accent, the metronome drag icon and the header toolbar
+all shipped, and were each reworked, the same way).
 
 ## Tokens, then modifiers, then components, then screens
 

@@ -1,4 +1,5 @@
-<!-- Under 400 words before the checklist for Tier 1 and 2. -->
+<!-- Tier 1 and 2: at most 350 words before the checklist, comments not counted;
+     `just pr-open` refuses a longer one. Sentences of at most 25 words. -->
 
 Look at: <!-- One line: the decision or risk Jon should judge before merging.
      Stating the feedback wanted best predicts a PR being accepted and
@@ -18,7 +19,8 @@ Look at: <!-- One line: the decision or risk Jon should judge before merging.
 
 ## Where this could bite
 
-<!-- Residual risk in the merged code, and what is deliberately not covered.
+<!-- Tier 3 and the sensitive surfaces only; delete it otherwise. Residual
+     risk in the merged code, and what is deliberately not covered.
      Present tense, about what ships: never the history of the branch, and never
      a wrong turn already corrected. One paragraph per risk, each ending in the
      issue that tracks it or the words "deliberate, not tracked". A risk an
@@ -47,7 +49,8 @@ Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. What the new t
 
 ## What changed where
 
-<!-- At most five lines: the files worth opening first, each with why. The
+<!-- Tier 3 and the sensitive surfaces only; delete it otherwise. At most
+     five lines: the files worth opening first, each with why. The
      diff lists the rest. Identifiers welcome here. -->
 
 ## Checklist
