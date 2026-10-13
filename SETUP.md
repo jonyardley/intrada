@@ -39,11 +39,22 @@ appears in the Sentry project's Issues tab.
 `.github/workflows/ci.yml` handles CI:
 
 ```
-push to PR:   test → clippy → fmt → security & hygiene → native iOS build + snapshot tests
-push to main: all checks → native iOS release build
+push to PR:   path filter, then only the jobs its paths touch:
+              Rust: test, MSRV, clippy, fmt
+              iOS: build and tests on the self-hosted Mac, reported through a
+                hosted check; snapshot hygiene
+              Android: build, unit and snapshot tests; UI tests on an
+                emulator; snapshot hygiene
+              always: security and hygiene, no em or en dashes, comment
+                density (unless labelled comments-justified)
+push to main: the Rust and Android jobs and security and hygiene every
+              time, the iOS jobs when iOS paths changed, and an alert when
+              main goes red
 ```
 
-The native iOS app ships separately via TestFlight (see §3 below).
+The apps ship separately: iOS through TestFlight (see §3 below), Android
+through `release-play.yml` to Play internal testing, whose setup is not yet
+written up (#2631).
 
 ### GitHub Actions secrets
 
@@ -119,6 +130,9 @@ brew install mise
 mise install
 ```
 
+Everything mise does not cover is listed in the README's
+[prerequisites](README.md#prerequisites).
+
 ### Optional: sccache for faster fresh-worktree builds
 
 `mise install` provisions the `sccache` binary, but it stays inactive until
@@ -151,7 +165,8 @@ git config blame.ignoreRevsFile .git-blame-ignore-revs
 ### Quick start
 
 ```bash
-just ios
+just ios          # iPhone, in Xcode
+just android-run  # Android, on the emulator
 ```
 
 ## Checklist

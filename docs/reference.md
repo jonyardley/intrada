@@ -122,6 +122,9 @@ The graph lives in the **main checkout** at `graphify-out/` (gitignored, so
 worktrees don't carry it). Find the main checkout from any worktree via
 `git rev-parse --path-format=absolute --git-common-dir`, then take its parent.
 
+Install it with `uv tool install graphifyy` (two y's), as listed in the
+README's agent tooling.
+
 Scope is controlled by the committed `.graphifyignore`: vendored and minified JS
 and generated schemas are excluded.
 
