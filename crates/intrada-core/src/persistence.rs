@@ -43,6 +43,16 @@ pub enum PersistenceOperation {
     LoadAllRecords,
     /// The merge's winners in one transaction, `deleted_at` written as given.
     ApplyMerged(StoredRecords),
+    /// A later `SaveSession` keeps the delete (#2581).
+    DeleteSession {
+        id: String,
+        deleted_at: DateTime<Utc>,
+    },
+    /// Clears the delete and makes `restored_at` the session's change time.
+    RestoreSession {
+        id: String,
+        restored_at: DateTime<Utc>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -52,12 +62,21 @@ pub struct StoredItem {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
+/// Beside the session, not in it, so the sync body is unchanged (#2581).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct StoredPracticeSession {
+    pub session: PracticeSession,
+    pub updated_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct StoredRecords {
     pub items: Vec<StoredItem>,
     pub variations: Vec<Variation>,
-    pub sessions: Vec<PracticeSession>,
+    pub sessions: Vec<StoredPracticeSession>,
     /// Asked for but on disk in a shape this app cannot read, so a merge must
     /// not write over them.
     pub unreadable: Vec<RecordKey>,
@@ -283,11 +302,64 @@ pub fn save_variations(model: &mut Model, rows: Vec<Variation>) -> Command<Effec
 
 pub fn save_session(model: &mut Model, session: PracticeSession) -> Command<Effect, Event> {
     model.sessions_sync.write_sent();
-    let upload = sync::upload_for(model, &[Synced::Session(session.clone())]);
+    let upload = sync::upload_for(
+        model,
+        &[Synced::Session {
+            updated_at: session.completed_at,
+            session: Box::new(session.clone()),
+            deleted_at: None,
+        }],
+    );
     write_then_upload(
         PersistenceOperation::SaveSession(session),
         upload,
         Event::SessionStoreWritten,
+    )
+}
+
+/// The record's change time is the delete: the model has no stored
+/// `updated_at`, and a delete stamped now is never earlier than it.
+pub fn delete_session(
+    model: &mut Model,
+    session: PracticeSession,
+    deleted_at: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    model.sessions_sync.write_sent();
+    let id = session.id.clone();
+    let upload = sync::upload_for(
+        model,
+        &[Synced::Session {
+            updated_at: session.completed_at,
+            session: Box::new(session),
+            deleted_at: Some(deleted_at),
+        }],
+    );
+    write_then_upload(
+        PersistenceOperation::DeleteSession { id, deleted_at },
+        upload,
+        Event::SessionDeleteWritten,
+    )
+}
+
+pub fn restore_session(
+    model: &mut Model,
+    session: PracticeSession,
+    restored_at: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    model.sessions_sync.write_sent();
+    let id = session.id.clone();
+    let upload = sync::upload_for(
+        model,
+        &[Synced::Session {
+            session: Box::new(session),
+            updated_at: restored_at,
+            deleted_at: None,
+        }],
+    );
+    write_then_upload(
+        PersistenceOperation::RestoreSession { id, restored_at },
+        upload,
+        Event::SessionDeleteWritten,
     )
 }
 

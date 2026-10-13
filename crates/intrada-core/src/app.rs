@@ -85,6 +85,11 @@ pub enum Event {
 
     // ── Appended (#2354) ─────────────────────────────────────────────
     Sync(crate::sync::SyncEvent),
+
+    // ── Appended (#2581) ─────────────────────────────────────────────
+    /// A saved session's delete or undo. Not `SessionStoreWritten`, whose
+    /// `Ack` closes a save in flight.
+    SessionDeleteWritten(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -280,6 +285,21 @@ impl Intrada {
                 // A refused write reloads to roll back the un-persisted change (#825).
                 if model.items_sync.write_settled(refused) {
                     Command::all([shown, persistence::load_items(model)])
+                } else {
+                    shown
+                }
+            }
+            Event::SessionDeleteWritten(output) => {
+                let refused = !matches!(output, PersistenceOutput::Ack);
+                let shown = if refused {
+                    model.surface_storage_error();
+                    crux_core::render::render()
+                } else {
+                    model.record_ack();
+                    Command::done()
+                };
+                if model.sessions_sync.write_settled(refused) {
+                    Command::all([shown, persistence::load_sessions(model)])
                 } else {
                     shown
                 }

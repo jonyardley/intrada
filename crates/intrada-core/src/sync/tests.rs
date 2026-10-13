@@ -17,7 +17,7 @@ use crate::domain::session::{
 use crate::domain::types::Tempo;
 use crate::model::Model;
 use crate::persistence::{
-    self, PersistenceOperation, PersistenceOutput, StoredItem, StoredRecords,
+    self, PersistenceOperation, PersistenceOutput, StoredItem, StoredPracticeSession, StoredRecords,
 };
 
 fn at(secs: i64) -> DateTime<Utc> {
@@ -307,6 +307,58 @@ fn a_deleted_piece_changes_when_it_was_deleted() {
     assert_eq!(live.changed_at, at(0));
 }
 
+fn synced_session(updated: i64, deleted: Option<i64>) -> Synced {
+    Synced::Session {
+        session: Box::new(full_session()),
+        updated_at: at(updated),
+        deleted_at: deleted.map(at),
+    }
+}
+
+#[test]
+fn a_deleted_session_carries_its_delete_and_the_later_change() {
+    let record = synced_session(5, Some(9)).record().expect("encodes");
+    assert_eq!(record.deleted_at, Some(at(9)));
+    assert_eq!(record.changed_at, at(9));
+
+    let live = synced_session(5, None).record().expect("encodes");
+    assert_eq!(live.deleted_at, None);
+    assert_eq!(live.changed_at, at(5));
+}
+
+#[test]
+fn a_restore_wins_over_the_delete_on_another_device() {
+    let deleted = synced_session(5, Some(9)).record().expect("encodes");
+    let restored = synced_session(12, None).record().expect("encodes");
+    assert_eq!(decide(Some(&deleted), &restored), Verdict::Take);
+    assert_eq!(decide(Some(&restored), &deleted), Verdict::Keep);
+}
+
+#[test]
+fn a_delete_wins_over_the_live_copy_on_another_device() {
+    let live = synced_session(5, None).record().expect("encodes");
+    let deleted = synced_session(5, Some(9)).record().expect("encodes");
+    assert_eq!(decide(Some(&live), &deleted), Verdict::Take);
+    assert_eq!(decide(Some(&deleted), &live), Verdict::Keep);
+}
+
+#[test]
+fn a_deleted_session_decodes_with_its_delete_as_its_change() {
+    let record = synced_session(5, Some(9)).record().expect("encodes");
+    let Synced::Session {
+        updated_at,
+        deleted_at,
+        ..
+    } = Synced::decode(&record).expect("decodes")
+    else {
+        panic!("a session record decodes to a session");
+    };
+    assert_eq!(deleted_at, Some(at(9)));
+    assert_eq!(updated_at, at(9));
+    let again = synced_session(9, Some(9)).record().expect("encodes");
+    assert_eq!(again, record);
+}
+
 #[test]
 fn every_kind_decodes_to_what_was_encoded() {
     let variation = Variation {
@@ -321,7 +373,11 @@ fn every_kind_decodes_to_what_was_encoded() {
             deleted_at: Some(at(3)),
         },
         Synced::Variation(variation),
-        Synced::Session(full_session()),
+        Synced::Session {
+            session: Box::new(full_session()),
+            updated_at: at(7),
+            deleted_at: None,
+        },
     ] {
         let record = synced.record().expect("encodes");
         assert_eq!(record.key(), synced.key());
@@ -351,7 +407,14 @@ fn record_bodies_are_pinned() {
             PINNED_ITEM,
         ),
         (Synced::Variation(variation), PINNED_VARIATION),
-        (Synced::Session(full_session()), PINNED_SESSION),
+        (
+            Synced::Session {
+                session: Box::new(full_session()),
+                updated_at: at(0),
+                deleted_at: Some(at(5)),
+            },
+            PINNED_SESSION,
+        ),
     ] {
         let body = synced.record().expect("encodes").body;
         assert_eq!(
@@ -396,7 +459,11 @@ fn the_bridge_shapes_round_trip_on_the_ffi_wire() {
             deleted_at: Some(at(1)),
         }],
         variations: vec![],
-        sessions: vec![PracticeSession::fixture("s")],
+        sessions: vec![StoredPracticeSession {
+            session: PracticeSession::fixture("s"),
+            updated_at: at(2),
+            deleted_at: Some(at(3)),
+        }],
         unreadable: vec![],
     }));
     assert_round_trips(PersistenceOutput::Records(StoredRecords {
@@ -961,7 +1028,11 @@ fn upload_everything_sends_every_record_tombstones_included() {
             deleted_at: Some(at(5)),
         }],
         variations: vec![],
-        sessions: vec![PracticeSession::fixture("s")],
+        sessions: vec![StoredPracticeSession {
+            session: PracticeSession::fixture("s"),
+            updated_at: at(2),
+            deleted_at: Some(at(3)),
+        }],
         unreadable: vec![],
     }))
     .expect("resolves once");

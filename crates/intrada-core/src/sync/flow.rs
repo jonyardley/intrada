@@ -8,7 +8,7 @@ use super::{decide, RecordKey, RecordKind, SyncOperation, SyncRecord, Synced, Ve
 use crate::app::{Effect, Event};
 use crate::model::Model;
 use crate::persistence::{
-    self, PersistenceOperation, PersistenceOutput, StoredItem, StoredRecords,
+    self, PersistenceOperation, PersistenceOutput, StoredItem, StoredPracticeSession, StoredRecords,
 };
 
 #[derive(Debug, Default)]
@@ -242,7 +242,15 @@ fn merge(
                 deleted_at,
             }),
             Synced::Variation(v) => records.variations.push(v),
-            Synced::Session(s) => records.sessions.push(s),
+            Synced::Session {
+                session,
+                updated_at,
+                deleted_at,
+            } => records.sessions.push(StoredPracticeSession {
+                session: *session,
+                updated_at,
+                deleted_at,
+            }),
         }
     }
     Command::all([
@@ -258,7 +266,11 @@ fn synced(stored: StoredRecords) -> Vec<Synced> {
         deleted_at: s.deleted_at,
     });
     let variations = stored.variations.into_iter().map(Synced::Variation);
-    let sessions = stored.sessions.into_iter().map(Synced::Session);
+    let sessions = stored.sessions.into_iter().map(|s| Synced::Session {
+        session: Box::new(s.session),
+        updated_at: s.updated_at,
+        deleted_at: s.deleted_at,
+    });
     items.chain(variations).chain(sessions).collect()
 }
 

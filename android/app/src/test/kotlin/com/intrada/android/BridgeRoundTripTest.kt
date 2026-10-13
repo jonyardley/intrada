@@ -77,6 +77,39 @@ class BridgeRoundTripTest {
         assertEquals("2 pieces · 1 exercise", view.libraryCountLine)
     }
 
+    // A deleted session's operations decode here as well as in Swift (#2581).
+    @Test
+    fun aSessionDeleteAndItsUndoCrossTheBridge() {
+        val bridge = LiveBridge()
+        bridge.update(Event.LoadSampleData)
+
+        val deleted =
+            bridge
+                .update(
+                    Event.Session(
+                        SessionEvent.DeleteSaved("sample-session-3d", "2026-10-13T09:00:00Z")
+                    )
+                )
+                .mapNotNull { (it.effect as? Effect.Persistence)?.value }
+        assertEquals(
+            listOf(
+                PersistenceOperation.DeleteSession("sample-session-3d", "2026-10-13T09:00:00Z")
+            ),
+            deleted,
+        )
+
+        val restored =
+            bridge.update(Event.Session(SessionEvent.UndoDelete("2026-10-13T09:00:05Z"))).mapNotNull {
+                (it.effect as? Effect.Persistence)?.value
+            }
+        assertEquals(
+            listOf(
+                PersistenceOperation.RestoreSession("sample-session-3d", "2026-10-13T09:00:05Z")
+            ),
+            restored,
+        )
+    }
+
     @Test
     fun theCoreSampleSetDecodes() {
         val bridge = LiveBridge()

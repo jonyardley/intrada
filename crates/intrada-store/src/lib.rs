@@ -149,8 +149,16 @@ fn run_in(
             }
             sessions::save_variations(tx, &merged.variations)?;
             for session in &merged.sessions {
-                sessions::save(tx, session)?;
+                sessions::put_merged(tx, session)?;
             }
+            PersistenceOutput::Ack
+        }
+        PersistenceOperation::DeleteSession { id, deleted_at } => {
+            sessions::delete(tx, id, deleted_at)?;
+            PersistenceOutput::Ack
+        }
+        PersistenceOperation::RestoreSession { id, restored_at } => {
+            sessions::restore(tx, id, restored_at)?;
             PersistenceOutput::Ack
         }
     })
@@ -179,7 +187,7 @@ fn records(
             .collect(),
         sessions: sessions::load_with_tombstones(tx, unreadable, skipped_sessions)?
             .into_iter()
-            .filter(|s| wanted(RecordKind::Session, &s.id))
+            .filter(|s| wanted(RecordKind::Session, &s.session.id))
             .collect(),
         unreadable: Vec::new(),
     };

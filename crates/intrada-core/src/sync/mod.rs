@@ -112,7 +112,11 @@ pub enum Synced {
         deleted_at: Option<DateTime<Utc>>,
     },
     Variation(Variation),
-    Session(PracticeSession),
+    Session {
+        session: Box<PracticeSession>,
+        updated_at: DateTime<Utc>,
+        deleted_at: Option<DateTime<Utc>>,
+    },
 }
 
 impl Synced {
@@ -120,7 +124,7 @@ impl Synced {
         let (kind, id) = match self {
             Synced::Item { item, .. } => (RecordKind::Item, &item.id),
             Synced::Variation(v) => (RecordKind::Variation, &v.id),
-            Synced::Session(s) => (RecordKind::Session, &s.id),
+            Synced::Session { session, .. } => (RecordKind::Session, &session.id),
         };
         RecordKey {
             kind,
@@ -140,7 +144,15 @@ impl Synced {
                 later(v.updated_at, v.deleted_at),
                 v.deleted_at,
             ),
-            Synced::Session(s) => (serde_json::to_vec(s)?, s.completed_at, None),
+            Synced::Session {
+                session,
+                updated_at,
+                deleted_at,
+            } => (
+                serde_json::to_vec(session)?,
+                later(*updated_at, *deleted_at),
+                *deleted_at,
+            ),
         };
         let key = self.key();
         Ok(SyncRecord {
@@ -160,7 +172,13 @@ impl Synced {
                 deleted_at: record.deleted_at,
             },
             RecordKind::Variation => Synced::Variation(serde_json::from_slice(&record.body)?),
-            RecordKind::Session => Synced::Session(serde_json::from_slice(&record.body)?),
+            // The body has no change time; the record's is exact for a live
+            // session and never earlier for a deleted one (#2581).
+            RecordKind::Session => Synced::Session {
+                session: serde_json::from_slice(&record.body)?,
+                updated_at: record.changed_at,
+                deleted_at: record.deleted_at,
+            },
         })
     }
 }

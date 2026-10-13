@@ -838,6 +838,17 @@ pub enum SessionEvent {
         next_item_started_at: DateTime<Utc>,
         answers: ReflectionAnswers,
     },
+
+    // === Saved sessions (#2581), appended ===
+    /// Takes a saved session out of the history; `UndoDelete` brings it back.
+    DeleteSaved {
+        session_id: String,
+        now: DateTime<Utc>,
+    },
+    /// Puts back the session the last `DeleteSaved` took out.
+    UndoDelete {
+        now: DateTime<Utc>,
+    },
 }
 
 mod active;
@@ -848,6 +859,7 @@ mod plays;
 mod record;
 #[cfg(test)]
 mod record_tests;
+mod saved;
 mod summary;
 #[cfg(test)]
 mod tests;
@@ -1127,5 +1139,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::RecoverSession { session, now } => {
             active::recover_session(model, session, now)
         }
+
+        // ── Saved sessions ─────────────────────────────────────────
+        SessionEvent::DeleteSaved { session_id, now } => saved::delete(model, session_id, now),
+        SessionEvent::UndoDelete { now } => saved::undo_delete(model, now),
     }
 }

@@ -10,7 +10,6 @@ ChartSection
 ChordChart
 ChordQuality
 ClickStart
-CompletionStatus
 DraftSource
 EntryStatus
 EntryVariationsView
@@ -32,7 +31,6 @@ PickerVariationView
 PieceRefView
 PracticeDayView
 PracticeDefaultsEvent
-PracticeSession
 Profile
 ProfileEvent
 ProfileField

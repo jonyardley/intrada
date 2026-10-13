@@ -11,7 +11,7 @@ use intrada_core::domain::link::ExerciseLink;
 use intrada_core::domain::section::{BarRange, ItemSection, SectionKind};
 use intrada_core::domain::session::{Play, RepAction, RepEvent};
 use intrada_core::domain::{Metre, Variation};
-use intrada_core::persistence::{StoredItem, StoredRecords};
+use intrada_core::persistence::{StoredItem, StoredPracticeSession, StoredRecords};
 use intrada_core::sync::{RecordKey, RecordKind};
 use intrada_core::{
     Accidental, CompletionStatus, EntryStatus, Item, ItemKind, Key, Letter, Modality,
@@ -1884,13 +1884,159 @@ fn a_merge_writes_variations_and_sessions_in_one_go() {
     let merged = StoredRecords {
         items: vec![],
         variations: vec![variation.clone()],
-        sessions: vec![session("s", "2026-02-02T00:00:00Z")],
+        sessions: vec![StoredPracticeSession {
+            session: session("s", "2026-02-02T00:00:00Z"),
+            updated_at: at("2026-02-02T00:00:00Z"),
+            deleted_at: None,
+        }],
         unreadable: vec![],
     };
     store.ok(&PersistenceOperation::ApplyMerged(merged));
 
     assert_eq!(store.variations(), vec![variation]);
     assert_eq!(store.sessions()[0].id, "s");
+}
+
+// ── Deleting a saved session (#2581) ──
+
+fn session_key(id: &str) -> RecordKey {
+    RecordKey {
+        kind: RecordKind::Session,
+        id: id.into(),
+    }
+}
+
+fn stored_session(store: &mut Store, id: &str) -> StoredPracticeSession {
+    stored_records(store, Some(vec![session_key(id)]))
+        .sessions
+        .pop()
+        .unwrap_or_else(|| panic!("no stored session {id}"))
+}
+
+#[test]
+fn a_saved_session_changed_when_it_was_completed() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save_session(&session("s", "2026-02-02T00:00:00Z"));
+
+    let stored = stored_session(&mut store, "s");
+    assert_eq!(stored.updated_at, at("2026-02-02T00:00:00Z"));
+    assert_eq!(stored.deleted_at, None);
+}
+
+#[test]
+fn a_deleted_session_leaves_the_list_and_keeps_its_tombstone() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save_session(&session("kept", "2026-02-02T00:00:00Z"));
+    store.save_session(&session("gone", "2026-02-03T00:00:00Z"));
+    assert_eq!(
+        store.ok(&PersistenceOperation::DeleteSession {
+            id: "gone".into(),
+            deleted_at: at("2026-02-04T00:00:00Z"),
+        }),
+        PersistenceOutput::Ack
+    );
+
+    let ids: Vec<String> = store.sessions().into_iter().map(|s| s.id).collect();
+    assert_eq!(ids, vec!["kept".to_string()]);
+    let gone = stored_session(&mut store, "gone");
+    assert_eq!(gone.deleted_at, Some(at("2026-02-04T00:00:00Z")));
+    assert_eq!(gone.updated_at, at("2026-02-03T00:00:00Z"));
+}
+
+#[test]
+fn a_deleted_session_stays_deleted_after_a_later_save() {
+    let mut store = Store::in_memory().expect("opens");
+    let saved = session("s", "2026-02-02T00:00:00Z");
+    store.save_session(&saved);
+    store.ok(&PersistenceOperation::DeleteSession {
+        id: "s".into(),
+        deleted_at: at("2026-02-04T00:00:00Z"),
+    });
+
+    store.save_session(&saved);
+
+    assert!(store.sessions().is_empty());
+    assert_eq!(
+        stored_session(&mut store, "s").deleted_at,
+        Some(at("2026-02-04T00:00:00Z"))
+    );
+}
+
+#[test]
+fn a_restored_session_returns_with_the_restore_as_its_change() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save_session(&session("s", "2026-02-02T00:00:00Z"));
+    store.ok(&PersistenceOperation::DeleteSession {
+        id: "s".into(),
+        deleted_at: at("2026-02-04T00:00:00Z"),
+    });
+    assert_eq!(
+        store.ok(&PersistenceOperation::RestoreSession {
+            id: "s".into(),
+            restored_at: at("2026-02-05T00:00:00Z"),
+        }),
+        PersistenceOutput::Ack
+    );
+
+    assert_eq!(store.sessions()[0].id, "s");
+    let stored = stored_session(&mut store, "s");
+    assert_eq!(stored.deleted_at, None);
+    assert_eq!(stored.updated_at, at("2026-02-05T00:00:00Z"));
+}
+
+#[test]
+fn a_merged_session_is_written_with_its_times_as_given() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save_session(&session("s", "2026-02-02T00:00:00Z"));
+    let merged = StoredRecords {
+        sessions: vec![StoredPracticeSession {
+            session: session("s", "2026-02-02T00:00:00Z"),
+            updated_at: at("2026-02-06T00:00:00Z"),
+            deleted_at: Some(at("2026-02-07T00:00:00Z")),
+        }],
+        ..Default::default()
+    };
+    store.ok(&PersistenceOperation::ApplyMerged(merged));
+
+    assert!(store.sessions().is_empty());
+    let stored = stored_session(&mut store, "s");
+    assert_eq!(stored.updated_at, at("2026-02-06T00:00:00Z"));
+    assert_eq!(stored.deleted_at, Some(at("2026-02-07T00:00:00Z")));
+}
+
+#[test]
+fn a_merged_live_session_brings_back_one_deleted_here() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save_session(&session("s", "2026-02-02T00:00:00Z"));
+    store.ok(&PersistenceOperation::DeleteSession {
+        id: "s".into(),
+        deleted_at: at("2026-02-04T00:00:00Z"),
+    });
+    let merged = StoredRecords {
+        sessions: vec![StoredPracticeSession {
+            session: session("s", "2026-02-02T00:00:00Z"),
+            updated_at: at("2026-02-05T00:00:00Z"),
+            deleted_at: None,
+        }],
+        ..Default::default()
+    };
+    store.ok(&PersistenceOperation::ApplyMerged(merged));
+
+    assert_eq!(store.sessions()[0].id, "s");
+}
+
+#[test]
+fn a_session_with_an_unreadable_change_time_is_named_for_the_merge() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save_session(&session("s", "2026-02-02T00:00:00Z"));
+    store
+        .conn
+        .execute("UPDATE session SET updated_at = 'soon' WHERE id = 's'", [])
+        .expect("writes");
+
+    let records = stored_records(&mut store, Some(vec![session_key("s")]));
+    assert!(records.sessions.is_empty());
+    assert_eq!(records.unreadable, vec![session_key("s")]);
 }
 
 fn section_row(id: &str, deleted_at: Option<&str>) -> ItemSection {
