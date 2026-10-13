@@ -100,7 +100,8 @@ the one bare `gradlew` allowed until a recipe exists, then look at the image
 before committing it. Delete
 a test, delete its reference (#2241).
 
-## Eyes before the PR
+## Eyes before ready
 
-A change to what a musician sees on Android follows the iOS rule: show Jon a
-`just android-run` screenshot and wait for his word before `just pr-open`.
+A change to what a musician sees on Android follows the iOS rule in
+`.claude/rules/ios-ui.md`: a draft with the `just android-run` screenshot, and
+ready only after Jon's dated yes.

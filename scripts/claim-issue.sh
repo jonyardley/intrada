@@ -7,10 +7,11 @@
 # on top of another session's: two sessions built the same greeting on
 # 2026-09-11 (#1694) because nothing caught either.
 #
-# Two or more merged PRs already referencing the issue is a fix loop, the
-# strongest signal the framing is wrong (#1890: the page-crop bug took three
-# fix PRs and eleven sessions before a decision ended it). A third claim is
-# refused unless the decision taken is named.
+# Two or more merged PRs titled with the issue is a fix loop, the strongest
+# signal the framing is wrong (#1890: the page-crop bug took three fix PRs and
+# eleven sessions before a decision ended it). A third claim is refused unless
+# the decision taken is named. Titles only, Dependabot left out (#2593): a body
+# search refused about seven claims a week on roadmap, deferral and bump PRs.
 #
 # Called via `just claim <number> [decision]`.
 
@@ -98,10 +99,10 @@ if [ "$has_label" = "true" ]; then
   exit 1
 fi
 
-merged_count="$(gh pr list --repo "$repo" --state merged --search "$number in:title,body" --json number -q 'length')"
+merged_count="$(gh pr list --repo "$repo" --state merged --search "$number in:title -author:app/dependabot" --json number -q 'length')"
 if [ "$merged_count" -ge 2 ] && [ -z "$decision" ]; then
   echo "✗ third fix on #$number: decide before fixing." >&2
-  echo "  $merged_count merged PRs already reference #$number. Name the decision taken:" >&2
+  echo "  $merged_count merged PRs are already titled with #$number. Name the decision taken:" >&2
   echo "  just claim $number \"the approach is wrong because X\" (or: the feature is dropped;" >&2
   echo "  or: a known step of a planned sequence)." >&2
   exit 1

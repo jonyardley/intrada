@@ -129,5 +129,130 @@ else
   printf '✗ claimed on this branch: expected gh pr create to run with the same args\n' >&2
 fi
 
+# ── Body length (#2593): a Tier 1 or 2 body over 350 words is refused ──────
+
+words() {
+  local i
+  for ((i = 0; i < $1; i++)); do printf '%s ' "$2"; done
+}
+
+body_run() {
+  rm -rf "$CALLS" && mkdir -p "$CALLS"
+  set +e
+  out="$(cd "$work/repo" && "$script" --title "Tidy the docs" --body "$1" 2>&1)"
+  run_status=$?
+  set -e
+}
+
+expect_refused() {
+  if [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "350" && [ ! -f "$CALLS/pr_create.log" ]; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf '✗ %s: expected a refusal naming 350\n    status=%s output=%s\n' "$1" "$run_status" "$out" >&2
+  fi
+}
+
+expect_opened() {
+  if [ "$run_status" -eq 0 ] && [ -f "$CALLS/pr_create.log" ]; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf '✗ %s: expected gh pr create to run\n    status=%s output=%s\n' "$1" "$run_status" "$out" >&2
+  fi
+}
+
+long="$(words 360 note.)"
+short="$(words 300 note.)"
+
+body_run "## What this fixes
+$long"
+expect_refused "360 words, no Tier 3 heading"
+
+body_run "## What this fixes
+$long
+## Where this could bite
+none"
+expect_opened "360 words with Where this could bite"
+
+body_run "## What this fixes
+$long
+## What changed where
+none"
+expect_opened "360 words with What changed where"
+
+body_run "## What this fixes
+$long
+## Where this could bite
+<!-- say what could go wrong -->"
+expect_refused "360 words with an empty Tier 3 heading"
+
+body_run "## What this fixes
+$short
+<!-- $(words 200 hint) -->"
+expect_opened "template comments are not counted"
+
+body_run "## What this fixes
+$short
+## Checklist
+$(words 100 item)"
+expect_opened "the checklist is not counted"
+
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+set +e
+out="$(cd "$work/repo" && SKIP_BODY_CHECK=1 "$script" --title "Tidy the docs" --body "$long" 2>&1)"
+run_status=$?
+set -e
+expect_opened "SKIP_BODY_CHECK=1"
+
+printf '%s\n' "$long" >"$work/body.md"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+set +e
+out="$(cd "$work/repo" && "$script" --title "Tidy the docs" --body-file "$work/body.md" 2>&1)"
+run_status=$?
+set -e
+expect_refused "--body-file is counted too"
+
+# ── Sentence length (#2593): a warning, never a refusal ───────────────────
+
+body_run "## What this fixes
+Short one. $(words 30 word) end."
+expect_opened "a long sentence still opens"
+if printf '%s' "$out" | grep -qF "over 25 words"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ long sentence: expected a warning naming 25 words\n    output=%s\n' "$out" >&2
+fi
+
+expect_no_warning() {
+  if printf '%s' "$out" | grep -qF "over 25 words"; then
+    fail=$((fail + 1))
+    printf '✗ %s: expected no warning\n    output=%s\n' "$1" "$out" >&2
+  else
+    pass=$((pass + 1))
+  fi
+}
+
+body_run "## What this fixes
+$(words 20 word).
+Another short sentence."
+expect_no_warning "short sentences"
+
+body_run "## $(words 8 heading)
+$(words 20 word) end."
+expect_no_warning "a heading is not part of the sentence below it"
+
+body_run "## What this fixes
+\`\`\`
+$(words 30 code)
+\`\`\`"
+expect_no_warning "a fenced block is not prose"
+
+body_run "## What this fixes
+- $(words 15 bullet)
+- $(words 15 bullet)"
+expect_no_warning "each bullet is its own unit"
+
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

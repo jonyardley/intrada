@@ -26,7 +26,28 @@ case "$cmd $sub" in
     echo "jonyardley/intrada"
     ;;
   "pr list")
-    cat "$FIXTURES/pr_list.json" 2>/dev/null || echo '[]'
+    state="" search="" q=""
+    args=("$@")
+    for i in "${!args[@]}"; do
+      case "${args[$i]}" in
+        --state) state="${args[$((i + 1))]}" ;;
+        --search) search="${args[$((i + 1))]}" ;;
+        -q) q="${args[$((i + 1))]}" ;;
+      esac
+    done
+    if [ "$state" = "merged" ]; then
+      echo "$search" >>"$CALLS/merged_search.log"
+      n="${search%% *}"
+      in_body=false; [[ "$search" == *"in:title,body"* ]] && in_body=true
+      no_bot=false; [[ "$search" == *"-author:app/dependabot"* ]] && no_bot=true
+      result="$(jq --arg n "$n" --argjson body "$in_body" --argjson nobot "$no_bot" \
+        '[.[] | select((.title | contains($n)) or ($body and (.body | contains($n))))
+          | select(($nobot and .author == "app/dependabot") | not)]' \
+        "$FIXTURES/merged.json" 2>/dev/null || echo '[]')"
+      if [ -n "$q" ]; then printf '%s' "$result" | jq -r "$q"; else printf '%s' "$result"; fi
+    else
+      cat "$FIXTURES/pr_list.json" 2>/dev/null || echo '[]'
+    fi
     ;;
   "issue view")
     shift
@@ -284,6 +305,49 @@ else
   fail=$((fail + 1))
   printf '✗ issue with no epic: expected the success line to say so\n    output: %s\n' "$out" >&2
 fi
+
+# ── Third fix (#1890, #2593): only merged PRs titled with the issue count ───
+
+echo '[]' >"$FIXTURES/pr_list.json"
+echo 0 >"$FIXTURES/closers_count.txt"
+echo '{"labels":[],"comments":[]}' >"$FIXTURES/issue.json"
+
+third_fix() {
+  local desc="$1" expect="$2"
+  shift 2
+  rm -rf "$CALLS" && mkdir -p "$CALLS"
+  local out run_status
+  set +e
+  out="$(cd "$work/repo" && "$script" 42 "$@" 2>&1)"
+  run_status=$?
+  set -e
+  if { [ "$expect" = refuse ] && [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "third fix"; } ||
+    { [ "$expect" = claim ] && [ "$run_status" -eq 0 ]; }; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf '✗ %s: expected %s\n    status=%s output: %s\n' "$desc" "$expect" "$run_status" "$out" >&2
+  fi
+}
+
+cat >"$FIXTURES/merged.json" <<'JSON'
+[{"title":"Rank the roadmap","body":"Ranks #42 next","author":"jonyardley"},
+ {"title":"File deferred items","body":"Deferred: #42","author":"jonyardley"}]
+JSON
+third_fix "two merged PRs mention it only in their bodies" claim
+
+cat >"$FIXTURES/merged.json" <<'JSON'
+[{"title":"Fix the crop (#42)","body":"","author":"jonyardley"},
+ {"title":"Fix the crop again (#42)","body":"","author":"jonyardley"}]
+JSON
+third_fix "two merged PRs titled with it" refuse
+third_fix "two titled PRs, decision named" claim "the approach is wrong because the frame is cropped twice"
+
+cat >"$FIXTURES/merged.json" <<'JSON'
+[{"title":"Fix the crop (#42)","body":"","author":"jonyardley"},
+ {"title":"Bump actions/checkout#42","body":"","author":"app/dependabot"}]
+JSON
+third_fix "one titled PR plus a Dependabot bump" claim
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

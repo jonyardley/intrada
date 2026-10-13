@@ -56,18 +56,11 @@ unclaimed child.
 ## The board
 
 The [project board](https://github.com/users/jonyardley/projects/2)'s columns
-are workflow states: Backlog, Ready, In Progress, In Review and Done. Labels do
-the filtering.
-
-**Ready means someone could start it without asking a question first**: the
-shape is settled and what it points at has been read. It says nothing about
-which build it lands in.
+are workflow states: Backlog, In Progress, In Review and Done. Labels do the
+filtering.
 
 **The milestone is the release.** Everything meant for the next release carries
 that release's milestone, which the board holds as a field and filters on.
-Keeping Ready and the milestone apart lets an issue be ready to start and
-deliberately left out of the release, or in the release and not yet
-understood, without either field being wrong.
 
 A `Priority` field (P0, P1, P2) ranks issues within an epic when several share
 a horizon.

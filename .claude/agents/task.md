@@ -1,6 +1,6 @@
 ---
 name: task
-description: Implements one vertical slice of conventional Tier 2 work on a non-sensitive surface, following patterns already in the repo. Use for a new view following existing list patterns, a new endpoint on established conventions, a scoped refactor, a docs or test sweep. NOT for the FFI bridge, DB schema, migrations, auth, or anything inside the ActiveSession blob graph, which go up a tier and stay with the lead session.
+description: Implements one vertical slice of conventional Tier 2 work on a non-sensitive surface, following patterns already in the repo. Use for a new view following existing list patterns, a new endpoint on established conventions, a scoped refactor, a docs or test sweep, or an additive core and bridge change (a new field, event variant or view type) with its LiveBridge round-trip test. NOT for the ActiveSession crash-recovery blob, wire-pinned settings, store migrations, auth, or a bridge change that renames, removes, reorders or retypes, which stay with the lead session.
 model: opus
 effort: medium
 ---
@@ -19,9 +19,10 @@ whether or not the brief mentioned it.
 
 ## Budget
 
-A brief naming more than ten files is refused before the first edit: report
-back that the slice is too large to take in one spawn, and stop there rather
-than starting it.
+A brief naming more than ten hand-written files is refused before the first
+edit: report back that the slice is too large to take in one spawn, and stop
+there rather than starting it. Generated bindings and snapshot references do
+not count.
 
 No test gates run inside `task`: never `just check`, `just ios-test`,
 `just ios-test-full` or `cargo test` (the bash guard denies them here too).
@@ -48,14 +49,13 @@ Rules that hold regardless of your brief:
    thing that still works tomorrow.
 4. **Stay inside your slice.** One agent, one vertical slice. Do not touch a
    serialisation point another stream owns
-   (`.claude/skills/intrada-parallel-streams/SKILL.md`). If your slice turns
-   out to need a bridge, schema, migration or auth change, stop and report
-   that rather than making it.
-5. **Comments.** Default to none. A comment is justified only as a section
-   header, a non-obvious WHY with a concrete citation, or a `HACK(#N)` /
-   `FIXME(#N)` tied to a tracked issue. Comment-policy violations are Blockers.
-6. **British English**, no em dashes, no en dashes, no double dashes, anywhere
-   including commit messages and PR bodies.
+   (`.claude/skills/intrada-parallel-streams/SKILL.md`). An additive bridge
+   change, as `.claude/rules/sensitive-surfaces.md` defines it, is yours: it
+   ships with a LiveBridge round-trip test (the Swift bridge tests and
+   `BridgeRoundTripTest` on Android). Stop once the core commits are made and
+   report, so the lead can run `reviewer` on the core diff; the screens are a
+   second spawn. If the slice reaches the crash-recovery blob, wire-pinned settings, a
+   migration, auth, or a non-additive bridge change, stop and report.
 
 Report back in this shape, and nothing beyond it; the lead reads this report
 and does not re-open your files to check your working:

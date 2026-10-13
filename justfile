@@ -202,9 +202,14 @@ epic-move parent +children:
 # just re-splits a variadic parameter on whitespace, which breaks on a title
 # containing "(#42)", so title and body are named and quoted; any extra flags
 # (e.g. --draft) must be simple, space-free tokens.
-[doc("Open a PR, refusing when an issue in the title has no claim for this branch")]
+[doc("Open a PR, refusing an unclaimed issue in the title or an over-long Tier 1 or 2 body")]
 pr-open title body *flags:
     bash scripts/pr-open.sh --title {{quote(title)}} --body {{quote(body)}} {{flags}}
+
+[doc("Mark a reviewed PR ready and move its issue to In review, e.g. just pr-ready 2600 2593")]
+pr-ready pr issue:
+    -gh pr ready {{pr}}
+    ./scripts/project-status.sh {{issue}} "In review"
 
 # Check everything (fmt, then lint+test+hygiene overlapped). Mirrors the iOS
 # test-tier green-stamp (#1200): skips on a clean, already-green HEAD (#1204).
