@@ -488,6 +488,80 @@ expect 2 "a page that is not there" env DESIGN_TOKENS_PAGE="$work/nowhere.html" 
 
 expect 0 "the theme and page this repo actually ships" bash "$repo_root/scripts/check-design-tokens.sh"
 
+# ── The component catalogue check ───────────────────────────────────────────
+
+cat_root="$work/catalogue"
+components_check() {
+  COMPONENTS_ROOT="$cat_root" COMPONENTS_PENDING="${pending_names-Badge}" \
+    bash "$repo_root/scripts/check-components.sh"
+}
+reset_catalogue() {
+  rm -rf "$cat_root"
+  mkdir -p "$cat_root/design/components/Pills" "$cat_root/ios/Views" "$cat_root/ios/IntradaTests/__Snapshots__/C" \
+    "$cat_root/android/ui" "$cat_root/android/app/src/test/snapshots"
+  printf '| Component | What |\n|---|---|\n| [Pills](Pills/README.md) | choose |\n| Badge | kind |\n' \
+    >"$cat_root/design/components/README.md"
+  printf 'struct Pills<Option: Hashable>: View {}\n' >"$cat_root/ios/Views/Pills.swift"
+  printf 'internal fun <T> Pills(options: List<T>) {}\n' >"$cat_root/android/ui/Parts.kt"
+  : >"$cat_root/ios/IntradaTests/__Snapshots__/C/testPills.1.png"
+  : >"$cat_root/android/app/src/test/snapshots/pills.png"
+  write_component_page
+}
+write_component_page() {
+  printf '%s\n' '---' 'name: Pills' 'ios_symbol: Pills' 'ios_file: ios/Views/Pills.swift' \
+    'ios_snapshots: C/testPills.1.png' "$@" '---' '' '# Pills' >"$cat_root/design/components/Pills/README.md"
+}
+android_keys=('android_symbol: Pills' 'android_file: android/ui/Parts.kt' 'android_snapshots: pills.png')
+
+reset_catalogue
+write_component_page "${android_keys[@]}"
+expect 0 "a page on both apps, a generic symbol and a row still to come" components_check
+
+pending_names="" expect 1 "a row in the index with no page" components_check
+
+pending_names="Badge Pills" expect 1 "a name left on the pending list once its page exists" components_check
+
+mkdir -p "$cat_root/design/components/Stray"
+printf '%s\n' '---' 'name: Stray' 'not_on_android: none yet' '---' >"$cat_root/design/components/Stray/README.md"
+expect 1 "a page that is not in the index" components_check
+rm -rf "$cat_root/design/components/Stray"
+
+write_component_page 'android_symbol: Pills' 'android_file: android/ui/Gone.kt' 'android_snapshots: pills.png'
+expect 1 "an Android file that is not there" components_check
+
+printf 'struct Other: View {}\n' >"$cat_root/ios/Views/Pills.swift"
+write_component_page "${android_keys[@]}"
+expect 1 "an iOS symbol missing from its file" components_check
+reset_catalogue
+
+printf 'internal fun Other() {}\n' >"$cat_root/android/ui/Parts.kt"
+write_component_page "${android_keys[@]}"
+expect 1 "an Android symbol missing from its file" components_check
+reset_catalogue
+
+rm "$cat_root/ios/IntradaTests/__Snapshots__/C/testPills.1.png"
+write_component_page "${android_keys[@]}"
+expect 1 "an iOS snapshot that is not there" components_check
+reset_catalogue
+
+rm "$cat_root/android/app/src/test/snapshots/pills.png"
+write_component_page "${android_keys[@]}"
+expect 1 "an Android snapshot that is not there" components_check
+reset_catalogue
+
+write_component_page
+expect 1 "a page with no Android version and no reason" components_check
+
+write_component_page 'not_on_android: built in #2605'
+expect 0 "an Android gap with a reason" components_check
+
+write_component_page 'not_on_android:'
+expect 1 "an Android gap with an empty reason" components_check
+
+expect 2 "an index that is not there" env COMPONENTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-components.sh"
+
+expect 0 "the catalogue this repo actually ships" bash "$repo_root/scripts/check-components.sh"
+
 # ── The haptics check ───────────────────────────────────────────────────────
 
 haptics="$work/haptics"

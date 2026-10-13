@@ -76,6 +76,7 @@ hygiene:
         "check-app-version:bash scripts/check-app-version.sh"
         "check-faint-ink:bash scripts/check-faint-ink.sh"
         "check-design-tokens:bash scripts/check-design-tokens.sh"
+        "check-components:bash scripts/check-components.sh"
         "check-haptics:bash scripts/check-haptics.sh"
         "check-bridge-tests:bash scripts/check-bridge-tests.sh"
         "comment-density:bash scripts/check-comment-density.sh"

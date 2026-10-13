@@ -84,6 +84,22 @@ Each feature already moves through `specs/NNN-feature/` (`spec.md` → `plan.md`
    - [ ] New screens have a committed Claude Design mockup, iPhone and Android
          frames, under their spec folder.
 
+## Changing a component
+
+The component catalogue in `design/components/` is the source for how each
+component looks and behaves on both apps (#2620, T37). A change runs in this
+order, in one PR:
+
+1. **The page.** Change `design/components/<Name>/README.md`: an agent drafts,
+   Jon approves the words. A new component starts from `_template.md` and a
+   row in the index.
+2. **SwiftUI, then Compose.** Change the iPhone component, then the Android one.
+3. **Snapshots on both.** Record the pictures the page names, and look at them.
+4. **`just check`.** `scripts/check-components.sh` fails when a page and the
+   code disagree on a file, a symbol or a snapshot.
+5. **After merge,** republish the changed pages and pictures to the Claude
+   Design system. It is a published view, never edited as the source.
+
 ## Keeping code and design in sync
 
 - **New token or component** → change `Theme.swift` first, then update the design

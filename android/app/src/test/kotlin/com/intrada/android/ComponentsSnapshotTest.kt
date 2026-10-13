@@ -23,6 +23,7 @@ import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaFont
 import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
+import com.intrada.android.ui.SegmentedPills
 import com.intrada.android.ui.components.FieldCard
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
@@ -129,6 +130,31 @@ class ComponentsSnapshotTest {
                         InstrumentIcon.OTHER,
                         IntradaColor.marker(HighlighterColour.LAVENDER),
                         size = IntradaGlyph.hero,
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun segmentedPills() {
+        captureRoboImage("src/test/snapshots/segmented-pills.png") {
+            Paper {
+                Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section)) {
+                    SegmentedPills(
+                        listOf("Piece", "Exercise"),
+                        "Exercise",
+                        {},
+                        label = { it },
+                        tag = { it },
+                    )
+                    SegmentedPills(
+                        listOf("2 + 2 + 3", "2 + 3 + 2", "3 + 2 + 2"),
+                        "2 + 3 + 2",
+                        {},
+                        label = { it },
+                        tag = { it },
+                        wraps = true,
                     )
                 }
             }
