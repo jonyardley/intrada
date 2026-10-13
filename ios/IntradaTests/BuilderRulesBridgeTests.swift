@@ -103,6 +103,47 @@ struct BuilderRulesBridgeTests {
     #expect(focus.targetCaption == "\u{2669} = 72")
   }
 
+  /// The builder's lines arrive ready, so neither phone writes its own (#2467).
+  @Test func theBuildersSummaryCaptionAndTagsArriveReady() throws {
+    let (bridge, entryId, _, variationId) = try twelveSplitThree()
+    _ = try bridge.update(
+      .session(.setEntryVariations(entryId: entryId, variationIds: [variationId])))
+    _ = try bridge.update(
+      .session(
+        .setFocus(
+          entryId: entryId, focus: IntentionFocus(kind: .fromMemory, sectionId: nil, target: nil))))
+
+    let building = try #require(try bridge.rendered().buildingSetlist)
+    let tags: [String] = try entry(bridge).planTags
+    #expect(tags == ["A 4 min", "B 4 min", "C 4 min", "Dotted", "Focus: From memory"])
+    let block: SetlistBlockView = try #require(building.blocks.first)
+    #expect(block.caption == "Piece \u{B7} 12 min")
+    #expect(block.plannedDisplay == "12 min")
+    #expect(block.relatedLabel == "piece only")
+    #expect(block.durationDisplay == "12 min")
+    #expect(building.summary == "12 min \u{B7} 1 item")
+    #expect(building.startTitle == "Start session \u{B7} 12 min")
+  }
+
+  @Test func anAimIsKeptTrimmedAndABlankOneIsNone() throws {
+    let (bridge, entryId, _, _) = try twelveSplitThree()
+
+    _ = try bridge.update(
+      .session(.setEntryIntention(entryId: entryId, intention: "  Even quavers \n")))
+    #expect(try entry(bridge).intention == "Even quavers")
+
+    _ = try bridge.update(.session(.setEntryIntention(entryId: entryId, intention: "   ")))
+    #expect(try entry(bridge).intention == nil)
+    #expect(try bridge.rendered().error == nil)
+  }
+
+  @Test func thePlannedTimeStepperReadsWholeMinutes() throws {
+    let limits = try RowsBridge().rendered().limits
+    #expect(limits.plannedDurationMinMins == 1)
+    #expect(limits.plannedDurationMaxMins == 60)
+    #expect(limits.plannedDurationDefaultMins == 6)
+  }
+
   /// Tuned to 7, 1, 4 by three steps on A (#2398).
   private func tuned() throws -> (RowsBridge, String, [String]) {
     let (bridge, entryId, sections, _) = try twelveSplitThree()

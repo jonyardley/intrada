@@ -47,7 +47,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
           entries: [.previewExercise], itemCount: 1, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
           lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-          drillOffers: [])))
+          drillOffers: [], summary: "1 item", startTitle: "Start session")))
     assertSnapshot(
       of: host(AddToSessionSheet(), store: store),
       as: .image(

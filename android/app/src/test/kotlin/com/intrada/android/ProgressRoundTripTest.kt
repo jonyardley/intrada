@@ -2,6 +2,7 @@ package com.intrada.android
 
 import com.intrada.android.core.LiveBridge
 import com.intrada.shared.CreateItem
+import com.intrada.shared.Direction
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
@@ -57,6 +58,27 @@ class ProgressRoundTripTest {
         val first = analytics?.scoreChanges?.firstOrNull { it.itemTitle == "Major Scales" }
         assertEquals("first time marked", first?.subtitle)
         assertEquals("Major Scales, first time marked, mastery 9", first?.spoken)
+        assertEquals(Direction.UP, first?.direction)
+    }
+
+    // A fall says so, so the row is not painted as a win (#2551).
+    @Test
+    fun aFallenMarkSaysItFell() {
+        val start = Instant.now().truncatedTo(ChronoUnit.SECONDS).minus(Duration.ofMinutes(30))
+        val week = { at: Instant ->
+            at.atZone(ZoneOffset.UTC).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+        }
+        assumeTrue(week(start) == week(Instant.now()))
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val scales = addExercise(bridge, "Major Scales")
+
+        markOnce(bridge, scales, null, start.minus(Duration.ofDays(7)), 6)
+        markOnce(bridge, scales, null, start, 4)
+
+        val fall = bridge.view().analytics?.scoreChanges?.singleOrNull()
+        assertEquals("Major Scales, mastery down from 6 to 4", fall?.spoken)
+        assertEquals(Direction.DOWN, fall?.direction)
     }
 
     private fun addExercise(bridge: LiveBridge, title: String): String =

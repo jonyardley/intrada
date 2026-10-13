@@ -299,15 +299,17 @@
             itemCount: 2,
             blocks: [
               SetlistBlockView(
-                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewPiece], piece: nil, related: [], takenElsewhere: []),
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "",
+                entries: [.previewPiece], piece: nil, related: [], takenElsewhere: [],
+                caption: "Piece", plannedDisplay: nil, relatedLabel: "piece only"),
               SetlistBlockView(
-                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewExercise], piece: nil, related: [], takenElsewhere: []),
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "",
+                entries: [.previewExercise], piece: nil, related: [], takenElsewhere: [],
+                caption: "Exercise", plannedDisplay: nil, relatedLabel: "piece only"),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
-            entryKeys: [], drillOffers: [])))
+            entryKeys: [], drillOffers: [], summary: "2 items", startTitle: "Start session")))
     }
 
     static var previewBuildingEmpty: Store {
@@ -318,7 +320,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
-            entryKeys: [], drillOffers: [])))
+            entryKeys: [], drillOffers: [], summary: "0 items", startTitle: "Start session")))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -331,7 +333,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: []),
+            drillOffers: [], summary: "0 items", startTitle: "Start session"),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -349,7 +351,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: []),
+            drillOffers: [], summary: "0 items", startTitle: "Start session"),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -371,14 +373,19 @@
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
                 durationDisplay: "12 min", entries: block, piece: block.last,
-                related: Array(block.dropLast()), takenElsewhere: ["ex-c"]),
+                related: Array(block.dropLast()), takenElsewhere: ["ex-c"],
+                caption: "2 related, then piece \u{B7} 12 min", plannedDisplay: "12 min",
+                relatedLabel: "+2 related"),
               SetlistBlockView(
-                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewStandaloneExercise], piece: nil, related: [], takenElsewhere: []),
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "",
+                entries: [.previewStandaloneExercise], piece: nil, related: [], takenElsewhere: [],
+                caption: "Exercise", plannedDisplay: nil, relatedLabel: "piece only"),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
             lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
-            focusChoices: [], entryKeys: [], drillOffers: [])))
+            focusChoices: [], entryKeys: [], drillOffers: [],
+            summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
+            startTitle: "Start session \u{B7} 12 min")))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
@@ -399,14 +406,18 @@
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
                 durationDisplay: "12 min", entries: block, piece: block.last,
-                related: Array(block.dropLast()), takenElsewhere: ["ex-c"]),
+                related: Array(block.dropLast()), takenElsewhere: ["ex-c"],
+                caption: "2 related, then piece \u{B7} 12 min", plannedDisplay: "12 min",
+                relatedLabel: "+2 related"),
               SetlistBlockView(
-                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewStandaloneExercise], piece: nil, related: [], takenElsewhere: []),
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "",
+                entries: [.previewStandaloneExercise], piece: nil, related: [], takenElsewhere: [],
+                caption: "Exercise", plannedDisplay: nil, relatedLabel: "piece only"),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: [])))
+            drillOffers: [], summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
+            startTitle: "Start session \u{B7} 12 min")))
     }
 
     /// Session builder where one of the block's related exercises is also in
@@ -423,11 +434,14 @@
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
                 durationDisplay: "12 min", entries: block, piece: block.last,
-                related: Array(block.dropLast()), takenElsewhere: [])
+                related: Array(block.dropLast()), takenElsewhere: [],
+                caption: "1 related, then piece \u{B7} 12 min", plannedDisplay: "12 min",
+                relatedLabel: "+1 related")
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: [])))
+            drillOffers: [], summary: "12 min \u{B7} 1 block \u{B7} 2 items",
+            startTitle: "Start session \u{B7} 12 min")))
     }
 
     /// The builder with a split, focused piece and one offering last time
@@ -443,12 +457,12 @@
           buildingSetlist: BuildingSetlistView(
             entries: entries,
             itemCount: 3,
-            blocks: entries.map {
+            blocks: zip(entries, ["Piece \u{B7} 12 min", "Piece \u{B7} 10 min", "Exercise"]).map {
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0,
                 durationDisplay: $0.plannedDurationDisplay ?? "", entries: [$0], piece: nil,
-                related: [],
-                takenElsewhere: [])
+                related: [], takenElsewhere: [], caption: $1,
+                plannedDisplay: $0.plannedDurationDisplay, relatedLabel: "piece only")
             },
             totalDurationDisplay: "22m 0s", totalDurationSummary: "22 min", lengthMins: 30,
             lengthSummary: "22 of 30 min planned",
@@ -462,7 +476,8 @@
                 variationIds: ["v-dot"], label: "Last time: B · Dotted rhythms", key: nil)
             ],
             focusChoices: FocusChoiceView.previewChoices, entryKeys: entryKeys,
-            drillOffers: drillOffers)))
+            drillOffers: drillOffers, summary: "22 min \u{B7} 3 items",
+            startTitle: "Start session \u{B7} 22 min")))
     }
 
     /// Player Focus: a piece mid-session, no reps.

@@ -61,11 +61,19 @@ pub struct ScoreChange {
     pub subtitle: Option<String>,
     /// What a screen reader says for the row (#2506).
     pub spoken: String,
+    /// Whether the mark rose, fell or held, so a fall is never painted as a
+    /// win (#2551). A first mark counts as a rise from nothing.
+    pub direction: Direction,
 }
 
 impl ScoreChange {
     pub fn new(item_id: &str, item_title: &str, previous: Option<u8>, current: u8) -> Self {
         let subtitle = previous.is_none().then(|| "first time marked".to_string());
+        let direction = match previous {
+            Some(p) if current < p => Direction::Down,
+            Some(p) if current == p => Direction::Same,
+            _ => Direction::Up,
+        };
         let movement = match previous {
             None => format!("mastery {current}"),
             Some(p) if current == p => format!("mastery {current}"),
@@ -90,6 +98,7 @@ impl ScoreChange {
             is_new: previous.is_none(),
             subtitle,
             spoken,
+            direction,
         }
     }
 }
@@ -1223,17 +1232,36 @@ mod tests {
     #[test]
     fn a_mastery_row_says_a_rise_a_drop_and_a_first_mark() {
         let cases = [
-            (Some(3), 4, None, "Clair de Lune, mastery up from 3 to 4"),
-            (Some(6), 4, None, "Clair de Lune, mastery down from 6 to 4"),
-            (Some(4), 4, None, "Clair de Lune, mastery 4"),
+            (
+                Some(3),
+                4,
+                None,
+                "Clair de Lune, mastery up from 3 to 4",
+                Direction::Up,
+            ),
+            (
+                Some(6),
+                4,
+                None,
+                "Clair de Lune, mastery down from 6 to 4",
+                Direction::Down,
+            ),
+            (
+                Some(4),
+                4,
+                None,
+                "Clair de Lune, mastery 4",
+                Direction::Same,
+            ),
             (
                 None,
                 3,
                 Some("first time marked"),
                 "Clair de Lune, first time marked, mastery 3",
+                Direction::Up,
             ),
         ];
-        for (previous, current, subtitle, spoken) in cases {
+        for (previous, current, subtitle, spoken, direction) in cases {
             let row = ScoreChange::new("piece-1", "Clair de Lune", previous, current);
             assert_eq!(
                 row.subtitle.as_deref(),
@@ -1241,6 +1269,7 @@ mod tests {
                 "{previous:?} to {current}"
             );
             assert_eq!(row.spoken, spoken);
+            assert_eq!(row.direction, direction, "{previous:?} to {current}");
         }
     }
 

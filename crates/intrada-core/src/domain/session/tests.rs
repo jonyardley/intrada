@@ -4741,6 +4741,86 @@ fn test_set_entry_intention() {
     }
 }
 
+/// The aim box sends every keystroke; the core keeps the trimmed text and
+/// treats a blank aim as none, so neither phone repeats the rule (#2467).
+#[test]
+fn an_aim_is_kept_trimmed_and_a_blank_one_is_none() {
+    let cases = [
+        (Some("  Work on left hand \n"), Some("Work on left hand")),
+        (Some("Even quavers"), Some("Even quavers")),
+        (Some("   "), None),
+        (Some(""), None),
+        (None, None),
+    ];
+    for (typed, kept) in cases {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+        let SessionStatus::Building(ref b) = model.session_status else {
+            panic!("Expected Building state");
+        };
+        let entry_id = b.entries[0].id.clone();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id: entry_id.clone(),
+                intention: Some("Earlier aim".to_string()),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id,
+                intention: typed.map(str::to_string),
+            }),
+        );
+
+        assert!(model.last_error.is_none(), "{typed:?}");
+        let SessionStatus::Building(ref b) = model.session_status else {
+            panic!("Expected Building state");
+        };
+        assert_eq!(b.entries[0].intention.as_deref(), kept, "{typed:?}");
+    }
+}
+
+/// The length check reads what is kept, so padding cannot push an aim over.
+#[test]
+fn an_aim_at_the_limit_with_padding_is_accepted() {
+    let mut model = model_with_library();
+    update(&mut model, Event::Session(SessionEvent::StartBuilding));
+    update(
+        &mut model,
+        Event::Session(SessionEvent::AddToSetlist {
+            item_id: "piece-1".to_string(),
+        }),
+    );
+    let SessionStatus::Building(ref b) = model.session_status else {
+        panic!("Expected Building state");
+    };
+    let entry_id = b.entries[0].id.clone();
+    let full = "a".repeat(crate::validation::MAX_INTENTION);
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SetEntryIntention {
+            entry_id,
+            intention: Some(format!("  {full}  ")),
+        }),
+    );
+
+    assert!(model.last_error.is_none());
+    let SessionStatus::Building(ref b) = model.session_status else {
+        panic!("Expected Building state");
+    };
+    assert_eq!(b.entries[0].intention.as_deref(), Some(full.as_str()));
+}
+
 // --- Rep Counter Tests ---
 
 const TAP_AT: &str = "2026-09-03T09:00:00Z";

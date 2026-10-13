@@ -284,6 +284,15 @@ fn target_reached(play: &Play) -> Option<bool> {
 }
 
 pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryView {
+    let record = entry_record_view(entry, labels);
+    let plan_tags = plan_tags(
+        &record.segments,
+        entry
+            .planned_variation_ids
+            .iter()
+            .filter_map(|id| labels.variation(id).map(str::to_string)),
+        record.focus.as_ref(),
+    );
     SetlistEntryView {
         id: entry.id.clone(),
         item_id: entry.item_id.clone(),
@@ -310,9 +319,31 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .map(|p| play_to_view(p, entry, labels))
             .collect(),
         score_summary: entry.score_summary(),
-        record: entry_record_view(entry, labels),
+        record,
         planned_key: entry.planned_key,
+        plan_tags,
     }
+}
+
+/// A section's minutes show only when the time is split between several.
+fn plan_tags(
+    segments: &[SegmentView],
+    variations: impl Iterator<Item = String>,
+    focus: Option<&FocusView>,
+) -> Vec<String> {
+    let split = segments.len() > 1;
+    segments
+        .iter()
+        .map(|s| {
+            if split && s.planned_secs > 0 {
+                format!("{} {}", s.label, s.planned_display)
+            } else {
+                s.label.clone()
+            }
+        })
+        .chain(variations)
+        .chain(focus.map(|f| format!("Focus: {}", f.label)))
+        .collect()
 }
 
 fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordView {
@@ -654,6 +685,9 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
                 piece: None,
                 related: Vec::new(),
                 taken_elsewhere: Vec::new(),
+                caption: String::new(),
+                planned_display: None,
+                related_label: String::new(),
             });
         }
     }
@@ -663,11 +697,13 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
             .iter()
             .filter_map(|e| e.planned_duration_secs)
             .sum();
-        block.duration_display = if total > 0 {
-            format_planned_duration(u64::from(total))
-        } else {
-            "—".to_string()
+        block.planned_display = (total > 0).then(|| format_planned_duration(u64::from(total)));
+        block.duration_display = block.planned_display.clone().unwrap_or_default();
+        block.related_label = match block.related_count {
+            0 => "piece only".to_string(),
+            n => format!("+{n} related"),
         };
+        block.caption = block_caption(block);
         if block.group_id.is_some() {
             block.piece = block
                 .entries
@@ -688,6 +724,26 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
         }
     }
     blocks
+}
+
+fn block_caption(block: &SetlistBlockView) -> String {
+    let lead = match (&block.group_id, block.related_count) {
+        (None, _) => Some(
+            match block.entries.first().map(|e| &e.item_type) {
+                Some(ItemKind::Exercise) => "Exercise",
+                _ => "Piece",
+            }
+            .to_string(),
+        ),
+        (Some(_), 0) => None,
+        (Some(_), n) => Some(format!("{n} related, then piece")),
+    };
+    match (lead, &block.planned_display) {
+        (Some(lead), Some(time)) => format!("{lead} \u{b7} {time}"),
+        (Some(lead), None) => lead,
+        (None, Some(time)) => time.clone(),
+        (None, None) => "Piece only".to_string(),
+    }
 }
 
 pub fn build_active_session_view(
@@ -1113,6 +1169,223 @@ mod tests {
             position,
             ..SetlistEntry::fixture()
         }
+    }
+
+    // ── Builder copy (#2467) ──────────────────────────────────────────
+
+    fn planned(
+        id: &str,
+        kind: ItemKind,
+        group: Option<&str>,
+        secs: Option<u32>,
+    ) -> SetlistEntryView {
+        let entry = SetlistEntry {
+            id: id.to_string(),
+            item_id: format!("item-{id}"),
+            item_title: id.to_string(),
+            item_type: kind,
+            group_id: group.map(str::to_string),
+            planned_duration_secs: secs,
+            ..SetlistEntry::fixture()
+        };
+        entry_to_view(&entry, &PlayLabels::new())
+    }
+
+    #[test]
+    fn a_block_states_its_caption_its_collapsed_time_and_its_related_count() {
+        use ItemKind::{Exercise, Piece};
+        let g = Some("g1");
+        /// Name, entries, caption, collapsed line, related label.
+        type Case<'a> = (
+            &'a str,
+            Vec<SetlistEntryView>,
+            &'a str,
+            Option<&'a str>,
+            &'a str,
+        );
+        let cases: [Case; 8] = [
+            (
+                "a standalone piece with time",
+                vec![planned("p", Piece, None, Some(600))],
+                "Piece \u{b7} 10 min",
+                Some("10 min"),
+                "piece only",
+            ),
+            (
+                "a standalone exercise with nothing planned",
+                vec![planned("x", Exercise, None, None)],
+                "Exercise",
+                None,
+                "piece only",
+            ),
+            (
+                "a standalone piece planned in seconds",
+                vec![planned("p", Piece, None, Some(90))],
+                "Piece \u{b7} 1m 30s",
+                Some("1m 30s"),
+                "piece only",
+            ),
+            (
+                "a block of just the piece, nothing planned",
+                vec![planned("p", Piece, g, None)],
+                "Piece only",
+                None,
+                "piece only",
+            ),
+            (
+                "a block of just the piece with time",
+                vec![planned("p", Piece, g, Some(600))],
+                "10 min",
+                Some("10 min"),
+                "piece only",
+            ),
+            (
+                "one related, then the piece, both timed",
+                vec![
+                    planned("x", Exercise, g, Some(300)),
+                    planned("p", Piece, g, Some(600)),
+                ],
+                "1 related, then piece \u{b7} 15 min",
+                Some("15 min"),
+                "+1 related",
+            ),
+            (
+                "two related, nothing planned",
+                vec![
+                    planned("x", Exercise, g, None),
+                    planned("y", Exercise, g, None),
+                    planned("p", Piece, g, None),
+                ],
+                "2 related, then piece",
+                None,
+                "+2 related",
+            ),
+            (
+                "two related, only the piece timed",
+                vec![
+                    planned("x", Exercise, g, None),
+                    planned("y", Exercise, g, None),
+                    planned("p", Piece, g, Some(1200)),
+                ],
+                "2 related, then piece \u{b7} 20 min",
+                Some("20 min"),
+                "+2 related",
+            ),
+        ];
+        for (name, entries, caption, planned_display, related_label) in cases {
+            let blocks = build_blocks(&entries);
+            assert_eq!(blocks.len(), 1, "{name}");
+            let block = &blocks[0];
+            assert_eq!(block.caption, caption, "{name}");
+            assert_eq!(block.planned_display.as_deref(), planned_display, "{name}");
+            assert_eq!(block.related_label, related_label, "{name}");
+        }
+    }
+
+    /// The builders hid the old placeholder by matching its text (#1101).
+    #[test]
+    fn a_block_with_nothing_planned_sends_no_placeholder() {
+        let blocks = build_blocks(&[planned("p", ItemKind::Piece, None, None)]);
+        assert_eq!(blocks[0].duration_display, "");
+    }
+
+    fn segment(label: &str, secs: u32) -> SegmentView {
+        SegmentView {
+            section_id: format!("s-{label}"),
+            label: label.to_string(),
+            planned_secs: secs,
+            planned_display: format_planned_duration(u64::from(secs)),
+            can_add_minute: false,
+            can_take_minute: false,
+        }
+    }
+
+    fn focus_view(label: &str) -> FocusView {
+        FocusView {
+            focus: IntentionFocus {
+                kind: session::FocusKind::FromMemory,
+                section_id: None,
+                target: None,
+            },
+            label: label.to_string(),
+            target_caption: None,
+        }
+    }
+
+    #[test]
+    fn tags_name_the_sections_then_variations_then_focus() {
+        /// Name, sections, variation names, focus, tags.
+        type Case<'a> = (
+            &'a str,
+            Vec<SegmentView>,
+            Vec<&'a str>,
+            Option<FocusView>,
+            Vec<&'a str>,
+        );
+        let cases: [Case; 6] = [
+            ("nothing planned", vec![], vec![], None, vec![]),
+            (
+                "one section keeps its minutes to itself",
+                vec![segment("A", 600)],
+                vec![],
+                None,
+                vec!["A"],
+            ),
+            (
+                "a split section says each share",
+                vec![segment("A", 420), segment("B", 300)],
+                vec![],
+                None,
+                vec!["A 7 min", "B 5 min"],
+            ),
+            (
+                "a split with no planned time names the sections alone",
+                vec![segment("A", 0), segment("B", 0)],
+                vec![],
+                None,
+                vec!["A", "B"],
+            ),
+            (
+                "variations follow the sections",
+                vec![segment("A", 0)],
+                vec!["Dotted", "Swung"],
+                None,
+                vec!["A", "Dotted", "Swung"],
+            ),
+            (
+                "the focus comes last",
+                vec![],
+                vec!["Dotted"],
+                Some(focus_view("From memory")),
+                vec!["Dotted", "Focus: From memory"],
+            ),
+        ];
+        for (name, segments, variations, focus, expected) in cases {
+            let tags = plan_tags(
+                &segments,
+                variations.into_iter().map(str::to_string),
+                focus.as_ref(),
+            );
+            assert_eq!(tags, expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn the_tags_read_planned_variations_by_name() {
+        let entry = SetlistEntry {
+            planned_variation_ids: vec!["v-2".to_string(), "v-gone".to_string(), "v-1".to_string()],
+            focus: Some(IntentionFocus {
+                kind: session::FocusKind::Evenness,
+                section_id: None,
+                target: None,
+            }),
+            ..SetlistEntry::fixture()
+        };
+        let labels: PlayLabels = [("v-1", "Dotted"), ("v-2", "Swung")].into_iter().collect();
+
+        let view = entry_to_view(&entry, &labels);
+
+        assert_eq!(view.plan_tags, ["Swung", "Dotted", "Focus: Evenness"]);
     }
 
     // ── entry_to_view ──────────────────────────────────────────────────

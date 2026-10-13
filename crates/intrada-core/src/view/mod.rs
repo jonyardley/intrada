@@ -5,7 +5,7 @@ use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
     BuildingSetlistView, DrillOfferView, EntryVariationsView, FocusChoiceView, FocusTargetView,
-    LimitsView, Model, PhotoRecognitionView, ViewModel,
+    LimitsView, Model, PhotoRecognitionView, SetlistBlockView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::{library_count_line, matches_query};
@@ -128,6 +128,11 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 })
                 .collect();
             let drill_offers = drill_offers(model, &building.entries);
+            let summary = builder_summary(total_duration_summary.as_deref(), &blocks, item_count);
+            let start_title = match &total_duration_summary {
+                Some(total) => format!("Start session \u{b7} {total}"),
+                None => "Start session".to_string(),
+            };
             (
                 None,
                 Some(BuildingSetlistView {
@@ -159,6 +164,8 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                         .collect(),
                     entry_keys,
                     drill_offers,
+                    summary,
+                    start_title,
                 }),
                 None,
             )
@@ -343,6 +350,18 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
             read_nothing: false,
         },
     }
+}
+
+fn builder_summary(total: Option<&str>, blocks: &[SetlistBlockView], items: usize) -> String {
+    let plural = |n: usize, one: &str| format!("{n} {one}{}", if n == 1 { "" } else { "s" });
+    let grouped = blocks.iter().any(|b| b.group_id.is_some());
+    total
+        .map(str::to_string)
+        .into_iter()
+        .chain(grouped.then(|| plural(blocks.len(), "block")))
+        .chain([plural(items, "item")])
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ")
 }
 
 fn drill_offers(

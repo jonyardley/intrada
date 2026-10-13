@@ -88,15 +88,15 @@
           ScoreChange(
             itemId: "piece-1", itemTitle: "Clair de Lune", previousScore: 3,
             currentScore: 4, delta: 1, isNew: false, subtitle: nil,
-            spoken: "Clair de Lune, mastery up from 3 to 4"),
+            spoken: "Clair de Lune, mastery up from 3 to 4", direction: .up),
           ScoreChange(
             itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
             currentScore: 3, delta: 1, isNew: false, subtitle: nil,
-            spoken: "Hanon No. 1, mastery up from 2 to 3"),
+            spoken: "Hanon No. 1, mastery up from 2 to 3", direction: .up),
           ScoreChange(
             itemId: "piece-2", itemTitle: "Gymnopédie No. 1", previousScore: nil,
             currentScore: 3, delta: 0, isNew: true, subtitle: "first time marked",
-            spoken: "Gymnopédie No. 1, first time marked, mastery 3"),
+            spoken: "Gymnopédie No. 1, first time marked, mastery 3", direction: .up),
         ],
         variationCoverage: [
           VariationCoverageView(
@@ -127,7 +127,7 @@
         topMover: ScoreChange(
           itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
           currentScore: 3, delta: 1, isNew: false, subtitle: nil,
-          spoken: "Hanon No. 1, mastery up from 2 to 3"),
+          spoken: "Hanon No. 1, mastery up from 2 to 3", direction: .up),
         masteryChange: "+1.0 this week",
         climbing: "Climbing steadily across 2 items.",
         pooledVariations: [
@@ -223,6 +223,7 @@
       e.record.focus = FocusView(
         focus: IntentionFocus(kind: .tempo, sectionId: "sec-a1", target: 84), label: "A1 at 84",
         targetCaption: "\u{2669} = 84")
+      e.planTags = ["A1 4 min", "B 4 min", "A2 4 min", "Focus: A1 at 84"]
       return e
     }
 
@@ -231,6 +232,7 @@
       var e = previewPlannedPiece
       e.record = .empty
       e.record.suggestedFocus = previewPlannedPiece.record.focus
+      e.planTags = []
       return e
     }
 
@@ -263,7 +265,8 @@
         durationDisplay: "\u{2014}", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group, removable: removable,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
-        plays: [], scoreSummary: nil, record: .empty, plannedKey: nil)
+        plays: [], scoreSummary: nil, record: .empty, plannedKey: nil,
+        planTags: [])
     }
   }
 
@@ -465,7 +468,8 @@
         removable: true,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil,
+        planTags: [])
     }
   }
 
@@ -505,7 +509,8 @@
             repTargetReached: nil,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true)
-        ], scoreSummary: nil, record: .empty, plannedKey: nil)
+        ], scoreSummary: nil, record: .empty, plannedKey: nil,
+        planTags: [])
     }
 
     static var previewActive: ActiveSessionView {
@@ -633,7 +638,8 @@
             repTarget: 10, repCount: 4, repTargetReached: false,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
-        ], scoreSummary: nil, record: .empty, plannedKey: nil)
+        ], scoreSummary: nil, record: .empty, plannedKey: nil,
+        planTags: [])
     }
 
     static var previewActiveReps: ActiveSessionView {
@@ -696,7 +702,8 @@
         ], sessionScore: 8, completedCount: 4,
         topMover: ScoreChange(
           itemId: "piece-1", itemTitle: "Clair de Lune", previousScore: 3, currentScore: 4,
-          delta: 1, isNew: false, subtitle: nil, spoken: "Clair de Lune, mastery up from 3 to 4"))
+          delta: 1, isNew: false, subtitle: nil, spoken: "Clair de Lune, mastery up from 3 to 4",
+          direction: .up))
     }
 
     static var previewSummaryEndedEarly: SummaryView {
@@ -732,7 +739,8 @@
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil, removable: true,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil,
+        planTags: [])
     }
   }
 
@@ -814,7 +822,8 @@
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
         plannedDurationDisplay: nil, groupId: nil, removable: true, plannedSectionIds: [],
         plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
-        plays: plays, scoreSummary: 8, record: .empty, plannedKey: nil)
+        plays: plays, scoreSummary: 8, record: .empty, plannedKey: nil,
+        planTags: [])
     }
 
     /// One exercise practised in a single key: the detail screen names it
@@ -831,7 +840,8 @@
         groupId: nil, removable: true, plannedSectionIds: [],
         plannedVariationIds: ["v-E\u{266d} major"],
         plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
-        plays: plays, scoreSummary: nil, record: .empty, plannedKey: nil)
+        plays: plays, scoreSummary: nil, record: .empty, plannedKey: nil,
+        planTags: [])
     }
   }
 

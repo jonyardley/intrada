@@ -116,6 +116,9 @@ pub(super) fn set_entry_intention(
     entry_id: String,
     intention: Option<String>,
 ) -> Command<Effect, Event> {
+    let intention = intention
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty());
     let check = validation::validate_intention(&intention);
     set_planned(model, &entry_id, check, |entry| entry.intention = intention)
 }

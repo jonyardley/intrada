@@ -76,6 +76,7 @@ object PracticeFixtures {
                     gotInTheWay = emptyList(),
                     notePoints = emptyList(),
                 ),
+            planTags = emptyList(),
         )
 
     val completed =

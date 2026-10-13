@@ -1070,6 +1070,7 @@ final class SessionBridgeTests: XCTestCase {
     let change = try XCTUnwrap(try bridge.rendered().analytics?.scoreChanges.first)
     XCTAssertNil(change.subtitle)
     XCTAssertEqual(change.spoken, "Clair de Lune, mastery up from 5 to 7")
+    XCTAssertEqual(change.direction, .up, "the row colours a rise from the core's word (#2551)")
   }
 
   /// One variation marked on two items pools on Progress (#2250), a view

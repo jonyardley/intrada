@@ -356,6 +356,22 @@ pub struct LimitsView {
     pub click_bars: Vec<ClickBarOption>,
     pub section_name_max: usize,
     pub bar_max: u16,
+    /// The planned-time stepper's range and starting point in whole minutes,
+    /// the bounds in seconds rounded inwards (#2467).
+    pub planned_duration_min_mins: u16,
+    pub planned_duration_max_mins: u16,
+    pub planned_duration_default_mins: u16,
+}
+
+/// Seconds to the stepper's whole minutes: the lower bound rounds up and the
+/// upper one down, so every minute offered is one the core accepts.
+fn whole_minutes(min_secs: u32, max_secs: u32, default_secs: u32) -> (u16, u16, u16) {
+    let mins = |m: u32| u16::try_from(m).unwrap_or(u16::MAX);
+    (
+        mins(min_secs.div_ceil(60)),
+        mins(max_secs / 60),
+        mins(default_secs / 60),
+    )
 }
 
 impl Default for LimitsView {
@@ -363,6 +379,12 @@ impl Default for LimitsView {
         use crate::domain::metre;
         use crate::validation;
 
+        let (planned_duration_min_mins, planned_duration_max_mins, planned_duration_default_mins) =
+            whole_minutes(
+                validation::MIN_PLANNED_DURATION_SECS,
+                validation::MAX_PLANNED_DURATION_SECS,
+                validation::DEFAULT_PLANNED_DURATION_SECS,
+            );
         LimitsView {
             metre_beats_min: validation::MIN_METRE_BEATS,
             metre_beats_max: validation::MAX_METRE_BEATS,
@@ -386,6 +408,9 @@ impl Default for LimitsView {
             click_bars: metre::click_bars(),
             section_name_max: validation::MAX_SECTION_NAME,
             bar_max: validation::MAX_BAR,
+            planned_duration_min_mins,
+            planned_duration_max_mins,
+            planned_duration_default_mins,
         }
     }
 }
@@ -856,6 +881,9 @@ pub struct SetlistEntryView {
     pub score_summary: Option<u8>,
     pub record: EntryRecordView,
     pub planned_key: Option<crate::domain::key::Key>,
+    /// The builder's tags under the row: each section, with its minutes when
+    /// the time is split, then the variations, then "Focus: A1 at 84" (#2467).
+    pub plan_tags: Vec<String>,
 }
 
 /// What v0.17 adds to an entry (`specs/practice-record-v017.md`).
@@ -1137,6 +1165,7 @@ pub struct SetlistBlockView {
     /// The block's anchor-piece title; `None` for a standalone item.
     pub piece_title: Option<String>,
     pub related_count: usize,
+    /// The planned total ("10 min"); empty when nothing is planned.
     pub duration_display: String,
     pub entries: Vec<SetlistEntryView>,
     /// The anchor piece and its related exercises, in order; `None` and empty
@@ -1145,6 +1174,13 @@ pub struct SetlistBlockView {
     pub related: Vec<SetlistEntryView>,
     /// Items in the session outside this block, which it cannot take (#2075).
     pub taken_elsewhere: Vec<String>,
+    /// The row's second line (#2467): "Piece · 10 min" for a standalone item,
+    /// "2 related, then piece · 10 min", "Piece only" or "10 min" for a block.
+    pub caption: String,
+    /// A collapsed block's line: the planned total, `None` when nothing is.
+    pub planned_display: Option<String>,
+    /// "+2 related", or "piece only".
+    pub related_label: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1172,6 +1208,11 @@ pub struct BuildingSetlistView {
     pub entry_keys: Vec<EntryKeysView>,
     /// By entry, then the plan's section order, then the link order.
     pub drill_offers: Vec<DrillOfferView>,
+    /// "10 min · 2 blocks · 3 items": the time only once some is planned,
+    /// the blocks only once there is one (#2467).
+    pub summary: String,
+    /// "Start session · 10 min", or "Start session".
+    pub start_title: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1524,6 +1565,42 @@ mod tests {
                 "{secs}s is outside the offered range but the core accepts it"
             );
         }
+    }
+
+    /// The stepper offers whole minutes, so a bound in seconds rounds inwards
+    /// and never offers a minute the core refuses (#2467).
+    #[test]
+    fn planned_minutes_round_inwards_from_the_bounds_in_seconds() {
+        let cases = [
+            ((60, 7200, 600), (1, 120, 10)),
+            ((90, 7230, 630), (2, 120, 10)),
+            ((0, 0, 0), (0, 0, 0)),
+        ];
+        for ((min, max, default), expected) in cases {
+            assert_eq!(
+                whole_minutes(min, max, default),
+                expected,
+                "{min}s to {max}s, {default}s"
+            );
+        }
+    }
+
+    #[test]
+    fn the_sheet_offers_the_planned_bounds_in_minutes() {
+        let limits = LimitsView::default();
+
+        assert_eq!(
+            u32::from(limits.planned_duration_min_mins) * 60,
+            limits.planned_duration_min_secs
+        );
+        assert_eq!(
+            u32::from(limits.planned_duration_max_mins) * 60,
+            limits.planned_duration_max_secs
+        );
+        assert_eq!(
+            u32::from(limits.planned_duration_default_mins) * 60,
+            limits.planned_duration_default_secs
+        );
     }
 
     #[test]
