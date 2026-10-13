@@ -1184,3 +1184,19 @@ own, and a field's label had four looks. It read as busy and machine made.
   screen keeps label left and value right.
 - **Mono is for figures.** A clock, a duration or a count set alone; a line
   that mixes words and numbers is Hanken with even-width figures.
+
+### T36: Android behaves like Android, and looks like intrada
+
+**Status:** DECIDED 2026-10-13 (jonyardley/intrada#2599). Review page: https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
+
+On Android, intrada keeps its look and adopts the platform's behaviour. The
+look is paper, ink, one highlighter, Hanken Grotesk and DM Mono, the five
+sizes and the 3dp card; no Material colour, shape or type stands in for it,
+and wallpaper colour never replaces the highlighter. Behaviour and structure
+follow Android: back always does something, and predictive back shows where it
+goes; a pushed screen has a back arrow and a modal form has a close cross,
+with its one action on the right; a press ripples in ink; quick choices rise
+as bottom sheets; a reversible removal offers Undo rather than asking first;
+the keyboard's Next and Done move you on. When an iOS ruling such as T28 is
+about where something sits or how it moves, it binds iOS only, and Android
+takes the platform's answer drawn in intrada's look.

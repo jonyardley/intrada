@@ -17,9 +17,16 @@ trace back to `Theme.swift` — the reference visualises the tokens, it never
 defines new ones.
 
 The Claude Design workspace is the claude.ai/design project **"Intrada"**
-(`claude.ai/design/p/1b2cc9dd-5805-44a8-9ef5-842cf606f6f9`; the older
-`0e60f6f5…` and `cd74e299…` ids 404). It is a plain project, not a design
-system, so `DesignSync list_projects` never shows it: reach it by id. **The repo stays
+(`claude.ai/design/p/d09e8b80-a0a0-4dee-ab79-670e49210e0f`), made in Jon's
+account on 13 October 2026 from an export of the earlier project
+(`1b2cc9dd…`, which lives in another account; `0e60f6f5…` and `cd74e299…`
+404). The export was older than `design/`, so the repo's files were pushed up
+over it (#2599). Retired coach-era mock-ups sit in the project's `archive/`
+folder, and two large standalone exports (Practice Record v0.17 Screens,
+Practice Capture Journeys) live only in its `exports/` folder. Claude Design
+refuses a file named `CLAUDE.md`, so `design/CLAUDE.md` stays repo only.
+Standalone claude.ai/design closes on 14 December 2026, so the project moves
+into a Design System artifact before then (#2603). **The repo stays
 canonical**: Claude Code bridges the two with `DesignSync` — pushing repo
 design files up after they change here, and pulling finished mockups down
 (design sessions save to project paths like `mockups/`; they cannot write to

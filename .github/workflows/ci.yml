@@ -800,6 +800,10 @@ jobs:
       # token stays out of the screens (#1941).
       - name: Faint ink stays on eyebrows
         run: bash scripts/check-faint-ink.sh
+      # Theme.swift is the token source and the design system page only shows
+      # it, so a colour the page lacks is drift nothing else sees (#2603).
+      - name: Every Theme.swift colour is on the design system page
+        run: bash scripts/check-design-tokens.sh
       # A haptic built by hand can fire before the core confirms, and a change
       # to haptics would have to be made at every call (#2013).
       - name: Haptics go through the helper
