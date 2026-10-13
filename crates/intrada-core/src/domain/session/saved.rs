@@ -44,6 +44,21 @@ pub(super) fn undo_delete(model: &mut Model, now: DateTime<Utc>) -> Command<Effe
     ])
 }
 
+pub(super) fn dismiss_undo(model: &mut Model) -> Command<Effect, Event> {
+    model.deleted_session = None;
+    crux_core::render::render()
+}
+
+/// What the undo banner says while there is a delete to take back. A refused
+/// delete whose reload put the session back has nothing to undo.
+pub(crate) fn undo_offer(model: &Model) -> Option<String> {
+    let (session, _) = model.deleted_session.as_ref()?;
+    if model.sessions.iter().any(|s| s.id == session.id) {
+        return None;
+    }
+    Some("Session deleted".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::{DateTime, TimeZone, Utc};
@@ -314,7 +329,75 @@ mod tests {
             now: at(1),
         }));
         assert_round_trips(Event::Session(SessionEvent::UndoDelete { now: at(2) }));
+        assert_round_trips(Event::Session(SessionEvent::DismissUndoDelete));
         assert_round_trips(Event::SessionDeleteWritten(PersistenceOutput::Ack));
+    }
+
+    fn offer(model: &Model) -> Option<String> {
+        Intrada.view(model).undo_delete
+    }
+
+    fn dismiss(model: &mut Model) -> Command<Effect, Event> {
+        Intrada.update(Event::Session(SessionEvent::DismissUndoDelete), model)
+    }
+
+    #[test]
+    fn a_delete_offers_its_undo() {
+        let mut model = practised(&["gone"]);
+        assert_eq!(offer(&model), None);
+        let _ = delete(&mut model, "gone", at(10));
+        assert_eq!(offer(&model).as_deref(), Some("Session deleted"));
+    }
+
+    #[test]
+    fn an_undo_ends_the_offer() {
+        let mut model = practised(&["gone"]);
+        let _ = delete(&mut model, "gone", at(10));
+        let _ = undo(&mut model, at(20));
+        assert_eq!(offer(&model), None);
+    }
+
+    #[test]
+    fn a_dismiss_ends_the_offer_and_leaves_nothing_to_undo() {
+        let mut model = practised(&["gone"]);
+        let _ = delete(&mut model, "gone", at(10));
+        let _ = dismiss(&mut model);
+        assert_eq!(offer(&model), None);
+
+        let mut cmd = undo(&mut model, at(20));
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
+        assert!(ids(&model).is_empty());
+    }
+
+    #[test]
+    fn a_second_delete_offers_the_undo_of_the_second() {
+        let mut model = practised(&["first", "second"]);
+        let _ = delete(&mut model, "first", at(10));
+        let _ = delete(&mut model, "second", at(11));
+        assert_eq!(offer(&model).as_deref(), Some("Session deleted"));
+
+        let _ = undo(&mut model, at(20));
+        assert_eq!(ids(&model), vec!["second".to_string()]);
+    }
+
+    #[test]
+    fn a_refused_delete_that_reloads_the_session_ends_the_offer() {
+        let mut model = practised(&["gone"]);
+        let mut cmd = delete(&mut model, "gone", at(10));
+        store_request(&mut cmd)
+            .resolve(PersistenceOutput::Failed)
+            .expect("resolves once");
+        let written = cmd.events().next().expect("the write's answer");
+        let mut cmd = Intrada.update(written, &mut model);
+        store_request(&mut cmd)
+            .resolve(PersistenceOutput::Sessions(vec![PracticeSession::fixture(
+                "gone",
+            )]))
+            .expect("resolves once");
+        let loaded = cmd.events().next().expect("the reload");
+        let _ = Intrada.update(loaded, &mut model);
+
+        assert_eq!(offer(&model), None);
     }
 
     #[test]

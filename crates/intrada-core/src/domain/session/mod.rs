@@ -849,6 +849,8 @@ pub enum SessionEvent {
     UndoDelete {
         now: DateTime<Utc>,
     },
+    /// The undo banner was closed, so the last delete stands.
+    DismissUndoDelete,
 }
 
 mod active;
@@ -871,6 +873,7 @@ pub use record::{
     Away, Felt, FocusKind, IntentionFocus, IntentionMet, NotePoint, NotePointKind, NoteSpan,
     Obstacle, Segment, SegmentClock,
 };
+pub(crate) use saved::undo_offer;
 
 use active::written_key_as_none;
 use plays::{record_rep, record_tempo_change};
@@ -1143,5 +1146,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         // ── Saved sessions ─────────────────────────────────────────
         SessionEvent::DeleteSaved { session_id, now } => saved::delete(model, session_id, now),
         SessionEvent::UndoDelete { now } => saved::undo_delete(model, now),
+        SessionEvent::DismissUndoDelete => saved::dismiss_undo(model),
     }
 }

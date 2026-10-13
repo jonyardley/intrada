@@ -326,6 +326,9 @@ pub struct ViewModel {
     pub first_run: FirstRunView,
     /// The library's live variations, for the pickers (#2246).
     pub variations: Vec<VariationOptionView>,
+    /// The undo banner's text while the last saved-session delete can be
+    /// taken back (#2581).
+    pub undo_delete: Option<String>,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a

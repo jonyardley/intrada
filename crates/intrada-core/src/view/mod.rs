@@ -282,6 +282,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         practice_defaults: model.practice_defaults,
         first_run: build_first_run_view(model),
         variations: cached.variation_options.clone(),
+        undo_delete: crate::domain::session::undo_offer(model),
     }
 }
 

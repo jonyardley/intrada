@@ -70,6 +70,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(delete.0, "sample-session-3d")
     XCTAssertEqual(delete.1, "2026-10-13T09:00:00Z")
     XCTAssertEqual(try bridge.rendered().sessions.count, before - 1)
+    XCTAssertEqual(try bridge.view().undoDelete, "Session deleted")
 
     let restored = try bridge.update(.session(.undoDelete(now: "2026-10-13T09:00:05Z")))
     let restore = try XCTUnwrap(
@@ -82,6 +83,26 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(restore.0, "sample-session-3d")
     XCTAssertEqual(restore.1, "2026-10-13T09:00:05Z")
     XCTAssertEqual(try bridge.rendered().sessions.count, before)
+    XCTAssertNil(try bridge.view().undoDelete)
+  }
+
+  /// A closed undo banner leaves the delete standing (#2581).
+  func testRealBridgeDismissingTheUndoEndsTheOffer() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.loadSampleData)
+    _ = try bridge.update(
+      .session(.deleteSaved(sessionId: "sample-session-3d", now: "2026-10-13T09:00:00Z")))
+    XCTAssertEqual(try bridge.view().undoDelete, "Session deleted")
+
+    _ = try bridge.update(.session(.dismissUndoDelete))
+    XCTAssertNil(try bridge.view().undoDelete)
+
+    let undone = try bridge.update(.session(.undoDelete(now: "2026-10-13T09:00:05Z")))
+    XCTAssertFalse(
+      undone.contains { request in
+        if case .persistence = request.effect { return true }
+        return false
+      })
   }
 
   /// Three u32s side by side decode silently into each other's slots if Rust
