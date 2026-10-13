@@ -2,7 +2,8 @@
 
 > Tier 3, sensitive surfaces (the store and a bridge change that retypes a
 > field). Issue #2581, decision 1 of the data model review (#2577, ruled
-> 2026-10-13). Two PRs: the core and store first, the screens after. No
+> 2026-10-13). One PR across the stack: core and store commits first,
+> reviewed alone, then the iPhone and Android screens. No
 > migration: the `session` table has carried `updated_at` and `deleted_at`
 > since v3.
 
@@ -95,10 +96,10 @@ Only the last delete can be undone, which is all the screen's undo needs.
 
 ## Phases
 
-1. This spec, then the store and core, test first. One PR, paired with
-   `reviewer` on the core diff.
-2. The screens: delete from the session's detail on iPhone, with an undo, and
-   Android's equivalent when its history screen exists. Same working session.
+1. This spec, then the store and core, test first, paired with `reviewer` on
+   the core commits alone.
+2. The screens on iPhone and Android at parity, with an undo, on the layout
+   Jon picks from the mock-up. Same branch and PR.
 
 ## Out of scope
 
