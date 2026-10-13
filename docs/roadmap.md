@@ -14,53 +14,55 @@ intrada is a practice notebook. **The musician decides what matters; the app
 decides where today starts, keeps the record honest and can always be
 overruled** ([`VISION.md`](../VISION.md), 2026-09-30).
 
-Capturing material is done, and v0.15.0 shipped a first run that gets a new
-musician to their first marked session (#2121). **Next is finishing the data
-model: a piece in sections, practised in variations shared across the
-library, with exercises linked to the sections they prepare (#50).** v0.16.0
-settled the shape, v0.17.0 practises and scores by it, and v0.18.0 shows those
-scores back. Sync follows in v0.19.0 on that settled record.
+Capturing material is done, and v0.16.0 to v0.18.0 put pieces in sections and
+variations and showed their marks back (#50). **The order from 2026-10-13: make
+the data model sound, then get every tab to where intrada is used daily in
+anger, then sync.** Sync moved behind daily use because every change to the
+record after it ships has to be migrated on every device.
 
 ## The ranking
 
-Work is ranked here directly, by epic: a group of issues with a working order.
-Where this list and an issue's
-[horizon label](how-the-work-runs.md#horizons) disagree, this list wins.
+Work is ranked here directly, by milestone and epic. Where this list and an
+issue's [horizon label](how-the-work-runs.md#horizons) disagree, this list
+wins.
 
-### Now: v0.18.0, see what you practised by section
+### Now: v0.19.0, a data model you can build on
 
-v0.17.0 shipped practice by section and variation (#2249): each section with
-its own minutes, how an item felt, time away left out, and a focus and a target.
-
-- **Each section's mark on the piece and each variation's marks** (#2250): the
-  piece's own score beside its sections', the weakest section suggested, and a
-  variation pooled across the library on Progress.
-- **How many keys and variations are solid** (#2366), and which items use each
-  variation.
-- **The first run**: a clearer label than Type a piece (#2294) and the welcome
-  from a setting while we beta test it (#2295). Three new musicians try it
-  (#2120), which feeds another pass at the welcome (#2296).
-- **Ready for sync, alongside**: the two screens in Claude Design (#2360) and a
-  trial on two devices (#2361), so v0.19.0 starts on code.
+- **The review** (#2577,
+  [review page](https://claude.ai/artifact/9D4tbou13mtMcvY1Jj27tn)): the record
+  checked against Progress, routines, the week and sync, with nine decisions
+  for Jon. Each accepted one becomes an issue in this milestone.
+- **What is left of #50**: adding a section and a key while building a session
+  (#2392), every section on the practice screen (#2394), last time's aim as a
+  one-tap start (#2397) and the builder rules the core still has to take over
+  (#2404, #2405, #2406).
+- **Leftovers and loose ends**: the coach-era tables (#2317), values an older
+  build does not recognise (#2437), the practice defaults version (#2216),
+  tempo in compound time (#1510, #2543) and the time zone a session was played
+  in (#1379).
 
 ### Next, in order
 
-1. **#2353 Library and practice history sync between iPhone and iPad through
-   iCloud** (v0.19.0, moved from v0.18.0 on 2026-10-06): until it lands,
-   deleting the app loses a tester's notebook.
-2. **#1926 A week's practice set with intent.** It replaces the goals feature,
-   starting with a two-lesson trial (#1927, running now) and a research note
-   (#1928).
-3. **#1975 Play the session through.**
-4. **#1974 Build a session your way**, including routines (#1348).
-5. **#1970 Practise an exercise in its keys.**
-6. **#1972 Add a piece in one pass** and **#1973 the Library**, refined when
-   use shows a gap.
+1. **v0.20.0 Progress, reworked**: the four-week look back decided on
+   2026-10-04 (#1787), core first (#2375), then the screen (#2376), with
+   variation coverage moved onto the exercise (#2377).
+2. **v0.21.0 The fourth tab earns its place**: decide between routines on their
+   own tab and a Week tab holding the week's practice set with routines inside
+   it (#2579), then build the one chosen (#1348, #2180, and #1926 if Week).
+3. **v0.22.0 Every tab usable in anger**: a written bar per tab, met (#2578),
+   fed by three new musicians trying the first run (#2120) and the welcome's
+   next pass (#2296). The issues that block the bar join that milestone from
+   #1972, #1973, #1974 and #1975.
+4. **v0.23.0 Sync between iPhone and iPad through iCloud** (#2353), on the
+   settled record.
 
 ### Later
 
+- **#1926 A week's practice set with intent**, unless v0.21.0 makes it the
+  fourth tab; the lesson trial (#1927) and research note (#1928) carry on.
 - **#1978 Know what to practise next**: priorities and spacing.
-- **#1977 See the practice working** and **#1976 Score how it went.**
+- **#1976 Score how it went** and what remains of **#1977** after v0.20.0.
+- **#1970 Practise an exercise in its keys.**
 - **#1979 One look everywhere** and **#1980 Make it yours, part two.**
 - **#2134 Every screen holds together at the largest text sizes**, set aside
   on 2026-10-06 along with its snapshots.
@@ -96,9 +98,9 @@ Specs and designs divide a musician's practice into three parts:
 
 intrada is a native iPhone app, built in SwiftUI on a shared Rust core, that
 keeps everything on the phone ([`specs/native-ios.md`](../specs/native-ios.md)).
-There is no web app and no sync: the server that once carried sync was removed
-(#1746), so the spec's sync plans are history, and syncing between devices
-starts from a new spec (#2353). An Android app on the same core is being built
+There is no web app and no sync yet: the server that once carried sync was
+removed (#1746), and iCloud sync between iPhone and iPad (#2353) is planned for
+v0.23.0. An Android app on the same core is being built
 alongside (#2220, [`specs/android-shell.md`](../specs/android-shell.md)), and is
 not ranked here.
 
