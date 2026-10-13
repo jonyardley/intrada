@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,7 +55,11 @@ fun NavGraphBuilder.practiceRoutes(
         )
     }
     composable("$SESSION_ROUTE/{id}") { backStack ->
-        SessionDetailRoute(store, backStack.arguments?.getString("id").orEmpty())
+        SessionDetailRoute(
+            store,
+            backStack.arguments?.getString("id").orEmpty(),
+            onClose = { navController.popBackStack() },
+        )
     }
 }
 
@@ -83,12 +88,22 @@ fun PracticeRoute(
             viewModel?.showsPriorities == true,
             showsSuggestionRestore = viewModel?.showsSuggestionRestore == true,
             firstRun = viewModel?.firstRun,
+            undoDelete = viewModel?.undoDelete,
+            alerts = storeAlerts(store),
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
         onOpen = onOpen,
         modifier = modifier,
         onProfile = onProfile,
         onAdd = onAdd,
+        history =
+            HistoryActions(
+                onDelete = { id ->
+                    store.send(Event.Session(SessionEvent.DeleteSaved(id, SessionClock.now())))
+                },
+                onUndo = { store.send(Event.Session(SessionEvent.UndoDelete(SessionClock.now()))) },
+                onDismissUndo = { store.send(Event.Session(SessionEvent.DismissUndoDelete)) },
+            ),
         upNext =
             UpNextActions(
                 onStart = {
@@ -128,6 +143,15 @@ class PracticeModel(
     val showsPriorities: Boolean = false,
     val showsSuggestionRestore: Boolean = false,
     val firstRun: FirstRunView? = null,
+    val undoDelete: String? = null,
+    val alerts: ScreenAlerts = ScreenAlerts(),
+)
+
+/** What history does with a saved session: delete it, and take the delete back. */
+class HistoryActions(
+    val onDelete: (String) -> Unit = {},
+    val onUndo: () -> Unit = {},
+    val onDismissUndo: () -> Unit = {},
 )
 
 @Composable
@@ -139,6 +163,7 @@ fun PracticeScreen(
     onProfile: (() -> Unit)? = null,
     onAdd: () -> Unit = {},
     upNext: UpNextActions = UpNextActions(),
+    history: HistoryActions = HistoryActions(),
     suggestionDismissed: Boolean = false,
     top: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -150,18 +175,30 @@ fun PracticeScreen(
         subtitle = model.subtitle,
         actions = { onProfile?.let { ProfileButton(model.icon, model.colour, it) } },
     ) {
-        Column(
-            Modifier.fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(IntradaSpacing.card),
-            verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
-        ) {
-            top()
-            HeroSection(model, dismissed, onStart, upNext) { dismissed = it }
-            model.firstRun
-                ?.takeIf { it.showsStartHere }
-                ?.let { StartHereCard(it, IntradaColor.marker(model.colour), onAdd, onStart) }
-            History(model, onOpen)
+        Column(Modifier.fillMaxSize()) {
+            AlertBanners(model.alerts)
+            model.undoDelete?.let { message ->
+                GlobalBanner(
+                    message,
+                    tag = "banner.undoDelete",
+                    tone = BannerTone.NOTICE,
+                    action = BannerAction("Undo", history.onUndo),
+                    onDismiss = history.onDismissUndo,
+                )
+            }
+            Column(
+                Modifier.fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(IntradaSpacing.card),
+                verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
+            ) {
+                top()
+                HeroSection(model, dismissed, onStart, upNext) { dismissed = it }
+                model.firstRun
+                    ?.takeIf { it.showsStartHere }
+                    ?.let { StartHereCard(it, IntradaColor.marker(model.colour), onAdd, onStart) }
+                History(model, onOpen, history.onDelete)
+            }
         }
     }
 }
@@ -207,7 +244,7 @@ private val PracticeModel.subtitle: String?
     }
 
 @Composable
-private fun History(model: PracticeModel, onOpen: (String) -> Unit) {
+private fun History(model: PracticeModel, onOpen: (String) -> Unit, onDelete: (String) -> Unit) {
     val weeks = model.weeks
     if (weeks.isEmpty()) return
     val pager = rememberPagerState(initialPage = weeks.lastIndex) { weeks.size }
@@ -256,7 +293,14 @@ private fun History(model: PracticeModel, onOpen: (String) -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact)) {
             SectionHeader(day?.heading.orEmpty(), trailing = dayTrailing)
             if (daySessions.isEmpty()) EmptyDayCard(future = day?.isFuture == true)
-            daySessions.forEach { session -> SessionCard(session) { onOpen(session.id) } }
+            daySessions.forEach { session ->
+                key(session.id) {
+                    val delete = { onDelete(session.id) }
+                    SwipeToDelete("Delete session", delete) {
+                        SessionCard(session, onDelete = delete) { onOpen(session.id) }
+                    }
+                }
+            }
         }
     }
 }

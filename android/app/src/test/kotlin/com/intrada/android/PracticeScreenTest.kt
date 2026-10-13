@@ -13,8 +13,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
+import com.intrada.android.ui.HistoryActions
 import com.intrada.android.ui.PracticeModel
 import com.intrada.android.ui.PracticeScreen
+import com.intrada.android.ui.ScreenAlerts
 import com.intrada.android.ui.SessionDetailScreen
 import com.intrada.shared.Event
 import com.intrada.shared.SessionEvent
@@ -108,6 +110,93 @@ class PracticeScreenTest {
         compose
             .onNodeWithContentDescription("Today, 24 min, 3 items", substring = true)
             .assertExists()
+    }
+
+    @Test
+    fun aLongSwipeOnASessionDeletesIt() {
+        val deleted = mutableListOf<String>()
+        compose.setContent {
+            PracticeScreen(
+                PracticeFixtures.filled,
+                onStart = {},
+                onOpen = {},
+                history = HistoryActions(onDelete = { deleted += it }),
+            )
+        }
+
+        compose
+            .onNodeWithContentDescription("Today, 24 min, 3 items", substring = true)
+            .performScrollTo()
+            .performTouchInput { swipeLeft(startX = right, endX = left) }
+
+        assertEquals(listOf(PracticeFixtures.completed.id), deleted)
+    }
+
+    @Test
+    fun aLongSwipeAfterChangingDayDeletesThatDaysSession() {
+        val deleted = mutableListOf<String>()
+        compose.setContent {
+            PracticeScreen(
+                PracticeFixtures.filled,
+                onStart = {},
+                onOpen = {},
+                history = HistoryActions(onDelete = { deleted += it }),
+            )
+        }
+
+        compose.onNodeWithTag("practice.day.2026-10-06").performClick()
+        compose
+            .onNodeWithContentDescription("Tue 6 Oct, 18 min, 3 items", substring = true)
+            .performScrollTo()
+            .performTouchInput { swipeLeft(startX = right, endX = left) }
+
+        assertEquals(listOf(PracticeFixtures.withVariations.id), deleted)
+    }
+
+    @Test
+    fun aHalfSwipedCardStaysWithItsDay() {
+        compose.setContent { PracticeScreen(PracticeFixtures.filled, onStart = {}, onOpen = {}) }
+
+        compose
+            .onNodeWithContentDescription("Today, 24 min, 3 items", substring = true)
+            .performScrollTo()
+            .performTouchInput { swipeLeft(startX = right, endX = right - width / 3) }
+        compose.onNodeWithContentDescription("Delete session").assertExists()
+        compose.onNodeWithTag("practice.day.2026-10-06").performClick()
+
+        compose.onNodeWithContentDescription("Delete session").assertDoesNotExist()
+    }
+
+    @Test
+    fun aFailedDeleteIsSaidAboveTheUndo() {
+        val model =
+            PracticeModel(
+                PracticeFixtures.filled.weeks,
+                PracticeFixtures.filled.sessions,
+                PracticeFixtures.filled.lastPractised,
+                undoDelete = "Session deleted",
+                alerts = ScreenAlerts("Couldn't delete that session.", halted = true),
+            )
+        compose.setContent { PracticeScreen(model, onStart = {}, onOpen = {}) }
+
+        val tops =
+            listOf("banner.halted", "banner.error", "banner.undoDelete").map {
+                compose.onNodeWithTag(it).assertExists().fetchSemanticsNode().boundsInRoot.top
+            }
+        assertEquals(tops.sorted(), tops)
+        assertEquals(3, tops.distinct().size)
+    }
+
+    @Test
+    fun theDeleteButtonDeletesTheSessionInOneTap() {
+        var deletes = 0
+        compose.setContent {
+            SessionDetailScreen(PracticeFixtures.withVariations, 5, onDelete = { deletes++ })
+        }
+
+        compose.onNodeWithTag("sessionDetail.delete").performScrollTo().performClick()
+
+        assertEquals(1, deletes)
     }
 
     @Test

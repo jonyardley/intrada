@@ -36,6 +36,8 @@ pub struct Model {
     /// `sessions` only when the store acknowledges it; a failure hands it
     /// back to the summary so Save can be tapped again (#974).
     pub saving_session: Option<PracticeSession>,
+    /// The saved session the last delete took out, for its undo (#2581).
+    pub deleted_session: Option<(PracticeSession, chrono::DateTime<chrono::Utc>)>,
     pub active_query: Option<ListQuery>,
     pub active_sort: LibrarySort,
     pub last_error: Option<String>,
@@ -324,6 +326,9 @@ pub struct ViewModel {
     pub first_run: FirstRunView,
     /// The library's live variations, for the pickers (#2246).
     pub variations: Vec<VariationOptionView>,
+    /// The undo banner's text while the last saved-session delete can be
+    /// taken back (#2581).
+    pub undo_delete: Option<String>,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a

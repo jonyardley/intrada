@@ -372,6 +372,7 @@ struct PracticeScreen: View {
             .accessibilityAction { open(session) }
             .accessibilityHint("Opens the session")
             .accessibilityIdentifier("practice.sessionCard")
+            .swipeToDelete(label: "Delete session") { delete(session) }
         }
       }
     }
@@ -383,6 +384,10 @@ struct PracticeScreen: View {
     } else {
       openSessionId = session.id
     }
+  }
+
+  private func delete(_ session: PracticeSessionView) {
+    store.send(.session(.deleteSaved(sessionId: session.id, now: SessionClock.nowRFC3339())))
   }
 
   private var emptyDayCard: some View {

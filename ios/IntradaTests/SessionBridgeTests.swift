@@ -51,6 +51,60 @@ final class SessionBridgeTests: XCTestCase {
       view.notice, "A practice left open before the update couldn't be picked up again.")
   }
 
+  /// Two Strings side by side swap silently on a field-order mismatch (#846):
+  /// the delete and its undo name the session and the instant (#2581).
+  func testRealBridgeASessionDeleteAndItsUndoDecodeOnWire() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.loadSampleData)
+    let before = try bridge.rendered().sessions.count
+
+    let deleted = try bridge.update(
+      .session(.deleteSaved(sessionId: "sample-session-3d", now: "2026-10-13T09:00:00Z")))
+    let delete = try XCTUnwrap(
+      deleted.compactMap { request -> (String, String)? in
+        if case .persistence(.deleteSession(let id, let deletedAt)) = request.effect {
+          return (id, deletedAt)
+        }
+        return nil
+      }.first)
+    XCTAssertEqual(delete.0, "sample-session-3d")
+    XCTAssertEqual(delete.1, "2026-10-13T09:00:00Z")
+    XCTAssertEqual(try bridge.rendered().sessions.count, before - 1)
+    XCTAssertEqual(try bridge.view().undoDelete, "Session deleted")
+
+    let restored = try bridge.update(.session(.undoDelete(now: "2026-10-13T09:00:05Z")))
+    let restore = try XCTUnwrap(
+      restored.compactMap { request -> (String, String)? in
+        if case .persistence(.restoreSession(let id, let restoredAt)) = request.effect {
+          return (id, restoredAt)
+        }
+        return nil
+      }.first)
+    XCTAssertEqual(restore.0, "sample-session-3d")
+    XCTAssertEqual(restore.1, "2026-10-13T09:00:05Z")
+    XCTAssertEqual(try bridge.rendered().sessions.count, before)
+    XCTAssertNil(try bridge.view().undoDelete)
+  }
+
+  /// A closed undo banner leaves the delete standing (#2581).
+  func testRealBridgeDismissingTheUndoEndsTheOffer() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.loadSampleData)
+    _ = try bridge.update(
+      .session(.deleteSaved(sessionId: "sample-session-3d", now: "2026-10-13T09:00:00Z")))
+    XCTAssertEqual(try bridge.view().undoDelete, "Session deleted")
+
+    _ = try bridge.update(.session(.dismissUndoDelete))
+    XCTAssertNil(try bridge.view().undoDelete)
+
+    let undone = try bridge.update(.session(.undoDelete(now: "2026-10-13T09:00:05Z")))
+    XCTAssertFalse(
+      undone.contains { request in
+        if case .persistence = request.effect { return true }
+        return false
+      })
+  }
+
   /// Three u32s side by side decode silently into each other's slots if Rust
   /// and Swift disagree on field order (#846, #2041).
   func testRealBridgeLimitsCarryThePlannedDurationBoundsAndDefault() throws {

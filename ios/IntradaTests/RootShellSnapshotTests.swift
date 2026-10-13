@@ -40,6 +40,9 @@ final class RootShellSnapshotTests: SnapshotTestCase {
         GlobalBanner(
           message: "That metronome setting doesn't give a crotchet tempo, so this play has none.",
           tone: .notice, onDismiss: {})
+        GlobalBanner(
+          message: "Session deleted", tone: .notice, action: .init(label: "Undo") {},
+          onDismiss: {})
         Spacer()
       }
     }

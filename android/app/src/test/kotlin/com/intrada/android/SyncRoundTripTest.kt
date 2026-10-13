@@ -1,13 +1,16 @@
 package com.intrada.android
 
 import com.intrada.android.core.LiveBridge
+import com.intrada.shared.CompletionStatus
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
+import com.intrada.shared.PracticeSession
 import com.intrada.shared.RecordKey
 import com.intrada.shared.RecordKind
 import com.intrada.shared.StoredItem
+import com.intrada.shared.StoredPracticeSession
 import com.intrada.shared.StoredRecords
 import com.intrada.shared.SyncEvent
 import com.intrada.shared.SyncOperation
@@ -82,6 +85,42 @@ class SyncRoundTripTest {
                 (it.effect as? Effect.Persistence)?.value is PersistenceOperation.ApplyMerged
             }
         )
+    }
+
+    // Two times side by side swap silently on a field-order mismatch (#846, #2581).
+    @Test
+    fun aDeletedSessionUploadsWithItsDeleteAsItsChange() {
+        val bridge = LiveBridge()
+        val load =
+            bridge.update(Event.Sync(SyncEvent.UploadEverything)).single {
+                (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadAllRecords
+            }
+        val session =
+            PracticeSession(
+                id = "s",
+                entries = emptyList(),
+                startedAt = "2026-10-01T09:00:00Z",
+                completedAt = "2026-10-01T09:30:00Z",
+                totalDurationSecs = 1800u,
+                completionStatus = CompletionStatus.COMPLETED,
+            )
+        val stored = StoredPracticeSession(session, "2026-10-02T09:00:00Z", "2026-10-03T09:00:00Z")
+
+        val sent =
+            bridge
+                .resolve(
+                    load.id,
+                    PersistenceOutput.Records(
+                        StoredRecords(emptyList(), emptyList(), listOf(stored), emptyList())
+                    ),
+                )
+                .mapNotNull { ((it.effect as? Effect.Sync)?.value as? SyncOperation.Upload)?.value }
+                .single()
+                .single()
+        assertEquals(RecordKind.SESSION, sent.kind)
+        assertEquals("s", sent.id)
+        assertEquals("2026-10-03T09:00:00Z", sent.deletedAt)
+        assertEquals("2026-10-03T09:00:00Z", sent.changedAt)
     }
 
     @Test

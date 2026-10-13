@@ -33,9 +33,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -210,7 +212,11 @@ private val DAY_CIRCLE_MAX = 36.dp
 // ── Session card ──
 
 @Composable
-internal fun SessionCard(session: PracticeSessionView, onOpen: () -> Unit) {
+internal fun SessionCard(
+    session: PracticeSessionView,
+    onDelete: (() -> Unit)? = null,
+    onOpen: () -> Unit,
+) {
     val meta = "${session.totalDurationSummary} · ${session.itemCountDisplay}"
     val endedEarly = session.completionStatus == CompletionStatus.ENDEDEARLY
     val spoken =
@@ -235,6 +241,15 @@ internal fun SessionCard(session: PracticeSessionView, onOpen: () -> Unit) {
                 onClick(label = "Opens the session") {
                     onOpen()
                     true
+                }
+                if (onDelete != null) {
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction("Delete session") {
+                                onDelete()
+                                true
+                            }
+                        )
                 }
             }
             .padding(IntradaSpacing.card),

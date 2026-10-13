@@ -7,6 +7,7 @@ import com.intrada.shared.PracticeSession
 import com.intrada.shared.RecordKey
 import com.intrada.shared.RecordKind
 import com.intrada.shared.StoredItem
+import com.intrada.shared.StoredPracticeSession
 import com.intrada.shared.StoredRecords
 import com.intrada.shared.Variation
 
@@ -15,14 +16,14 @@ interface ItemStore {
     fun run(operation: PersistenceOperation): PersistenceOutput
 }
 
-// Seed mode and tests: the app keeps its notebook in SharedItemStore (#2421). Deleted pieces stay
-// as tombstones, as they do on disk, so a merge sees the delete.
+// Seed mode and tests: the app keeps its notebook in SharedItemStore (#2421). Deleted pieces and
+// sessions stay as tombstones, as they do on disk, so a merge sees the delete.
 class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
     private val items =
         LinkedHashMap<String, StoredItem>().apply {
             items.forEach { put(it.id, StoredItem(it, null)) }
         }
-    private val sessions = LinkedHashMap<String, PracticeSession>()
+    private val sessions = LinkedHashMap<String, StoredPracticeSession>()
     private val variations = LinkedHashMap<String, Variation>()
 
     @Synchronized
@@ -33,12 +34,17 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
                     items.values.filter { it.deletedAt == null }.map { it.item }
                 )
             PersistenceOperation.LoadSessions ->
-                PersistenceOutput.Sessions(sessions.values.toList())
+                PersistenceOutput.Sessions(
+                    sessions.values.filter { it.deletedAt == null }.map { it.session }
+                )
             is PersistenceOperation.SaveItem -> ack { save(operation.value) }
             is PersistenceOperation.SaveItems -> ack { operation.value.forEach(::save) }
             is PersistenceOperation.DeleteItem -> ack { delete(operation) }
-            is PersistenceOperation.SaveSession ->
-                ack { sessions[operation.value.id] = operation.value }
+            is PersistenceOperation.SaveSession -> ack { save(operation.value) }
+            is PersistenceOperation.DeleteSession ->
+                ack { mark(operation.id, operation.deletedAt, operation.deletedAt) }
+            is PersistenceOperation.RestoreSession ->
+                ack { mark(operation.id, operation.restoredAt, null) }
             PersistenceOperation.LoadVariations ->
                 PersistenceOutput.Variations(variations.values.toList())
             is PersistenceOperation.SaveVariations ->
@@ -48,6 +54,10 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
             is PersistenceOperation.ApplyMerged -> sync(operation)
         }
 
+    private fun mark(id: String, updatedAt: String, deletedAt: String?) {
+        sessions[id]?.let { sessions[id] = it.copy(updatedAt = updatedAt, deletedAt = deletedAt) }
+    }
+
     private fun sync(operation: PersistenceOperation): PersistenceOutput =
         when (operation) {
             is PersistenceOperation.LoadRecords ->
@@ -56,7 +66,7 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
                 ack {
                     operation.value.items.forEach { items[it.item.id] = it }
                     operation.value.variations.forEach { variations[it.id] = it }
-                    operation.value.sessions.forEach { sessions[it.id] = it }
+                    operation.value.sessions.forEach { sessions[it.session.id] = it }
                 }
             else -> records { _, _ -> true }
         }
@@ -69,12 +79,23 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
         items[item.id] = StoredItem(item, null)
     }
 
+    // A later save keeps the change time and the delete, as the shared store does (#2581).
+    private fun save(session: PracticeSession) {
+        val kept = sessions[session.id]
+        sessions[session.id] =
+            StoredPracticeSession(
+                session,
+                kept?.updatedAt ?: session.completedAt,
+                kept?.deletedAt,
+            )
+    }
+
     private fun records(wanted: (RecordKind, String) -> Boolean): PersistenceOutput =
         PersistenceOutput.Records(
             StoredRecords(
                 items.values.filter { wanted(RecordKind.ITEM, it.item.id) },
                 variations.values.filter { wanted(RecordKind.VARIATION, it.id) },
-                sessions.values.filter { wanted(RecordKind.SESSION, it.id) },
+                sessions.values.filter { wanted(RecordKind.SESSION, it.session.id) },
                 emptyList(),
             )
         )
