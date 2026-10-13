@@ -125,6 +125,7 @@ class PracticeScreenTest {
 
         compose
             .onNodeWithContentDescription("Today, 24 min, 3 items", substring = true)
+            .performScrollTo()
             .performTouchInput { swipeLeft(startX = right, endX = left) }
 
         assertEquals(1, deleted.size)
