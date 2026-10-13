@@ -6,6 +6,8 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,8 +21,9 @@ import org.junit.runner.RunWith
 
 /**
  * An exercise opens on its form, where a drag on a variation's handle moves its row (#1783),
- * against the seeded "Major Scales", whose one variation is "Hands separately". Renaming from a
- * sheet has no Android screen yet: #2567.
+ * against the seeded "Major Scales", whose one variation is "Hands separately". A piece's
+ * Variations sheet renames a library variation by long press (#2567); Clair de Lune has none of its
+ * own, so the renamed one is ticked to read back on the piece.
  */
 @RunWith(AndroidJUnit4::class)
 class VariationManagementTest {
@@ -51,6 +54,29 @@ class VariationManagementTest {
             }
 
         assertTrue("the typed row dragged above the saved one", top(slow) < top(saved))
+    }
+
+    @Test
+    fun renamingAVariationFromTheSheetShowsTheNewNameOnThePiece() {
+        app.launch(seed = true)
+        app.tapTab(AppTab.LIBRARY.tag)
+        app.tapRow("library.row", "Clair de Lune")
+
+        app.tap("variations.choose")
+        app.row("variationsSheet.row", "Hands separately").scrolledTo().performTouchInput {
+            longClick()
+        }
+        app.control("variationRename.name").performTextClearance()
+        app.control("variationRename.name").performTextInput("Hands apart")
+        app.tap("variationRename.confirm")
+        app.tapRow("variationsSheet.row", "Hands apart")
+        app.tap("sheet.done")
+
+        app.row("variations.row", "Hands apart")
+        app.assertGone(
+            hasTestTag("variations.row") and App.mentions("Hands separately"),
+            "the old name is gone",
+        )
     }
 
     private fun label(text: String) = app.await(hasTestTag("variationRow.label") and hasText(text))

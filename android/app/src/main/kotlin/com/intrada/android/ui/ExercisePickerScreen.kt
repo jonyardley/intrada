@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,6 +41,7 @@ fun ExercisePickerRoute(
     val exercises = rows.filter { it.itemType == ItemKind.EXERCISE }
     val state =
         remember(pieceId) { ExercisePickerState(piece.linkedExercises.map { it.id }.toSet()) }
+    val written = remember(pieceId) { mutableStateListOf<StagedExercise.Written>() }
     var closing by remember { mutableStateOf(false) }
     ExercisePickerScreen(
         exercises,
@@ -47,11 +49,17 @@ fun ExercisePickerRoute(
         onCancel = onDone,
         onDone = {
             if (!closing) {
-                if (state.chosen != state.linked) {
+                if (state.chosen != state.linked || written.isNotEmpty()) {
                     val ids = exercises.map { it.id }.filter { it in state.chosen }
                     state.formError =
                         store.sendFromForm(
-                            Event.Item(ItemEvent.ChoosePieceExercises(pieceId, ids, emptyList()))
+                            Event.Item(
+                                ItemEvent.ChoosePieceExercises(
+                                    pieceId,
+                                    ids,
+                                    written.map { it.create },
+                                )
+                            )
                         )
                 }
                 closing = state.formError == null
@@ -59,7 +67,9 @@ fun ExercisePickerRoute(
             }
         },
         modifier,
-    )
+    ) {
+        WrittenExercisesCard(written)
+    }
 }
 
 @Composable

@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,9 +27,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -223,6 +226,8 @@ internal fun Chevron(modifier: Modifier = Modifier) {
     )
 }
 
+class LongAction(val label: String, val perform: () -> Unit)
+
 @Composable
 internal fun TickRow(
     label: String,
@@ -231,12 +236,18 @@ internal fun TickRow(
     tag: String,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    longAction: LongAction? = null,
 ) {
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .clickable(role = Role.Checkbox, onClick = onToggle)
+            .combinedClickable(
+                role = Role.Checkbox,
+                onLongClickLabel = longAction?.label,
+                onLongClick = longAction?.perform,
+                onClick = onToggle,
+            )
             .clearAndSetSemantics {
                 contentDescription = caption?.let { "$label, $it" } ?: label
                 role = Role.Checkbox
@@ -245,6 +256,15 @@ internal fun TickRow(
                 onClick {
                     onToggle()
                     true
+                }
+                if (longAction != null) {
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction(longAction.label) {
+                                longAction.perform()
+                                true
+                            }
+                        )
                 }
             }
             .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact),

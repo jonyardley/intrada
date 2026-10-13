@@ -74,11 +74,18 @@ internal fun KeyPicker(
                 Modifier.fillMaxWidth().padding(top = IntradaSpacing.cardCompact, bottom = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                KeyWheel(selection) { ring, mode ->
-                    keyAfterTap(key, ring, mode)?.let {
-                        haptics.play(it.haptic)
-                        onKey(it.key)
-                    }
+                KeyWheel(
+                    chosen = { ring, mode ->
+                        selection?.takeIf { it.ring.toInt() == ring && it.mode == mode }?.spelling
+                    },
+                    onTap = { ring, mode ->
+                        keyAfterTap(key, ring, mode)?.let {
+                            haptics.play(it.haptic)
+                            onKey(it.key)
+                        }
+                    },
+                ) {
+                    Hub(selection)
                 }
             }
         }
@@ -162,9 +169,12 @@ private fun pointOn(radius: Dp, ring: Int): Pair<Dp, Dp> {
 }
 
 @Composable
-private fun KeyWheel(selection: WheelSelection?, onTap: (Int, WheelMode) -> Unit) {
-    fun chosen(ring: Int, mode: WheelMode) =
-        selection?.takeIf { it.ring.toInt() == ring && it.mode == mode }?.spelling
+internal fun KeyWheel(
+    chosen: (Int, WheelMode) -> String?,
+    onTap: (Int, WheelMode) -> Unit,
+    tag: String = "itemForm.key",
+    hub: @Composable () -> Unit,
+) {
     val currentOnTap by rememberUpdatedState(onTap)
     Box(
         Modifier.size(WHEEL).pointerInput(Unit) {
@@ -184,11 +194,11 @@ private fun KeyWheel(selection: WheelSelection?, onTap: (Int, WheelMode) -> Unit
                 .border(1.dp, IntradaColor.hairline, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Hub(selection)
+            hub()
         }
         for (ring in 0 until SPOKES) {
             for (mode in WheelMode.entries) {
-                WedgeLabel(ring, mode, chosen(ring, mode)) { onTap(ring, mode) }
+                WedgeLabel(ring, mode, chosen(ring, mode), tag) { onTap(ring, mode) }
             }
         }
     }
@@ -256,7 +266,13 @@ private fun Hub(selection: WheelSelection?) {
 }
 
 @Composable
-private fun WedgeLabel(ring: Int, mode: WheelMode, chosen: String?, onTap: () -> Unit) {
+private fun WedgeLabel(
+    ring: Int,
+    mode: WheelMode,
+    chosen: String?,
+    tag: String,
+    onTap: () -> Unit,
+) {
     val wedge = wheelWedge(ring, mode) ?: return
     val major = mode == WheelMode.MAJOR
     val (x, y) =
@@ -268,7 +284,7 @@ private fun WedgeLabel(ring: Int, mode: WheelMode, chosen: String?, onTap: () ->
     Column(
         Modifier.offset(x - LABEL_BOX / 2, y - LABEL_BOX / 2)
             .size(LABEL_BOX)
-            .testTag("itemForm.key.${mode.word}.$ring")
+            .testTag("$tag.${mode.word}.$ring")
             .clearAndSetSemantics {
                 contentDescription = spoken
                 role = Role.Button

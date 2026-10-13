@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -75,7 +76,9 @@ internal fun ClickSheetPage(
     ScreenScaffold(
         "Metronome",
         modifier,
-        actions = { IconAction(R.drawable.ic_close, "Done", onClose) },
+        actions = {
+            IconAction(R.drawable.ic_close, "Done", onClose, Modifier.testTag("clickSheet.done"))
+        },
     ) {
         Column(
             Modifier.fillMaxSize()
