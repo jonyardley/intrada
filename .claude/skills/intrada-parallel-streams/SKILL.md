@@ -5,104 +5,68 @@ description: Running more than one Claude Code session or subagent against this 
 
 ## Stream rules
 
-The claim protocol (`just claim`) stops two streams building the same issue;
-these rules stop two streams colliding in the same files. Evidence base: a
-coupling analysis of 400 commits (2026-08): 31% of commits that touch
-`crates/` also touch `ios/`. That figure is about commits that touch the
-core; it says nothing about two changes that touch only Swift screens and no
-crate, which is what most UX issues are (for example #1616, #1617, #1618 and
-#1620).
+`just claim` stops two streams building the same issue; these rules stop two
+streams colliding in the same files.
 
-- **Two streams by default; a third only when it touches `ios/` and no
-  crate, and the session says so when it starts one** (#1839). Over 12 to 14
-  September three or four streams at once hit the simulator busy 34 times
-  across 20 sessions, and the extra streams picked Tier 1 work. Of the two, at
-  most one touches `crates/intrada-core` or `crates/intrada-ffi`. Screen-only
-  work carries none of the coupling the 31% figure measures, which is why a
-  shell-only third is allowed. Each shell-only stream names the screens it
-  owns before it starts, so two streams cannot silently pick up the same
-  file. This unlocks concurrent editing, not concurrent testing: every
-  shell-only stream still queues at the test gate, one at a time, because
-  test runs serialise on app launch whatever device they name (#1621; the
-  mechanism and the recovery are in `docs/ios-testing.md`, "Running alongside
-  another checkout").
-- **Android runs up to four lanes of its own, beside the iOS streams**
-  (#2220, agreed 2026-10-09). The two-stream cap exists because iOS test runs
-  queue on one simulator; Android's unit and Roborazzi snapshot tests run on
-  the JVM with no emulator, so `android/` lanes do not queue on a device. The
-  lanes and their order are in #2220: player, add form, new screens (two at
-  once), release. An Android lane that needs a core change takes the one core
-  slot, shared with every iOS stream; it never runs a core change of its own
-  alongside one.
-- **Android serialisation points.** A lane that touches one of these
-  serialises with every other live Android lane:
+- **Two streams by default, at most one touching `crates/intrada-core` or
+  `crates/intrada-ffi`. A third only when it touches `ios/` and no crate, and
+  the session says so when it starts one** (#1839): more streams queue on the
+  simulator and drift to Tier 1 work. Each shell-only stream names the screens
+  it owns before it starts. Editing runs concurrently, testing does not: test
+  runs serialise on app launch whatever device they name (#1621;
+  `docs/ios-testing.md`, "Running alongside another checkout (worktrees)").
+- **Android runs up to four lanes of its own beside the iOS streams** (#2220),
+  because its JVM tests need no device. The lanes and their order are in
+  #2220. An Android lane needing a core change takes the one core slot shared
+  with every iOS stream; it never runs a core change of its own alongside one.
+- **Android serialisation points**, shared by every live Android lane:
   `android/app/src/test/kotlin/com/intrada/android/BridgeRoundTripTest.kt`
-  (17 of the 40 Android commits before 2026-10-09 touched it), `Fixtures.kt`
-  in the same folder, `android/app/src/main/kotlin/com/intrada/android/ui/Theme.kt`,
+  and `Fixtures.kt` beside it, `android/app/src/main/kotlin/com/intrada/android/ui/Theme.kt`,
   the navigation files (`AppFrame.kt`, `AppTab.kt`, `MainActivity.kt`), and
-  the Gradle build and version catalog files, where adding a library counts as
-  a dependency change. A new screen keeps its wiring in those files to one
-  line.
-- A **stream that touches neither the core crates nor `ios/`** keeps to the
+  the Gradle build and version catalog files (a new library is a dependency
+  change). A new screen keeps its wiring there to one line.
+- A **stream touching neither the core crates nor `ios/`** keeps to the
   decoupled set: `docs/`, `specs/`, `design/`, or CI and tooling (`justfile`,
   `.github/workflows/`).
-- **Core serialisation points.** If your task and another live branch both
-  touch one of these, serialise: `crates/intrada-core/src/app.rs`,
-  `crates/intrada-core/src/domain/session/`, `Cargo.lock` (never pair
-  anything with a dependency bump).
-- **Shell serialisation points.** These four govern every screen, so a
-  shell-only stream that touches one of them serialises with every other
-  live stream, core or shell: `ios/IntradaTests/SnapshotTestCase.swift`,
-  the preview fixtures in `ios/Intrada/DesignSystem/` (`PreviewStores.swift`,
+- **Core serialisation points**: `crates/intrada-core/src/app.rs`,
+  `crates/intrada-core/src/domain/session/`, `Cargo.lock`. Serialise with any
+  live branch touching one, and never pair anything with a dependency bump.
+- **Shell serialisation points**, which govern every screen, so a stream
+  touching one serialises with every other live stream:
+  `ios/IntradaTests/SnapshotTestCase.swift`, the preview fixtures in
+  `ios/Intrada/DesignSystem/` (`PreviewStores.swift`,
   `LibraryPreviewFixtures.swift`, `SessionPreviewFixtures.swift`),
-  `ios/Intrada/DesignSystem/Theme.swift`, `ios/project.yml`.
-- **Shell serialisation is common, not rare.** In the last 60 commits on
-  `origin/main`, 17 touched only `ios/` and no crate; 8 of those 17 also
-  touched `ios/IntradaTests/ScreenSnapshotTests.swift` (one file before #2003 split it), and 2 touched
-  `ios/Intrada/DesignSystem/Theme.swift`. Check the four files above before
-  assuming two shell-only streams are independent: about half the time they
-  are not.
-- **One worktree per session, made by that session** (`docs/working-with-agents.md`,
-  step 2): `just worktree-new <name>` branches from fresh `origin/main` and seeds
-  `ios/generated` and the downloaded Swift packages, not the build folders (#2191). Close the session when its
-  task ships. Every session starts in the main checkout and does not restart
-  in the worktree: it makes the worktree and prefixes every shell command with
-  `cd <worktree> && `
-  (#1720, #1837, `docs/working-with-agents.md`).
-- **Once you have a worktree, edit only inside it.** On 2026-09-06 a session
-  working in its own worktree also wrote the change into the main checkout,
-  where another session nearly committed it into an unrelated PR. A green run
-  proves nothing about whose work is in the tree: read the diff before
-  `git add`, and never `git add -A` on a shared checkout.
-- **Clear a conflicting PR by merging main in, never by rebasing**:
-  `git fetch origin main && git merge origin/main && git push`. No tracked file
-  is written by every PR any more, so a conflict means two branches really did
-  touch the same code.
-- **Dependent PRs stack natively, depth 2 max.** Open the child with base set to
-  the parent's branch; GitHub retargets it when the parent merges. After the
-  parent squash-merges: `git rebase --onto origin/main <parent-old-head>`.
+  `ios/Intrada/DesignSystem/Theme.swift`, `ios/project.yml`. About half of
+  shell-only pairs collide here, so check these files before assuming two are
+  independent.
+- **One worktree per session, made by that session** with
+  `just worktree-new <name>`, which branches from fresh `origin/main` and
+  seeds `ios/generated` and the Swift packages (#2191). The session stays in
+  the main checkout and prefixes every shell command with `cd <worktree> && `
+  (#1720, #1837; `docs/working-with-agents.md`). Close it when its task ships.
+- **Once you have a worktree, edit only inside it.** A green run proves
+  nothing about whose work is in the tree: read the diff before `git add`,
+  and never `git add -A` on a shared checkout.
+- **Clear a conflicting PR by merging main in, never rebasing**:
+  `git fetch origin main && git merge origin/main && git push`.
+- **Dependent PRs stack, depth 2 at most**, the child based on the parent's
+  branch. After the parent squash-merges:
+  `git rebase --onto origin/main <parent-old-head>`.
 
 ## One agent per slice
 
 **A vertical slice is one agent's job.** Never split core and iOS across two
-agents on the same slice: in-session agent teams were tried on #1223 and
-retired, because the shell teammate could not see the core invariant it needed
-and wrote the worst bug in the PR (#1223).
+agents: the shell agent cannot see the core invariant it needs (#1223).
 
-Fan out only when the pieces are genuinely independent: no shared contract in
-flight, nothing blocked on another's output. Good shapes: an audit or sweep
-across many files, N independent approaches to one design question, unrelated
-tasks in the decoupled set. One worktree per agent; the lead integrates; only
-one agent runs iOS tests at a time; every fan-out task skips `just check` and
-the suites, which the lead runs once at the end.
+Fan out only for independent pieces: no shared contract in flight, nothing
+blocked on another's output, such as a sweep across many files or unrelated
+tasks in the decoupled set. One worktree per agent; the lead integrates and
+runs `just check` and the suites once at the end; one agent runs iOS tests at
+a time.
 
-**Contract before code applies to one agent as much as several.** Pin the
-Event/Effect/ViewModel shape for a slice before wiring either side.
+**Contract before code**, for one agent as much as several: pin the
+Event, Effect and ViewModel shape before wiring either side.
 
 ## Definition of done, before requesting review
 
-- [ ] `just check` green locally; `just ios-fmt-check` too if `ios/` touched
-- [ ] Tests shipped with the new code
-- [ ] PR opened through `/ship`; self-review comment posted
-- [ ] Codecov compared against the PR's Coverage line (Tier 2+)
-- [ ] Roadmap updated if a phase changed; deferred items tracked as issues
+`/ship`, the `intrada-shipping` skill and the PR template checklist hold it.
