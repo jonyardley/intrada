@@ -45,24 +45,31 @@ this file holds only how they read in Kotlin and Compose.
 
 ## Tokens and look
 
-- **Every token comes from `ui/Theme.kt`.** One Android lacks is copied from
-  `Theme.swift` with the same name and value, never invented.
+- **Every colour, font, spacing and radius comes from `ui/Theme.kt`.** A token
+  Android lacks is copied from `Theme.swift` with the same name and value,
+  never invented. Genuine one-offs stay literal, as on iOS.
 - **No `MaterialTheme` colours or Material components** standing in for an
   intrada primitive.
 - **Reach for a component in `design/components/README.md` first** (#2620);
   where the apps differ, its page names the look both move to.
+- `docs/design-principles.md` and `docs/tone-of-voice.md` bind every Android
+  surface and string.
 
 ## The per-screen bar
 
+Built with the screen, never retrofitted:
+
 - **A Roborazzi snapshot** at the default font scale only (#2134). It renders
   through `LiveBridge`: Android has no stub bridge.
-- **TalkBack labels** that read as the iOS VoiceOver label does; a control a UI
+- **TalkBack labels** on every control, reading as the iOS VoiceOver label does; a control a UI
   test drives carries a `testTag` matching the iOS identifier. Touch targets
   are at least 48dp.
 - **Edge to edge**: every screen pads for system bars and the keyboard.
 - **Never intercept system or predictive back** without a reason a musician
   would recognise (unsaved input).
-- **Surface, don't swallow** through `ui/GlobalBanner.kt`, dismissed with
+- **Surface, don't swallow.** Every `ViewModel.error` has a UI surface, and no
+  success feedback fires before the core confirms, as on iOS. The surface is
+  `ui/GlobalBanner.kt`, dismissed with
   `Event.ClearError`; a halted `Store` shows the standing banner above it
   (#2266).
 
@@ -76,4 +83,6 @@ before committing. Delete a test, delete its reference (#2241).
 
 ## Eyes before ready
 
-As in `ios-ui.md`, with the `just android-run` screenshot.
+A change to what a musician sees on Android follows the iOS rule in
+`.claude/rules/ios-ui.md`: a draft with the `just android-run` screenshot, and
+ready only after Jon's dated yes.

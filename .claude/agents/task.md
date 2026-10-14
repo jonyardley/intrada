@@ -21,7 +21,8 @@ Refuse a brief naming more than ten hand-written files before the first edit:
 report that the slice is too large for one spawn, and stop. Generated
 bindings and snapshot references do not count.
 
-No test gates inside `task` (the bash guard denies them): confirm the code
+No test gates inside `task`; the bash guard denies only `just check`,
+`just ios-test`, `just ios-test-full` and `cargo test`. Confirm the code
 compiles with the narrowest build for the surface you touched; the lead runs
 `test-runner` once on your finished diff.
 

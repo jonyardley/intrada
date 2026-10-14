@@ -18,7 +18,7 @@ streams colliding in the same files.
 - **Android runs up to four lanes of its own beside the iOS streams** (#2220),
   because its JVM tests need no device. The lanes and their order are in
   #2220. An Android lane needing a core change takes the one core slot shared
-  with every iOS stream.
+  with every iOS stream; it never runs a core change of its own alongside one.
 - **Android serialisation points**, shared by every live Android lane:
   `android/app/src/test/kotlin/com/intrada/android/BridgeRoundTripTest.kt`
   and `Fixtures.kt` beside it, `android/app/src/main/kotlin/com/intrada/android/ui/Theme.kt`,

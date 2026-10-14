@@ -20,7 +20,8 @@ being offline.
 3. **Client-owned ids.** New entities mint their ulid locally as the canonical
    id.
 4. **Reconciliation lives in the core.** Sync, LWW and merge logic is Rust; the
-   shell executes typed storage ops.
+   shell executes typed storage ops. Shell and core agree on the timestamp
+   format; no merge rules in shell SQL.
 5. **A failed local write is never a silent success.** Storage ops resolve
    `PersistenceOutput::Failed` and the core surfaces it; never fake an `Ack`
    (#816).
@@ -40,8 +41,8 @@ A bad migration that ships is unrecoverable data loss.
   `MIGRATIONS`; never edit or delete a shipped one. Users skip versions, so the
   chain runs cleanly from any past version.
 - **Additive by default.** Nullable columns and new tables are safe. Drop,
-  rename or retype through a copy-table migration, and defer destructive
-  changes until backup exists.
+  rename or retype through a copy-table migration, and prefer to defer
+  destructive changes until backup exists.
 - **Core type, schema and codec change together**: the Rust field (`Option` or
   `#[serde(default)]`), the migration with a default for existing rows, and the
   row-to-`Item` codec.

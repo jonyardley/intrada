@@ -7,7 +7,7 @@ paths:
 
 Off-white paper, near-neutral ink, one highlighter as the only bright colour,
 the musician's choice of eight through `@Environment(\.marker)` (#1677);
-Hanken Grotesk for words, DM Mono for figures. Every token lives in
+Hanken Grotesk for words, DM Mono for figures only. Every token lives in
 `ios/Intrada/DesignSystem/Theme.swift`; the shareable export,
 `design/intrada-design-system.dc.html`, is derived from it.
 
@@ -33,7 +33,8 @@ push to the open PR (#1891). The Android half follows
    `.padding(16)` or `cornerRadius: 12`. Genuine one-offs (a fixed component
    height, a 2pt baseline nudge) stay literal.
 2. Reuse before creating: read the component's page in
-   `design/components/README.md` before using or changing it (#2620). Parts
+   `design/components/README.md` before using or changing it; a change to a
+   component starts with its page (#2620). Parts
    not listed yet live in `ios/Intrada/DesignSystem/` and
    `ios/Intrada/Views/Components/`: check both before building anything.
 3. Every top-level screen is built from `ScreenScaffold`, which owns chrome,
@@ -42,7 +43,7 @@ push to the open PR (#1891). The Android half follows
    primitive the moment a second screen would copy one. Never ship a parallel
    one-off: hand-rolled copies are the main source of visual drift.
 5. Typography through `IntradaFont`'s five sizes and no others (T35): nothing in
-   capitals, no screen-local size; section titles and field labels go through
+   capitals, no screen-local size; section titles, field labels and toggle titles go through
    `SectionTitle` and `FieldLabel`. Spacing, icon sizes, opacity, shadows and
    motion come from their `Theme.swift` and `Motion.swift` tokens too.
 

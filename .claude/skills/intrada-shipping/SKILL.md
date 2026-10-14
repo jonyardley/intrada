@@ -11,11 +11,13 @@ runs before the push, because a review left until after it gets skipped
 
 - **Who reviews.** `reviewer`, on every diff that changes code or tests, Tier
   1 included (#1665), briefed with the worktree and the issue. A docs, roadmap
-  or harness-text diff takes `/code-review` inline.
+  or harness-text diff takes `/code-review` inline. No diff lifts the model
+  (#2044).
 - **A new or reshaped bridge type ships with a `LiveBridge` test**
   (`LibraryBridgeTests`, `SessionBridgeTests` or `VariationPlayBridgeTests`):
   a Rust round trip cannot see Rust and Swift disagree about the wire (#846,
-  #1953). `scripts/check-bridge-tests.sh` checks that a test names each new
+  #1953); the reviewer blocks a bridge diff without one.
+  `scripts/check-bridge-tests.sh` checks that a test names each new
   type or ViewModel field (#2101); it cannot read the assertion, so the
   reviewer does.
 - **The lead posts the review.** The reviewer reports and yields
@@ -53,8 +55,9 @@ pushed commit, so an earlier run points at a commit GitHub has never seen.
 
 ## Codecov (Tier 2+)
 
-After CI, compare the patch-coverage comment with the PR's **Coverage** line.
-An unexpected gap gets a test or a PR comment before ready.
+The PR's **Coverage** line names expected gaps before CI finishes (70% patch
+target, informational; `ios/` ignored). After CI, compare the patch-coverage
+comment with it. An unexpected gap gets a test or a PR comment before ready.
 
 ## Deferred issues
 
@@ -75,7 +78,8 @@ fixed.
 0. **Look at**: one line above the headings naming the decision or risk Jon
    should judge.
 1. **What this fixes**: what the affected person notices, in the first
-   sentence (the musician, or Jon or an agent for tooling), then one sentence
+   sentence (the musician, or Jon or an agent for tooling, saying what they
+   hit rather than that no musician is affected), then one sentence
    on why this approach over the obvious other. No paths, symbols or code; a
    `just` recipe once, when it is the outcome.
 2. **Where this could bite** (Tier 3 and sensitive surfaces only): one

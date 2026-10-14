@@ -21,11 +21,12 @@ or a view type and renames, removes, reorders or retypes nothing. It keeps its
 tier, may be built by `task` or the lead, and ships with its LiveBridge
 round-trip test. Everything else here is lead-only: the `ActiveSession`
 crash-recovery blob, any type under a wire-pinned settings key (library sort,
-profile, practice defaults), store migrations, auth, and any bridge change
-that is not additive.
+profile, practice defaults: bincode on the device, like the blob), store
+migrations, auth, and any bridge change that is not additive.
 
 1. **Lead-only work runs Opus 5.5 at `high`** (#2044, #2052), set with
-   `/effort` before the first edit.
+   `/effort` before the first edit. An additive change stays on the lead's
+   usual effort.
 2. **Pair the `reviewer` agent on the core diff before the screens**, whoever
    built it.
 3. **One PR across the stack**: core commits first, `reviewer` reads them alone,
@@ -57,4 +58,4 @@ The hazards, by file:
   (#1116). Never only re-pin.
 - **`crates/intrada-store`.** Testers' notebooks open in it; its migrations
   are recorded in GRDB's `grdb_migrations` table: append-only, per
-  `offline-first.md`.
+  `.claude/rules/offline-first.md`.

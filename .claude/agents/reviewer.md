@@ -33,7 +33,8 @@ before anything else.
 2. **Callers and contracts outside the diff**: a removed or renamed field, a
    changed event shape, a widened enum, readers the diff did not touch.
 3. **The silent-failure surfaces**, as `.claude/rules/sensitive-surfaces.md`
-   and `.claude/rules/offline-first.md` list them. One more:
+   and `.claude/rules/offline-first.md` list them; read both whatever the
+   diff's paths. One more:
    `#[serde(default)]` does nothing on bincode (#1116).
 4. **Repo invariants**: the Crux boundary, design tokens, tone of voice on
    every user-facing string, snapshot hygiene, and code with no reader, which
