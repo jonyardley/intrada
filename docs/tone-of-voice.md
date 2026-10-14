@@ -27,8 +27,8 @@ present, precise, never the thing you are listening to.
 - **Content over chrome** ([§C](design-principles.md#c-no-clutter--easy-to-reason-about)):
   every sentence of app prose takes a place the user's data could have had.
 - **One concept per screen** ([§C](design-principles.md#c-no-clutter--easy-to-reason-about)):
-  a screen that needs a paragraph to explain itself needs fixing, not a better
-  paragraph.
+  a screen that needs a paragraph to explain itself is a design problem. Fix
+  the screen, do not write a better paragraph.
 
 ### Voice by surface
 
@@ -50,8 +50,8 @@ not by hard-coding the British order (V5).
 
 ### 2. A musician's words, not a data model's
 
-Where the core and the screen disagree, the screen wins and the core keeps its
-own name.
+Say what a musician would say at the piano. Where the core and the screen
+disagree, the screen wins and the core keeps its own name.
 
 | Core / spec says | Screen says |
 |---|---|
@@ -180,8 +180,10 @@ Append here rather than deciding silently, as
 `Ended early.`; the summary leads with the facts it actually has (duration,
 items done, the scores the user entered).
 
-The app knows only what the user typed, so praise claims it listened; alone,
-`Ended early.` would read as a rebuke.
+The app's entire knowledge of a session is what the user typed into it.
+Congratulating someone who scored every item 2 is the notebook claiming to have
+listened. Dropping only `Nice work.` would leave `Ended early.` reading as a
+rebuke by contrast, which is why both go together.
 
 ### V2 — Second person is for the user's own words only
 
@@ -203,10 +205,11 @@ the user meant; the star is the glyph that shows it, not the word for it.
 
 **Decided 2026-08-14 (Jon, #1359).** Rule 2 applied to the 0-to-10 rating.
 `Score` means the printed music to a musician; `Mark` is what an exam board
-gives a performance. Per rule 2 the core keeps
-`score` in its types, events and columns, so **this is a copy change with no
-FFI, no migration and no bridge surface**. Rejected: `Grade` (ABRSM levels)
-and `Rating` (the data model's word).
+gives a performance. Per rule 2 the core keeps `score` in its types, events
+and columns, so **this is a copy change with no FFI, no migration and no bridge
+surface**. Swift view names (`ScoreRing`, `ScoreSelector`) are shell-local and
+may be renamed for consistency or left alone; neither is load-bearing.
+Rejected: `Grade` (ABRSM levels) and `Rating` (the data model's word).
 
 ### V5 — Dates read `14 Aug` by localising, not by pinning
 
@@ -214,7 +217,9 @@ and `Rating` (the data model's word).
 built with `setLocalizedDateFormatFromTemplate`: a British device gets `14 Aug`,
 an American one `Aug 14`. **Do not "fix" a template back to a literal pattern to
 make a snapshot read British.** Snapshot references show `Aug 14` because the
-host pins `en_US`.
+host pins `en_US`. Pinning the snapshot host to `en_GB` instead would make the
+references read the way Jon's device does, at the cost of re-recording every
+date-bearing reference; left open.
 
 ### V6: The Practice greeting is the one sentence in a subtitle
 
@@ -238,5 +243,4 @@ the thing. The code keeps `Click` in its identifiers.
 
 **Decided 2026-10-02 (Jon, #2116).** The welcome speaks in the app's own
 voice: rule 4 holds, no `I`, no `we`. One plain line says what the app is for,
-and the button reads
-`Set up profile`, never `Get started` (rule 3).
+and the button reads `Set up profile`, never `Get started` (rule 3).

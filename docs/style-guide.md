@@ -33,10 +33,11 @@ means?
    earns its place stays.
 4. **Match length to the reader's need.** A pull request body is a summary; a
    spec can run long when the length is doing work. What the reader needs to
-   act goes on the first screen. In pull request bodies and issues, borrow ASD-STE100's sentence caps: at
-   most 20 words in a sentence that instructs and 25 in one that describes,
-   the active voice, one idea to a sentence. `just pr-open` warns on a longer
-   sentence; its word list is not adopted (#2593).
+   act goes on the first screen. In pull request bodies and issues, borrow
+   ASD-STE100's sentence caps: at most 20 words in a sentence that instructs
+   and 25 in one that describes, the active voice, one idea to a sentence.
+   `just pr-open` warns on a longer sentence; its word list is not adopted
+   (#2593).
 5. **Use a list for three or more items.** Put each item on its own line. Keep
    one or two points as prose, because a list of two is slower to read than a
    sentence.
@@ -63,7 +64,8 @@ means?
   span. Pull request bodies, commits and issues are the reviewer's to check.
 - **Handles:** issue and pull request numbers are the only stable handles. A
   phase letter or decision number carries the document it resolves in. Issue
-  titles state the outcome, not the mechanism.
+  titles state the outcome, not the mechanism. Older docs get renamed as they
+  are touched, never swept.
 - **Dates:** absolute ("2026-09-24"), never "last week" or "recently".
 - **Voice:** peer to peer. The reader is a colleague, so skip cheerleading and
   coaching.
@@ -90,9 +92,9 @@ list one item at a time rather than forming an impression.
 
 ## Worked examples
 
-Grow this guide with examples rather than rules. When review changes a
-sentence, add the before, the after and one line on why. The one below shows
-the form; it is not a real change.
+Grow this guide with examples rather than rules, and add a rule only when an
+example needed one. When review changes a sentence, add the before, the after
+and one line on why. The one below shows the form; it is not a real change.
 
 **A pull request body**
 

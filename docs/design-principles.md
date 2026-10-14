@@ -58,7 +58,8 @@ the two moments where stopping to think *is* what they came to do.
 - **Glanceable, not just readable.** Decode by pattern, not by reading every
   label.
 - **Consistency is a simplicity tool.** The same gesture means the same thing
-  everywhere; novelty is a cost the user pays.
+  everywhere; every list to detail behaves the same. Novelty is a cost the
+  user pays.
 - **One concept per screen.** A second unrelated section usually means a
   second screen or a sheet.
 
@@ -129,10 +130,11 @@ it.
 ### T9: Session builder: direct manipulation always on, Edit is bulk remove only
 
 **DECIDED 2026-07-15.** Every line (block header, nested exercise, standalone)
-is its own List row: long-press reorders outside Edit, swipe removes, a tap
-opens its settings sheet with "Remove from this session" (T4's floor). **Edit
-is bulk remove only.** The "include today" toggle returns (#1101). A block
-moves by its header row; its exercises follow on drop.
+is its own List row: long-press reorders outside Edit (static grip glyphs
+advertise it), swipe removes, a tap opens its settings sheet with "Remove from
+this session" (T4's floor). **Edit is bulk remove only.** The "include today"
+toggle returns (#1101). A block moves by its header row; its exercises follow
+on drop.
 
 ### T10 to T13: retired
 
@@ -182,11 +184,22 @@ play closed. Anything else is a default, and a default is not data.
 **DECIDED 2026-08-28 (#1420, #1425).** Follows T16.
 
 - **A session with no measured tempo breaks the line** (never a zero), with a
-  tick below the axis; `7 of 9 sessions measured` carries the honesty.
+  tick below the axis; `7 of 9 sessions measured` carries the honesty. It is
+  also the one part of the footer that survives at accessibility text sizes;
+  the end dates go.
 - **Fewer than two measurements is not a trend** (`TempoTrendView.has_trend`,
   the core's); nothing measured draws no card (the shell's).
 - **The scale is relative, with an 8 BPM floor; the chip is neutral**, never
-  a success colour. The declared target is not drawn.
+  a success colour. The declared target is not drawn. The card is placed
+  **directly under the Key/Tempo rows** for exactly this reason, on pieces as
+  well as exercises, so the declared tempo and the measured ones are two lines
+  apart.
+- **The tempos recorded before T16 stay.** History from #1398 onwards contains
+  click-prefilled defaults, and the chart will draw them. Accepted deliberately
+  rather than filtered: nothing distinguishes them from the real measurements
+  a user made with the click sounding, so any filter would need a cut-off date
+  invented for the purpose and would delete genuine measurements alongside the
+  noise.
 
 ### T18: On a piece, the exercise you write outranks the one the app suggests
 
@@ -218,14 +231,25 @@ and target stay one or two layers down.
   colour alone (T3).
 - **The bar gets its own line under the tempo**, while sounding, as a sunken
   pill with a settings glyph (#2139) that opens the pattern sheet, so T14's
-  start/stop tap is never contested.
+  start/stop tap is never contested. On a bar too wide for the row, the pill
+  tightens its groups, then drops the metre, before it overflows.
 - **The metre is offered with an answer already in it**, from the piece; the
-  grouping (3+2+2) is the accent pattern.
+  grouping (3+2+2) is the accent pattern. Three presets cover nine cases in
+  ten; "Other" opens beats-in-the-bar, the beat value and the grouping, so 5/8,
+  7/8 and 9/4 are the same mechanism as 4/4 rather than a special case. Above
+  six beats the grid takes one row per group, which reads as the shape of the
+  bar and keeps every cell a real tap target.
 - **A travelling ring on the dots, not a flash**, driven by the audio's clock,
   never a view timer that drifts.
 - **A displayed target is not a recorded one**: `rep_count` and `rep_history`
-  stay unset until the first tap. Reaching it is not congratulated (V1).
-- **`Repetitions`, `Got it`, `Not quite`** (#1938).
+  stay unset until the first tap.
+- **Reaching the pass target is not congratulated** (V1). The dots fill,
+  `Got it` greys out, and the count drops its "to go" clause.
+- **`Repetitions`, `Got it`, `Not quite`** (#1938). `Not quite` reads
+  `Not quite right` at accessibility sizes where the pair stacks. The two
+  halves are deliberately equal in length and register: a pair weighted toward
+  the gentle option biases the tap and skews the count low, which is the same
+  concern behind the coach-era ruling that a miss must be equally hittable.
 
 ### T20: The starred route is a text action under the hero, never a second button
 
@@ -273,9 +297,13 @@ which clears the 3:1 floor for graphics. VoiceOver speaks the weak state.
 lift, and the highlighter as the one bright colour. Indigo and serif titles are
 retired.
 
-- **Interactive colour on paper is ink**; the marker is a fill with ink on it.
-  The hero and celebration toast are dark ink with the marker as accent.
+- **Interactive colour on paper is ink.** The marker is a fill, with ink on it
+  (11.3:1), on primary buttons, the hero's start button and the swipe under
+  page titles. The hero and celebration toast are dark ink with the marker as
+  accent.
 - Type colours are duller than the marker, so a badge never reads as a button.
+  A check or outline stays ink for both kinds, because a pastel border on white
+  misses the 3:1 WCAG sets for a control.
 - The player stays light for now; a dark focus screen is #1679, and choosing
   your own marker is #1677.
 
@@ -284,8 +312,13 @@ retired.
 **DECIDED 2026-09-11 (#1690).** The subtitle under the Practice title reads
 "Morning, Jon · Last practised Tuesday": last practised stays in the header
 (T15). Morning is 04:00 to 11:59, afternoon 12:00 to 17:59, evening 18:00 to
-03:59; the core owns the rule and the string (V6). The only way into the
-profile is the musician's instrument icon on their highlighter, top right.
+03:59; the core owns the rule and the string (V6).
+
+The way into the profile is the musician's own instrument icon on their
+highlighter, top right of Practice: 36pt in the same 44pt target as the
+Library's add button, a new marker-filled trailing style rather than the ink
+one, read as "Profile" by VoiceOver. With no profile yet it shows the plain
+note on butter. It is the only way in.
 
 ### T26: The reading scale sits at the platform's sizes, not below them
 
@@ -337,7 +370,8 @@ Both can stand at once, error on top, each dismissed on its own.
 only the glyph dims. The status line ("Saved for next time", "Not played") is
 `inkSecondary` at full strength; the title steps from `ink` to `inkSecondary`;
 the hollow dot is `inkFaintIcon`. The earlier score in a mastery change and
-future days in the week strip take `inkSecondary`.
+future days in the week strip take `inkSecondary`; the paler colours they used
+are deleted.
 
 ### T32: The hero carries today's plan, and Start plays it
 
@@ -364,13 +398,16 @@ floors. Butter keeps the original brown.
 session.
 
 - **One welcome, then the work**: one screen, set up a profile or skip, no
-  tour. **One short splash ahead of it, once** (#2277), skippable.
+  tour. **One short splash ahead of it, once** (#2277). It plays only on the
+  launch that opens the welcome, a tap skips it, and Reduce Motion fades the
+  welcome in instead, so it never stands between a returning musician and
+  their practice.
 - **No sample content** (T21); example content is #2115.
 - **The Start here card ticks from the musician's own data**, never stored.
   Built means a session has started.
 - **Musicians who already use the app never see the welcome**: it needs an
-  empty library and history and no profile. The Start here card stays until a
-  session is marked.
+  empty library, an empty history and no saved profile, as well as not having
+  been dismissed. The Start here card stays until a session is marked.
 
 ### T35: Five sizes, sentence case, and one place for a field's label
 
@@ -422,4 +459,6 @@ the one look both move to; where the audit found several looks for one job,
 the page picks one. `just check` fails when a page and the code disagree on a
 file, a symbol or a picture, and an Android gap passes only with a written
 reason. The Claude Design system shows the same pages, published from the
-repo and never edited there.
+repo and never edited there. Rejected: the Claude Design system as the source
+(two places that each look like the truth) and a hosted docs platform (no
+check against native code, and a cost).

@@ -59,3 +59,15 @@ abandoned.
   tighten.
 - **Cold start.** An item with no history says "no data" rather than inventing
   a curve.
+
+## 7. Sources
+
+- Cepeda et al. (2006), distributed practice meta-analysis: https://doi.org/10.1037/0033-2909.132.3.354
+- Donovan & Radosevich (1999), spacing × task complexity meta-analysis (via research-foundation §1)
+- Lee & Genovese (1988), distribution of practice, discrete vs continuous: https://pubmed.ncbi.nlm.nih.gov/2489826/
+- Simmons (2012), distributed practice and consolidation in musicians: https://doi.org/10.1177/0022429411424798
+- Settles & Meeder (2016), half-life regression at Duolingo: https://research.duolingo.com/papers/settles.acl16.pdf
+- FSRS scheduler (open-spaced-repetition, DSR model): https://github.com/open-spaced-repetition/free-spaced-repetition-scheduler
+- Piano Practice Assistant, spaced repetition for musicians: http://pianopracticeassistant.com/spaced-repetition/
+- Malcolm Sailor, Anki for jazz practice: https://malcolmsailor.com/2023/11/22/anki-for-jazz-practice.html
+- Piano World forum, piano practice with SRS (Anki): https://forum.pianoworld.com/ubbthreads.php/topics/2012638/all/piano-practice-with-spaced-repetition-systems-anki.html

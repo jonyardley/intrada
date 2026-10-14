@@ -57,9 +57,9 @@ Each layer depends on the ones before it. The roadmap ranks the work itself.
 
 Today's plan, filled to the musician's session length, will always be shown
 before it starts, and can be changed or set aside. Its first version will draw
-on priorities and items going cold; the teacher's week joins once that exists (#1926). How
-the three share the time, and whether the plan says why each item is there, is
-still open (#2185).
+on priorities and items going cold; the teacher's week joins once that exists
+(#1926). How the three share the time, and whether the plan says why each item
+is there, is still open (#2185).
 
 A new musician with nothing to plan from will see a Start here card instead
 (#2118, reviewed in #2120).
@@ -107,7 +107,8 @@ during practice.
 ### A short path to start
 
 Every decision between "I want to practise" and "I am practising" is a chance
-for the session not to happen, so starting should take one tap (#57).
+for the session not to happen, especially for musicians who find starting
+hard, so starting should take one tap (#57).
 
 ### Reflection closes the loop
 
@@ -128,8 +129,9 @@ shown as information to act on.
 
 ### No journey is linear
 
-Musicians plateau, change direction, take breaks and restart. Coming back after
-six months picks up where the musician left off.
+Musicians plateau, change direction, take breaks and restart. A break is part
+of practising, and coming back after six months picks up where the musician
+left off.
 
 ### Designed for every mind
 
@@ -165,12 +167,12 @@ session. The first version was removed (#1747); the rebuild is #1348.
 
 ## The week's intent
 
-A musician usually knows what this week is for. Intrada will hold that as **one sentence on an
-item**, dated and labelled with where it came from ("From Tuesday's lesson",
-"Mine"), shown while the item plays; earlier sentences stay as its history
-(#1926). There are no separate lessons or goals to manage: two goals features
-were built and removed (#213, #769). Marking an item a priority stays the
-simplest way to say "this matters".
+A musician usually knows what this week is for. Intrada will hold that as
+**one sentence on an item**, dated and labelled with where it came from ("From
+Tuesday's lesson", "Mine"), shown while the item plays; earlier sentences stay
+as its history (#1926). There are no separate lessons or goals to manage: two
+goals features were built and removed (#213, #769). Marking an item a priority
+stays the simplest way to say "this matters".
 
 ---
 
@@ -205,5 +207,7 @@ in the [research foundation](docs/research-foundation.md).
 ## Other practice apps
 
 Most practice apps count minutes, pile on features that feel like work, or put
-social features ahead of the practice. The comparison app by app is in the
-[research foundation](docs/research-foundation.md#12-competitive-landscape).
+social features ahead of the practice. Intrada combines quick capture,
+tracking by key, an honest record and design for every kind of mind, in one app
+for any instrument that works entirely on the phone. The comparison app by app
+is in the [research foundation](docs/research-foundation.md#12-competitive-landscape).

@@ -24,7 +24,7 @@ The spacing effect is one of the best-supported findings in learning science: ma
 
 ## 2. Interleaved Practice
 
-With advanced clarinettists (n=10), experts rated interleaved pieces higher where ratings differed, yet most players preferred blocked practice (Carter & Grahn, 2016): it feels more productive despite worse retention.
+Carter & Grahn (2016) compared blocked and interleaved practice schedules with advanced clarinettists (n=10) in a realistic practice setting. Whenever there was a ratings difference between conditions, pieces practised in the interleaved schedule were rated higher by expert assessors, though results varied across raters. Participant questionnaires showed that interleaved practice helped goal setting, focus and spotting mistakes. While 6 of 10 participants found the interleaved schedule more useful, most still preferred the blocked schedule, which fits a well-documented pattern: blocked practice feels more productive despite producing worse retention.
 
 This "contextual interference effect" has broad support in motor skill research (Shea & Morgan, 1979; Magill & Hall, 1990), but music results are mixed. Stambaugh (2009) found interleaving helped beginner clarinettists; Stambaugh & Demorest (2010) found no effect on intermediate students' accuracy. Mathias & Goldman (2025) suggest a gradual shift from blocked to interleaved within a session may work best.
 
@@ -34,7 +34,9 @@ This "contextual interference effect" has broad support in motor skill research 
 
 ## 3. Deliberate Practice
 
-Ericsson, Krampe & Tesch-Römer (1993) proposed that expert performance comes from prolonged, focused, effortful practice aimed at specific weaknesses. The effect has since shrunk: deliberate practice explains about 21% of variance in music performance (Macnamara, Hambrick & Oswald, 2014), or 26% in a replication that also found self-designed practice felt more relevant than teacher-designed (Macnamara & Maitra, 2019).
+Ericsson, Krampe & Tesch-Römer (1993) proposed that expert performance comes from prolonged, focused, effortful practice aimed at specific weaknesses.
+
+The evidence has been refined considerably since 1993. A meta-analysis by Macnamara, Hambrick & Oswald (2014) found that deliberate practice explained only about 21% of variance in music performance: substantial and practically meaningful, but far from the "sufficient account" Ericsson originally claimed. A direct replication by Macnamara & Maitra (2019), using improved double-blind methods, found the effect was "substantial, but considerably smaller than the original study's effect size," explaining about 26% of performance variance. They also found that practice designed by the performers themselves was perceived as more relevant to improvement than teacher-designed practice.
 
 What remains well supported is the *qualitative* side: specific goals, working at the edge of one's ability, and a cycle of practising, evaluating and adjusting (Ambrose et al., 2010). It also needs recovery; noticing when practice volume runs well above usual is not built.
 
@@ -46,7 +48,7 @@ What remains well supported is the *qualitative* side: specific goals, working a
 
 Ryan & Deci's (2000) self-determination theory names three needs that sustain motivation: autonomy (feeling in control), competence (feeling effective) and relatedness (feeling connected). Evans & Bonneville-Roussy (2016) found music students' autonomous motivation predicted how often they practised and how many sessions they rated highly productive.
 
-Perceived competence is the strongest predictor of flow in conservatoire practice (Valenzuela, Codina & Pestana, 2018), and visible progress feeds it.
+Valenzuela, Codina & Pestana (2018) studied the theory in conservatoire instrument practice (N=162) and found that perceived competence was the strongest predictor of flow during practice. Autonomous motivation had a direct positive effect on flow, while controlled motivation had the opposite effect. Visible progress and evidence of improvement feed the sense of competence that sustains motivation and flow.
 
 Bonneville-Roussy & Evans (2024), with 213 university music students, found a teacher's support for autonomy predicted autonomous motivation, which in turn predicted practice time and quality. Intrada should suggest and support, and leave the decisions to the musician.
 
@@ -79,10 +81,10 @@ Actively recalling material retains better than passive review. Wellmann & Skill
 Research on ADHD and music shows both specific challenges and real strengths, and both shape intrada's design.
 
 - **Starting and planning.** ADHD makes starting and planning hard (Barkley, 2015), and every decision before playing is a chance to stall, so the path from opening the app to playing should involve as few decisions as possible.
-- **Time blindness.** ADHD disrupts the sense of time passing (Ptacek et al., 2019); external time cues help a musician pace a session.
+- **Time blindness.** ADHD disrupts the sense of time passing (Ptacek et al., 2019). Musicians with ADHD may badly misjudge how long they've been practising, lose track of time while hyperfocused on one item (neglecting others), or struggle to pace a session. This is a difference in perception rather than poor time management, and external time cues can help.
 - **Hyperfocus.** A musician may spend 45 minutes on one satisfying piece while the scale work is neglected. A planned session with the time on each item visible supplies that structure from outside.
 - **Frustration.** Tolerance is often lower, so encouragement and visible progress matter.
-- **Music-specific findings.** ADHD brings beat-tracking and short-interval timing difficulties (Puyjarinet et al., 2017; Serrallach et al., 2022), but not in improvisation and expression (Grob et al., 2022), and ADHD behaviours are often *absent* during music-making (Wilde & Welch, 2022). Musicians with ADHD show better sustained attention than non-musician peers (Raz, 2025). So what suffers is everything around the practice: choosing, starting, moving between items and stopping.
+- **Music-specific findings.** ADHD brings beat-tracking and short-interval timing difficulties (Puyjarinet et al., 2017; Serrallach et al., 2022), but not in improvisation and expression (Grob et al., 2022), and ADHD behaviours are often *absent* during music-making (Wilde & Welch, 2022). Raz (2025) found that musicians with ADHD showed stronger cognitive abilities than non-musician ADHD peers, including better sustained attention and impulse control. So the practice itself may be less affected than everything around it: deciding what to practise, starting, moving between items and stopping.
 
 **Beyond ADHD.** Sensory processing differences, dyslexia and other cognitive variations all affect how musicians use a practice tool. Less visual clutter, predictable navigation, adjustable feedback and readable type help every musician.
 
@@ -92,7 +94,9 @@ Research on ADHD and music shows both specific challenges and real strengths, an
 
 ### What teachers actually do
 
-Duke (2005) names four teacher functions: **diagnose**, **decompose**, **sequence** and **regulate** (monitor progress and adjust the plan). Developing musicians typically lack them (Hallam, 2001). The most effective tools behave like good teachers: they give structure and leave the musician in charge (Bonneville-Roussy & Evans, 2024).
+Duke (2005) names four teacher functions: **diagnose**, **decompose**, **sequence** and **regulate** (monitor progress and adjust the plan). Developing musicians typically lack them (Hallam, 2001).
+
+Bonneville-Roussy & Evans (2024) found that a teacher's support for autonomy predicted autonomous motivation, which in turn predicted both practice time and quality. The most effective tools behave like good teachers: they give structure, and leave the musician in charge.
 
 ### How self-taught practice goes wrong
 
@@ -118,7 +122,9 @@ Motor performance improves 20 to 26% after a night's sleep with no extra practic
 | **Sequence** | The Up next card suggests from the musician's priorities and what is going cold; today's plan (#57), then spacing and priorities (#1978), are planned, always changeable |
 | **Regulate** | Scores, tempo and the session record give the outside view of progress that self-taught musicians lack |
 
-> **Open question:** how far software can take on a teacher's regulating role is untested; intrada's own record could help answer it. The failure modes above also come from school and conservatoire students; whether adult self-directed learners, a large part of intrada's audience, show them is assumed.
+> **Open question:** how far software can take on a teacher's regulating role is untested; intrada's own record could help answer it.
+
+> **Assumption:** The failure modes above come from research on music students in education (typically school-age or conservatoire students). Whether adult self-directed learners, a large part of intrada's audience, show the same patterns is assumed, not validated. Adults may bring better metacognitive skills from other areas, or fail in different ways entirely.
 
 ---
 

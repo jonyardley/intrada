@@ -122,12 +122,18 @@ Four rungs, and only the first is stored. A tap's tempo cannot be recovered late
 | Patterns | worked out when read | misses on A1 cluster above 88 |
 | Help | offered, can be overruled | "Start A1 at 80 today?" Yes, or ignore it |
 
+| Help idea | Needs | Records from |
+| --- | --- | --- |
+| Slow down to speed up (#1793) | tempo per tap, settled tempo changes, target changes | v0.16 |
+| A variation for the problem (#1794) | what got in the way on the entry, variations, marks and taps | v0.17; from notes v0.18 |
+
 Rules for every help idea, beside the one rule above:
 
 - Help is offered and can be overruled; ignoring it costs nothing.
 - A silent click is never evidence of a tempo.
 - Correlations say "alongside", never "because".
 - Encourage by showing what an input unlocks, never nag.
+- Rates per variation read each variation on its own, never a combination.
 
 ## 5. Decided on 2026-10-03
 
