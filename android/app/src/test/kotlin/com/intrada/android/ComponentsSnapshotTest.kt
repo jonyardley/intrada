@@ -23,12 +23,16 @@ import com.intrada.android.core.Store
 import com.intrada.android.ui.BannerAction
 import com.intrada.android.ui.BannerTone
 import com.intrada.android.ui.GlobalBanner
+import com.intrada.android.ui.HeaderAction
 import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaFont
 import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
 import com.intrada.android.ui.ScoreRing
+import com.intrada.android.ui.ScreenScaffold
+import com.intrada.android.ui.SectionHeader
 import com.intrada.android.ui.SegmentedPills
+import com.intrada.android.ui.TextAction
 import com.intrada.android.ui.components.FieldCard
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
@@ -199,6 +203,45 @@ class ComponentsSnapshotTest {
     }
 
     @Test
+    fun screenScaffold() {
+        captureRoboImage("src/test/snapshots/screen-scaffold.png") {
+            ScreenScaffold(
+                "Clair de Lune",
+                Modifier.width(360.dp).height(240.dp),
+                actions = { TextAction("Edit", "piece.edit", {}) },
+            ) {
+                BasicText(
+                    "Claude Debussy",
+                    Modifier.fillMaxWidth().padding(IntradaSpacing.card),
+                    style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun sectionHeaders() {
+        captureRoboImage("src/test/snapshots/section-header.png") {
+            Paper {
+                Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section)) {
+                    SectionHeader("Recently practised")
+                    SectionHeader("Keys", caption = "2 of 4 solid")
+                    SectionHeader("Last five weeks", trailing = "best week · 95m")
+                    SectionHeader(
+                        "Sections",
+                        action =
+                            HeaderAction(
+                                "Reorder",
+                                "Reorder or remove sections",
+                                "sections.header",
+                            ) {},
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
     fun formErrorBanner() {
         captureRoboImage("src/test/snapshots/form-error-banner.png") { FormErrorBanners() }
     }
@@ -230,7 +273,7 @@ class ComponentsSnapshotTest {
     private fun FormErrorBanners() {
         Paper {
             Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {
-                FormErrorBanner("Title is required")
+                FormErrorBanner("Title must be between 1 and 500 characters")
                 FormErrorBanner("Composer must be between 1 and 200 characters")
             }
         }

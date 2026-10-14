@@ -28,11 +28,11 @@ not exist. Rows without a link are still to be written.
 | [ScoreRing](ScoreRing/README.md) | A score from 1 to 10, or none yet |
 | [BottomSheet](BottomSheet/README.md) | A short task over the current screen |
 | [GlobalBanner](GlobalBanner/README.md) | An error or notice for the whole app |
-| FormErrorBanner | Why a form could not be saved |
-| PlaceholderContent | An empty screen or list, with what to do next |
-| ScreenScaffold | Every top-level screen's chrome, safe areas and background |
-| SectionHeader | A section's title with an optional action |
-| HairlineDivider | The one-pixel line between rows |
+| [FormErrorBanner](FormErrorBanner/README.md) | Why a form could not be saved |
+| [PlaceholderContent](PlaceholderContent/README.md) | An empty screen or list, with what to do next |
+| [ScreenScaffold](ScreenScaffold/README.md) | Every top-level screen's chrome, safe areas and background |
+| [SectionHeader](SectionHeader/README.md) | A section's title with an optional action |
+| [HairlineDivider](HairlineDivider/README.md) | The 1 point line between rows |
 | SegmentedProgress | Progress through a session's items |
 | SectionTitle | The secondary-ink label above a section |
 | FieldCard | A form field with its label inside the card |
