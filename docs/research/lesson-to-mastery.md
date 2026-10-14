@@ -1,6 +1,6 @@
 # Research note: lesson-to-mastery (epic #1087)
 
-*Stage 4.1 of [`rethink-plan.md`](../rethink-plan.md). Evidence and shape only:
+*Stage 4.1 of [`rethink-plan.md`](../decisions.md). Evidence and shape only:
 no comparison against the other candidates and no recommendation. Written
 2026-08-14.*
 
@@ -51,7 +51,7 @@ an honest answer to "what do I practise today?" (R), and progress exercises
 along their ladders rather than polishing one rating (C).
 
 Against the (superseded but still useful) journey in
-[`journeys.md`](../journeys.md): B is journey step 3 (track each exercise
+[`journeys.md`](../decisions.md): B is journey step 3 (track each exercise
 separately, currently score-only), R is step 5 (recommended sessions,
 currently missing entirely, "signals exist in core, nothing composes them"),
 A deepens steps 1 and 2, and C completes step 3's keys dimension.
@@ -222,9 +222,9 @@ throughout, with variants consciously scoped local-only until sync.
   #1092, #1112, #1118, #1123.
 - [`docs/research-foundation.md`](../research-foundation.md) §3, §4, §8, §9,
   §10 (Duke, Gagné, Katz & Assor, Kirschner et al., Macnamara et al.).
-- [`docs/rebuild-review.md`](../rebuild-review.md) (variant ladder in the
+- [`docs/rebuild-review.md`](../decisions.md) (variant ladder in the
   keep column); [`docs/roadmap.md`](../roadmap.md) Q5/Q6 (goals and lessons
-  history); [`docs/journeys.md`](../journeys.md) steps 2, 3, 5.
+  history); [`docs/journeys.md`](../decisions.md) steps 2, 3, 5.
 - McPherson, G. E., & Renwick, J. M. (2001). A longitudinal study of
   self-regulation in children's musical practice. *Music Education Research*,
   3(2). [PDF](https://www.researchgate.net/publication/233093312_A_Longitudinal_Study_of_Self-regulation_in_Children's_Musical_Practice)

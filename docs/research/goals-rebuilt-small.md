@@ -1,6 +1,6 @@
 # Research note: goals, rebuilt small
 
-*Stage 4.1 of [`../rethink-plan.md`](../rethink-plan.md). One of five candidate
+*Stage 4.1 of [`../rethink-plan.md`](../decisions.md). One of five candidate
 next-directions; no comparison or recommendation here (that is Stage 4.2).
 Evidence and shape only. Written 2026-08-14.*
 

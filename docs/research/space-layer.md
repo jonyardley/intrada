@@ -1,6 +1,6 @@
 # Research note: the Space layer (spaced repetition and mastery decay)
 
-*Stage 4.1 of [`rethink-plan.md`](../rethink-plan.md). Evidence and shape only;
+*Stage 4.1 of [`rethink-plan.md`](../decisions.md). Evidence and shape only;
 no comparison against the other candidates and no recommendation. 2026-08-14.*
 
 ## 1. What it is
@@ -168,7 +168,7 @@ use, not on a schedule.
 
 - **The coach-pivot failure mode.** #1344 reversed a product where the app
   decided what you practised and gated progress on evidence
-  ([`rebuild-review.md`](../rebuild-review.md) banner, roadmap banner). A Space
+  ([`rebuild-review.md`](../decisions.md) banner, roadmap banner). A Space
   layer is the app forming an opinion about what you should play next, which
   is the same road. The line that held before the pivot and should hold here:
   the app **surfaces evidence and suggests; it never prescribes, gates, or
@@ -210,7 +210,7 @@ use, not on a schedule.
 In-repo: [`VISION.md`](../../VISION.md) (Layer 3, The Scheduling
 Intelligence), [`docs/roadmap.md`](../roadmap.md) (gap statement, Q3),
 [`docs/research-foundation.md`](../research-foundation.md) (§1, §2, §4, §6 and
-its reference list), [`docs/rebuild-review.md`](../rebuild-review.md), issue
+its reference list), [`docs/rebuild-review.md`](../decisions.md), issue
 #1082 / epic #1087, `crates/intrada-core/src/analytics.rs`,
 `crates/intrada-core/src/app.rs`, `crates/intrada-core/src/domain/session.rs`.
 

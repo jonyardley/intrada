@@ -115,7 +115,7 @@ App Store Connect API key handles auth and upload. The workflow and its
    base64 -i AuthKey_<KEYID>.p8 | pbcopy        # → ASC_KEY_CONTENT_BASE64
    printf 'USER:GITHUB_PAT' | base64 | pbcopy   # → MATCH_GIT_BASIC_AUTHORIZATION (repo read access)
    ```
-8. **Run it**: Actions → *Release — TestFlight* → *Run workflow* (or push a
+8. **Run it**: in Actions, open the TestFlight release workflow and choose *Run workflow* (or push a
    `v*` tag). After processing, add yourself to an Internal Testing group in the
    app's TestFlight tab and install via the TestFlight app.
 
@@ -146,7 +146,7 @@ Everything mise does not cover is listed in the README's
 ### Optional: sccache for faster fresh-worktree builds
 
 `mise install` provisions the `sccache` binary, but it stays inactive until
-you opt in — it isn't wired into `mise.toml`'s committed config, so nobody
+you opt in: it isn't wired into `mise.toml`'s committed config, so nobody
 gets it by surprise. Measured ~30% faster `just check` in a fresh worktree
 with `target/` cold and the cache warm (#1206); no measurable overhead when
 the cache is empty. Opt in per-machine:
@@ -158,10 +158,10 @@ RUSTC_WRAPPER = "sccache"
 EOF
 ```
 
-`mise.local.toml` is gitignored and merges over `mise.toml` automatically —
+`mise.local.toml` is gitignored and merges over `mise.toml` automatically;
 run `mise install` again if you added it after your first install. Default
 cache size is 10G at `~/Library/Caches/Mozilla.sccache`; check usage with
-`sccache --show-stats`. CI stays on Swatinem/rust-cache, not sccache — the
+`sccache --show-stats`. CI stays on Swatinem/rust-cache, not sccache, as the
 target-dir cache it already runs beats a cold sccache cache without paying
 for remote storage.
 
