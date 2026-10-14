@@ -325,6 +325,69 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     }
     assertSnapshot(of: host(strip), as: config)
   }
+
+  func testScoreSelector() {
+    let selectors = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        ForEach([0, 4, 10], id: \.self) { score in
+          ScoreSelector(
+            score: score, range: 1...10, accessibilityLabel: "Mark for Clair de Lune"
+          ) { _ in }
+        }
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(selectors), as: config)
+  }
+
+  func testLibraryItemCard() {
+    var priority = LibraryItemView.previewPiece
+    priority.priority = true
+    priority.tags = ["recital", "memorised"]
+    var majorScales = LibraryItemView.previewExercise
+    majorScales.id = "scales-twelve"
+    majorScales.title = "Major scales"
+    majorScales.subtitle = ""
+    majorScales.keys = KeyHelper.circle(.major).map { key in
+      ItemKeyView(
+        key: key, label: KeyHelper.display(key) ?? "", latestScore: nil, caption: "Not yet played")
+    }
+    var arpeggios = LibraryItemView.previewScales
+    arpeggios.id = "arpeggios"
+    arpeggios.title = "Arpeggios"
+    let rows = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        LibraryItemCard(item: priority, showsMastery: true, showsMissingDetailsPrompt: true)
+        LibraryItemCard(item: majorScales, showsMastery: true, showsMissingDetailsPrompt: true)
+        LibraryItemCard(
+          item: .previewExerciseWithTwelveVariations, showsMastery: true,
+          showsMissingDetailsPrompt: true)
+        LibraryItemCard(item: .previewScales, showsMastery: true, showsMissingDetailsPrompt: true)
+        SelectableLibraryRow(
+          item: .previewExercise, added: true, addHint: "Adds it to the session",
+          removeHint: "Removes it from the session", action: {})
+        SelectableLibraryRow(
+          item: arpeggios, added: false, addHint: "Adds it to the session",
+          removeHint: "Removes it from the session", action: {})
+      }
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(rows), as: config)
+  }
+
+  func testMasteryDeltaToast() {
+    let toasts = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        MasteryDeltaToast(title: "Clair de Lune moved up", subtitle: nil, was: 3, now: 4)
+        MasteryDeltaToast(title: "Mastery up", subtitle: "Clair de Lune", was: 5, now: 7)
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(toasts), as: config)
+  }
 }
 
 /// The dark hero surface a tinted section title sits on.

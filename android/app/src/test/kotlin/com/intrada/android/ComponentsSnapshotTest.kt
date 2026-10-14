@@ -28,7 +28,9 @@ import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaFont
 import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
+import com.intrada.android.ui.MasteryDeltaToast
 import com.intrada.android.ui.ScoreRing
+import com.intrada.android.ui.ScoreSelector
 import com.intrada.android.ui.ScreenScaffold
 import com.intrada.android.ui.SectionHeader
 import com.intrada.android.ui.SegmentedPills
@@ -249,6 +251,26 @@ class ComponentsSnapshotTest {
     @Test
     fun fieldCards() {
         captureRoboImage("src/test/snapshots/field-card.png") { FieldCards() }
+    }
+
+    @Test
+    fun scoreSelectors() {
+        captureRoboImage("src/test/snapshots/score-selector.png") {
+            Paper {
+                Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section)) {
+                    listOf(0, 4, 10).forEach { score ->
+                        ScoreSelector(score, 1..10, "Mark for Clair de Lune", "mark", {})
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun masteryDeltaToasts() {
+        captureRoboImage("src/test/snapshots/mastery-delta-toast.png") {
+            Paper { MasteryDeltaToast("Mastery up", "Clair de Lune", was = 5, now = 7) }
+        }
     }
 
     @Composable
