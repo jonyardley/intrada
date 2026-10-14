@@ -325,6 +325,49 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     }
     assertSnapshot(of: host(strip), as: config)
   }
+
+  func testScoreSelector() {
+    let selectors = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        ForEach([0, 4, 10], id: \.self) { score in
+          ScoreSelector(
+            score: score, range: 1...10, accessibilityLabel: "Mark for Clair de Lune"
+          ) { _ in }
+        }
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(selectors), as: config)
+  }
+
+  func testLibraryItemCard() {
+    let rows = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        LibraryItemCard(item: .previewPiece, showsMastery: true, showsMissingDetailsPrompt: true)
+        LibraryItemCard(item: .previewDetail, showsMastery: true, showsMissingDetailsPrompt: true)
+        LibraryItemCard(item: .previewScales, showsMastery: true, showsMissingDetailsPrompt: true)
+        SelectableLibraryRow(
+          item: .previewExercise, added: true, addHint: "Adds it to the session",
+          removeHint: "Removes it from the session", action: {})
+      }
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(rows), as: config)
+  }
+
+  func testMasteryDeltaToast() {
+    let toasts = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        MasteryDeltaToast(title: "Clair de Lune moved up", subtitle: nil, was: 3, now: 4)
+        MasteryDeltaToast(title: "Mastery up", subtitle: "Clair de Lune", was: 5, now: 7)
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(toasts), as: config)
+  }
 }
 
 /// The dark hero surface a tinted section title sits on.

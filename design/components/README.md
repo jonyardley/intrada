@@ -37,3 +37,7 @@ not exist. Rows without a link are still to be written.
 | [SectionTitle](SectionTitle/README.md) | The secondary-ink label above a section |
 | [FieldCard](FieldCard/README.md) | A form field with its label inside the card |
 | [FieldLabel](FieldLabel/README.md) | A field's label, in secondary ink |
+| [TabBar](TabBar/README.md) | The four tabs along the bottom of the app |
+| [ScoreSelector](ScoreSelector/README.md) | Giving an item, a play or a session its mark |
+| [LibraryItemCard](LibraryItemCard/README.md) | A piece or exercise in a list, with its mark |
+| [MasteryDeltaToast](MasteryDeltaToast/README.md) | The celebration banner for the biggest rise in a mark |
