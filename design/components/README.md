@@ -33,7 +33,7 @@ not exist. Rows without a link are still to be written.
 | [ScreenScaffold](ScreenScaffold/README.md) | Every top-level screen's chrome, safe areas and background |
 | [SectionHeader](SectionHeader/README.md) | A section's title with an optional action |
 | [HairlineDivider](HairlineDivider/README.md) | The 1 point line between rows |
-| SegmentedProgress | Progress through a session's items |
-| SectionTitle | The secondary-ink label above a section |
-| FieldCard | A form field with its label inside the card |
-| FieldLabel | A field's label, in secondary ink |
+| [SegmentedProgress](SegmentedProgress/README.md) | Progress through a session's items |
+| [SectionTitle](SectionTitle/README.md) | The secondary-ink label above a section |
+| [FieldCard](FieldCard/README.md) | A form field with its label inside the card |
+| [FieldLabel](FieldLabel/README.md) | A field's label, in secondary ink |
