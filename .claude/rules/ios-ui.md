@@ -5,86 +5,66 @@ paths:
 
 # Paper & Score: the design system rules
 
-Off-white paper, near-neutral ink (T27), one highlighter as the only bright
-colour, butter by default and the musician's own choice of eight through
-`@Environment(\.marker)` (#1677); Hanken Grotesk for every word, DM Mono
-for figures only (T24 and T35 in `docs/design-principles.md`). Every token lives in
-`ios/Intrada/DesignSystem/Theme.swift`; the shareable export is
-`design/intrada-design-system.dc.html`, derived from it (behind the app until
-#1678).
+Off-white paper, near-neutral ink, one highlighter as the only bright colour,
+the musician's choice of eight through `@Environment(\.marker)` (#1677);
+Hanken Grotesk for words, DM Mono for figures. Every token lives in
+`ios/Intrada/DesignSystem/Theme.swift`; the shareable export,
+`design/intrada-design-system.dc.html`, is derived from it.
 
-How the app should feel, and the dated T-numbered decisions log, is
-`docs/design-principles.md`: read it before a new surface, layout, flow or
+Read `docs/design-principles.md` before a new surface, layout, flow or
 interaction, and append a decision there rather than settling a tension
-silently. Every user-facing string is written against `docs/tone-of-voice.md`
-and its V-numbered log; its sweep checklist is the review pass for any PR that
-changes a string. Where the two disagree, the design principle wins and the
-tone doc gets a new example.
+silently. Write every user-facing string against `docs/tone-of-voice.md`; its
+sweep checklist is the review pass for a PR that changes a string. Where the
+two disagree, the design principle wins and the tone doc gets a new example.
 
 ## Eyes before ready
 
 A change to what a musician sees opens as a draft with the `just ios-run`
 screenshot under **What it looks like** and the line "Waiting for Jon's word on
-the screenshot". It goes ready only after Jon says yes to that picture, and
-the ready step replaces that line with "Jon approved the screenshot on
-YYYY-MM-DD"; a no is a push to the open PR. A PR that
-goes ready without that exchange is the failure this rule exists to stop
-(#1891; the terracotta accent, the metronome drag icon and the header toolbar
-all shipped, and were each reworked, the same way).
-Every feature ships on both apps, so the Android half follows `.claude/rules/android-quality.md`.
+the screenshot". It goes ready only after Jon says yes, and the ready step
+replaces that line with "Jon approved the screenshot on YYYY-MM-DD"; a no is a
+push to the open PR (#1891). The Android half follows
+`.claude/rules/android-quality.md`.
 
 ## Tokens, then modifiers, then components, then screens
 
-1. Every colour, font, spacing and radius value traces to `IntradaColor`,
-   `IntradaFont`, `IntradaSpacing` or `IntradaRadius`. Never a raw hex,
+1. Every colour, font, spacing and radius traces to `IntradaColor`,
+   `IntradaFont`, `IntradaSpacing` or `IntradaRadius`: never a raw hex,
    `.padding(16)` or `cornerRadius: 12`. Genuine one-offs (a fixed component
    height, a 2pt baseline nudge) stay literal.
-2. Reuse before creating: the components to reach for are listed in
-   `design/components/README.md`, one page each on how they look, behave and
-   are used on both apps (#2620). Read the page before using or changing one;
-   a change to a component starts with its page. Smaller parts not listed
-   there yet (`TickRow`, `DeleteButton`, `AddRowButton`) live in
-   `ios/Intrada/DesignSystem/` and `ios/Intrada/Views/Components/`: check
-   both before building anything.
+2. Reuse before creating: read the component's page in
+   `design/components/README.md` before using or changing it (#2620). Parts
+   not listed yet live in `ios/Intrada/DesignSystem/` and
+   `ios/Intrada/Views/Components/`: check both before building anything.
 3. Every top-level screen is built from `ScreenScaffold`, which owns chrome,
    safe areas and background.
-4. If a primitive almost fits, add a parameter to it (as `SegmentedPills` and
-   `LibraryItemCard` do). Never ship a parallel one-off: hand-rolled copies of
-   an existing primitive are the number one source of visual drift.
-5. Typography through `IntradaFont`, five sizes and no others (T35):
-   `.pageTitle`, `.title`, `.cardTitle`, `.body`, `.label` in secondary ink
-   for every section title, field label and toggle title (through
-   `SectionTitle` and `FieldLabel`, the field's inside its card),
-   `.bodyMedium` for emphasis, `.secondary` for words, `.figure` for a number
-   alone, `.button`, `.segment`, `.small`, `.smallMedium` and `.badge`, and the
-   display numerals `.timer` and `.scoreNumeral`. Nothing in capitals, and no
-   screen passes a size of its own;
-   spacing through `IntradaSpacing` (`controlGap`, `cardCompact`, `card`,
-   `section`), SF Symbols through `IntradaIconSize`, alpha through
-   `IntradaOpacity`, shadows through `IntradaShadow`, motion through
-   `Motion.swift`.
+4. If a primitive almost fits, add a parameter to it. Extract a shared
+   primitive the moment a second screen would copy one. Never ship a parallel
+   one-off: hand-rolled copies are the main source of visual drift.
+5. Typography through `IntradaFont`'s five sizes and no others (T35): nothing in
+   capitals, no screen-local size; section titles and field labels go through
+   `SectionTitle` and `FieldLabel`. Spacing, icon sizes, opacity, shadows and
+   motion come from their `Theme.swift` and `Motion.swift` tokens too.
 
-Deviation is allowed only in an explicit redesign, which is a flagged
-conversation (Claude Design first, then the plan comment) and produces updated tokens
-and primitives in `Theme.swift`, not a clone in one view.
+Deviation is allowed only in an explicit redesign, a flagged conversation
+(Claude Design first, then the plan comment) that updates the tokens and
+primitives in `Theme.swift`, not a clone in one view.
 
 ## Animated reveals need an opaque backing
 
-Anything that slides or fades over other content (a search bar, an expanding
-row, a banner) paints an opaque token (`paperTop` or `cardFill`, never
-`clear`), or the transition ghosts. The moving view hides what it travels over;
-chrome it emerges from behind must also be opaque and sit on top (`.zIndex(1)`).
+Anything that slides or fades over other content paints an opaque token
+(`paperTop` or `cardFill`, never `clear`), or the transition ghosts. Chrome it
+emerges from behind is also opaque and sits on top (`.zIndex(1)`).
 
 ## Native feel
 
-- Haptics through `Haptic` in `Store+Feedback.swift`: `selection` for tabs,
-  `impact` for taps, `success` for saves only after the core confirms (through
-  `store.send(_:onSuccess:)`), `warning` for destructive confirms.
-  `scripts/check-haptics.sh` fails one built anywhere else (#2013).
+- Haptics only through `Haptic` in `Store+Feedback.swift`: `selection` for
+  tabs, `impact` for taps, `warning` for destructive confirms, `success` only
+  after the core confirms, through `store.send(_:onSuccess:)`.
+  `scripts/check-haptics.sh` enforces it (#2013).
 - iPad list-to-detail screens use `ListDetailSplit`, built with the view.
-- Respect safe areas; `ScreenScaffold` handles them.
 
 Design happens in Claude Design (`docs/design-workflow.md`). Mock against the
-existing kit first; if something new is needed, update `Theme.swift` and the
-design reference (with its `support.js`) together, and re-export the shareable
-`design/intrada-design-system.html`. Pencil (`design/intrada.pen`) is retired.
+existing kit first; for something new, update `Theme.swift` and the design
+reference (with its `support.js`) together, and re-export
+`design/intrada-design-system.html`.

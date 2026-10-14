@@ -8,17 +8,15 @@ paths:
 
 # Offline-first invariants
 
-On-device SQLite is the source of truth, the app works with no network and no
-account, and sync is free, through the user's own iCloud, never a paid tier
-(#2353, `specs/icloud-sync.md`). Without iCloud the device is the only copy of
-the user's data. Break one of these and the app silently stops
+On-device SQLite is the source of truth: the app works with no network and no
+account, and sync is free through the user's own iCloud (#2353). Without iCloud
+the device is the only copy. Break one of these and the app silently stops
 being offline.
 
-1. **No network on the local-first path.** New reads and writes go through the
-   persistence `Effect`, and there is no network path.
-2. **Every persisted entity is sync-ready from day one**: `updated_at` and a
-   soft-delete `deleted_at` tombstone, no hard deletes. Test-enforced for the
-   schema.
+1. **No network on the local-first path.** Reads and writes go through the
+   persistence `Effect`.
+2. **Every persisted entity is sync-ready**: `updated_at` and a soft-delete
+   `deleted_at` tombstone, no hard deletes. Test-enforced for the schema.
 3. **Client-owned ids.** New entities mint their ulid locally as the canonical
    id.
 4. **Reconciliation lives in the core.** Sync, LWW and merge logic is Rust; the
@@ -26,37 +24,30 @@ being offline.
 5. **A failed local write is never a silent success.** Storage ops resolve
    `PersistenceOutput::Failed` and the core surfaces it; never fake an `Ack`
    (#816).
-6. **A single write path.** There is one local-first path, not two branches to
-   keep in sync.
+6. **A single write path**, not two branches to keep in sync.
 7. **No account gate on core functionality.** Only sync may require auth.
-8. **Relational data in the shared store (`crates/intrada-store`); only small singletons in UserDefaults** (the
-   library sort, the profile, the practice defaults, the first-run flag, the crash-recovery
-   blob),
-   written through an `AppEffect`. Each blob must take a versioned key and a
-   Rust wire pin, so a shape change fails a test instead of silently failing to
-   decode (#1952).
+8. **Relational data in the shared store (`crates/intrada-store`); only small
+   singletons in UserDefaults** (library sort, profile, practice defaults,
+   first-run flag, crash-recovery blob), written through an `AppEffect`. Each
+   blob takes a versioned key and a Rust wire pin, so a shape change fails a
+   test instead of silently failing to decode (#1952).
 
 ## Local data migrations (`crates/intrada-store/src/migrations.rs`)
 
-A destructive or buggy migration that ships is unrecoverable data loss.
+A bad migration that ships is unrecoverable data loss.
 
-- **Append-only, forward-only, ordered.** Append a new `("vN_…", …)` to `MIGRATIONS`;
-  never edit or delete a shipped one. Users skip versions, so the chain must
-  run cleanly from any past version.
+- **Append-only, forward-only, ordered.** Append a new `("vN_…", …)` to
+  `MIGRATIONS`; never edit or delete a shipped one. Users skip versions, so the
+  chain runs cleanly from any past version.
 - **Additive by default.** Nullable columns and new tables are safe. Drop,
-  rename or retype through a copy-table migration, and prefer to defer
-  destructive changes until backup exists.
+  rename or retype through a copy-table migration, and defer destructive
+  changes until backup exists.
 - **Core type, schema and codec change together**: the Rust field (`Option` or
   `#[serde(default)]`), the migration with a default for existing rows, and the
-  row-to-`Item` codec, in one change.
-- **Test the upgrade path.** Every migration ships with a test that a database
-  populated at the previous version migrates with data intact.
+  row-to-`Item` codec.
+- **Test the upgrade path.** Every migration ships a test that a database at
+  the previous version migrates with data intact.
 
 ## PR checklist for persistence, sync or a new entity
 
-- [ ] Reads and writes go through the persistence `Effect` (1)
-- [ ] New table or columns carry `updated_at` and `deleted_at`; no hard delete (2)
-- [ ] Client-minted ulid as the canonical id (3)
-- [ ] Merge logic in the core (4)
-- [ ] A failed local write resolves `Failed`, never `Ack` (5)
-- [ ] Migration appended, additive where possible, with an upgrade-path test
+Invariants 1 to 5 hold, and any migration follows the rules above.
