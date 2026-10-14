@@ -1,311 +1,171 @@
 # Testing the native iOS app on the simulator
 
-How to build, run, snapshot-test, and UI-test the native SwiftUI app
-(`ios/`) on the iOS Simulator — including the tooling an AI agent uses to
-do it, and the host gotchas that waste the most time.
+How to build, run, snapshot-test and UI-test the SwiftUI app (`ios/`) on the
+iOS Simulator, the tools an agent uses to do it, and the host gotchas that
+waste the most time.
 
 ## The tooling
 
-**The reliable, primary path is the Xcode CLI: `just` + `xcodebuild` + `xcrun
-simctl`.** That's what builds, runs the simulator, takes screenshots, and runs
-the tests below. Xcode's own tool server adds what the CLI cannot do: tapping and
-typing in the running app, rendering a preview, and searching Apple's docs.
+The `just` recipes build, run, screenshot and test (`just --list`, iOS group),
+regenerating bindings when the core changed.
 
-### Xcode CLI (what to use)
-
-Bindings are a build precondition (`ios/generated`, gitignored) — `just`
-regenerates them only when the core changed.
-
-```bash
-# Simulator control + screenshots
-UDID=$(xcrun simctl create snap "iPhone 16" "iOS26.5")
-xcrun simctl boot "$UDID"
-xcrun simctl install "$UDID" /path/to/Intrada.app
-xcrun simctl launch "$UDID" com.intrada.native --seed-sample-data
-xcrun simctl io "$UDID" screenshot shot.png      # ← how to screenshot the sim
-```
+- `just ios-test`: the fast tier, unit and snapshot.
+- `just ios-test-ui-class <Class>`: one UI class, what `/ship` runs for each
+  class the diff touches.
+- `just ios-test-full`: every XCUITest, about five minutes; not in `/ship`,
+  since CI runs them on every PR (#2114).
 
 ### Xcode's tool server (driving the running app)
 
-Xcode 27 serves its tools over MCP with `xcrun mcpbridge`, headless, with no
-Xcode window. `.mcp.json` registers it as `xcode`. Agents use it for three
-things:
+Xcode 27 serves its tools over MCP with `xcrun mcpbridge`, headless, registered
+in `.mcp.json` as `xcode`. Agents use it to tap, swipe and type in the running
+app (`DeviceInteraction*`), to render one `#Preview` (`RenderPreview`), and to
+search Apple's docs (`DocumentationSearch`).
 
-- **Driving the running app**: `DeviceInteractionStartSession`,
-  `DeviceInteractionSynthesize` and `DeviceInteractionEndSession` tap, swipe and
-  type on the simulator, and capture a screenshot plus a UI hierarchy after
-  every step.
-- **Rendering a preview**: `RenderPreview` builds and snapshots one `#Preview`.
-- **Apple docs**: `DocumentationSearch`.
-
-Building, running, testing, the debugger, and every tool that edits files,
-targets, schemes or build settings are denied in `.claude/settings.json`. The
-`just` recipes own builds and tests (destination pin, signing off, the
-simulator lock) and `ios/project.yml` owns the project through xcodegen, so an
-edit made through Xcode would be lost on the next regenerate. `XcodeOpenWorkspace`,
-`XcodeCloseWorkspace`, `XcodeListWorkspaces`, `XcodeListRunDestinations` and
-`XcodeSwitchRunDestination` are allowed for the flow below, and every tool on
-neither list asks first.
+Its build, run, test, debugger and editing tools are denied in
+`.claude/settings.json`: the `just` recipes own builds and tests, and xcodegen
+regenerates the project from `ios/project.yml`.
 
 The flow:
 
 1. `SIM_DEVICE="iPhone 17" just ios-run`, and note the UDID on its
-   `launched on <UDID>` line. That device picks the newest runtime installed.
+   `launched on <UDID>` line.
 2. The first time in a worktree, `XcodeOpenWorkspace` on that worktree's
    `ios/Intrada.xcodeproj` (absolute path).
 3. `DeviceInteractionStartSession` with that UDID as `deviceIdentifier`.
-4. `DeviceInteractionSynthesize` with an empty `interactionCommand` to capture,
-   then read the hierarchy file and tap the element's `hitPoint`
-   (`t X Y`), never a position guessed from the screenshot. Swipe with
-   `t X1 Y1 f X2 Y2 0.3`; type with `sender keyboard kbd TEXT`, last in the
-   chain. Each call returns a fresh capture; read it to confirm the step landed.
-5. `DeviceInteractionEndSession` when done: an open session keeps the device
-   busy. Close the worktree's workspace with `XcodeCloseWorkspace` when finished
-   with it.
+4. `DeviceInteractionSynthesize` with an empty `interactionCommand` captures;
+   tap the element's `hitPoint` from the hierarchy file (`t X Y`), never a
+   guessed position. Swipe `t X1 Y1 f X2 Y2 0.3`; type `sender keyboard kbd
+   TEXT`, last in the chain. Read each capture to confirm the step landed.
+5. `DeviceInteractionEndSession` when done (an open session keeps the device
+   busy), then `XcodeCloseWorkspace`.
 
-Measured on Xcode 27.0 with the seeded library: starting a session took 0.1s;
-capture, tap into "Clair de Lune", back, open search and type "Hanon" each took
-between 0.4s and 1.2s, and every capture carried labels and hitPoints for the
-rows, buttons and search field. The first typing on a fresh simulator shows
-the keyboard's swipe-typing tip over the lower half of the screen. On 2026-09-15
-the fast tier passed 469 of 469 with this worktree's headless workspace still
-open, so an open headless workspace is not the Xcode window the "Quit Xcode
-before `xcodebuild test`" gotcha warns about (measured once).
-
-**The device tools need an iOS 27 simulator**, so the flow runs on iPhone 17 on
-iOS 27. Snapshot references and both test tiers stay on iPhone 16 / iOS 26.5 to
-match CI; nothing here changes that.
-
-**Approval is once per agent and per folder.** Xcode refuses every tool until
-Jon approves the agent program in the prompt Xcode shows the first time that
-agent opens a project, and the approval covers that project's folder. A new
-worktree asks again the first time.
-
-**`RenderPreview` takes project paths**, relative to `ios/` as the project
-navigator shows them (`Intrada/Views/Screens/LibraryScreen.swift`), not
-filesystem paths. A warm render of the library screen took 5.4s.
-
-### `just` recipes
-
-```bash
-just ios            # regen bindings if core changed → xcodegen → open Xcode
-just ios-run        # regen → xcodegen → build + launch on sim + screenshot (SEED=1)
-SEED=0 just ios-run # …against your real on-device data, not the demo seed
-just ios-gen        # force-regenerate the Swift bindings (after a core change)
-just ios-snapshots-optimize   # oxipng -o max every reference (run before commit)
-just ios-snapshots-check      # orphan + 200 KB-ceiling guard (same as CI)
-just ios-test                 # fast tier: IntradaTests only (unit + snapshot) on a per-worktree sim
-just ios-test-full            # full tier: + IntradaUITests on this worktree's own sim, about five minutes (#1480)
-                              # not part of /ship: CI runs the UI tests on every PR, six at a time (#2114)
-just ios-test-ui-class <Class> # one UI test class: what /ship runs for each class the diff adds or edits
-just ios-test-sim-clean       # delete this worktree's ios-test sim
-```
+The device tools need an iOS 27 simulator; tests stay on iPhone 16 / iOS 26.5.
+Xcode asks Jon to approve each agent once per folder, so a new worktree asks
+again. `RenderPreview` takes paths relative to `ios/`
+(`Intrada/Views/Screens/LibraryScreen.swift`).
 
 ## Snapshot tests (the per-PR UI regression gate)
 
-References live in `ios/IntradaTests/__Snapshots__/**` and are recorded on
-**iPhone 16 / iOS 26.5** to match CI (renderer-specific — see
-`.github/workflows/ci.yml` and `.claude/rules/ios-quality.md`).
+References live in `ios/IntradaTests/__Snapshots__/**`, recorded on
+**iPhone 16 / iOS 26.5** to match CI (see `.claude/rules/ios-quality.md`).
+`just ios-snapshots-record <filter>` re-records, optimises and checks. Re-record
+after any intentional UI change; delete a test and you delete its PNG, since
+orphans fail CI. Optimise before committing or **Snapshot Hygiene** fails.
 
-```bash
-# Create the CI-matching simulator
-UDID=$(xcrun simctl create snap "iPhone 16" "iOS26.5")
+## UI tests (gesture and interaction, what snapshots cannot cover)
 
-# Run / record (a missing reference auto-records and "fails" the first run)
-xcodebuild test -project ios/Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
-  -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO \
-  -only-testing:IntradaTests/LibrarySnapshotTests/testLibraryScreen
-
-# After recording: optimise (drops Xcode's opaque alpha, ~75% smaller) and re-run
-just ios-snapshots-optimize
-```
-
-Re-record after any intentional UI change; delete a test → delete its PNG
-(orphans fail CI). Optimise before committing or the Snapshot Hygiene job fails.
-
-## UI tests (gesture / interaction — what snapshots can't cover)
-
-`ios/IntradaUITests/` drives the *running* app (e.g. type in search → assert the
-list filters). Launch args seed deterministic data:
-
-```bash
-xcodebuild test -project ios/Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
-  -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO \
-  -only-testing:IntradaUITests
-```
-
-The app seeds the 6-item demo set when launched with `--seed-sample-data`
-(`XCUIApplication().launchArguments = ["--seed-sample-data"]`). Use a UI test —
-not a snapshot — to prove an *interaction* works; a snapshot can't catch that a
-gesture (e.g. pull-to-reveal) never fired.
+`ios/IntradaUITests/` drives the running app, seeded with the six-item demo set
+through `--seed-sample-data`. Use a UI test, not a snapshot, to prove an
+interaction works: a snapshot cannot catch a gesture that never fired.
 
 ## Host gotchas (these eat hours)
 
-- **Quit Xcode before `xcodebuild test`.** A persistent
-  `Pseudo Terminal Setup Error / Device not configured` ("Failed to install or
-  launch the test runner") is almost always Xcode.app holding the simulator
-  while the CLI also wants it. `osascript -e 'quit app "Xcode"'`, then re-run.
-- **Transient runner flake** → restart the sim service:
-  `killall com.apple.CoreSimulator.CoreSimulatorService`, quit Device Hub if it
-  is open, then re-boot the sim. UI-test *runners* trip this first; if unit tests pass but the UI test
-  fails on launch, it's the host, not the test.
-- **Stale bindings after pulling/rebasing** onto a main with core changes →
-  `extra argument` / `cannot find type` Swift errors. Run `just ios-gen`
-  (see CLAUDE.md → Native iOS Shell, and the memory note on rebase+regen).
-- **Clean up** the throwaway sims you create: `xcrun simctl delete <udid>`
-  (or `just ios-test-sim-clean` for the sim `just ios-test` made in this worktree).
-- **Silence is success on the `just` path.** `_ios-test-without-building` passes
-  `-quiet`, so a passing run prints a handful of lines and no test counts. The
-  recipe now prints `✓ N passed, M failed, K skipped` at the end, and fails if
-  the bundle reports zero passed, so trust that line rather than the length of
-  the log (#1536).
-- **`IDERunDestination: Supported platforms ... is empty` is noise.** It prints
-  on every run, green ones included. The recipes pin `-destination "id=$udid"`,
-  so it never means a destination failed to resolve.
-- **Counts live in the result bundle**, not the console:
-  `xcrun xcresulttool get test-results summary --path ios/build/dd/Logs/Test/Test-Intrada-*.xcresult`.
-- **Driving `xcodebuild test` yourself needs `CODE_SIGNING_ALLOWED=NO`.** The
-  test bundles carry no `Info.plist` settings, so without it both test targets
-  fail to sign before anything compiles. Both recipe steps pass it (#1537).
+- **Quit Xcode before a test run.** `Pseudo Terminal Setup Error / Device not
+  configured` is almost always Xcode.app holding the simulator (a headless tool
+  server workspace does not count).
+- **A UI test failing on launch while unit tests pass is the host.** Restart
+  `CoreSimulatorService`, which is global: read the worktrees rules first.
+- **Stale bindings after a rebase** onto core changes show as `extra argument`
+  or `cannot find type` errors. Run `just ios-gen`.
+- **Trust the counts line.** The recipes print `✓ N passed, M failed, K
+  skipped` and fail on zero passed (#1536); the result bundle under
+  `ios/build/dd/Logs/Test/` holds the rest.
+- **`IDERunDestination: Supported platforms ... is empty` is noise.**
+- **A raw `xcodebuild test` needs `CODE_SIGNING_ALLOWED=NO`**, or both test
+  targets fail to sign (#1537).
 
 ## Running alongside another checkout (worktrees)
 
-Git worktrees and the main checkout are **isolated on disk** — separate working
-trees, DerivedData (keyed by project *path*), `ios/generated` bindings, cargo
-`target/`, and snapshot PNG files. Building or recording in one never overwrites the
-other's files.
+Worktrees are isolated on disk, build output and bindings included. **`just
+worktree-new <name>`** (see [`worktrees.md`](worktrees.md)) creates
+`../intrada-worktrees/<name>` off fresh `origin/main`, with no slashes so the
+collision check sees every worktree. It reflinks `ios/generated/` and
+`ios/build/spm/`, never build folders (#2191). A copied `ios/generated` for
+another core revision is regenerated by the recipes but not by an Xcode build;
+a phone build after `just ios-test` fails until `just ios` restores all three
+slices (#2181). It refuses a `<name>` that sanitises to an existing worktree's
+simulator name: `foo.1` and `foo-1` would share one.
 
-**`just worktree-new <name>`** wraps worktrunk's `wt switch --create`
-(see [`worktrees.md`](worktrees.md)) and creates a worktree at
-`../intrada-worktrees/<name>`, on branch `<name>`. No slashes, so the
-worktree root stays flat and the sim-name collision check below actually
-sees every worktree. It runs off fresh `origin/main`, and worktrunk reflinks
-what `.worktreeinclude` names from the main checkout: `ios/generated/` and the
-downloaded Swift packages (`ios/build/spm/`), never `target/` or the Xcode
-build folders (#2191). Copied build folders held main's stale output and
-paths, came to about 27 GB per worktree, and made the first Xcode build slower
-than an empty one. A fresh worktree's first `just check` and `just ios-test`
-build from cold instead. A copied `ios/generated` for a
-different core revision is regenerated by `_ios-sync`, which compares its
-stamp with the tree's own core source hash; building from Xcode directly
-skips that check. So does a phone build in an Xcode left open while
-`just ios-test` rebuilt the framework for the simulator alone (#2181): it fails
-with no library for the platform until `just ios` restores all three slices. Refuses a `<name>` that sanitises to the same simulator name as an existing
-worktree (the `foo`/`foo.1` collision below). `just worktree-rm <name>`
-cleans up the worktree's sim, then removes the worktree.
-
-**The simulator is the exception.** The iOS Simulator and
-`CoreSimulatorService` are **one per macOS login, shared across every checkout**.
-That's the only real clash surface, and the recovery commands above are global
-sledgehammers — `killall com.apple.CoreSimulator.CoreSimulatorService`,
-`simctl shutdown all`, `simctl erase|delete` will **kill or wipe a sim another
-checkout is using**.
-
-Rules to keep two checkouts from colliding:
+**The simulator is shared.** `CoreSimulatorService` is one per macOS login, so
+restarting it, `simctl shutdown all` or `simctl erase|delete` hits every
+checkout.
 
 - **Test runs serialise on app launch, whatever device they name** (#1621).
-  Each worktree's `just ios-test`/`ios-test-full` boots its own sim
-  (`intrada-test-26-5-<worktree-basename>`), so there is no device clash
-  between worktrees (two worktree dirs that sanitise to the same name, e.g.
-  `foo.1` and `foo-1`, would share a sim; slug-like worktree names avoid this),
-  and the device model makes no difference to snapshot output
-  (swift-snapshot-testing pins `.iPhone13`; only the iOS 26.5 runtime affects
-  the pixels). None of that stops CoreSimulatorService and SpringBoard
-  contending when two runs launch an app at the same moment. Measured on
-  2026-09-10, an M5 Pro with 18 cores and 48 GB, two worktrees each on its own
-  simulator with its own DerivedData: one worktree passed 389 tests in 42
-  seconds while the other failed at launch nine times with
-  `Busy ("Application failed preflight checks")`; the worktree that failed,
-  run alone thirty seconds later, passed 371 tests in 22 seconds with no Busy
-  lines at all (a different suite from the 389-test run, so the 22 versus 42
-  seconds is indicative, not an exact delta). Same failure surface as #1480.
-  A fast-tier run is well under a minute either way, so run test suites one
-  after another rather than planning around concurrent test launches; the
-  isolation above is real for editing and building, not for test launch.
-  `just ios-test-sim-clean` deletes only the current worktree's sim.
-- **A worktree's sim starts as a copy of a template** (#1904).
-  `scripts/ios-sim-device.sh` clones `intrada-template-<device>-<runtime>`,
-  which has already booted once, so the first run in a new worktree skips the
-  data migration: ready in 8 seconds against 19 for a blank device. The first
-  clone after a pin change prepares the template (about 30 seconds, under its
-  own lock) and deletes the old pin's. Any failure falls back to a blank
-  device. To rebuild the template, delete it and the next new worktree
-  prepares another: `xcrun simctl delete intrada-template-iPhone-16-iOS26-5`.
-- **Two overlapping runs in the *same* checkout are not safe** (#1192) — they'd
-  share that checkout's simulator and DerivedData and crash each other's
-  XCUITests. The recipes refuse to start when another `xcodebuild`/
-  `XCTestAgent` is already live against this checkout, and they also warn (not
-  block) if `crates/` has uncommitted changes, since a concurrent core edit
-  can red the gate with a compile error unrelated to the diff under test.
-- **Ad-hoc `xcodebuild` / `simctl` sessions that share one device still
-  serialize.** If you run the raw `xcodebuild test` snippets above (not via
-  `just ios-test`), give each session a **worktree-scoped sim** targeted by
-  UDID, instead of a bare `"iPhone 16"` both checkouts might grab:
+  Each worktree tests on its own `intrada-test-26-5-<worktree-basename>`, but
+  two runs launching at once still fail with `Busy ("Application failed
+  preflight checks")`. Run suites one after another; the isolation holds for
+  editing and building, not for test launch.
+- **A worktree's simulator is cloned from a template** (#1904); delete
+  `intrada-template-iPhone-16-iOS26-5` and the next worktree rebuilds it.
+- **Two runs in the same checkout are not safe** (#1192). The recipes refuse to
+  start when another `xcodebuild` or `XCTestAgent` is live against this
+  checkout, and warn when `crates/` has uncommitted changes.
+- **Only touch simulators you created**: ad hoc work gets one named
+  `snap-$(basename "$PWD")`, targeted by UDID.
+- **A simulator that failed a launch can fail unrelated snapshots** (#1480):
+  `just ios-test-sim-clean`, then re-run.
+- **Check before any global operation**; if anything is live that you did not
+  start, stop and ask:
   ```bash
-  UDID=$(xcrun simctl create "snap-$(basename "$PWD")" "iPhone 16" "iOS26.5")
+  xcrun simctl list devices | grep Booted
+  pgrep -fl 'xcodebuild|XCTestAgent'
+  pgrep -x Xcode
   ```
-  Two sessions pointed at the *same* device produce the pty contention errors
-  above; distinct devices avoid that specific clash, but still serialise on
-  app launch for the reason above.
-- **Only touch sims you created.** Delete *your* UDID (or `just
-  ios-test-sim-clean` for the recipe's sim) when done; never `shutdown all` /
-  `delete unavailable` / restart `CoreSimulatorService` blind.
-- **A sim that has failed a launch can then fail snapshots that have nothing
-  to do with your diff.** After a `Busy ("Application failed preflight
-  checks")` launch error under host load, this worktree's sim went on to red
-  four unrelated snapshot tests, deterministically, with content identical to
-  the reference and only text metrics moved (#1480). A fresh device passed the
-  same build. Before believing a snapshot failure you can't explain, run it on
-  a new sim: `just ios-test-sim-clean` then re-run, or create a scratch UDID
-  as above. From 2026-09-15 the local full tier no longer clones simulators,
-  because the `Busy ("Application failed preflight checks")` refusal lives in
-  the clones xcodebuild creates for each run and recreating the worktree's sim
-  does not clear it; the UI tier runs on the worktree's own device after the
-  boot wait (#1480).
-- **Check before any global op or a fresh test run** whether another session is
-  live:
-  ```bash
-  xcrun simctl list devices | grep Booted     # sims someone may be using
-  pgrep -fl 'xcodebuild|XCTestAgent'           # a build/test already running
-  pgrep -x Xcode                               # Xcode open (may hold a sim)
-  ```
-  If any of those show activity you didn't start, **stop and ask** before
-  resetting the sim service or shutting sims down — assume it's the other
-  checkout's. (For agents: this is a hard rule — see CLAUDE.md → Native iOS.)
 
 ## CI
 
-`.github/workflows/ci.yml` runs the iOS gate on the self-hosted Mac,
-**Native iOS: self-hosted gate**, for every same-repo pull request and push to
-main whose native paths changed (#1577, #2113): one job, sequential steps,
-build then unit + snapshot then UI, on the warm workspace that machine exists
-for. The Release compile guard (`#if DEBUG` divergence, #1177) runs on pushes
-to main only, not on pull requests (#1651). It is a PR's first full UI run:
-`/ship` runs the fast tier and the UI classes the diff edits, not the full
-tier (#2114).
+`.github/workflows/ci.yml` runs **Native iOS: self-hosted gate** on the
+self-hosted Mac for every same-repo PR and push to main whose native paths
+changed (#1577, #2113): build, then unit and snapshot, then UI. It reports into
+**Native iOS (build + test)**, the required check, with **Snapshot Hygiene**
+alongside. The Release compile guard (#1177) runs on pushes to main only
+(#1651). Fork PRs are not supported (#1962), which keeps untrusted code off the
+machine.
 
-A tree that already passed the unit and UI tests on the runner, on the same
-Xcode and simulator runtime, skips them and links the run that passed it
-(#2113). A merge with no other merge since its PR's last run lands exactly the
-tree that run tested (8 of 20 merges on 23 to 24 September), so main then pays
-only for the build, the Release guard and the launch check. A merge after main
-moved is a new tree and runs in full, and so does a re-run attempt. The records
-are files under `~/.intrada-ci/green-trees/` on the runner, pruned after 30
-days by **Runner housekeeping**. Each push to main is its own concurrency
-group, so a queued main run is never replaced by the next push, whose filter
-would only see its own change (#2113).
+A tree that already passed on the runner skips the tests and links that run
+(#2113); records in `~/.intrada-ci/green-trees/` are pruned after 30 days.
 
-Measured shape (2026-09-24, 45 runs): build 16s, unit + snapshot 19s, UI 165s
-on six simulators (#1824), gate median 244s on a PR and 298s on main, and a
-median 78s wait for the runner (529s at the 90th percentile).
+Check a cache rule by listing the refs that wrote its entries, never by reading
+the workflow: `save-if` is a rust-cache input, not an `actions/cache` one, which
+silently ignores it.
 
-Fork pull requests are not
-supported (#1962), which is what keeps untrusted code off the machine. The gate
-reports into **Native iOS (build + test)**, the required check, and **Snapshot
-Hygiene** runs alongside it. The self-hosted machine, its toolchain and its
-cache rules are written up in
-[`reference.md`](reference.md#the-self-hosted-ios-runner-2026-09-10-1577); the
-deleted rented path and its measurements are in
-[`reference.md`](reference.md#why-the-native-ios-ci-is-shaped-the-way-it-is-2026-09-03).
-If unit/snapshot/UI tests are green there, the local pty errors above were
-host-only.
+## The self-hosted iOS runner
+
+**The machine.** A MacBook Pro M4, `Jons-MacBook-Pro-2.local`, runner
+`intrada-m4` (labels `self-hosted, macOS, ARM64, intrada-m4`), lid closed, idle
+sleep off. No background load (video wallpaper, Spotlight, #1648) and no local
+iOS work on it, which would share its `intrada` simulator.
+
+**Offline means queued** for up to 24 hours, with no fallback: check the runner
+first. After a reboot someone must log in (FileVault, launchd user agent):
+`sudo fdesetup authrestart` over SSH, then Screen Sharing.
+
+```bash
+cd ~/actions-runner && ./svc.sh status    # or stop / start
+```
+
+The plist carries `KeepAlive`; `svc.sh install` drops it, so re-add it:
+
+```bash
+/usr/libexec/PlistBuddy -c "Add :KeepAlive bool true" \
+  ~/Library/LaunchAgents/actions.runner.jonyardley-intrada.intrada-m4.plist
+cd ~/actions-runner && ./svc.sh stop && ./svc.sh start
+```
+
+**The toolchain is local and asserted**: XcodeGen 2.46.0 in `~/.local/bin`
+(found through the runner's `.path` file), `cargo-swift` 0.9.0, Rust through
+`RUSTUP_TOOLCHAIN`. The gate fails when `xcodebuild -version` differs from
+`SELFHOSTED_XCODE` in `ci.yml` or the iOS 26.5 runtime is missing (#1905).
+
+**The workspace stays warm**, so each run: `git clean -ffd` without `-x` (a
+stray file under `ios/` trips the inputs fingerprint), deletes old result
+bundles, uninstalls the app (a leftover crash-recovery blob would satisfy
+`SessionRecoveryUITests`) and shuts down booted simulators.
+
+**Never install into a simulator still booting** (#1648): SpringBoard then
+refuses every launch with `Busy`, so the recipes run `simctl bootstatus -b`
+first. Evidence: `xcrun simctl spawn <udid> log show --process SpringBoard`.
+
+**The UI step runs on six of the gate's own simulators** (#2269);
+`scripts/ios-ui-shards.py` deals whole classes across them by last run time.

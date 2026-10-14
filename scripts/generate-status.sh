@@ -176,8 +176,17 @@ section() {
   if [ -n "$2" ]; then echo "$2"; else echo "    nothing"; fi
 }
 
-echo "What's in flight — $repo, read from GitHub just now."
-echo "Orientation: docs/where-we-are.md. Direction: docs/roadmap.md."
+echo "What's in flight in $repo, read from GitHub just now."
+# The phase is the roadmap's Now heading line; a heading that moved says so
+# rather than printing nothing.
+now_heading=$(grep -m1 '^### Now' docs/roadmap.md || true)
+echo
+if [ -n "$now_heading" ]; then
+  printf '%s\n' "$now_heading"
+else
+  echo "    No '### Now' heading in docs/roadmap.md, so the phase is not shown."
+fi
+echo "Direction: docs/roadmap.md."
 
 section "RELEASE (open milestones)" "$release_lines"
 echo
