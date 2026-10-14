@@ -16,12 +16,12 @@ Names a section above its card, with an optional count, a fact at the trailing e
 
 ## When to use
 
-- A section that carries more than its name: a count ("Used in · 3 pieces"), a fact ("best week · 95m"), or an action (Reorder, Choose, Edit).
-- On Android, also a section that carries only its name, until Android has `SectionTitle`.
+- A section that carries more than its name: a count ("Used in · 3 pieces"), a fact ("best week · 95m", "2 of 4 solid"), or an action (Reorder, Choose, Add, Edit).
+- On Android, also a section that carries only its name: Android has no `SectionTitle`, and #2636 builds one or records why not.
 
 ## When not to use
 
-- A section with only a name, on iPhone: use `SectionTitle`.
+- A section with only a name, on iPhone: use `SectionTitle`. The Progress pooled marks sections are the exception: they pass a title alone (`PooledMarksSection`).
 - A field's label inside its card: use `FieldLabel` in a `FieldCard`.
 - The page title: that is `ScreenScaffold`'s.
 
@@ -36,10 +36,10 @@ Names a section above its card, with an optional count, a fact at the trailing e
 
 All four are in use on both apps:
 
-- **Title only:** Recently practised and Library in Add to session.
-- **Caption:** Used in, Keys, Variations and Related exercises on the piece page.
-- **Trailing fact:** Last five weeks on Progress, the week and day lines on Practice.
-- **Action:** Sections (Reorder, Done), Keys and Variations (Choose), and Related exercises on the piece page.
+- **Title only:** Recently practised and Library in Add to session; on iPhone also Variations across the library and Keys across the library on Progress.
+- **Caption:** Keys, Variations and Related exercises on the piece page; on iPhone also Used in, on an exercise's page.
+- **Trailing fact:** Last five weeks and Variations ("5 of 15 solid") on Progress, the week and day lines on Practice.
+- **Action:** Sections (Reorder, Done), Keys and Variations (Choose), and Related exercises on the piece page; on iPhone also the chord chart card (Add, or Edit once there is a chart).
 
 On iPhone the related exercises header also hides its bare count from VoiceOver (`captionAccessibilityHidden`); it is the one caller. On both apps the same header turns its action off while nothing is linked (`isDisabled`, `HeaderAction.enabled`), the one caller on each.
 
@@ -52,7 +52,7 @@ Default, pressed and, for the action, off. An action that is off is hidden on iP
 - At accessibility text sizes on iPhone the header stacks: the title and action on the first line, the caption and fact each on a line below, so a long title never breaks mid-word (#1781). The caption drops its dot when it stacks.
 - No motion and no haptic of its own.
 
-iPhone uses it at 13 call sites in 10 files; Android at 15 call sites in 10 files. Android's include Profile's Highlighter and Beta sections and the Start here card, which on iPhone use `SectionTitle`.
+iPhone uses it at 13 call sites in 10 files; Android at 15 call sites in 10 files. Android's include Profile's Highlighter, Beta and Practice defaults sections, the icon picker's "Matches ..." and "All icons", Recent mastery on Progress, and the Start here card, which on iPhone use `SectionTitle`.
 
 **On 14 October 2026 the two apps differ:**
 
@@ -64,11 +64,11 @@ iPhone uses it at 13 call sites in 10 files; Android at 15 call sites in 10 file
 | Action that is off | hidden | dimmed |
 | Accessibility text sizes | stacks | stays on one line |
 
-The look both apps keep: the caption after one middle dot with single spaces, "Used in · 3 pieces" ([tone of voice](../../../docs/tone-of-voice.md), rule 5). Closing the iPhone double gap is I21 in #2608 ([the October audit](../../../docs/audit-2026-10-design.md)); adding the dot on Android is not in an issue yet. The action takes 15 point, the size T35 gives buttons, in Android's 48dp target; iPhone's 17 point action is not in an issue yet. The iPhone stacking at large sizes, its choice of which captions VoiceOver reads, and hiding an action that is off, so the header never shows a control that does nothing, are the ones to keep; moving Android to them is not in an issue yet. The iPhone pictures show the double gap as it ships.
+The look both apps keep: the caption after one middle dot with single spaces, "Used in · 3 pieces" ([tone of voice](../../../docs/tone-of-voice.md), rule 5). Closing the iPhone double gap is I21 in #2608 ([the October audit](../../../docs/audit-2026-10-design.md)); adding the dot on Android is not in an issue yet. The action takes 15 point, the size T35 in [the design principles](../../../docs/design-principles.md) gives buttons, in Android's 48dp target; iPhone's 17 point action is not in an issue yet. The iPhone stacking at large sizes, its choice of which captions VoiceOver reads, and hiding an action that is off, so the header never shows a control that does nothing, are the ones to keep; moving Android to them is not in an issue yet. The iPhone pictures show the double gap as it ships.
 
 ## Content
 
-The title names the section in one to three words, sentence case. The core writes the keys and variations captions ("2 of 4 solid") and the best week ("best week · 95m"). The shells write the Practice week line ("3 days practised"), and the iPhone shell writes the Used in count ("3 pieces"). An action is one verb.
+The title names the section in one to three words, sentence case. The core writes the keys and variations captions ("2 of 4 solid"), the Progress Variations fact ("5 of 15 solid") and the best week ("best week · 95m"). The shells write the Practice week and day lines ("3 days practised", "2 sessions"), and the iPhone shell writes the Used in count ("3 pieces"). An action is one verb.
 
 ## Accessibility
 
@@ -78,7 +78,7 @@ The title names the section in one to three words, sentence case. The core write
 ## Do and don't
 
 - **Do** keep to one action; a second goes in the section's content.
-- **Don't** pass a count as the trailing fact; a count belongs against the title as the caption.
+- **Do** put a count that qualifies the title, such as how many pieces use an exercise, in the caption, and a summary of the whole section, such as "5 of 15 solid" or "3 days practised", in the trailing fact.
 
 ## Usage
 

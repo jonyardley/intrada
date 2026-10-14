@@ -4,7 +4,7 @@ status: stable
 ios_symbol: PlaceholderContent, PlaceholderAction
 ios_file: ios/Intrada/DesignSystem/PlaceholderContent.swift
 ios_snapshots: ComponentSnapshotTests/testPlaceholderContent.1.png, ProgressSnapshotTests/testRoutinesScreen.1.png, LibrarySnapshotTests/testLibraryScreenSearchMatchesNothing.1.png
-not_on_android: Android draws each empty screen by hand: one line of text on the Library (A21), a copy of this layout on Progress, and nothing on Routines; the shared version is built in #2636
+not_on_android: Android draws each empty screen by hand: one line of text on the Library (A21), a copy of this layout on Progress, and nothing on Routines; #2636 builds a shared version or records why not
 decisions: T24, T35
 ---
 
@@ -15,7 +15,8 @@ Fills an empty screen or list with what belongs there and the one thing to do ne
 ## When to use
 
 - A screen with nothing in it yet: the Library, Progress and Routines.
-- A list or picker with no matches: the Library's filters and search, the tag filter, the related exercise picker, adding a related exercise, and adding to a session.
+- A list or picker with no matches: the Library's filters and search, adding a related exercise, and adding to a session.
+- A picker with nothing in it yet: the tag filter ("No tags yet.") and the linked item picker when it lists pieces for an exercise ("No pieces in your library yet."; the exercise picker offers to write one instead).
 - The empty detail column of the iPad split, before anything is chosen.
 
 ## When not to use
@@ -47,7 +48,7 @@ None of its own. The buttons have their own pressed states.
 - The layout scrolls only when it cannot fit, so at large text sizes the buttons never squeeze the message.
 - No motion and no haptic of its own; each action fires what its store event confirms.
 
-On iPhone 9 call sites in 8 files use it: the Library (twice: empty, and no matches), Progress, Routines, the iPad split, the tag filter, the related exercise picker, adding a related exercise and adding to a session.
+On iPhone 9 call sites in 8 files use it: the Library (twice: empty, and no matches), Progress, Routines, the iPad split, the tag filter, the linked item picker, adding a related exercise and adding to a session.
 
 **On 14 October 2026 Android has no placeholder component.** Each empty screen draws its own:
 
@@ -58,7 +59,7 @@ On iPhone 9 call sites in 8 files use it: the Library (twice: empty, and no matc
 | Routines | glyph, message, "Build a session" | the page title and nothing else (`EmptyTab`) |
 | Exercise picker, add to session | glyph and message | the message alone |
 
-The iPhone layout is the one both apps use. #2636 builds a shared Compose version, and A21 in #2606 moves the empty Library onto it ([the October audit](../../../docs/audit-2026-10-design.md)). Moving Progress, Routines and the pickers onto it is not in an issue yet.
+The iPhone layout is the one both apps use. #2636 builds a shared Compose version or records why Android does not need one, and A21 in #2606 moves the empty Library onto it ([the October audit](../../../docs/audit-2026-10-design.md)). Moving Progress, Routines and the pickers onto it is not in an issue yet.
 
 ## Content
 
@@ -87,12 +88,12 @@ PlaceholderContent(
 ```
 
 ```kotlin
-// No shared placeholder yet; #2636 builds it.
+// No shared placeholder; #2636 builds one or records why not.
 ```
 
 ## Related
 
-`MarkerButton` for the first action. `ScreenScaffold`, which it usually fills.
+`MarkerButton` for the first action. `ScreenScaffold`, whose content it fills on an empty screen.
 
 ## Changes
 

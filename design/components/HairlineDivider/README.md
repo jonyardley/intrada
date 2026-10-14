@@ -12,7 +12,7 @@ decisions: T24
 
 # HairlineDivider
 
-The one-pixel line between rows in a card, and between columns.
+The 1 point line between rows in a card, and between columns.
 
 ## When to use
 
@@ -44,11 +44,18 @@ None.
 
 No motion. Lists draw it before every row but the first (`if index > 0`), so the card's own edge closes the list.
 
-iPhone uses it at 50 call sites in 31 files: 7 inset at the leading edge and 1 at both edges (the variation picker). Android uses it at 45 call sites in 26 files: 5 inset at the start and 1 at both edges (the variation picker in `PlayerSheets.kt`).
+iPhone uses it at 52 call sites in 32 files: 9 inset at the leading edge (`SessionBuilderScreen` twice, `TagFilterSheet`, `LinkedItemPickerSheet` twice, `PracticeDefaultsSection` twice, `InlineSuggestionList` and `EntryKeyList`) and 1 at both edges (the variation picker). Android uses it at 45 call sites in 26 files: 5 inset at the start and 1 at both edges (the variation picker in `PlayerSheets.kt`).
 
-**On 14 October 2026 Android uses only the default.** On iPhone the upright line has two callers, the iPad split (`ListDetailSplit`) and the metronome bar (`ClickBarLine`), and the darker colour one, the metronome bar. No Android caller passes `orientation` or `colour`; Android's metronome bar draws the same upright line by hand instead (`ClickBarLine.kt`, a `Box` 1dp wide in `divider`). The two parameters stay for that line, and for the split when Android gets one; moving the metronome bar onto `HairlineDivider` is not in an issue yet.
+**On 14 October 2026 Android uses only the default.** On iPhone the upright line has two callers, the iPad split (`ListDetailSplit`) and the metronome bar (`ClickBarLine`), and the darker colour one, the metronome bar. No Android caller passes `orientation` or `colour`; Android's metronome bar draws the same upright line by hand instead (`ClickBarLine.kt`, a `Box` 1dp wide in `divider`); moving it onto `HairlineDivider` is not in an issue yet.
 
-The audit found the Practice defaults dividers on Android inset at the start only, so the card looks unfinished (note 9 of the Android refinement observations in [the October audit](../../../docs/audit-2026-10-design.md)). It is not in an issue yet.
+iPhone has one-off copies too, each a `Rectangle` 1 point high:
+
+- between the rows of the session summary (`SessionSummaryScreen.swift`), in `hairline`;
+- above the builder's start bar (`SessionBuilderScreen.swift`), in `hairline`;
+- the tempo chart's baseline (`TempoTrend.swift`), in `hairline`;
+- between the rows on the dark Up next card (`UpNextHero.swift`, twice), in `paperTop` at `IntradaOpacity.wash`.
+
+Whether a divider should be inset is open. The audit found the Practice defaults dividers on Android inset at the start only, so the card looks unfinished (note 9 of the Android refinement observations in [the October audit](../../../docs/audit-2026-10-design.md)); iPhone's Practice defaults inset the same way. #2608 holds the nine Android observations under "Held for the refinement pass", unfiled. The question goes to Jon; until he rules, the inset variant stays as both apps ship it.
 
 ## Accessibility
 

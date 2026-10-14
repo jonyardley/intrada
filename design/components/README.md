@@ -32,7 +32,7 @@ not exist. Rows without a link are still to be written.
 | [PlaceholderContent](PlaceholderContent/README.md) | An empty screen or list, with what to do next |
 | [ScreenScaffold](ScreenScaffold/README.md) | Every top-level screen's chrome, safe areas and background |
 | [SectionHeader](SectionHeader/README.md) | A section's title with an optional action |
-| [HairlineDivider](HairlineDivider/README.md) | The one-pixel line between rows |
+| [HairlineDivider](HairlineDivider/README.md) | The 1 point line between rows |
 | SegmentedProgress | Progress through a session's items |
 | SectionTitle | The secondary-ink label above a section |
 | FieldCard | A form field with its label inside the card |
