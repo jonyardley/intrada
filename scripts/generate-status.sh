@@ -177,7 +177,17 @@ section() {
 }
 
 echo "What's in flight — $repo, read from GitHub just now."
-echo "Orientation: docs/where-we-are.md. Direction: docs/roadmap.md."
+# The phase is the roadmap's Now milestone; a heading that moved says so rather
+# than printing nothing.
+now_section=$(awk '/^### Now/{on=1} on && /^##/ && !/^### Now/{exit} on' docs/roadmap.md)
+echo
+if [ -n "$now_section" ]; then
+  printf '%s\n' "$now_section"
+else
+  echo "    No '### Now' heading in docs/roadmap.md, so the phase is not shown."
+fi
+echo
+echo "Direction: docs/roadmap.md."
 
 section "RELEASE (open milestones)" "$release_lines"
 echo

@@ -1,70 +1,47 @@
-<!-- Tier 1 and 2: at most 350 words before the checklist, comments not counted;
-     `just pr-open` refuses a longer one. Sentences of at most 25 words. -->
+<!-- What each section holds, and the 350-word cap on a Tier 1 or 2 body
+     before the checklist: the PR bodies section of
+     .claude/skills/intrada-shipping/SKILL.md. Keep these headings. -->
 
-Look at: <!-- One line: the decision or risk Jon should judge before merging.
-     Stating the feedback wanted best predicts a PR being accepted and
-     engaged with (arXiv 2602.14611). -->
+Look at: <!-- One line: the decision or risk Jon should judge before merging. -->
 
 ## What this fixes
 
-<!-- The situation the affected person would notice, in the first sentence;
-     the branch's process ("the core half of a split") goes nowhere here. For
-     a screen change that is the musician; for tooling or docs it is Jon or an
-     agent, so say what they hit rather than that no musician is affected. End
-     with one sentence on why this approach over the obvious other one. No
-     file paths, no symbol names and no code in this block; a `just` recipe
-     name may appear once, when the recipe is the outcome. A phase letter,
-     decision number or internal name carries the document that resolves it,
-     or is said plainly instead. -->
+<!-- What the affected person would notice, in the first sentence; then one
+     sentence on why this approach. No paths, symbols or code. -->
 
 ## Where this could bite
 
-<!-- Tier 3 and the sensitive surfaces only; delete it otherwise. Residual
-     risk in the merged code, and what is deliberately not covered.
-     Present tense, about what ships: never the history of the branch, and never
-     a wrong turn already corrected. One paragraph per risk, each ending in the
-     issue that tracks it or the words "deliberate, not tracked". A risk an
-     earlier PR of the same feature already stated gets its issue number, not a
-     restatement. Never spell out an exploitable gap in auth, tokens or user
-     data on a public repo: say a gap exists and route the detail to Jon. -->
+<!-- Tier 3 and the sensitive surfaces only; delete it otherwise. One
+     paragraph per residual risk, each ending in its issue or "deliberate, not
+     tracked". Never spell out an exploitable gap on a public repo. -->
 
 ## What it looks like
 
-<!-- Screen changes only. After pushing the branch, run `just pr-visuals` and
-     paste its output here: a before and after image, iPhone and Android, for
-     every snapshot reference this branch changed, pinned to the pushed commit so the
-     pictures still resolve after the branch is gone. Run it before the push
-     and the after-images point at a commit GitHub has never seen. Delete this
-     section on a PR that touches no screen. -->
+<!-- Screen changes only: paste `just pr-visuals` output, run after the push.
+     Delete it otherwise. -->
 
 ## What I checked
 
-<!-- The evidence each check produced. "Gates green" is one line with the counts,
-     because it is true of every PR worth showing. What earns space is the
-     check that could have failed and what it showed. Not here: the reviewer's
-     findings, the defects fixed on the branch, or why a check was worth
-     running. Those live in the self-review comment. -->
+<!-- The evidence each check produced; "gates green" is one line with counts. -->
 
-Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. What the new tests cover belongs above. Tier 1: n/a. -->
+Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. Tier 1: n/a. -->
 
 ## What changed where
 
 <!-- Tier 3 and the sensitive surfaces only; delete it otherwise. At most
-     five lines: the files worth opening first, each with why. The
-     diff lists the rest. Identifiers welcome here. -->
+     five lines: the files worth opening first, each with why. -->
 
 ## Checklist
 
-<!-- Delete a line that does not apply rather than annotating it. A line left
-     unticked is a line still owed. -->
+<!-- Delete a line that does not apply. A line left unticked is still owed. -->
 
 - [ ] Roadmap item or issue: #___ (or explicitly agreed with Jon)
 - [ ] One PR across the stack: core, iOS and Android together, core commits first (on the sensitive surfaces, `reviewer` read the core commits alone before the screens commits)
-- [ ] `just check` passes (fmt + clippy + tests, mirrors CI's flags)
-- [ ] `ios/` changes: `just ios-fmt-check`, `just ios-test` and `just ios-test-ui-class` for each UI class the diff edits pass (CI runs every UI test); snapshots re-recorded and `just ios-snapshots-optimize` run if UI changed
+- [ ] `just check` passes
+- [ ] `ios/` changes: `just ios-fmt-check`, `just ios-test` and `just ios-test-ui-class` for each UI class the diff edits pass; snapshots re-recorded and `just ios-snapshots-optimize` run if UI changed
 - [ ] `android/` changes: `just android-test` passes; a screen change carries the `just android-run` screenshot beside the iPhone one
 - [ ] New UI uses `Intrada*` tokens (colour, spacing, radius, type), no raw literals
-- [ ] Persistence or new-entity changes: offline-first PR checklist in `.claude/rules/offline-first.md` applied (`updated_at` / `deleted_at`, client-minted ulid, a failed write resolving `Failed`)
+- [ ] Persistence or new-entity changes: the offline-first checklist in `.claude/rules/offline-first.md` applied
 - [ ] CLAUDE.md updated (if architecture, components or patterns changed)
 - [ ] Roadmap updated (if a feature is now complete or scope changed)
 - [ ] Deferred items opened as tracked issues and listed in the self-review comment

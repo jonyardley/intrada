@@ -1,8 +1,7 @@
 # intrada: roadmap
 
-*What gets built next, and in what order. The current phase is in
-[`where-we-are.md`](where-we-are.md) and the released build in
-`gh release list`; what is being built right
+*What gets built next, and in what order. The current phase is the Now milestone in
+[the ranking](#the-ranking); what is being built right
 now is `just status`, the
 [project board](https://github.com/users/jonyardley/projects/2) and the
 [open issues](https://github.com/jonyardley/intrada/issues). How issues, epics
@@ -31,6 +30,11 @@ issue's [horizon label](how-the-work-runs.md#horizons) disagree, this list
 wins.
 
 ### Now: v0.19.0, a data model you can build on
+
+The release that is out is the one `gh release list` marks Latest; a release
+does not edit this file (#1932). Each release's write-up is its
+[GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
+on.
 
 - **Main green first**: the failing CI run on main (#2597).
 - **The review** (#2577,
