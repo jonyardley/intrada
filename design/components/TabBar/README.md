@@ -32,7 +32,8 @@ None. The four tabs are fixed, in this order.
 
 - Each tab is an icon over a one-word title in sentence case. The shells write the titles: `RootView` on iPhone, `AppTab` on Android.
 - The bar sits on `tabBarFill` (#F3EFE8). The chosen tab is in `accent` (ink); the others are in `inkSecondary`.
-- iPhone draws the system tab bar, so on iOS 26 the system's glass styles the items itself. The committed iPhone picture draws them white on paper; #2607 (I4) checks that on a device.
+- iPhone draws the system tab bar, so on iOS 26 the system's glass styles the items itself.
+- The iPhone picture (`testRootShell`) is what the test records, not the look: it draws the tabs white on paper. #2607 (I4) checks a device and settles which is true.
 - How Android marks the chosen tab, what tapping it again does and the bar's height are #2617.
 
 ## Accessibility

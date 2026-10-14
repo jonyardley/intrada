@@ -46,6 +46,7 @@ On iPhone it fades in and drops 10 points into place, half a second after the he
 ## Accessibility
 
 - One element, read as the title, then "mastery up from 3 to 4".
+- The label leaves out the subtitle, so on Progress it never names the item: "Mastery up, mastery up from 5 to 7"; #2680.
 - Scales with Dynamic Type and font scale. At the largest sizes on iPhone, "Mastery up" breaks inside a word; #2413.
 
 ## Do and don't

@@ -33,7 +33,8 @@ One piece or exercise in a list, with what it is and how it is going at a glance
 
 - A 4 point bar on the left in the item type's colour, the only type signal; rows carry no type badge.
 - The title, then the composer, then key and tempo joined by a middle dot. The core writes the subtitle, key and tempo lines.
-- Then, when there are any: a star for a priority, count chips for linked exercises, keys and variations, and the tags.
+- Then, when there are any: a star for a priority, a count chip for linked exercises, and the tags.
+- A count chip for keys, and one for variations, shows only when there is more than one.
 - With no composer, key or tempo, the iPhone shell writes "Add composer, key and tempo" for a piece, or "Add key and tempo" for an exercise.
 - The mark ring on the right shows the latest mark, or the rest when it has none.
 - Android shows only the title and composer today. Key, tempo, linked exercises and the ring are A20 in #2606; the rest is #2679.
@@ -60,7 +61,12 @@ NavigationLink(value: item.id) {
 ```
 
 ```kotlin
-LibraryItemCard(item, Modifier.clickable(onClickLabel = "open") { onOpen(item) })
+LibraryItemCard(
+    item,
+    Modifier.clickable(onClickLabel = if (item.itemType == ItemKind.PIECE) "open" else "edit") {
+        onOpen(item)
+    },
+)
 ```
 
 ## Related

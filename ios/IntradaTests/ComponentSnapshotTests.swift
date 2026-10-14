@@ -342,14 +342,34 @@ final class ComponentSnapshotTests: SnapshotTestCase {
   }
 
   func testLibraryItemCard() {
+    var priority = LibraryItemView.previewPiece
+    priority.priority = true
+    priority.tags = ["recital", "memorised"]
+    var majorScales = LibraryItemView.previewExercise
+    majorScales.id = "scales-twelve"
+    majorScales.title = "Major scales"
+    majorScales.subtitle = ""
+    majorScales.keys = KeyHelper.circle(.major).map { key in
+      ItemKeyView(
+        key: key, label: KeyHelper.display(key) ?? "", latestScore: nil, caption: "Not yet played")
+    }
+    var arpeggios = LibraryItemView.previewScales
+    arpeggios.id = "arpeggios"
+    arpeggios.title = "Arpeggios"
     let rows = ZStack {
       PaperBackground()
       VStack(spacing: IntradaSpacing.cardCompact) {
-        LibraryItemCard(item: .previewPiece, showsMastery: true, showsMissingDetailsPrompt: true)
-        LibraryItemCard(item: .previewDetail, showsMastery: true, showsMissingDetailsPrompt: true)
+        LibraryItemCard(item: priority, showsMastery: true, showsMissingDetailsPrompt: true)
+        LibraryItemCard(item: majorScales, showsMastery: true, showsMissingDetailsPrompt: true)
+        LibraryItemCard(
+          item: .previewExerciseWithTwelveVariations, showsMastery: true,
+          showsMissingDetailsPrompt: true)
         LibraryItemCard(item: .previewScales, showsMastery: true, showsMissingDetailsPrompt: true)
         SelectableLibraryRow(
           item: .previewExercise, added: true, addHint: "Adds it to the session",
+          removeHint: "Removes it from the session", action: {})
+        SelectableLibraryRow(
+          item: arpeggios, added: false, addHint: "Adds it to the session",
           removeHint: "Removes it from the session", action: {})
       }
       .padding(IntradaSpacing.card)

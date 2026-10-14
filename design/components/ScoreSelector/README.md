@@ -31,7 +31,7 @@ None. The caller passes the mark, the range, a spoken label and what to do with 
 
 - One box per mark, numbered. The range comes from the core (`LimitsView.scoreMin` and `scoreMax`, 1 to 10 today); the selector never assumes ten.
 - No mark yet is 0 and fills nothing. Tapping the chosen mark again clears it.
-- The look both apps follow is iPhone's: every box up to the chosen mark filled in ink with white figures, the rest outlined in `slotOutline`. Android fills only the chosen box today; that is A9 in #2606.
+- The look both apps follow is iPhone's: every box up to the chosen mark filled in ink with white figures, the rest outlined in `slotOutline`. Android fills only the chosen box today, sets the unchosen ones on a sunken fill and numbers them in typewriter figures; all three are A9 in #2606.
 - The spoken labels are written by the shells: "Mark for " and the item or play, and "Overall session mark".
 
 ## Behaviour
