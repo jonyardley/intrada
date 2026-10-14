@@ -34,7 +34,7 @@ A row of equal segments, some filled: which item of a session you are on, or how
 - **Session position** (`init(types:filled:)`): use on the player. 4 points tall. It takes the session's item kinds, but both kinds fill in ink (T24 in [the design principles](../../../docs/design-principles.md)), so the kinds do not show.
 - **Solid count** (`init(count:filled:label:)`): use for a count of a set. 6 points tall.
 
-Each has one caller on iPhone. No caller passes `fill:` or `height:`.
+Each has one caller on iPhone. The height is fixed by the variant, and both fill in ink.
 
 ## States
 
@@ -55,7 +55,7 @@ iPhone uses it at 2 call sites in 2 files: the player's `SessionOrientationBand`
 | Gap | 5 | 3dp | 5dp |
 | Height | 4 player, 6 count | 4dp | 6dp |
 
-Filled segments go to ink on both apps: a pastel segment on white misses the 3:1 contrast a meaningful mark needs (T24), and filling the Android player's segments in ink is A12 in #2605 ([the October audit](../../../docs/audit-2026-10-design.md)). The Android player's empty colour and gap both ship and differ from iPhone's; which one both apps keep is open and goes to Jon. Building one shared Compose strip is #2636.
+Filled segments go to ink on both apps, because the pastel misses the 3:1 contrast a meaningful mark needs (WCAG 1.4.11, T24). Filling the Android player's segments in ink is A12 in #2605 ([the October audit](../../../docs/audit-2026-10-design.md)). The empty colour and gap both apps keep are decided in #2663. Building one shared Compose strip is #2636.
 
 No iPhone screen draws a strip by hand.
 
@@ -89,3 +89,4 @@ SegmentedProgress(count: total, filled: solid, label: caption)
 | Date | Issue | What changed |
 |---|---|---|
 | 2026-10-14 | #2635 | First page. Records Android's two hand-drawn strips and the player's pastel fill. |
+| 2026-10-14 | #2635 | Deleted the unused `fill:` parameter and fixed each variant's height; commit d93d7a4e still has both parameters. |

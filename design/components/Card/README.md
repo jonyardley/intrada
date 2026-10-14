@@ -36,7 +36,7 @@ The white surface every grouped block of content sits on, lifted faintly off the
 
 - **Card with lift** (`cardSurface()` with `cardShadow()`): use for every card on paper. This is the look T24 decided ("white cards with a 3pt corner and a faint lift").
 - **Card without lift** (`cardSurface()` alone): use only inside something already lifted, such as a sheet or a card in a card.
-- **Corner by role** (`cardSurface(cornerRadius:)`): passes `IntradaRadius.control` or `panel` instead of `card`. Every radius token is 3 points, so it changes nothing on screen. Decided on 14 October 2026 in #2635: the parameter goes, because no caller draws a corner other than 3 points (T24). It is still in the code: 12 call sites on iPhone and 7 on Android pass it, and removing it is not in an issue yet.
+- **Corner by role** (`cardSurface(cornerRadius:)`): takes a radius token. On iPhone 9 callers pass `IntradaRadius.control` or `panel` and 3 pass `card`, the default (`PracticeSessionDetailScreen.swift`, `VariationsSection.swift`, `SolidCountRow.swift`); on Android 7 callers pass `control` or `panel`. Every token a caller passes is 3 points, so it changes nothing on screen. This page decides that the parameter goes, because no caller draws a corner other than 3 points (T24). Removing it from both apps is #2664.
 
 ## States
 
@@ -86,4 +86,4 @@ On Android the shadow comes first in the modifier chain, so it is drawn outside 
 | Date | Issue | What changed |
 |---|---|---|
 | 2026-10-13 | #2620 | First page. Records that most cards lack the lift (I36). |
-| 2026-10-14 | #2635 | Decides to remove the corner parameter, which every caller passes as 3 points. |
+| 2026-10-14 | #2635 | Decides to remove the corner parameter, which every caller passes as 3 points (#2664). |

@@ -3,31 +3,28 @@ import SwiftUI
 
 /// Discrete position indicator: N filled segments of M. Stepped (not a
 /// continuous fill) so it reads as "which one", distinct from the timer's
-/// continuous target bar. A setlist passes its item types so the strip can
-/// carry a per-type tint; a plain count fills in one colour.
+/// continuous target bar. Both kinds fill in ink (T24), so a setlist's types
+/// only set the segment count.
 struct SegmentedProgress: View {
   private let fills: [Color]
   private let filled: Int
   private let spokenLabel: String
   private let height: CGFloat
 
-  init(types: [ItemKind], filled: Int, height: CGFloat = 4) {
+  init(types: [ItemKind], filled: Int) {
     fills = types.map(\.accent)
     self.filled = filled
     spokenLabel = "Item \(filled) of \(types.count)"
-    self.height = height
+    height = 4
   }
 
   /// A plain count of equal segments: how many of an exercise's variations
   /// are solid, say (#1739).
-  init(
-    count: Int, filled: Int, fill: Color = IntradaColor.accent, label: String,
-    height: CGFloat = 6
-  ) {
-    fills = Array(repeating: fill, count: max(count, 0))
+  init(count: Int, filled: Int, label: String) {
+    fills = Array(repeating: IntradaColor.accent, count: max(count, 0))
     self.filled = filled
     spokenLabel = label
-    self.height = height
+    height = 6
   }
 
   var body: some View {

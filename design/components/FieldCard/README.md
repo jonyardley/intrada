@@ -21,7 +21,7 @@ One labelled setting on a form or sheet: a card with the label inside, above wha
 
 ## When not to use
 
-- A text field on the item form: use `FormField` on iPhone, which draws the same label and padding and adds the error wash.
+- A text field on the item form: use `FormField`, a row inside the form's one card on both apps. It draws the same label and adds the error wash.
 - A read-only fact on a details screen: label left, value right, in a card's row (T35 in [the design principles](../../../docs/design-principles.md)).
 - A group of fields: one card with `HairlineDivider` between rows.
 
@@ -36,7 +36,7 @@ The content sits 16 in from the sides (`IntradaSpacing.card`) and 10 from the to
 ## Variants
 
 - **Label and content** (`FieldCard`): use for a field with one label.
-- **Surface alone** (`fieldCardSurface()`, iPhone only): use when the label sits beside its value or is a toggle's title, such as Key › in entry settings and Include screenshot in feedback. 6 call sites in 4 files.
+- **Surface alone** (`fieldCardSurface()`, iPhone only): use when the label sits beside its value or is a toggle's title, such as Key › in entry settings and Include screenshot in feedback. 6 call sites in 4 files. Android has no `fieldCardSurface()` and builds the surface by hand six times, each a one-off copy: `EntrySettingsScreen.kt` (three) and `EntryFocusCard.kt` with 8dp top and bottom (`IntradaSpacing.controlGap`), and `FeedbackSheet.kt` and `ProfileEditSheet.kt` with 12dp (`IntradaSpacing.cardCompact`). Which padding they keep is for #2665.
 
 ## States
 
@@ -48,7 +48,7 @@ No motion and no haptic.
 
 iPhone uses it at 10 call sites in 5 files: the metronome sheet (Time signature, Beats in the bar, Beat value, Grouped, Sounds on), entry settings (Aim, Variation), Highlighter on the profile, Note on feedback and Kind on a section's sheet. Android uses it at 7 call sites in 3 files: the same five on the metronome sheet, Highlighter on the profile and Kind on a section's screen.
 
-The two apps draw it the same. Android has no `fieldCardSurface()`. On iPhone the item form's fields (`FormField`, `AutocompleteField`, `TagChipInput`, `KeyPicker`) are rows of one card, not a card each, and repeat the 10 point top and bottom padding by hand. The item form on Android builds its field cards by hand with 12dp top and bottom where `FieldCard` has 10, so those rows sit taller; using `FieldCard` there is A28 in #2606 ([the October audit](../../../docs/audit-2026-10-design.md)). The 10 is a literal on both apps; moving the iPhone one onto a spacing token is I28 in #2608, which #2237 covers. Android's literal is not in an issue yet.
+The two apps draw `FieldCard` the same. On both, the item form's fields are rows inside one `cardSurface()` card, not a `FieldCard` each: `FormField`, `AutocompleteField`, `TagChipInput` and `KeyPicker` on iPhone, and `FormField` (`ItemFormParts.kt`) in the cards of `ItemFormDetails.kt`, `ItemFormNotes.kt`, `ItemFormPractice.kt` and `ItemFormExercises.kt` on Android. The difference is the padding. iPhone's rows repeat `FieldCard`'s 10 point top and bottom by hand; Android's use `IntradaSpacing.cardCompact`, 12dp, so they sit taller. A28 in #2606 ([the October audit](../../../docs/audit-2026-10-design.md)) finds that gap but says "Use `FieldCard` inside the item form". Done as written, that gives Android a card per field and splits it from iPhone, so A28's real change is the padding. Which padding both apps keep is for #2665, which moves Android's 10dp onto a spacing token; moving the iPhone 10 onto a token is I28 in #2608, which #2237 covers.
 
 ## Content
 
@@ -86,4 +86,4 @@ FieldCard("Kind") {
 
 | Date | Issue | What changed |
 |---|---|---|
-| 2026-10-14 | #2635 | First page. Records the Android item form's hand-built field cards (A28). |
+| 2026-10-14 | #2635 | First page. Records that both item forms use rows in one card and differ only in padding (A28). |

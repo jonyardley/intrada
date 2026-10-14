@@ -99,4 +99,4 @@ SegmentedPills(
 | Date | Issue | What changed |
 |---|---|---|
 | 2026-10-13 | #2620 | First page. Records that the two apps draw it differently. |
-| 2026-10-14 | #2635 | Deleted the inline scrolling track, which no screen used; recover it from this change. |
+| 2026-10-14 | #2635 | Deleted the inline scrolling track, which no screen used, in commit d93d7a4e; recover it from there. |

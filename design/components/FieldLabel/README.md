@@ -17,7 +17,7 @@ A field's name, in secondary ink, inside its card above the value.
 ## When to use
 
 - A field's label inside a card, where `FieldCard` does not fit: a label beside its value (Key ›), a toggle's title, a field in a custom layout.
-- On iPhone, through `FieldCard` and `SectionTitle`, which both draw it.
+- Through the components that draw it: `FieldCard` and `SectionTitle` on iPhone, and `FieldCard` (`FieldCard.kt`) and `SectionHeader` (`PageParts.kt`) on Android.
 
 ## When not to use
 
@@ -48,7 +48,7 @@ Android calls it more because, with no `SectionTitle`, it also names sections: t
 
 ## Content
 
-One to three words, sentence case, no colon. The shells write the labels.
+A name in sentence case, no colon; Android's reflection sheet adds a fact after a middle dot, "Reflection · optional". Most labels are one to three words; the longer ones that ship are "What got in the way" and "Drills for" a section's name, on both apps. The shells write the labels.
 
 ## Accessibility
 

@@ -15,11 +15,12 @@ Names a section, in sentence case, above what it names.
 ## When to use
 
 - A section with only a name: Recent sessions, What you played, Practice defaults.
+- A name and one fact in a single line, joined by a middle dot: "Item complete · " and the time played, "Tempo reached · target " and the tempo, "Aim met? · optional" and "Last practised · " and the day.
 - A title on the dark Practice and Up next cards, with the light tint.
 
 ## When not to use
 
-- A section with a count, a fact or an action: use `SectionHeader`.
+- A section with a count, a fact set apart on the right, or an action: use `SectionHeader`.
 - A field's label inside its card: use `FieldLabel` in a `FieldCard`.
 - The page title: that is `ScreenScaffold`'s.
 
@@ -46,7 +47,7 @@ iPhone uses it at 40 call sites in 25 files. 3 of them are `SectionHeader` drawi
 
 ## Content
 
-One to three words, sentence case, no full stop. The shells write the titles. The Practice card's heading joins "Last practised · " to the day the musician last practised (`relativeDay`).
+A name, or name · fact: the name in sentence case, then one middle dot with single spaces and the fact, no full stop. Most names are one to three words; "From the chord chart" (`RelatedExercisesCard.swift`) is the longer one that ships. The shells write the titles. The Practice card's heading joins "Last practised · " to the day the musician last practised (`relativeDay`).
 
 ## Accessibility
 
@@ -55,7 +56,7 @@ One to three words, sentence case, no full stop. The shells write the titles. Th
 
 ## Do and don't
 
-- **Do** use it for a name alone, and `SectionHeader` the moment the section gains a count or an action.
+- **Do** use it for a name, or name · fact, and `SectionHeader` the moment the section gains a count or an action.
 - **Don't** pass a font or colour of its own on paper; the tint is for the dark cards only.
 
 ## Usage
