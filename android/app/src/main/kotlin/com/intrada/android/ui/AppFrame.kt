@@ -81,12 +81,28 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController
         SentryReporter.screen(tab?.label ?: route ?: AppTab.LIBRARY.label)
         onDispose {}
     }
+    val halted by store.halted.collectAsState()
+    val banners = AppBanners(halted, viewModel?.error, viewModel?.undoDelete)
+    val top = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
     Box(modifier.fillMaxSize()) {
-        // Composed under a live session so the builder route sees Building end and closes (#2459).
-        Box(if (live || firstRun) Modifier.clearAndSetSemantics {} else Modifier) {
-            Tabs(store, navController, onTab, tab, viewModel?.undoDelete)
+        Column(Modifier.fillMaxSize()) {
+            // One strip over the tabs and the player, like the iPhone's banner stack (#2643).
+            BannerStrip(
+                store,
+                banners,
+                if (firstRun) Modifier.clearAndSetSemantics {} else Modifier,
+            )
+            Box(
+                Modifier.weight(1f)
+                    .then(if (banners.any) Modifier.consumeWindowInsets(top) else Modifier)
+            ) {
+                // Composed under a live session so the builder route sees Building end (#2459).
+                Box(if (live || firstRun) Modifier.clearAndSetSemantics {} else Modifier) {
+                    Tabs(store, navController, onTab, tab)
+                }
+                PlayerHost(store, Modifier.pointerInput(Unit) {}, click)
+            }
         }
-        PlayerHost(store, Modifier.pointerInput(Unit) {}, click)
         if (firstRun) {
             FirstRunRoute(
                 store,
@@ -106,18 +122,13 @@ private fun Tabs(
     navController: NavHostController,
     onTab: Boolean,
     tab: AppTab?,
-    undoDelete: String?,
 ) {
-    val top = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
     Column(Modifier.fillMaxSize()) {
-        // App-wide like the iPhone's banner stack, so an Undo follows you across tabs (#2639).
-        undoDelete?.let { UndoDeleteBanner(store, it) }
         NavHost(
             navController,
             startDestination = AppTab.LIBRARY.route,
             modifier =
                 Modifier.weight(1f)
-                    .then(if (undoDelete != null) Modifier.consumeWindowInsets(top) else Modifier)
                     .then(
                         if (onTab) Modifier.consumeWindowInsets(WindowInsets.navigationBars)
                         else Modifier
@@ -160,20 +171,32 @@ private fun Tabs(
     }
 }
 
+private class AppBanners(val halted: Boolean, val error: String?, val undoDelete: String?) {
+    val any = halted || error != null || undoDelete != null
+}
+
 @Composable
-private fun UndoDeleteBanner(store: Store, message: String) {
+private fun BannerStrip(store: Store, banners: AppBanners, modifier: Modifier = Modifier) {
+    if (!banners.any) return
     val edges = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    GlobalBanner(
-        message,
-        tag = "banner.undoDelete",
-        modifier = Modifier.background(IntradaColor.paperTop).windowInsetsPadding(edges),
-        tone = BannerTone.NOTICE,
-        action =
-            BannerAction("Undo") {
-                store.send(Event.Session(SessionEvent.UndoDelete(SessionClock.now())))
-            },
-        onDismiss = { store.send(Event.Session(SessionEvent.DismissUndoDelete)) },
-    )
+    Column(modifier.fillMaxWidth().background(IntradaColor.paperTop).windowInsetsPadding(edges)) {
+        if (banners.halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
+        banners.error?.let {
+            GlobalBanner(it, tag = "banner.error", onDismiss = { store.send(Event.ClearError) })
+        }
+        banners.undoDelete?.let {
+            GlobalBanner(
+                it,
+                tag = "banner.undoDelete",
+                tone = BannerTone.NOTICE,
+                action =
+                    BannerAction("Undo") {
+                        store.send(Event.Session(SessionEvent.UndoDelete(SessionClock.now())))
+                    },
+                onDismiss = { store.send(Event.Session(SessionEvent.DismissUndoDelete)) },
+            )
+        }
+    }
 }
 
 internal const val ADD_ROUTE = "library/add"

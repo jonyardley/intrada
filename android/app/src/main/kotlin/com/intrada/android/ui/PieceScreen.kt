@@ -59,7 +59,6 @@ class PieceScreenState(reordering: List<SectionView>? = null, editingLinks: Bool
 class PieceActions(
     val navigation: PieceNavigation,
     val send: (Event) -> Boolean,
-    val onDismissError: () -> Unit,
     val sendFromSheet: (Event) -> String?,
 )
 
@@ -72,7 +71,6 @@ fun PieceRoute(
 ) {
     val rows by store.libraryRows.collectAsState()
     val viewModel by store.viewModel.collectAsState()
-    val halted by store.halted.collectAsState()
     var closing by remember { mutableStateOf(false) }
     val found = rows.firstOrNull { it.id == id && it.itemType == ItemKind.PIECE }
     val item = rememberLastFound(found, closing)
@@ -99,12 +97,9 @@ fun PieceRoute(
         PieceActions(
             closingNavigation,
             send = { store.sendAccepted(it) },
-            onDismissError = { store.send(Event.ClearError) },
             sendFromSheet = { store.sendFromForm(it) },
         ),
         modifier,
-        error = viewModel?.error,
-        halted = halted,
         variationLibrary = viewModel?.variations.orEmpty(),
         topMark = viewModel?.limits?.scoreMax?.toInt() ?: 0,
     )
@@ -129,8 +124,6 @@ fun PieceScreen(
     state: PieceScreenState,
     actions: PieceActions,
     modifier: Modifier = Modifier,
-    error: String? = null,
-    halted: Boolean = false,
     variationLibrary: List<VariationOptionView> = emptyList(),
     topMark: Int = 0,
 ) {
@@ -140,9 +133,6 @@ fun PieceScreen(
         actions = { TextAction("Edit", "piece.edit", actions.navigation.onEdit) },
     ) {
         Column(Modifier.fillMaxSize()) {
-            if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
-            if (error != null)
-                GlobalBanner(error, tag = "banner.error", onDismiss = actions.onDismissError)
             Column(
                 Modifier.verticalScroll(rememberScrollState()).padding(IntradaSpacing.card),
                 verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),

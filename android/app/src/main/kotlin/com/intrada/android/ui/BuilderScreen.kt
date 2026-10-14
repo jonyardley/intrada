@@ -39,27 +39,6 @@ import com.intrada.shared.LimitsView
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.SetlistBlockView
 
-// ── Banners ──
-
-class ScreenAlerts(
-    val error: String? = null,
-    val halted: Boolean = false,
-    val onDismissError: () -> Unit = {},
-)
-
-@Composable
-fun storeAlerts(store: Store): ScreenAlerts {
-    val viewModel by store.viewModel.collectAsState()
-    val halted by store.halted.collectAsState()
-    return ScreenAlerts(viewModel?.error, halted) { store.send(Event.ClearError) }
-}
-
-@Composable
-fun AlertBanners(alerts: ScreenAlerts) {
-    if (alerts.halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
-    alerts.error?.let { GlobalBanner(it, tag = "banner.error", onDismiss = alerts.onDismissError) }
-}
-
 // ── Builder ──
 
 class BuilderNavigation(
@@ -72,14 +51,11 @@ class BuilderNavigation(
 class BuilderActions(
     val send: (Event) -> Boolean,
     val navigation: BuilderNavigation,
-    val onDismissError: () -> Unit,
 )
 
 class BuilderModel(
     val setlist: BuildingSetlistView,
     val limits: LimitsView,
-    val error: String? = null,
-    val halted: Boolean = false,
 )
 
 class BuilderScreenState(editing: Boolean = false) {
@@ -92,7 +68,6 @@ class BuilderScreenState(editing: Boolean = false) {
 @Composable
 fun BuilderRoute(store: Store, navigation: BuilderNavigation, modifier: Modifier = Modifier) {
     val viewModel by store.viewModel.collectAsState()
-    val halted by store.halted.collectAsState()
     val state = remember { BuilderScreenState() }
     val setlist = viewModel?.buildingSetlist
     val limits = viewModel?.limits
@@ -102,9 +77,9 @@ fun BuilderRoute(store: Store, navigation: BuilderNavigation, modifier: Modifier
         return
     }
     BuilderScreen(
-        BuilderModel(setlist, limits, viewModel?.error, halted),
+        BuilderModel(setlist, limits),
         state,
-        BuilderActions(store::sendAccepted, navigation) { store.send(Event.ClearError) },
+        BuilderActions(store::sendAccepted, navigation),
         modifier,
     )
 }
@@ -139,7 +114,6 @@ fun BuilderScreen(
         },
     ) {
         Column(Modifier.fillMaxSize()) {
-            AlertBanners(ScreenAlerts(model.error, model.halted, actions.onDismissError))
             BuilderBody(model, state, actions, editing)
             if (setlist.entries.isNotEmpty()) StartBar(setlist, actions)
         }

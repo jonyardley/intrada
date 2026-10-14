@@ -45,6 +45,23 @@ class AppFrameSnapshotTest {
     @Test fun progress() = capture(AppTab.PROGRESS, "src/test/snapshots/frame-progress.png")
 
     @Test
+    fun errorOverLibrary() = runTest {
+        val store =
+            Store(
+                PinnedWeekBridge(),
+                Fixtures.FailingItemStore,
+                this,
+                StandardTestDispatcher(testScheduler),
+                log = {},
+            )
+        store.send(Event.StartApp)
+        store.send(Event.FirstRun(FirstRunEvent.SkipWelcome))
+        store.settle()
+        compose.setContent { AppFrame(store) }
+        compose.onRoot().captureRoboImage("src/test/snapshots/frame-library-error.png")
+    }
+
+    @Test
     fun undoOverLibrary() = runTest {
         val store =
             Store(

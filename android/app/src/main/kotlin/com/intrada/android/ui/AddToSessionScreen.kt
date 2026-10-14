@@ -96,7 +96,6 @@ fun AddToSessionRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Mod
             )
         },
         modifier = modifier,
-        alerts = storeAlerts(store),
     )
 }
 
@@ -126,7 +125,6 @@ fun AddRelatedRoute(
             )
         },
         modifier = modifier,
-        alerts = storeAlerts(store),
     )
 }
 
@@ -137,7 +135,6 @@ fun LibraryPickerScreen(
     added: Set<String>,
     actions: PickerActions,
     modifier: Modifier = Modifier,
-    alerts: ScreenAlerts = ScreenAlerts(),
 ) {
     val tag = copy.tag
     ScreenScaffold(
@@ -146,7 +143,6 @@ fun LibraryPickerScreen(
         actions = { TextAction("Done", "$tag.done", actions.onDone, emphasised = true) },
     ) {
         Column(Modifier.fillMaxSize()) {
-            AlertBanners(alerts)
             rows.search?.let { SearchField(it, "${copy.tag}.search") }
             PickerList(copy, rows, added, actions)
         }

@@ -88,7 +88,6 @@ fun PracticeRoute(
             viewModel?.showsPriorities == true,
             showsSuggestionRestore = viewModel?.showsSuggestionRestore == true,
             firstRun = viewModel?.firstRun,
-            alerts = storeAlerts(store),
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
         onOpen = onOpen,
@@ -137,7 +136,6 @@ class PracticeModel(
     val showsPriorities: Boolean = false,
     val showsSuggestionRestore: Boolean = false,
     val firstRun: FirstRunView? = null,
-    val alerts: ScreenAlerts = ScreenAlerts(),
 )
 
 @Composable
@@ -162,7 +160,6 @@ fun PracticeScreen(
         actions = { onProfile?.let { ProfileButton(model.icon, model.colour, it) } },
     ) {
         Column(Modifier.fillMaxSize()) {
-            AlertBanners(model.alerts)
             Column(
                 Modifier.fillMaxSize()
                     .verticalScroll(rememberScrollState())

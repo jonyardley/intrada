@@ -4,7 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -27,6 +26,7 @@ import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -201,7 +201,7 @@ class BuilderScreenTest {
     }
 
     @Test
-    fun anAimTheCoreRefusesShowsItsErrorOnTheSettingsScreen() = runTest {
+    fun anAimTheCoreRefusesRaisesItsError() = runTest {
         val store = buildingStore()
         val satie = store.setlist().entries.single { it.itemId == BuilderFixtures.SATIE }
         compose.setContent { EntrySettingsRoute(store, satie.id, onDone = {}) }
@@ -209,7 +209,7 @@ class BuilderScreenTest {
         compose.onNodeWithTag("entrySettings.aim").performTextInput("a".repeat(TOO_LONG_AIM))
         compose.waitForIdle()
 
-        compose.onNodeWithTag("banner.error").assertIsDisplayed()
+        assertNotNull(store.viewModel.value?.error)
     }
 
     @Test

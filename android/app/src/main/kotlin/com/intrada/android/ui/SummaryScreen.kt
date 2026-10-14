@@ -46,7 +46,6 @@ fun SummaryScreen(model: SummaryModel, send: (Event) -> Boolean, modifier: Modif
     BackHandler { confirmingDiscard = true }
     ScreenScaffold("Session complete", modifier) {
         Column(Modifier.fillMaxSize()) {
-            AlertBanners(model.alerts)
             Column(
                 Modifier.weight(1f)
                     .fillMaxWidth()

@@ -55,7 +55,6 @@ import java.time.Instant
 @Composable
 fun PlayerHost(store: Store, modifier: Modifier = Modifier, click: ClickController? = null) {
     val viewModel by store.viewModel.collectAsState()
-    val alerts = storeAlerts(store)
     val limits = viewModel?.limits ?: return
     val active = viewModel?.activeSession
     val summary = viewModel?.summary
@@ -74,14 +73,14 @@ fun PlayerHost(store: Store, modifier: Modifier = Modifier, click: ClickControll
                 store.send(Event.Session(SessionEvent.CameBack(SessionClock.now())))
             }
             PlayerScreen(
-                PlayerModel(active, limits, alerts, click = click) {
+                PlayerModel(active, limits, click = click) {
                     ScreenAlerts(store.viewModel.value?.error, store.halted.value)
                 },
                 send,
                 modifier,
             )
         }
-        summary != null -> SummaryScreen(SummaryModel(summary, limits, alerts), send, modifier)
+        summary != null -> SummaryScreen(SummaryModel(summary, limits), send, modifier)
     }
 }
 
@@ -97,20 +96,17 @@ private fun KeepScreenOn() {
 class PlayerModel(
     val active: ActiveSessionView,
     val limits: LimitsView,
-    val alerts: ScreenAlerts = ScreenAlerts(),
     /** A fixed instant for tests; the app passes none and the clocks tick. */
     val held: Instant? = null,
     /** Held outside the screen so turning the phone keeps it sounding; tests pass their own. */
     val click: ClickController? = null,
-    /** The alerts as they stand after a send, which [alerts] cannot see until recomposition. */
-    val alertsNow: () -> ScreenAlerts = { alerts },
+    /** The alerts as they stand after a send, which a recomposition has not yet shown. */
+    val alertsNow: () -> ScreenAlerts = { ScreenAlerts() },
 )
 
-class SummaryModel(
-    val summary: SummaryView,
-    val limits: LimitsView,
-    val alerts: ScreenAlerts = ScreenAlerts(),
-)
+class ScreenAlerts(val error: String? = null, val halted: Boolean = false)
+
+class SummaryModel(val summary: SummaryView, val limits: LimitsView)
 
 @Composable
 fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifier = Modifier) {
@@ -145,7 +141,6 @@ fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifie
         ) {
             MenuButton("Session options", "player.options") { options = true }
         }
-        AlertBanners(model.alerts)
         active.record.awayOffer
             ?.takeIf { it.label != keptAway }
             ?.let { offer ->
