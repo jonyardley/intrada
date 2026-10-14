@@ -1,7 +1,7 @@
 # intrada Tone of Voice
 
 > Started 2026-08-14 (issue #1359, decision 1a of the
-> [v0.7.0 audit](audit-2026-08.md)). This is the writing layer of
+> v0.7.0 audit, recorded in [`decisions.md`](decisions.md)). This is the writing layer of
 > [`design-principles.md`](design-principles.md): that doc decides what a screen
 > *does*, this one decides what it *says*. When they disagree, the design
 > principle wins and this doc gets a new example.
@@ -308,7 +308,7 @@ items done, the scores the user entered).
 
 The app has no microphone and no MIDI. Machine listening was deferred
 (decision 18, 2026-08-04) and the capture spike was deleted outright in #1176,
-leaving [`segmentation-findings.md`](segmentation-findings.md) as the record. So
+leaving a line in [`decisions.md`](decisions.md) as the record. So
 the app's entire knowledge of a session is what the user typed into it, and
 `Nice work.` currently fires on completion no matter what those numbers say.
 Congratulating someone who scored every item 2 is the notebook claiming to have

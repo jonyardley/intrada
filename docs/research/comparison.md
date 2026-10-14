@@ -1,6 +1,6 @@
 # Stage 4.2 — choosing the next direction
 
-*Phase R, Stage 4.2 ([`rethink-plan.md`](../rethink-plan.md)): the one-page
+*Phase R, Stage 4.2 of the rethink plan ([`decisions.md`](../decisions.md)): the one-page
 comparison of the five research notes in this folder. **Decided 2026-08-14:
 Jon adopted the ordered sequence below.** Feature names follow the
 plain-language rule (CLAUDE.md → Conventions); each note's codename appears
@@ -12,15 +12,16 @@ The five notes were commissioned as equals. They did not come back as equals:
 
 - **The chord-chart feature is already built.** Enter a tune's chord changes
   and the app writes its practice exercises — shells, guide-tone lines,
-  scales, constrained improvisation (note:
-  [`chart-to-scaffold-phase-b.md`](chart-to-scaffold-phase-b.md)). It shipped
+  scales, constrained improvisation (spec:
+  [`chart-to-scaffold.md`](../../specs/chart-to-scaffold.md)). It shipped
   in #1110 and #1111 on 2026-07-17 and froze, unused, behind the coach pivot;
   the issue asking for it (#1106) was simply never closed. The one missing
   part is generating those exercises in all twelve keys (#1107). What remains
   is *using it for real*, not building it.
 - **The metronome is already scheduled** as audit Phase 4 (#1366, spec-first),
-  so it ships through the Stage 3 pipeline whichever direction won. Its note
-  ([`metronome.md`](metronome.md)) mostly de-risks that work: the click engine
+  so it ships through the Stage 3 pipeline whichever direction won. Its research note,
+  whose rulings now live as T14, T16, T17 and T19 in
+  [`design-principles.md`](../design-principles.md), mostly de-risks that work: the click engine
   survived deletion intact (recoverable from `8af4891^`), the tempo plumbing
   already spans the core, and tempo-as-a-tracked-measure is genuinely
   unoccupied ground among competitors.

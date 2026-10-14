@@ -218,7 +218,7 @@ from this session" path — T4's non-gesture floor). Edit/Done shrinks to
 **bulk remove** (system minus-circles), per mock frame 14. Invented affordances
 that deviate from the mock (chevron tap-steppers, Edit-gated settings glyphs)
 were removed. This also **overturns decision 3 of
-the related-exercises redesign (2026-07-01, now in `specs/exercise-linking-origins.md`)**: the per-exercise
+the related-exercises redesign (2026-07-01; see `docs/decisions.md`)**: the per-exercise
 "include today" toggle returns (off = stays visible but dimmed, excluded from
 totals, dropped at session start) — needs a core event, tracked as
 jonyardley/intrada#1101. Recorded deviation: the mock draws the block dragging
@@ -350,8 +350,7 @@ the evidence from that week would be lost to the mastery track).
 
 ### T13 — Voice splits by surface, and the engine never speaks on screen
 
-**Status:** DECIDED 2026-08-07 (graduated from
-`design/briefs/2026-08-copy-language.md` v2, decided with Jon while reviewing
+**Status:** DECIDED 2026-08-07 (decided with Jon while reviewing
 the Built Session A/B/C mockups; lands with jonyardley/intrada#1256). RETIRED
 2026-08-13. The surface this decided was removed with the coach (#1344). Kept
 as log history.
@@ -385,8 +384,7 @@ ear" / "from cold" (as lived experience). Never explain the data model inline
 no philosophy headlines; buttons name the action, not the mechanism ("Keep it
 as a drill", never "write the gate").
 
-The full spec, with worked per-frame examples, is
-`design/briefs/2026-08-copy-language.md`; the design system gains a Voice
+The design system gains a Voice
 section beside the tokens so future frames are written against it.
 
 Options considered: one app-wide voice with a softer register (rejected: what
@@ -400,8 +398,7 @@ carries it, or an ⓘ does); letting spec vocabulary through where it is
 ### T14 — The click starts on a tap and only then offers a tempo
 
 **Status:** DECIDED 2026-08-19 (jonyardley/intrada#1398, the metronome click
-back in the Focus Player; research note
-[`research/metronome.md`](research/metronome.md) §5 slice 1).
+back in the Focus Player).
 
 **An instance of T2, not an exception to it.** The player's tempo line was a
 passive readout of the item's declared target ("Andante · ♩ = 66"). It now
@@ -604,9 +601,7 @@ noise. It stops growing at #1422 and ages out as real history accumulates.
 ### T18 — On a piece, the exercise you write outranks the one the app suggests
 
 **Status:** DECIDED 2026-08-28 (jonyardley/intrada#1431), from Jon's second
-round of real use. Spec:
-[`specs/piece-related-exercises.md`](../specs/piece-related-exercises.md).
-Mocked on the
+round of real use. Mocked on the
 [design canvas](https://claude.ai/code/artifact/c646b020-6a05-4fe9-9479-73bdbd42528e).
 
 The chord-chart derivation shipped with the loudest affordance on the piece
@@ -1126,7 +1121,7 @@ not a fixed brown for everyone.
 
 **Status:** DECIDED 2026-09-24 (jonyardley/intrada#2121) for the welcome, no
 sample content and ticks from core data; the last two rulings are proposed with
-#2116 (spec [`../specs/first-run.md`](../specs/first-run.md)). A new musician
+#2116. A new musician
 learns the app by making their first session, not by reading about it.
 
 - **One welcome, then the work.** A single screen with one plain line on what the app is for and a

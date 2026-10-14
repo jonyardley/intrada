@@ -2,9 +2,9 @@
 
 A **practice notebook** for musicians, built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. Build a session from your music library, group and reorder what you'll practise, play it through with a timer and rep counting, and score how it went. Organised as three pillars: **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working).
 
-See [`docs/roadmap.md`](docs/roadmap.md) for direction, `just status` for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation. (A practice-coach direction was built July to August 2026 and reversed; its design record lives in [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md), bannered.)
+See [`docs/roadmap.md`](docs/roadmap.md) for direction, `just status` for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation. (A practice-coach direction was built July to August 2026 and reversed; its decision line is in [`docs/decisions.md`](docs/decisions.md).)
 
-intrada ships **two native apps on one Rust core**: SwiftUI for iPhone in `ios/` and Compose for Android in `android/`, kept at parity, so every new feature lands on both. Both are offline-first: on-device SQLite is the source of truth and each app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed in 2026-07 (see [`docs/rebuild-review.md`](docs/rebuild-review.md)).
+intrada ships **two native apps on one Rust core**: SwiftUI for iPhone in `ios/` and Compose for Android in `android/`, kept at parity, so every new feature lands on both. Both are offline-first: on-device SQLite is the source of truth and each app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed in 2026-07 (see [`docs/decisions.md`](docs/decisions.md)).
 
 ## Architecture
 
@@ -172,7 +172,6 @@ specs/                # Design specs for major features
 | [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md) | How issues, epics, the project board and releases are organised |
 | [`VISION.md`](VISION.md) | Product vision |
 | [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
-| [`docs/rebuild-review.md`](docs/rebuild-review.md) | Historical record: the 2026-07 pivot assessment and the retired coach design ([`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md)) |
 | [`SETUP.md`](SETUP.md) | Configuration (Sentry, CI, TestFlight) and local setup in full |
 | [`docs/working-with-agents.md`](docs/working-with-agents.md) | One unit of work in this repo, step by step: claim, isolate, route, plan, build, review, ship, measure |
 | [Working with an agent: what good looks like](https://claude.ai/code/artifact/153ece12-8089-40c8-9f3d-5ce484503015) | The generic guide to Claude Code on any repo, written for a newcomer and shared as a Claude Doc: the ten rules, the shape of a unit, where the money goes, the gotchas, trust, and how to build a harness. No intrada specifics |

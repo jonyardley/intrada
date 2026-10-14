@@ -80,9 +80,8 @@ otherwise leaves no trace anywhere Sentry has no DSN: CI always, and dev unless
 (internal testing), mirroring `.github/workflows/release-testflight.yml` (which
 runs on `workflow_dispatch` or a `v*` tag, never per-PR). Signing is fastlane
 **match**, and it needs Ruby >= 3 — system Ruby 2.6 is too old, use `rbenv` —
-plus a one-time App Store Connect and match bootstrap. Full setup and decisions:
-[`../specs/ios-testflight-cicd.md`](../specs/ios-testflight-cicd.md) and
-SETUP.md §3.
+plus a one-time App Store Connect and match bootstrap. Full setup and how the lane works:
+[SETUP.md section 3](../SETUP.md#3-native-ios-to-testflight).
 
 A tagged run also bakes `SENTRY_DSN_NATIVE` into the build and, after the
 upload, creates the matching Sentry release in `intrada-mobile`, so a beta
@@ -503,7 +502,7 @@ happened optimistically, and `Failed` surfaces `last_error`. There is no
 refetch and no server echo. A finished practice is the exception: `SaveSession`
 parks it until the store answers, so its `Ack` is the push and the recovery-copy
 clear, and its `Failed` keeps the summary and raises the banner instead of
-reloading (`specs/save-acknowledged.md`, #974).
+reloading (#974).
 
 ## Glossary
 
@@ -613,8 +612,8 @@ rather than the code that produced them.
 
 This binds deliberately-deferred work too. The MIDI capture spike and its Rust
 segmentation module were deleted on exactly this rule even though the scoring
-path is expected back, with
-[`segmentation-findings.md`](segmentation-findings.md) left as the record.
+path is expected back, with a line in
+[`decisions.md`](decisions.md) left as the record.
 Deferring a feature means deferring its code to history.
 
 The distinction that keeps this from over-firing: a stub a *test* reads, or an
@@ -732,8 +731,8 @@ note saying it is obsolete.
   core, the bridge and the crash-recovery blob in #1766 and #1374; the intention's
   and the trio's four columns stay in the on-device `session` table, written by
   nothing and read by nothing, because dropping a column needs a copy-table migration on the only
-  copy of the user's data. `specs/retire-shell-dead-session-fields.md` holds the
-  decision and the recovery point.
+  copy of the user's data. `docs/decisions.md` holds the
+  decision; git history holds the full record and the recovery point (#1766).
 
 ## Why OMP was retired (2026-09-08)
 

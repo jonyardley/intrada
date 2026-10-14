@@ -1,90 +1,87 @@
 # Design in the Intrada workflow
 
-> Replaces the Pencil (`design/intrada.pen`) step. Design now happens in
-> **Claude Design**, and the living reference is checked into the repo as HTML.
-
 ## What lives where
 
 | Artifact | Path | Role |
 |----------|------|------|
-| **Token source of truth** | `ios/Intrada/DesignSystem/Theme.swift` | Code is canonical. Colours, type, spacing, radius. Nothing overrides this. |
-| **Living design system** | `design/intrada-design-system.dc.html` (+ `support.js`) | Editable reference — open in Claude Design to iterate. Foundations, type language, component catalogue, screen gallery. **Derived from `Theme.swift`.** |
-| **Shareable render** | `design/intrada-design-system.html` | Self-contained, offline, no build. For PR review and quick viewing. Regenerated from the `.dc.html`. |
-| ~~Pencil frames~~ | ~~`design/intrada.pen`~~ | Deprecated. Keep for history; do not extend. The `light-mode-exploration.md` record stays as provenance. |
+| **Token source of truth** | `ios/Intrada/DesignSystem/Theme.swift` | Code is canonical. Colours, type, spacing, radius, motion. Nothing overrides this. |
+| **Living design system** | `design/intrada-design-system.dc.html` (+ `support.js`) | Editable reference, opened in Claude Design to iterate: the component catalogue and one canonical screen per pillar. **Derived from `Theme.swift`.** |
+| **Shareable render** | `design/intrada-design-system.html` | Self-contained, offline, no build. For PR review. Regenerated from the `.dc.html`. |
+| **Feature mockups** | `specs/<feature>/design/<journey>.dc.html` | The journeys for one feature: flows, edge cases, transitions. |
 
-The `.dc.html` is the working file; the `.html` is its exported snapshot. Both
-trace back to `Theme.swift` — the reference visualises the tokens, it never
-defines new ones.
+The reference visualises the tokens; it never defines new ones.
 
-The Claude Design workspace is the claude.ai/design project **"Intrada"**
-(`claude.ai/design/p/d09e8b80-a0a0-4dee-ab79-670e49210e0f`), made in Jon's
-account on 13 October 2026 from an export of the earlier project
-(`1b2cc9dd…`, which lives in another account; `0e60f6f5…` and `cd74e299…`
-404). The export was older than `design/`, so the repo's files were pushed up
-over it (#2599). Retired coach-era mock-ups sit in the project's `archive/`
-folder, and two large standalone exports (Practice Record v0.17 Screens,
-Practice Capture Journeys) live only in its `exports/` folder. Claude Design
-refuses a file named `CLAUDE.md`, so `design/CLAUDE.md` stays repo only.
-Standalone claude.ai/design closes on 14 December 2026, so the project moves
-into a Design System artifact before then (#2603). **The repo stays
-canonical**: Claude Code bridges the two with `DesignSync` — pushing repo
-design files up after they change here, and pulling finished mockups down
-(design sessions save to project paths like `mockups/`; they cannot write to
-GitHub or the repo). Pulled mockups land under `specs/<feature>/design/` per
-the SDLC steps below, with `support.js` copied alongside so they render
-standalone.
+Design happens in the claude.ai/design project **"Intrada"**
+(`claude.ai/design/p/d09e8b80-a0a0-4dee-ab79-670e49210e0f`), which moves into a
+Design System artifact before standalone claude.ai/design closes on
+14 December 2026 (#2603). **The repo stays canonical**: `DesignSync` pushes
+repo design files up after they change and pulls finished mockups down to
+`specs/<feature>/design/`, with `support.js` alongside. `design/CLAUDE.md`
+stays repo only, since Claude Design refuses that name.
+
+## One home per surface
+
+Drift happens when the same surface is drawn in two files, so every surface has
+exactly one home. A **pillar** is a top-level tab that always exists; its
+current screen lives once, in the design system. A **journey** is a path
+through pillars for one feature; it lives in that feature's mockup, built from
+design system components. A feature file never redraws a pillar screen or
+restyles a component: it references them. When designs conflict, the design
+system wins.
+
+**The fold-in ratchet.** When a feature's design is agreed, promote its new
+components to the design system, update any pillar screen that changed shape,
+and strip every frame the design system now covers from the feature file.
+Things move from feature file to design system, never back, so a feature file
+shrinks after every fold-in.
+
+## Motion and dark mode
+
+Named motion tokens live in `Theme.swift` (`IntradaMotion`). Under Reduce
+Motion every reveal renders its final state with no animation (#2239). Motion
+earns its place only when it carries meaning: progress, a change of state, a
+celebration. Light is the default; dark mode is parked until after MVP, and the
+"After dark" section of `design/Intrada Concepts.dc.html` shows the tokens
+invert cleanly.
 
 ## Committing it
 
-1. Copy into the repo:
-   - `design/intrada-design-system.dc.html`
-   - `design/support.js`
-   - `design/intrada-design-system.html`
-2. Open `design/intrada-design-system.html` in any browser to confirm it renders.
-3. Update `docs/design-principles.md` if the change alters how the app should
+1. Copy the `.dc.html`, `support.js` and the `.html` into `design/`, and open
+   the `.html` in a browser to confirm it renders.
+2. Update `docs/design-principles.md` if the change alters how the app should
    feel, and append a T-numbered decision there rather than deciding silently.
 
 ### Regenerating the shareable export
 
-`design/intrada-design-system.html` is Claude Design's "standalone HTML" bundle:
-one `<script type="__bundler/template">` holding the whole page as a JSON string,
-plus every font, icon and image inlined as an asset (hence about 360 KB, well
-over DesignSync's 256 KiB `get_file` cap). Two routes:
+The `.html` is Claude Design's standalone bundle: one
+`<script type="__bundler/template">` holding the page as a JSON string, assets
+inlined, over DesignSync's 256 KiB `get_file` cap. Two routes:
 
-- **Claude Design's own Share → Export → Standalone HTML**, driven in a browser
-  (what #1213 did via Playwright). Needs an interactive claude.ai login, so it is
-  unavailable in a headless or non-interactive session.
-- **Patch the bundle in place**: decode the template string with
-  `json.loads`, apply the same edits made to the `.dc.html`, re-encode with
-  `json.dumps(..., ensure_ascii=False)` then `"</" → "<\\u002F"`, and splice it
-  back. Verify by decoding again and diffing against the `.dc.html`: the only
-  differences should be the bundler's own normalisations (head rewritten with
-  inlined fonts, asset URLs replaced by uuids, `viewBox` → `sc-camel-view-box`,
-  entities decoded, boolean attributes quoted). Then load the result in a browser
-  and check the page height and a new component against the `.dc.html`.
+- **Claude Design's Share, Export, Standalone HTML**, in a browser. Needs an
+  interactive claude.ai login.
+- **Patch the bundle in place**: decode the template string with `json.loads`,
+  apply the edits made to the `.dc.html`, re-encode with
+  `json.dumps(..., ensure_ascii=False)`, replace `"</"` with `"<\\u002F"`, and
+  splice it back. Decode again and diff against the `.dc.html`: only the
+  bundler's normalisations should differ. Then check it in a browser.
 
-Either way, push the updated `.dc.html` to the project with `DesignSync` first,
-so the project and the repo do not drift.
+Either way, push the `.dc.html` up with `DesignSync` first.
 
 ## Adding design to the SDLC
 
-Each feature already moves through `specs/NNN-feature/` (`spec.md` → `plan.md` →
-`tasks.md`). Insert a **Design** step between `spec` and `plan`:
+Insert a **Design** step between the spec and the build:
 
-1. **Design** — In Claude Design, open `intrada-design-system.dc.html` for context
-   and mock the new screens/states using the existing kit, with an iPhone frame
-   and an Android frame for each, since every feature ships on both. Save the
-   mockup as `specs/NNN-feature/design/<screen>.dc.html` (+ exported `.html`).
-   - Reuse components and tokens; if something new is needed, that's a signal a
-     new primitive/token belongs in `Theme.swift` **and** the design system.
-2. **Plan / tasks** — Reference the committed mockup. Build against it.
-3. **PR checklist:** add three gates:
-   - [ ] If a token changed, `Theme.swift` and
-         `design/intrada-design-system.dc.html` were updated together.
-   - [ ] If a component changed, its page in `design/components/` changed
-         first (see "Changing a component").
-   - [ ] New screens have a committed Claude Design mockup, iPhone and Android
-         frames, under their spec folder.
+1. **Design.** In Claude Design, open `intrada-design-system.dc.html` for
+   context and mock the new screens with the existing kit, in an iPhone frame
+   and an Android frame. Save it under `specs/<feature>/design/`. Something new
+   belongs in `Theme.swift` and the design system.
+2. **Build** against the committed mockup.
+3. **PR checklist:**
+   - [ ] A changed token changed `Theme.swift` and
+         `design/intrada-design-system.dc.html` together.
+   - [ ] A changed component changed its page in `design/components/` first.
+   - [ ] New screens have a committed mockup, iPhone and Android, under their
+         spec folder.
 
 ## Changing a component
 
@@ -104,11 +101,8 @@ order, in one PR:
 
 ## Keeping code and design in sync
 
-- **New component** → its page first, as in "Changing a component" above.
-- **New token** → change `Theme.swift` first, then update the design
-  system reference and re-export the `.html`. Same PR.
-- **Exploring a direction** (e.g. the Liquid Glass tab bar) → mock it in Claude
-  Design first, get sign-off, then implement in SwiftUI and Compose and fold the agreed result
-  back into the reference.
-- Treat the design system file the way you treat `Theme.swift`: a reviewed,
-  versioned part of the codebase — not a throwaway mock.
+- **New component:** its page first, as in "Changing a component".
+- **New token:** `Theme.swift` first, then the design system reference and the
+  re-exported `.html`, in the same PR.
+- **Exploring a direction:** mock it in Claude Design, get sign-off, build it
+  in SwiftUI and Compose, then fold the result into the reference.

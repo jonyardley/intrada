@@ -2,7 +2,7 @@
 
 > Tier 3 by domain sensitivity: a new event crosses the FFI bridge and carries
 > a nested create. Issue [#1390]. [#1080] ("add a lesson") closes into this: the
-> decision of 2026-09-07 (Stage 4 of [`rethink-plan.md`](../docs/rethink-plan.md))
+> decision of 2026-09-07 ([`docs/decisions.md`](../docs/decisions.md))
 > is that the fast path through existing primitives *is* the answer to the
 > lesson-capture shape question, and no lesson entity gets built. **Scope:
 > `intrada-core` + native iOS only.** API/Turso out of scope.

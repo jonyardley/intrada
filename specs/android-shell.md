@@ -1,184 +1,82 @@
 # Android App Shell on the Shared Core
 
-> Tier 3 (a second native shell on an unchanged Crux core; no core changes).
-> Spec issue #1774. Nothing below has started: this is the plan a build
-> phase claims against, playing the same role `specs/native-ios.md` plays
-> for the iOS shell.
-
-## Problem
-
-intrada's only shell today is the native SwiftUI app on `intrada-core`. An
-Android musician cannot use intrada at all. The core is a pure Crux app
-with no I/O, and the iOS build already proved that a thin native shell over
-the UniFFI bridge works. A second shell is a port of the bridge and the
-screens, not a redesign of the domain.
+> Tier 3: a second native shell on the unchanged Crux core. Spec issue #1774,
+> epic #2220.
 
 ## Approach
 
-A native Android app in `android/` (Kotlin, Jetpack Compose) on the
-unchanged `intrada-core`. No core changes: the same `Event` / `Effect` /
-`ViewModel` contract that drives iOS drives Android too. The bridge itself
-is cheap, because Crux 0.20's `crux_core::type_generation::facet::TypeRegistry`
-carries a `kotlin(&config)` emitter next to the `swift(&config)` call
-`codegen.rs` already uses. The real work is porting the shell: thirteen SwiftUI
-screens plus their sheets and form scaffolds, the design system, the store loop, and the platform I/O:
-persistence, singletons, the metronome, page OCR and the suggestion pass
-over it, camera, screen wake lock, crash reporting.
-
-## The Crux to Kotlin bridge
-
-What the core already gives both shells:
-
-- Four `Effect` variants cross the bridge: `Render`, `App`, `Persistence`,
-  `Recognition`. Android fulfils the same four; none of them are iOS-shaped.
-- `AppEffect` carries `SaveSessionInProgress`, `ClearSessionInProgress`,
-  `SaveLibrarySort`, `SaveProfile`. All four are small-singleton writes, not
-  relational data.
-- No HTTP and no auth exist in core or shell today (the API was removed in
-  #1746). Android needs neither on day one.
-- The UniFFI surface is three calls (`update`, `resolve`, `view`) plus a
-  constructor, and one free function, `sort_and_filter_picker_candidates`,
-  with its `PickerCandidateArg` and `PickerSortArg` records. It is a plain
-  call rather than an `Event` round trip because the picker sheet runs it on
-  every keystroke (#1653); Android calls it the same way. iOS generates
-  `ios/generated/SharedTypes` (the bincode types) and
-  `ios/generated/IntradaCoreFFI` (the UniFFI bridge) from that surface;
-  Android generates the Kotlin equivalents from the same `codegen.rs` binary.
-  `intrada-ffi/src/lib.rs` pins uniffi 0.29.4 at compile time; the Kotlin
-  bindgen must run at that same version or the bridge skews silently.
-
-## How the iOS shell works today, for reference
-
-The Swift store is `@Observable @MainActor`, with effect handlers running
-off the main actor and hopping back to post results. Persistence is the
-shared store (#2432); singletons and the crash-recovery session
-blob (`ActiveSession`) live in `UserDefaults` as bincode bytes. The
-metronome is an `AVAudioEngine` host-time click grid. Page OCR runs behind
-the `Recognition` effect via Apple Vision, returning `RecognisedLine`s with
-geometry; `PageSuggester` then runs Apple's on-device FoundationModels over
-that text to suggest title, composer, tempo marking and bpm. The camera is a
-`PageCamera` view; `ScreenWakeLock` keeps the player screen on; Sentry
-reports crashes. Android ports each of these behind the same effect
-contract, shown below.
+A native Android app in `android/` (Kotlin, Jetpack Compose) on the unchanged
+`intrada-core`, fulfilling the same effects through the same UniFFI surface.
+`intrada-ffi/src/lib.rs` pins uniffi 0.29.4; the Kotlin bindgen must match or
+the bridge skews silently.
 
 ## Layer mapping
 
-| Layer | iOS today | Android | Note |
-|-|-|-|-|
-| Packaging | `cargo swift package` plus UniFFI Swift | `cargo ndk` building `arm64-v8a` and `x86_64` (the second for emulators on x86_64 hosts, CI included) plus UniFFI bindgen's Kotlin target at uniffi 0.29.4, JNA at runtime | The same bridge calls either side, the picker function included. |
-| Types | Swift `SharedTypes` | Kotlin package `com.intrada.shared` via `codegen --lang kotlin`, the bridge in `com.intrada.ffi`, both generated into `android/generated/` | Never hand-edited, on either shell. |
-| Store | `@Observable @MainActor Store` | A Kotlin `Store` class exposing `StateFlow<ViewModel>`, effects dispatched on `Dispatchers.IO`, hopping back to `Main` | Same update, process, resolve loop. |
-| Persistence | The shared Rust store, `crates/intrada-store`, called through the bridge (#2432) | The same store | One schema, one migration list and one set of row converters for both phones (see The shared store). |
-| Singletons and crash blob | `UserDefaults` holding bincode bytes | `SharedPreferences` holding the same bincode bytes as Base64 text | Same keys, and the same key-bump rule when the blob shape changes (#1345). |
-| Metronome | `AVAudioEngine` host-time click grid | `AudioTrack` streaming with clicks written at sample positions | Sample-accurate, not timer-driven. Hardest piece; the emulator cannot judge it. Oboe via the NDK only if a real device measures unacceptable latency. |
-| Page OCR | Apple Vision behind `Recognition` | ML Kit on-device text recognition behind the same `Recognition` effect | ML Kit returns blocks; the shell splits them into `RecognisedLine`s with geometry. The core still decides field assignment. |
-| Page suggestions | `PageSuggester` on FoundationModels | Open: no on-device model is assumed. Android ships OCR without the suggestion pass until one is chosen (Open questions). | The capture screen must read well with the fields left for the musician to fill. |
-| Screen wake lock | `ScreenWakeLock` | `FLAG_KEEP_SCREEN_ON` on the player activity | |
-| Crash reporting | Sentry | Sentry's Android SDK, DSN from the build config | Day-one quality, as on iOS. A tagged Play build creates its Sentry release and uploads the core's native symbols, so native frames can show file and line (#2517). |
-| Camera and photos | `PageCamera` view | CameraX plus the system Photo Picker | |
-| Design system | `Theme.swift` tokens | A Compose theme object with the same token names | Built on Compose foundation with intrada's own look, not Material's. Back gesture and predictive back follow Android convention. |
-| Screens | Thirteen SwiftUI screens plus the sheets and form scaffolds | Compose screens, one per iOS screen, same `ViewModel` projections | Navigation via Navigation Compose. |
-| Tests | Swift Testing, snapshot, XCUITest | `kotlin.test`, Roborazzi snapshots on the JVM (no emulator needed), Compose UI tests on an emulator | |
-| CI | macOS runners | Ubuntu runners for build, unit and Roborazzi; one emulator job for UI tests | Both shells gate every core change. |
+| Layer | iOS | Android |
+|-|-|-|
+| Packaging | `cargo swift package` plus UniFFI Swift | `cargo ndk` for `arm64-v8a` and `x86_64`, UniFFI Kotlin at 0.29.4, JNA at runtime |
+| Types | Swift `SharedTypes` | `com.intrada.shared` and `com.intrada.ffi`, generated into `android/generated/`, never hand-edited |
+| Store | `@Observable @MainActor Store` | A Kotlin `Store` exposing `StateFlow<ViewModel>`, effects on `Dispatchers.IO` |
+| Persistence | `crates/intrada-store` through the bridge | The same store |
+| Settings and crash blob | `UserDefaults`, bincode bytes | `SharedPreferences`, the same bytes as Base64, same keys and key-bump rule (#1345) |
+| Metronome | `AVAudioEngine` host-time grid | `AudioTrack`, clicks at sample positions |
+| Page OCR | Apple Vision | ML Kit, split into `RecognisedLine`s |
+| Page suggestions | `PageSuggester` on FoundationModels | None until one is chosen (Open questions) |
+| Wake lock | `ScreenWakeLock` | `FLAG_KEEP_SCREEN_ON` on the player |
+| Crash reporting | Sentry | Sentry's Android SDK; a tagged Play build uploads native symbols (#2517) |
+| Camera | `PageCamera` | CameraX plus the system Photo Picker |
+| Design system | `Theme.swift` tokens | A Compose theme, same token names, not Material's look |
+| Tests | Swift Testing, snapshots, XCUITest | `kotlin.test`, Roborazzi on the JVM, Compose UI tests on an emulator |
 
 ## The shared store
 
-Decided on 6 October 2026 (#2421): the notebook's database lives in one
-Rust crate both phones call, rather than a Kotlin copy of the iPhone's
-GRDB store.
+Both phones call one Rust crate rather than keeping a Kotlin copy of the
+iPhone's store (#2421).
 
-- **`crates/intrada-store`** opens SQLite through rusqlite with SQLite
-  compiled in, answers a `PersistenceOperation` with a
-  `PersistenceOutput`, and returns beside it the stored values it could
-  not read, for the phone to report. The core does not depend on it and
-  still does no I/O.
-- **The migrations** are the iPhone's 20, ported once with the same ids
-  and recorded in GRDB's own `grdb_migrations` table, so a database the
-  iPhone app wrote carries on from where it is. Each runs in its own
-  transaction, as GRDB runs them. `user_version` and migration libraries
-  were rejected: neither reads what GRDB has already recorded.
-- **The row converters** port `ItemCodec`, `SessionCodec` and
-  `StoredCodec`, including keeping a stored value the core cannot read
-  rather than overwriting it with none (#1117, #2097, #2106).
-- **The bridge** exposes one `StoreFfi` object, opened at a path the
-  phone passes in, whose `handle` takes the operation's bincode and
-  returns the output's bincode with the unreadable values. The phone
-  calls it off the main thread, one request at a time.
-- **Both phones.** The object sits behind `intrada-ffi`'s `store`
-  feature, which both builds turn on. The iPhone moved onto it in #2432,
-  opening the `intrada.sqlite` GRDB wrote in place; GRDB is gone, and a
-  database the last GRDB build wrote is kept as a test fixture.
-- **Settings and the crash blob** stay out of the store: Android keeps
-  them in `SharedPreferences` as Base64 of the bincode bytes, under the
-  iPhone's keys built from the core's `*_blob_version()`, and clears
-  retired crash blobs as iOS does.
-- **A database that will not open** falls back to an in-memory store and
-  a degraded flag, as on iOS; #2428 shows the banner.
+- **`crates/intrada-store`** answers a `PersistenceOperation` with a
+  `PersistenceOutput`, plus the stored values it could not read. The core does
+  not depend on it.
+- **The migrations** keep GRDB's ids and its `grdb_migrations` table, so a
+  database the iPhone wrote carries on where it is.
+- **The bridge** is one `StoreFfi` object, opened at a path the phone passes
+  in, called off the main thread one request at a time.
+- **Settings and the crash blob** stay out of the store.
+- **A database that will not open** falls back to an in-memory store and a
+  degraded flag (#2428).
 
 ## Working on a Mac with no Android device
 
-Android Studio's `arm64` emulator on Apple silicon is enough for the
-bridge, persistence, screens and snapshots. It cannot judge audio latency,
-real camera OCR, or haptics: have a device (a Pixel 8a, or a second-hand
-Pixel 7a) before the metronome phase starts.
+Android Studio's `arm64` emulator on Apple silicon is enough for the bridge,
+persistence, screens and snapshots. It cannot judge audio latency, real camera
+OCR, or haptics: have a device (a Pixel 8a, or a second-hand Pixel 7a) before
+the metronome phase starts.
 
 Play Store (settled in #2499, from Play Console Help, [testing requirements
 for new personal developer
 accounts](https://support.google.com/googleplay/android-developer/answer/14151465)):
 a personal account opened after 13 November 2023 must run a closed test with
-12 testers opted in for 14 days in a row before it can publish to
-production. The internal testing track has no requirement and is the
-TestFlight equivalent: `release-play.yml` uploads every release tag there.
-Before any build is shared, it is walked against [`docs/android-release-check.md`](../docs/android-release-check.md).
+12 testers opted in for 14 days in a row before it can publish to production.
+The internal testing track has no requirement and is the TestFlight
+equivalent: `release-play.yml` uploads every release tag there. Before any
+build is shared, it is walked against
+[`docs/android-release-check.md`](../docs/android-release-check.md).
 
 ## Build phases
 
-A review pass over the Swift shell, planned after v0.13 ships, runs
-first: any rule it finds living in Swift rather than in `intrada-core`
-moves to core before the port starts, or Android implements the same rule
-twice. One instance is already known: the field assignment that follows
-`PageSuggester`'s suggestions.
-
 - **Phase A, bridge and boot.** `just android-gen`, the Kotlin `Store`, a
-  read-only Library list rendering from the real `ViewModel`. Proves the
-  toolchain end to end.
-- **Phase B, persistence.** The shared store, singletons, the crash blob;
+  read-only Library list.
+- **Phase B, persistence.** The shared store, settings, the crash blob;
   Library add and edit (#2421, #2428).
 - **Phase C, practice.** Session builder, player, session clock, the
   metronome. Have the device in hand by this phase.
-- **Phase D, capture and the rest.** Camera, OCR, analytics, profile,
-  routines; then CI on Ubuntu and Play internal testing.
-
-Each phase becomes its own issue when it starts; none exist yet.
-
-## Recipes
-
-Mirroring the `ios-*` set. `android-typegen`, `android-package` and
-`android-gen` exist (#2221); `android-run`, `android-test`,
-`android-test-full` and `android-fmt` are still to come. A machine needs
-`cargo-ndk` and the `aarch64-linux-android` and `x86_64-linux-android` Rust
-targets first.
-
-## Deliberately not doing
-
-Kotlin Multiplatform, Flutter, or any shared UI layer: the iOS and Android
-shells stay two native codebases on one core. Sync does not exist: the
-API that carried it was removed in #1746, and any future sync starts from a
-new spec (`docs/roadmap.md`); this spec adds none. A shared token source for
-the two theme files is a later nicety, not a blocker.
-
-Two shells means every core change regenerates two sets of bindings, and CI
-gates both.
+- **Phase D, capture and the rest.** Camera, OCR, analytics, profile; then
+  Play internal testing.
 
 ## Open questions
 
-- **ML Kit.** To confirm at phase start: the on-device text recognition
-  API and its licensing for a non-subscription app need a fresh look
-  before the capture phase, not now.
+- **ML Kit.** The on-device text recognition API and its licensing need a
+  fresh look before the capture phase.
 - **Page suggestions on Android.** Decided before the capture phase: an
   on-device model behind the same suggestion shape (Gemini Nano through ML
-  Kit's GenAI APIs is the candidate, with narrow device support), or no
-  suggestion pass on Android.
-- **Roborazzi.** To confirm at phase start: version and CI setup
-  (JVM-only snapshot rendering) need verifying against the Ubuntu runner
-  image before Phase A lands.
+  Kit's GenAI APIs is the candidate, with narrow device support), or none.
+- **Roborazzi.** Version and CI setup against the Ubuntu runner image.

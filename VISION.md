@@ -239,9 +239,8 @@ Each of these depends on the foundation above, and none is scheduled:
 - **Plans that learn.** Today's plan learning from how the musician changes it,
   and noticing a plateau.
 
-The app listening to whether a passage was right is on hold; a first
-experiment's findings are in
-[`docs/segmentation-findings.md`](docs/segmentation-findings.md). If listening
+The app listening to whether a passage was right is on hold
+([`docs/decisions.md`](docs/decisions.md)). If listening
 returns, input from a MIDI keyboard comes first.
 
 ---
