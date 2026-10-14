@@ -45,7 +45,7 @@ A full-width line under the status bar for something the whole app needs to say:
 
 ## States
 
-Shown or not. Several stack, one under another: on iPhone in a fixed order, stopped, storage, error, notice, Undo, each dismissed on its own (`AppBannerStack`).
+Shown or not. Several stack, one under another: on iPhone in a fixed order, stopped, storage, error, notice, Undo, each dismissed on its own (`AppBannerStack`). On Android the Undo banner sits above the screen's own stopped and error banners; the Android picture shows those three in that order.
 
 ## Behaviour
 
@@ -57,7 +57,7 @@ Shown or not. Several stack, one under another: on iPhone in a fixed order, stop
 
 | | iPhone | Android |
 |---|---|---|
-| Where it shows | every screen and the player, through `AppBannerStack` | the Library, the piece page and the builder each place their own error and stopped banners; the Undo banner sits at the top of the tab screens |
+| Where it shows | every screen and the player, through `AppBannerStack` | nine screens place their own error and stopped banners: the Library and the piece page by hand, and Practice, the builder, the player, the summary, add to session, entry settings and Profile through `AlertBanners` (`BuilderScreen.kt`). The player's sheets and the reflection read the core's error when a save is refused and show it inside the sheet as a `FormErrorBanner`. The Undo banner sits above the whole navigation host (`AppFrame.kt`), so it shows on pushed screens too, but not over the player |
 | Core notices (the metronome note) | shown | never read, so never shown |
 | Storage unavailable | shown | not shown; the store knows, no screen asks |
 | Hairline under a notice | yes | no |

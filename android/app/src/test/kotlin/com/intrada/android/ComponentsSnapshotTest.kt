@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.intrada.android.core.Store
 import com.intrada.android.ui.BannerAction
 import com.intrada.android.ui.BannerTone
 import com.intrada.android.ui.GlobalBanner
@@ -188,17 +189,6 @@ class ComponentsSnapshotTest {
     fun globalBanners() {
         captureRoboImage("src/test/snapshots/global-banner.png") {
             Column(Modifier.width(360.dp).background(IntradaColor.paperTop)) {
-                GlobalBanner("Couldn't delete that item.", tag = "banner.error", onDismiss = {})
-                GlobalBanner(
-                    "Storage unavailable · changes this session won't be saved.",
-                    tag = "banner.storage",
-                )
-                GlobalBanner(
-                    "That metronome setting doesn't give a crotchet tempo, so this play has none.",
-                    tag = "banner.notice",
-                    tone = BannerTone.NOTICE,
-                    onDismiss = {},
-                )
                 GlobalBanner(
                     "Session deleted",
                     tag = "banner.undoDelete",
@@ -206,6 +196,8 @@ class ComponentsSnapshotTest {
                     action = BannerAction("Undo") {},
                     onDismiss = {},
                 )
+                GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
+                GlobalBanner("Couldn't delete that item.", tag = "banner.error", onDismiss = {})
             }
         }
     }

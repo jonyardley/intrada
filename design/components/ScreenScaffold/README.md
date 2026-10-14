@@ -17,7 +17,7 @@ The frame of every top-level screen: paper behind it, the page title and its lin
 ## When to use
 
 - Every top-level screen and every screen pushed from one: the tabs, the piece page, session detail, the summary and the session builder.
-- On Android, also the forms and sheets that iPhone shows as sheets, such as keys, variations and the metronome, until Android has a bottom sheet (see `BottomSheet`).
+- On Android, also the forms and sheets that iPhone shows as sheets, such as keys, variations and the metronome: Android has no bottom sheet, and #2636 builds one or records why not (see `BottomSheet`).
 
 ## When not to use
 
@@ -39,7 +39,7 @@ The header sits `IntradaSpacing.card` (16) in from each side and `controlGap` (8
 
 iPhone has four ways to fill the header, each with a caller:
 
-- **Round add button** (`trailing`): a 30 point `accent` disc with a `onAccent` plus, in a 44 point target, beside the title. Use for the page's own add; the Library is its one caller (T28).
+- **Round add button** (`trailing`): a 30 point `accent` disc with an `onAccent` plus, in a 44 point target, beside the title. Use for the page's own add; the Library is its one caller (T28 in [the design principles](../../../docs/design-principles.md)).
 - **Toolbar actions** (`trailingContent`): system toolbar items in the navigation bar, used by Profile (Edit), the piece page (the star and Edit) and the builder (T28).
 - **Header content** (`trailingPlacement: .header`): a view beside the title, used by Practice for the profile badge.
 - **Leading action** (`leadingContent`): replaces the back chevron, used by the builder's Cancel, which has to catch an unsaved plan.
@@ -67,12 +67,12 @@ iPhone uses it at 9 call sites in 9 files: Library, Practice, Progress, Routines
 |---|---|---|
 | Highlighter swipe under the title | yes | none |
 | Back on a pushed screen | the system chevron | none; system back only |
-| Library add | the round ink disc | a "+" in title type |
+| Library add | the round ink disc | a "+" in `IntradaFont.title`, 20 point |
 | Header actions | system toolbar items (T28) | text actions in the title row |
 | Title read as a heading | no | yes |
 | Sheets | `BottomSheet` | full screens on this scaffold |
 
-The look both apps keep is intrada's: the swipe, the round add disc and the rule. The structure follows each platform (T36): Android gains a back arrow on pushed screens and a close cross on modal forms, and drops Cancel from form headers, in #2619. The swipe is A5 in #2605 and the add disc A19 in #2606 ([the October audit](../../../docs/audit-2026-10-design.md)). How quick settings open on Android waits on the A25 ruling in #2606. Reading the title as a heading is the one to keep; adding that on iPhone is not in an issue yet.
+The look both apps keep is intrada's: the swipe, the round add disc and the rule. The structure follows each platform (T36 in [the design principles](../../../docs/design-principles.md)): Android gains a back arrow on pushed screens and a close cross on modal forms, and drops Cancel from form headers, in #2619. The swipe is A5 in #2605 and the add disc A19 in #2606 ([the October audit](../../../docs/audit-2026-10-design.md)). How quick settings open on Android waits on the A25 ruling in #2606. Reading the title as a heading is the one to keep; adding that on iPhone is not in an issue yet.
 
 The iPhone snapshot tests cannot see toolbar items, so their pictures leave out the piece page's Edit and star (#1880).
 

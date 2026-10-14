@@ -40,7 +40,6 @@ The top mark comes from the core (`scoreRange` on iPhone, `topMark` on Android),
 - **Standard** (46, the default): the session's own mark on the session detail.
 - **Hero with scale** (`showsScale`, 132 points): use once, at the top of an exercise's page. Adds "of 10" under the mark in `IntradaFont.small`, secondary ink.
 - **Key label** (`labelOverride`): use for a key in the Keys card. The key's name replaces the mark, shrinking to half size before it truncates; the arc still shows the mark.
-- **Solid** (`solid`): no caller passes it, and since `accent` and `masteryFill` are both `ink` it draws the same as the default. Remove it the next time this component changes.
 
 ## States
 
@@ -51,19 +50,19 @@ The top mark comes from the core (`scoreRange` on iPhone, `topMark` on Android),
 
 On iPhone the arc draws in from empty when the ring appears, easing out over `IntradaMotion.countUpDuration`. Under Reduce Motion, and in snapshots and UI tests, it shows filled at once. No haptic; the ring is never pressed.
 
-**On 14 October 2026 Android has a smaller version:**
+**On 14 October 2026 Android has a smaller version, and a one-off copy for keys:**
 
 | | iPhone | Android |
 |---|---|---|
-| Where | 8 places: library cards, the exercise hero, sections, keys, related exercises, "Used in", recent sessions, session detail | session detail only |
+| Where | 8 places and 11 calls: library cards, the exercise hero, sections, keys, related exercises, "Used in", recent sessions, session detail | `ScoreRing` in 2 calls, both on the session detail; `KeyRing` on the piece page's Keys card |
 | No mark yet | the rest | not drawn; it takes a mark that is never empty |
 | Scale caption | on the hero | none |
-| Key label | in the Keys card | none |
+| Key label | `ScoreRing` with `labelOverride`, in the Keys card | `KeyRing`: 44dp, the same 9% line, the key's name at 33% of the size; with no mark, the track alone and the name in secondary ink |
 | Draw in | yes | no |
 
-The iPhone ring is the one both apps use. Android adds the rest, the caption and the key label as it builds the screens that need them; the Library card ring is A20 in [the October audit](../../../docs/audit-2026-10-design.md), fixed in #2606. Rings on the Android piece page are not in that issue yet.
+The iPhone ring is the one both apps use. Android adds the rest, the caption and the draw in as it builds the screens that need them; the Library card ring is A20 in [the October audit](../../../docs/audit-2026-10-design.md), fixed in #2606. `KeyRing` in `PieceKeys.kt` is a one-off copy of the ring, drawn by hand for the Keys card; no issue moves it onto `ScoreRing` yet.
 
-The rest for "never marked" reads to some eyes as an empty clock (the audit's refinement note 1); that waits for the refinement pass (#2638).
+The rest for "never marked" reads as an empty clock rather than a state (the audit's refinement note 1); that waits for the refinement pass (#2638).
 
 ## Content
 
@@ -100,4 +99,4 @@ ring?.let { ScoreRing(it, topMark, size = 34.dp) }
 
 | Date | Issue | What changed |
 |---|---|---|
-| 2026-10-14 | #2635 | First page. Records Android's smaller version and the solid variant with no caller. |
+| 2026-10-14 | #2635 | First page. Records Android's smaller version and its hand-built key ring. Removes the `solid` option, which had no caller. |

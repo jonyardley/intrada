@@ -27,7 +27,7 @@ Says whether an item is a piece or an exercise, at a glance, with a glyph, a wor
 
 1. **Fill:** `pieceBadgeBg` (#CBD6E0, blue grey) or `exerciseBadgeBg` (#DCD3C0, sand).
 2. **Glyph:** a note (`music.note`) for a piece, a dumbbell (`dumbbell.fill`) for an exercise, at small scale.
-3. **Word:** "Piece" or "Exercise", from the core's label for the kind.
+3. **Word:** "Piece" or "Exercise", from the shell's label for the core's kind (`ItemKind.label` in `ItemKindStyle.swift` and `ItemKindStyle.kt`).
 4. **Ink:** `pieceBadgeFg` and `exerciseBadgeFg`, both `ink`, set in `IntradaFont.badge` (13 point semibold).
 5. **Shape:** a capsule, 5 by 10 points of padding, 5 points between glyph and word.
 
@@ -55,7 +55,7 @@ The iPhone badge is the one both apps use. T3 needs a cue beyond colour, which t
 
 ## Content
 
-The core's label for the kind, unchanged: "Piece" or "Exercise".
+"Piece" or "Exercise", written once in each shell's `ItemKindStyle` and used unchanged.
 
 ## Accessibility
 
