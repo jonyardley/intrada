@@ -31,8 +31,8 @@ wins.
 
 ### Now: v0.19.0, a data model you can build on
 
-The release that is out is the one `gh release list` marks Latest; a release
-does not edit this file (#1932). Each release's write-up is its
+Which release is out is not written here; `gh release list` marks it (#1932).
+Each release's write-up is its
 [GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
 on.
 

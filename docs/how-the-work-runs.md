@@ -31,13 +31,15 @@ never from the flat list of issues; `just status` shows each open epic's done
 count and next unclaimed child.
 
 - **What earns one**: three or more issues that ship as separate PRs in an
-  order worth writing down. Tidy-ups with no order stay single issues.
+  order worth writing down. A layer or journey label is only a filter, not an
+  epic. Tidy-ups with no order stay single issues.
 - **Membership is a GitHub sub-issue**, attached with
   `just epic-add EPIC N...` in working order; `just epic-move` takes an issue
   from the epic that holds it. A checklist in the body does not count. The
   parent carries the `epic` label, and no epic sits under another.
 - **One parent per issue**, which GitHub enforces. Where two epics fit, the
-  one that says when to build it holds the issue. An audit epic keeps its
+  one that says when to build it holds the issue and the other names it in
+  prose. An audit epic keeps its
   findings until it closes.
 - **The body** follows the issue template; its What to do section names the
   working order the sub-issue list mirrors. The title names the outcome, with

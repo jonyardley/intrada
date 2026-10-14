@@ -121,4 +121,4 @@ Named, not started. Each gets a row above when it ships.
 |---|---|
 | The isolation machinery, once a day of streams has been watched live | Rework: corrections |
 | Corrected prompts classified by kind (scope, approach, style, harness nag), the first Monday read's job | None: it makes the rework number readable by cause |
-| Unhook the spend nudges (context watch, read guard, spawn guard, cold nudge) if rule 3 says so at the 2026-09-28 read (#1990), and shorten the experiment section of `playbook.md` | Spend: total; rework: corrections |
+| Unhook the spend nudges (context watch, read guard, spawn guard, cold nudge) if rule 3 says so at the 2026-09-28 read (#1990), and shorten step 8 of `working-with-agents.md` | Spend: total; rework: corrections |

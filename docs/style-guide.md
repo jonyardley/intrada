@@ -72,7 +72,9 @@ each sentence means?
   and em and en dashes almost everywhere else; a command flag goes in a code
   span. Pull request bodies, commits and issues are the reviewer's to check.
 - **Handles:** issue and pull request numbers are the only stable handles. A
-  phase letter or decision number carries the document it resolves in.
+  phase letter or decision number carries the document it resolves in. Issue
+  titles state the outcome, not the mechanism; older docs are renamed as they
+  are touched, never swept.
 - **Dates:** absolute ("2026-09-24"), never "last week" or "recently", because
   these documents outlive the week they were written in.
 - **Voice:** peer to peer. The reader is a colleague, so skip cheerleading and

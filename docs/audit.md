@@ -100,7 +100,8 @@ Sweep: `tests.*`.
 1. Does each screen have empty, loading and error states that say what to do
    next?
 2. Can the musician walk the checklist's journey and the roadmap's current
-   direction without a dead end?
+   direction without a dead end? The old ten-step journey is no longer the
+   yardstick.
 3. Does anything on screen contradict `docs/design-principles.md`?
 
 **Consistency.** Does the app look and read like one app?

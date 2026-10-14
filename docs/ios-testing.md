@@ -126,6 +126,10 @@ machine.
 A tree that already passed on the runner skips the tests and links that run
 (#2113); records in `~/.intrada-ci/green-trees/` are pruned after 30 days.
 
+Check a cache rule by listing the refs that wrote its entries, never by reading
+the workflow: `save-if` is a rust-cache input, not an `actions/cache` one, which
+silently ignores it.
+
 ## The self-hosted iOS runner
 
 **The machine.** A MacBook Pro M4, `Jons-MacBook-Pro-2.local`, runner
