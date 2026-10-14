@@ -13,8 +13,8 @@ renders its view model and fulfils effects.
 Read next: [`CLAUDE.md`](CLAUDE.md) for the rules,
 [`docs/roadmap.md`](docs/roadmap.md) for direction, `just status` for what is in
 flight, [`SETUP.md`](SETUP.md) for accounts and secrets, and
-[`docs/reference.md`](docs/reference.md) for commands. Run `just` to list the
-recipes.
+[`docs/reference.md`](docs/reference.md) for the mechanics. `just --list` lists
+the commands.
 
 ## Prerequisites
 

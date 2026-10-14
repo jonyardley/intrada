@@ -12,11 +12,13 @@ with another worktree's. Worktrunk's machine-local config
 (`~/.config/worktrunk/config.toml`) does the rest:
 
 - **Where.** `../intrada-worktrees/<name>`, beside the main checkout.
-- **Warm caches.** A `pre-start` hook runs `wt step copy-ignored`, which copies
-  the gitignored files the main checkout's `.worktreeinclude` names
+- **Warm caches.** A `pre-start` hook runs `wt step copy-ignored`, which
+  reflinks the gitignored files the main checkout's `.worktreeinclude` names
   (`ios/generated/`, `ios/build/spm/`, `.env`, `.claude/settings.local.json`,
   `android/local.properties`, #2630) before anything builds. `target/` and the
-  Xcode build folders stay out (#2191). A stale `ios/generated/` is harmless:
+  Xcode build folders stay out (#2191). The file is read from the main
+  checkout's working tree, so a change to it takes effect once that checkout
+  is updated. A stale `ios/generated/` is harmless:
   `_ios-sync` regenerates when its stamp does not match the core.
 - **A cmux workspace.** The same hook opens one at the new tree; `pre-switch`
   reopens a missing one and `pre-remove` closes it.

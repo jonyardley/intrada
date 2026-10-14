@@ -32,7 +32,7 @@ branch (#1702).
 | You are | Do |
 |---|---|
 | About to edit anything | `just worktree-new <name>` from the main checkout, `cd <worktree> && ` before every shell command, and read the `.claude/rules/` files for the surfaces you touch by hand |
-| Handing work to another session | `just handover [N]` prints the opener; paste it into a new chat in the main checkout. Never a worktree command for Jon |
+| Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one, and paste it into a new chat in the main checkout. Never a worktree command for Jon |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
 | Spawning a subagent | Name the worktree by absolute path in the brief, or its edits land in main and `reviewer` diffs the wrong tree (#1861) |
 
@@ -59,6 +59,15 @@ Nothing with judgement runs below Opus: the lower rungs cost more in
 corrections than they saved (#1893). Haiku runs `test-runner` and `Explore`
 only; pins live in `.claude/agents/` and `.claude/settings.json`.
 
+`/effort` saves to settings unless you choose session-only, which is why a
+`high` stretch ends with `/effort medium`. Fast mode costs twice the standard
+rate: use it only when latency matters, never to save money.
+
+Superpowers is disabled on purpose, because its "invoke a skill for anything"
+posture fights the tiers; four of its skills stay as globals
+(`test-driven-development`, `requesting-code-review`, `receiving-code-review`,
+`using-git-worktrees`), and `/speckit-*` is deprecated.
+
 **The sensitive surfaces** are where wrong is silent: the FFI bridge
 (positional bincode, #846), store migrations, the `ActiveSession`
 crash-recovery blob and auth. That work, including any bridge change that is
@@ -84,13 +93,13 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features,
   Crux core or non-additive bridge changes, auth or schema changes. The plan
   comment, then one `specs/<feature>.md` of 100 to 200 lines riding as the
-  PR's first commit, never its own PR. The spec is deleted in the PR that
-  ships the screens, so `specs/` holds only work in flight.
+  PR's first commit, never its own PR. The spec is deleted once the screens
+  ship, unless an open issue cites it (`specs/README.md`).
 
 A feature ships as one PR across the stack, core commits first, then iOS and
 Android: a merged core with no caller is shell-dead (#1374). On the sensitive
-surfaces `reviewer` reads the core commits before the screens, and lead-only
-work goes up a tier.
+surfaces, `reviewer` reviews the core commits before the screens commits
+start, and lead-only work goes up a tier.
 
 A plan comment is about 150 words on the shipping skill's
 [Plan comments](../.claude/skills/intrada-shipping/SKILL.md#plan-comments)
@@ -110,18 +119,18 @@ examples: [`reference.md`](reference.md).
 | Holding a settled plan on an existing pattern | One slice per `task` spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files (#1846) |
 | About to run a gate | `test-runner`, never in the lead or inside `task`; a fan-out runs the suites once at the end |
 | Needing facts from many files | `Explore` with `model: haiku`; its findings are leads, not facts |
-| Looking at a file for the second time | grep, then a range. The read guard denies a repeat whole-file read, by Read or `cat`, `sed`, `head` or `tail` (#1986), and one over 400 lines (#1844) |
+| Looking at a file for the second time | grep, then a range; a screenshot is read once and described. The read guard denies a repeat whole-file read, by Read or `cat`, `sed`, `head` or `tail` (#1986), and one over 400 lines (#1844) |
 | Warned at 150k context | Finish the slice in hand; the rest goes to `task` |
 | At 200k | The rest of the unit goes to a subagent now |
 | At 400k | `/compact` now, then finish the unit |
 | Mid-task and the thread matters | `/compact`, not `/clear`: it keeps the decisions and drops the tool output |
 
-Context length is the bill, not the rung (#1985, #1849).
+Context length sets the bill (#1985, #1849).
 
 - **One agent per vertical slice.** Fan out only on independent pieces; the
   lead integrates.
-- **`task` takes a settled slice under ten files** (`.claude/agents/task.md`,
-  #1888); the sensitive surfaces stay with the lead.
+- **`task` takes a settled slice of at most ten hand-written files**
+  (`.claude/agents/task.md`, #1888); the sensitive surfaces stay with the lead.
 - **Pin model and effort in the definition**, not the spawn. `guard-spawn.sh`
   refuses a lift above the pin and any Fable spawn (#2044); `Explore`, `fork`
   and `general-purpose` inherit the session (#1838).
@@ -165,15 +174,16 @@ summary verbatim at PR creation, naming the agent.
 | Leaving for over an hour | Finish or `/clear` first: the cache expires and the first turn back re-sends everything at write price (#1842) |
 
 Gates, Codecov, deferred issues and body templates are in
-`.claude/skills/intrada-shipping/SKILL.md`. Stacked PRs go two deep. `just pr-open` refuses a Tier 1 or 2 body over
-350 words (#2593). `Closes #N` closes the issue on merge; update
+`.claude/skills/intrada-shipping/SKILL.md`. Stacked PRs go two deep.
+`just pr-open` refuses a Tier 1 or 2 body over 350 words (#2593). `Closes #N`
+closes the issue on merge; close one by hand only when no PR closed it. Update
 `docs/roadmap.md` if a phase changed and `CLAUDE.md` if architecture did.
 
 **Verification.** For UI, drive the simulator and emulator and show proof, or
 say what a human must check by hand. "All green" never means only
 `cargo test`. Report failures with the output, and never call a gate broken
-without making it fail.
-
+without making it fail. Delete any scratch simulator you made when done. If
+CI is green, local pty errors were host-only.
 
 ## 8. Measure
 
@@ -189,9 +199,13 @@ The numbers are **speed** (Jon's time from claim to merged PR), **rework**
 (fix PRs, reverts, corrections) and **spend** (the constraint).
 
 A rule lives in one layer: a gate (whose prose then goes), `CLAUDE.md` (near
-450 words, #2595), a path-scoped rule, a skill, an agent pin, a hook, memory or
-a doc. A setting that hurts only its author is personal; anything else is
-checked in. When a hook's threshold or name changes, grep the docs for it.
+450 words, #2595), a path-scoped rule, a skill, an agent pin, a hook, auto
+memory (which does not load into subagents) or a doc. A setting that hurts
+only its author is personal; anything else is checked in. When a hook's
+threshold or name changes, grep the docs for it. Every user hook fails open
+and ships with a test battery that is mutation-tested, not trusted green. Edit
+rule files with `/memory`; tidy permission prompts with
+`/fewer-permission-prompts`.
 
 **A trim carries its ledger.** A cut to `CLAUDE.md`, a skill or an agent doc
 lists each removed line in the PR with its new home, or says it is dropped.

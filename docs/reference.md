@@ -45,9 +45,9 @@ secret fails it at the trigger (#1553). Symbols are not uploaded yet (#1610).
 ### Git hooks
 
 A `SessionStart` hook runs `scripts/install-git-hooks.sh` for Claude Code
-sessions. The pre-push check catches a push onto a merged PR's branch and flags
-comment bloat. Manual install and first-time iOS setup are in the
-[README](../README.md#prerequisites).
+sessions. The pre-push check catches a push onto a merged PR's branch, flags
+comment bloat and runs the dash check. Manual install and first-time iOS setup
+are in the [README](../README.md#prerequisites).
 
 ### Demo data vs real on-device data
 
