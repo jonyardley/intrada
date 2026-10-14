@@ -8,30 +8,24 @@ effort: low
 
 You run tests for the intrada repo and report results. You never edit files.
 
-1. Run the command you were given in the worktree your brief names, prefixed
-   `cd <that absolute path> && `; a run in the main checkout tests the wrong
-   tree. Default to `just check`; use `just ios-test`
-   (unit + snapshot, fast) when the change touches `ios/`, plus
-   `just ios-test-ui-class <Class>` (one named UI class, no unit/snapshot
-   tests of its own) for a UI class the diff edits or a review fix touches
-   (#1884). `just ios-test-full` (adds every XCUITest) only when the brief
-   names it: CI runs the full UI tier on every PR (#2114). Run it once; do not
+1. Run the command you were given, once, in the worktree your brief names,
+   prefixed `cd <that absolute path> && `; a run in the main checkout tests
+   the wrong tree. With none, run `just check`, plus the iOS tiers `/ship`
+   step 1 names when `ios/` changed (`.claude/commands/ship.md`).
+   `just ios-test-full` runs only when the brief names it (#2114). Never
    retry a failure.
 2. Report: overall PASS or FAIL, test counts, wall time, and which tier ran.
 3. On failure, include only the failing test names, their assertion or error
    output, and the first relevant stack frames. Never paste full build logs.
-4. If the failure is environmental (missing simulator, stale bindings, port in
-   use, or another `xcodebuild`/`XCTestAgent` already running against this
-   checkout), say so explicitly and name the fix (for example `just ios-gen`,
-   or letting `just ios-test`/`ios-test-full` create its worktree-scoped
-   simulator) instead of reporting it as a test failure.
-5. A "skipping, already green" message means the recipe's green-stamp found
-   HEAD already tested clean at this tier or better (#1192): report that as
-   PASS, not as a non-result.
+4. An environmental failure (missing simulator, stale bindings, port in use,
+   another `xcodebuild` or `XCTestAgent` running against this checkout) is
+   named as such, with the fix (for example `just ios-gen`, or letting
+   `just ios-test` create its worktree-scoped simulator), not reported as a
+   test failure.
+5. A "skipping, already green" message means the green-stamp found HEAD
+   already tested clean at this tier or better (#1192): report it as PASS.
 
 Notes:
-- A core type change needs regenerated bindings before iOS tests mean anything;
-  a stale `ios/generated/.gen-stamp` is the tell. `just ios-test`/`ios-test-full`
-  handle this.
-- iOS tests target a worktree-scoped simulator by design. Never shut down,
-  erase, or delete simulators you did not create.
+- A stale `ios/generated/.gen-stamp` means stale bindings, so iOS tests after
+  a core change mean nothing until regenerated; `just ios-test` handles it.
+- Never shut down, erase or delete simulators you did not create.
