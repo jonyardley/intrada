@@ -502,7 +502,7 @@ happened optimistically, and `Failed` surfaces `last_error`. There is no
 refetch and no server echo. A finished practice is the exception: `SaveSession`
 parks it until the store answers, so its `Ack` is the push and the recovery-copy
 clear, and its `Failed` keeps the summary and raises the banner instead of
-reloading (`specs/save-acknowledged.md`, #974).
+reloading (#974).
 
 ## Glossary
 
@@ -731,8 +731,8 @@ note saying it is obsolete.
   core, the bridge and the crash-recovery blob in #1766 and #1374; the intention's
   and the trio's four columns stay in the on-device `session` table, written by
   nothing and read by nothing, because dropping a column needs a copy-table migration on the only
-  copy of the user's data. `specs/retire-shell-dead-session-fields.md` holds the
-  decision and the recovery point.
+  copy of the user's data. `docs/decisions.md` holds the
+  decision; git history holds the full record and the recovery point (#1766).
 
 ## Why OMP was retired (2026-09-08)
 

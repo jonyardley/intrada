@@ -218,7 +218,7 @@ from this session" path — T4's non-gesture floor). Edit/Done shrinks to
 **bulk remove** (system minus-circles), per mock frame 14. Invented affordances
 that deviate from the mock (chevron tap-steppers, Edit-gated settings glyphs)
 were removed. This also **overturns decision 3 of
-the related-exercises redesign (2026-07-01, now in `specs/exercise-linking-origins.md`)**: the per-exercise
+the related-exercises redesign (2026-07-01; see `docs/decisions.md`)**: the per-exercise
 "include today" toggle returns (off = stays visible but dimmed, excluded from
 totals, dropped at session start) — needs a core event, tracked as
 jonyardley/intrada#1101. Recorded deviation: the mock draws the block dragging
@@ -350,8 +350,7 @@ the evidence from that week would be lost to the mastery track).
 
 ### T13 — Voice splits by surface, and the engine never speaks on screen
 
-**Status:** DECIDED 2026-08-07 (graduated from
-`design/briefs/2026-08-copy-language.md` v2, decided with Jon while reviewing
+**Status:** DECIDED 2026-08-07 (decided with Jon while reviewing
 the Built Session A/B/C mockups; lands with jonyardley/intrada#1256). RETIRED
 2026-08-13. The surface this decided was removed with the coach (#1344). Kept
 as log history.
@@ -385,8 +384,7 @@ ear" / "from cold" (as lived experience). Never explain the data model inline
 no philosophy headlines; buttons name the action, not the mechanism ("Keep it
 as a drill", never "write the gate").
 
-The full spec, with worked per-frame examples, is
-`design/briefs/2026-08-copy-language.md`; the design system gains a Voice
+The design system gains a Voice
 section beside the tokens so future frames are written against it.
 
 Options considered: one app-wide voice with a softer register (rejected: what

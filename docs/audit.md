@@ -106,13 +106,13 @@ Sweep: `tests.*`.
 ### Group: screens
 
 **Design.** Does each screen meet the quality bar
-(`.claude/rules/ios-quality.md`) and the journey (`docs/journeys.md`)?
+(`.claude/rules/ios-quality.md`)?
 
 1. Does each screen have its empty, loading and error states, and do they say
    what to do next?
 2. Can the musician get through the walk checklist's journey, and the
-   current direction in `docs/roadmap.md`, without a dead end? (The ten steps
-   in `docs/journeys.md` are no longer the yardstick.)
+   current direction in `docs/roadmap.md`, without a dead end? (The old ten-step
+   notebook journey is no longer the yardstick; see `docs/decisions.md`.)
 3. Does anything on screen contradict `docs/design-principles.md`?
 
 **Consistency.** Does the app look and read like one app?

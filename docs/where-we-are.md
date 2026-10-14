@@ -21,7 +21,7 @@ profile step, a first piece, and a Start here card on Practice.
 
 **The capture phase before that is done.** It was chosen on 2026-09-07, at the
 end of the rethink after the coach was removed
-([`rethink-plan.md`](decisions.md)), and shipped as:
+([`decisions.md`](decisions.md)), and shipped as:
 
 - **v0.10.0** (2026-09-09): add a piece with its chord chart and exercises in
   one pass (#1390), plus the practice screen's session timer, repetition

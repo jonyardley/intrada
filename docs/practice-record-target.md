@@ -221,7 +221,7 @@ Rules for every help idea:
 
 **Order inside v0.16:**
 
-1. #2245 core with `specs/sections-and-variations.md` as its first commit; migration only, no blob change. The spec covers editing history and keeps chart sections apart.
+1. #2245 core with `specs/exercise-variations.md` as its first commit; migration only, no blob change. The spec covers editing history and keeps chart sections apart.
 2. #2246 core, carrying #2106 and #2107: the big migration, the core moving old plays, the bridge, blob 5 to 6.
 3. #2226, then #2247 screens in the same working session as step 2; #2246's screens half adds the undo control on the player.
 4. #2248 core, then its screen.
