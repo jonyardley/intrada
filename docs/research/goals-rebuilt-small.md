@@ -22,7 +22,7 @@ The deliberately-small goal shape ruled in roadmap Open Question 5 (answered, no
 
 ## 2. The user problem
 
-This is journey step 4, "Goals drive planning" (`docs/journeys.md`), status
+This is journey step 4, "Goals drive planning" in the old notebook journey, status
 "Missing – to be rebuilt small per the 2026-07 ruling". It serves the Plan
 pillar and, in the vision's five layers, is the bridge between Layer 2 (Plan)
 and Layer 3 (Space): the scheduler VISION.md describes combines spacing
@@ -226,7 +226,7 @@ wire-pin hazard, #1345).
   not exist. Slice 1 dodges this by making the builder the consumer, but the
   full "consumed by session planning" promise depends on a future planner,
   a sequencing dependency this note flags for the comparison.
-- **Coach-pivot lessons bind hard here** (`../rebuild-review.md`, reversal
+- **Coach-pivot lessons bind hard here** (the reversal
   in #1344). The coach failed by deciding too much and gating the user.
   Goals sit exactly on that edge: they must *inform* suggestions the user
   can ignore, never prescribe or gate. The Locke & Latham complex-task
@@ -245,8 +245,8 @@ wire-pin hazard, #1345).
 Internal:
 
 - `docs/roadmap.md` Open Question 5; `VISION.md` "The Scheduling
-  Intelligence"; `docs/journeys.md` steps 4–5; `docs/research-foundation.md`
-  §3, §4, §9, §10; `docs/rebuild-review.md`; `specs/priority-items.md`
+  Intelligence"; `docs/research-foundation.md`
+  §3, §4, §9, §10; `specs/priority-items.md`
 - Issues/PRs: #213 (first removal), #711–#740 (second build), #769 (second
   removal), #273 (lessons vertical), #765 / #763 / #764 (priority star),
   #1344 (coach revert)
