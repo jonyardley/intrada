@@ -55,11 +55,13 @@ Fourteen sheets use it on iPhone. The parameters they pass:
 
 Five iPhone sheets build their own top bar instead (the add and edit forms, the draft exercise sheet, the chord chart editor, profile edit and feedback), so they miss the large text title fix. That is I12 in [the October audit](../../../docs/audit-2026-10-design.md), fixed in #2608. The audit also found several sheets mostly empty at full height (its refinement note 7), which waits for the refinement pass (#2638).
 
-**On 14 October 2026 Android has no bottom sheet.** It uses two other shapes:
+**On 14 October 2026 Android has no bottom sheet.** It uses other shapes:
 
 | Task | iPhone | Android |
 |---|---|---|
-| Keys, variations, the related exercise picker | `BottomSheet`, full height | `FullScreenDialog`, a full-screen page |
+| Keys, variations | `BottomSheet`, full height | `FullScreenDialog`, a full-screen page |
+| The linked item picker, on the piece page and the add form | `BottomSheet`, half height first | a screen pushed from the piece page; `FullScreenDialog` on the add form |
+| Add a related exercise, in the builder | `BottomSheet`, full height | a screen pushed in the builder |
 | Switch variation, trouble spot | `BottomSheet`, half height first | `PlayerSheet`, a full-screen page with a page title and a close cross |
 | Metronome | `BottomSheet`, full height | `ClickSheet`, a full-screen dialog |
 | Add to session, entry settings | `BottomSheet` | a screen pushed in the builder |

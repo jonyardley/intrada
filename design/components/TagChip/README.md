@@ -40,7 +40,7 @@ A short label in a small rounded pill: a tag on an item, or a word that marks a 
 - **Outlined** (`style: .outlined`, `TagChipStyle.Outlined`): use for a chip on bare paper, where it needs its own edge. The piece header's tags and the Keys sheet's quick picks ("All major" and the like, wrapped in a button) use it.
 - **Removable** (`onRemove`): use where the musician edits the tags. Only the sunken removable chip has a caller, the tags field on the add and edit forms on both apps. An outlined removable chip has no caller; the snapshots draw one to show the shape.
 
-On iPhone, library cards show at most three chips and a sunken "+N" chip for the rest (`TagPills`). Android library cards show no tags yet (A20 in the audit).
+On iPhone, library cards show at most three chips and a sunken "+N" chip for the rest (`TagPills`).
 
 ## States
 
@@ -56,9 +56,11 @@ Default only. A removable chip has no pressed look; tapping it removes the tag a
 | Spoken | the tag, "Double tap to remove", as a button | the tag, "remove" as the click label, as a button |
 | Tags on library cards | up to three, then "+N" | none |
 
-The Android touch area is the one to keep; the iPhone chip's tap area should reach 44 points without the drawn chip growing. No issue tracks that yet; it belongs with the small tap targets in #2607. Library card tags on Android come with A20 in #2606.
+The Android touch area is the one to keep; the iPhone chip's tap area should reach 44 points without the drawn chip growing. No issue tracks that yet; it belongs with the small tap targets in #2607. Both apps keep what they say: TalkBack reads Android's click label as "Double tap to remove", the words of the iPhone hint.
 
-Both apps set the padding with literals rather than spacing tokens. On Android that is A29 in the audit, fixed in #2606; the iPhone literals are in no issue.
+No issue tracks tags on Android library cards: `LibraryScreen.kt` draws none, and A20 in #2606 adds the key, tempo, linked exercise count and ring but not tags.
+
+Both apps set the padding with literals rather than spacing tokens. On Android that is A29 in the audit, fixed in #2606. On iPhone, #2237 (open) adds a spacing step for the 2 to 6 point gaps and moves literals onto tokens; its list of files does not name `TagChip.swift`, whose 3, 4 and 5 point paddings fall in that range.
 
 ## Content
 
