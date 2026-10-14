@@ -26,7 +26,6 @@ Accurate about how the app works or is being built now.
 | [`session-builder-revert.md`](session-builder-revert.md) | **The 2026-08 revert.** Restores the session builder and removes the coach machinery (#1344). The decision that set the current product shape |
 | [`native-ios.md`](native-ios.md) | The SwiftUI shell on the Crux core, the only shell. Its offline-first decisions are now enforced through `.claude/rules/offline-first.md`, which is where the invariants live; the paid-sync framing survives only here |
 | [`ios-testflight-cicd.md`](ios-testflight-cicd.md) | Signing, match, the release lane (`.github/workflows/release-testflight.yml`) |
-| [`key-modality.md`](key-modality.md) | Tonic plus major/minor instead of a free-text key (`Modality` in `domain/item.rs`) |
 | [`library-sort.md`](library-sort.md) | Sorting the library list (`LibrarySort` in `domain/types.rs`) |
 | [`exercise-relations.md`](exercise-relations.md) | The single "Used in" list replacing the related-to breadcrumb (`UsedInCard.swift`) |
 | [`piece-related-exercises.md`](piece-related-exercises.md) | Writing your own exercise as the first action when adding exercises to a piece (`LibraryDetailScreen.swift`) |

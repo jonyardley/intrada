@@ -40,12 +40,10 @@ en=$'\xe2\x80\x93'
 dash_re="$em|$en"
 
 # Prose and comment surfaces only. The label-separator exception (#1231) lives
-# here as an exemption: the two structured docs that use it as house style are
-# excluded.
+# here as an exemption: CLAUDE.md, which uses it as house style, is excluded.
 files=$(git -c core.quotePath=false diff "$range" --name-only -- \
   '*.md' '*.rs' '*.swift' '*.sh' '*.py' '*.yml' '*.yaml' \
   ':(exclude)CLAUDE.md' \
-  ':(exclude)design/CLAUDE.md' \
   2>/dev/null || true)
 
 if [ -z "$files" ]; then
