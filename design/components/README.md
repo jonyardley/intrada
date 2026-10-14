@@ -23,11 +23,11 @@ not exist. Rows without a link are still to be written.
 | [Card](Card/README.md) | The white surface every grouped block of content sits on |
 | [SegmentedPills](SegmentedPills/README.md) | Choosing one of two to five options in place |
 | [MarkerButton](MarkerButton/README.md) | The one call to action on a screen, in the musician's highlighter |
-| TagChip | A tag on an item, removable when editing |
-| TypeBadge | Piece or exercise, at a glance |
-| ScoreRing | A score from 1 to 10, or none yet |
-| BottomSheet | A short task over the current screen |
-| GlobalBanner | An error or notice for the whole app |
+| [TagChip](TagChip/README.md) | A tag on an item, removable when editing |
+| [TypeBadge](TypeBadge/README.md) | Piece or exercise, at a glance |
+| [ScoreRing](ScoreRing/README.md) | A score from 1 to 10, or none yet |
+| [BottomSheet](BottomSheet/README.md) | A short task over the current screen |
+| [GlobalBanner](GlobalBanner/README.md) | An error or notice for the whole app |
 | FormErrorBanner | Why a form could not be saved |
 | PlaceholderContent | An empty screen or list, with what to do next |
 | ScreenScaffold | Every top-level screen's chrome, safe areas and background |

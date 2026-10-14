@@ -19,10 +19,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.intrada.android.ui.BannerAction
+import com.intrada.android.ui.BannerTone
+import com.intrada.android.ui.GlobalBanner
 import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaFont
 import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
+import com.intrada.android.ui.ScoreRing
 import com.intrada.android.ui.SegmentedPills
 import com.intrada.android.ui.components.FieldCard
 import com.intrada.android.ui.components.FieldLabel
@@ -157,6 +161,47 @@ class ComponentsSnapshotTest {
                         wraps = true,
                     )
                 }
+            }
+        }
+    }
+
+    @Test
+    fun scoreRings() {
+        captureRoboImage("src/test/snapshots/score-ring.png") {
+            Paper {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    listOf(1, 4, 7, 10).forEach { ScoreRing(it, topMark = 10) }
+                    ScoreRing(7, topMark = 10, size = 34.dp)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun globalBanners() {
+        captureRoboImage("src/test/snapshots/global-banner.png") {
+            Column(Modifier.width(360.dp).background(IntradaColor.paperTop)) {
+                GlobalBanner("Couldn't delete that item.", tag = "banner.error", onDismiss = {})
+                GlobalBanner(
+                    "Storage unavailable · changes this session won't be saved.",
+                    tag = "banner.storage",
+                )
+                GlobalBanner(
+                    "That metronome setting doesn't give a crotchet tempo, so this play has none.",
+                    tag = "banner.notice",
+                    tone = BannerTone.NOTICE,
+                    onDismiss = {},
+                )
+                GlobalBanner(
+                    "Session deleted",
+                    tag = "banner.undoDelete",
+                    tone = BannerTone.NOTICE,
+                    action = BannerAction("Undo") {},
+                    onDismiss = {},
+                )
             }
         }
     }

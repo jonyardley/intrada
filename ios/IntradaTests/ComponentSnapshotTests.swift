@@ -57,6 +57,66 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(rings), as: config)
   }
 
+  func testScoreRingKeyLabels() {
+    let rings = ZStack {
+      PaperBackground()
+      HStack(spacing: 18) {
+        ScoreRing(score: nil, size: 44, labelOverride: "C")
+        ScoreRing(score: 6, size: 44, labelOverride: "G")
+        ScoreRing(score: 9, size: 44, labelOverride: "B\u{266D}")
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(rings), as: config)
+  }
+
+  func testTagChip() {
+    let chips = ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: 16) {
+        HStack(spacing: 8) {
+          TagChip("Baroque")
+          TagChip("Sight-reading", onRemove: {})
+          TagChip("+2")
+        }
+        .padding(IntradaSpacing.card)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
+        HStack(spacing: 8) {
+          TagChip("Exam piece", style: .outlined)
+          TagChip("Left hand", style: .outlined, onRemove: {})
+        }
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(chips), as: config)
+  }
+
+  func testBottomSheet() {
+    assertSnapshot(of: host(bottomSheet), as: config)
+  }
+
+  func testBottomSheetAtAccessibilitySize() {
+    assertSnapshot(of: host(bottomSheet.dynamicTypeSize(.accessibility3)), as: config)
+  }
+
+  private var bottomSheet: some View {
+    BottomSheet(
+      title: "Trouble spot", confirmationLabel: "Add spot",
+      leadingAction: { Button("Cancel") {} },
+      content: {
+        Text("Bars 12 to 16")
+          .font(IntradaFont.body)
+          .foregroundStyle(IntradaColor.ink)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(IntradaSpacing.card)
+          .cardSurface()
+          .padding(IntradaSpacing.card)
+        Spacer()
+      }
+    )
+  }
+
   func testCard() {
     let cards = ZStack {
       PaperBackground()
