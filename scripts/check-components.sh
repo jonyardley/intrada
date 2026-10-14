@@ -21,7 +21,7 @@ android_snaps="$root/android/app/src/test/snapshots"
 
 # Components listed in the index whose page is still to be written. This list
 # only shrinks: a name here that has a page fails the check.
-pending="${COMPONENTS_PENDING-TagChip TypeBadge ScoreRing BottomSheet GlobalBanner FormErrorBanner PlaceholderContent ScreenScaffold SectionHeader HairlineDivider SegmentedProgress SectionTitle FieldCard FieldLabel}"
+pending="${COMPONENTS_PENDING-SegmentedProgress SectionTitle FieldCard FieldLabel}"
 
 if [ ! -f "$index" ]; then
   echo "✗ check-components: no $index to read" >&2
