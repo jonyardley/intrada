@@ -26,12 +26,10 @@
 
 ## Problem
 
-A jazz standard is not practised, it is *built* (VISION.md → Piece Scaffolding;
-[journeys.md](../docs/journeys.md) step 2). The scaffold is a known, teachable
+A jazz standard is not practised, it is *built* (VISION.md → Piece Scaffolding). The scaffold is a known, teachable
 sequence: learn the melody, shells in each inversion, guide-tone lines, scales
 down to each chord tone on every change, constrained improvisation. Today the
-user hand-creates every one of those exercises and links them by hand
-([exercise-linking-origins.md](exercise-linking-origins.md)), which is tedious, and it
+user hand-creates every one of those exercises and links them by hand, which is tedious, and it
 assumes theory knowledge many learners are still acquiring. Yet the whole
 curriculum is *derivable from the changes*: given the chord progression, the
 exercises and their key-aware content follow by rule.

@@ -400,8 +400,7 @@ carries it, or an ⓘ does); letting spec vocabulary through where it is
 ### T14 — The click starts on a tap and only then offers a tempo
 
 **Status:** DECIDED 2026-08-19 (jonyardley/intrada#1398, the metronome click
-back in the Focus Player; research note
-[`research/metronome.md`](research/metronome.md) §5 slice 1).
+back in the Focus Player).
 
 **An instance of T2, not an exception to it.** The player's tempo line was a
 passive readout of the item's declared target ("Andante · ♩ = 66"). It now
@@ -604,9 +603,7 @@ noise. It stops growing at #1422 and ages out as real history accumulates.
 ### T18 — On a piece, the exercise you write outranks the one the app suggests
 
 **Status:** DECIDED 2026-08-28 (jonyardley/intrada#1431), from Jon's second
-round of real use. Spec:
-[`specs/piece-related-exercises.md`](../specs/piece-related-exercises.md).
-Mocked on the
+round of real use. Mocked on the
 [design canvas](https://claude.ai/code/artifact/c646b020-6a05-4fe9-9479-73bdbd42528e).
 
 The chord-chart derivation shipped with the loudest affordance on the piece
@@ -1126,7 +1123,7 @@ not a fixed brown for everyone.
 
 **Status:** DECIDED 2026-09-24 (jonyardley/intrada#2121) for the welcome, no
 sample content and ticks from core data; the last two rulings are proposed with
-#2116 (spec [`../specs/first-run.md`](../specs/first-run.md)). A new musician
+#2116. A new musician
 learns the app by making their first session, not by reading about it.
 
 - **One welcome, then the work.** A single screen with one plain line on what the app is for and a

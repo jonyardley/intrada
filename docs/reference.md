@@ -613,8 +613,8 @@ rather than the code that produced them.
 
 This binds deliberately-deferred work too. The MIDI capture spike and its Rust
 segmentation module were deleted on exactly this rule even though the scoring
-path is expected back, with
-[`segmentation-findings.md`](segmentation-findings.md) left as the record.
+path is expected back, with a line in
+[`decisions.md`](decisions.md) left as the record.
 Deferring a feature means deferring its code to history.
 
 The distinction that keeps this from over-firing: a stub a *test* reads, or an

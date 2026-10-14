@@ -103,7 +103,7 @@ Specs and designs divide a musician's practice into three parts:
 ## Platform
 
 intrada is two native apps on a shared Rust core, kept at parity: SwiftUI on
-iPhone ([`specs/native-ios.md`](../specs/native-ios.md)) and Compose on Android
+iPhone and Compose on Android
 ([`specs/android-shell.md`](../specs/android-shell.md)). Each keeps everything
 on the phone, and every new feature ships on both. There is no web app and no
 sync yet: the server that once carried sync was removed (#1746), and iCloud

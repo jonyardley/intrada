@@ -2,7 +2,7 @@
 
 This document covers the external accounts, secrets, and configuration needed
 to develop and ship Intrada. The app is a native SwiftUI iOS app, offline-first
-with no server: see [`specs/native-ios.md`](specs/native-ios.md).
+with no server.
 
 ## 1. Sentry (Error reporting + APM)
 
