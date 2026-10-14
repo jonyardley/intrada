@@ -25,7 +25,7 @@ platform :ios do
 
     # Pull the Apple Distribution cert + App Store profile from the certs repo
     # into a temp keychain. readonly: CI never creates/mutates signing assets —
-    # bootstrap is a one-time local `fastlane match appstore` (see spec).
+    # bootstrap is a one-time local `fastlane match appstore` (SETUP.md section 3).
     match(
       type: "appstore",
       readonly: true,

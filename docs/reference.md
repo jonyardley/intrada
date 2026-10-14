@@ -80,9 +80,8 @@ otherwise leaves no trace anywhere Sentry has no DSN: CI always, and dev unless
 (internal testing), mirroring `.github/workflows/release-testflight.yml` (which
 runs on `workflow_dispatch` or a `v*` tag, never per-PR). Signing is fastlane
 **match**, and it needs Ruby >= 3 — system Ruby 2.6 is too old, use `rbenv` —
-plus a one-time App Store Connect and match bootstrap. Full setup and decisions:
-[`../specs/ios-testflight-cicd.md`](../specs/ios-testflight-cicd.md) and
-SETUP.md §3.
+plus a one-time App Store Connect and match bootstrap. Full setup and how the lane works:
+[SETUP.md section 3](../SETUP.md#3-native-ios-to-testflight).
 
 A tagged run also bakes `SENTRY_DSN_NATIVE` into the build and, after the
 upload, creates the matching Sentry release in `intrada-mobile`, so a beta
