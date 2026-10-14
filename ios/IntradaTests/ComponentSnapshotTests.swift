@@ -117,6 +117,93 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     )
   }
 
+  func testFormErrorBanner() {
+    let banners = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.controlGap) {
+        FormErrorBanner(message: "Title must be between 1 and 500 characters")
+        FormErrorBanner(message: "Composer must be between 1 and 200 characters")
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(banners), as: config)
+  }
+
+  func testPlaceholderContent() {
+    let placeholder = ZStack {
+      PaperBackground()
+      PlaceholderContent(
+        systemImage: "books.vertical",
+        message: "Pieces and exercises will live here.",
+        actions: [
+          .init(title: "Add piece or exercise", identifier: "library.empty.add") {},
+          .init(title: "Scan a page", identifier: "library.empty.scan") {},
+        ])
+    }
+    assertSnapshot(of: host(placeholder), as: config)
+  }
+
+  func testScreenScaffold() {
+    let screen = NavigationStack {
+      ScreenScaffold(
+        title: "Library", subtitle: "8 pieces · 4 exercises",
+        trailing: .init(label: "Add item", action: {})
+      ) {
+        Text("Clair de Lune")
+          .font(IntradaFont.cardTitle)
+          .foregroundStyle(IntradaColor.ink)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(IntradaSpacing.card)
+          .cardSurface()
+          .padding(IntradaSpacing.card)
+          .frame(maxHeight: .infinity, alignment: .top)
+      }
+    }
+    assertSnapshot(of: host(screen), as: config)
+  }
+
+  func testSectionHeader() {
+    assertSnapshot(of: host(sectionHeaders), as: config)
+  }
+
+  func testSectionHeaderAtAccessibilitySize() {
+    assertSnapshot(of: host(sectionHeaders.dynamicTypeSize(.accessibility3)), as: config)
+  }
+
+  private var sectionHeaders: some View {
+    ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+        SectionHeader(title: "Recently practised")
+        SectionHeader(title: "Used in", caption: "3 pieces")
+        SectionHeader(title: "Last five weeks", trailing: "best week · 95m")
+        SectionHeader(title: "Sections", action: .init(title: "Reorder", perform: {}))
+      }
+      .padding(IntradaSpacing.card)
+    }
+  }
+
+  func testHairlineDivider() {
+    let dividers = ZStack {
+      PaperBackground()
+      VStack(spacing: 0) {
+        Color.clear.frame(height: 40)
+        HairlineDivider()
+        HStack(spacing: 0) {
+          Color.clear.frame(width: 80)
+          HairlineDivider(axis: .vertical)
+          Color.clear.frame(width: 80)
+          HairlineDivider(axis: .vertical, colour: IntradaColor.divider)
+          Spacer()
+        }
+        .frame(height: 40)
+      }
+      .cardSurface()
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(dividers), as: config)
+  }
+
   func testCard() {
     let cards = ZStack {
       PaperBackground()
