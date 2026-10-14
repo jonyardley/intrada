@@ -140,6 +140,35 @@ else
   printf '✗ claimed on this branch: expected gh pr create to run with the same args\n' >&2
 fi
 
+# ── One claim naming two branches (#2669): either opens, a third is refused ─
+
+cat >"$work/fixtures/comments_42.json" <<'JSON'
+{"comments":[{"body":"Claimed: branch `first-branch` (one half) and branch `my-branch` (the other), in parallel."}]}
+JSON
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+run "Fix the thing (#42)" >/dev/null
+if grep -qF -- "--title Fix the thing (#42)" "$CALLS/pr_create.log" 2>/dev/null; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ second named branch: expected gh pr create to run\n' >&2
+fi
+
+cat >"$work/fixtures/comments_42.json" <<'JSON'
+{"comments":[{"body":"Claimed: branch `first-branch` and branch `second-branch`, in parallel."}]}
+JSON
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+set +e
+out="$(run "Fix the thing (#42)" 2>&1)"
+run_status=$?
+set -e
+if [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "claimed on \`first-branch\`, \`second-branch\`" && [ ! -f "$CALLS/pr_create.log" ]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ unnamed third branch: expected refusal naming both claimed branches\n    status=%s output=%s\n' "$run_status" "$out" >&2
+fi
+
 # ── Body length (#2593): a Tier 1 or 2 body over 350 words is refused ──────
 
 words() {

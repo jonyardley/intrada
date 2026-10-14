@@ -17,3 +17,15 @@ claim_branch_from_body() {
   fi
   printf '%s' "$branch"
 }
+
+# Every branch the claim names, one per line: a claim can name two branches
+# working one issue in parallel, and either may open its PR (#2669).
+claim_branches_from_body() {
+  local body="$1" branches
+  branches="$(grep -oiE 'branch:?[[:space:]]*`[^`]+`' <<<"$body" |
+    grep -oE '`[^`]+`' | tr -d '`' || true)"
+  if [ -z "$branches" ]; then
+    branches="$(claim_branch_from_body "$body")"
+  fi
+  printf '%s' "$branches"
+}
