@@ -53,7 +53,7 @@ Fourteen sheets use it on iPhone. The parameters they pass:
 - Tapping the confirming action runs `onDone`, then closes the sheet unless the caller keeps it open.
 - No haptic of its own; the action inside fires any haptic the store confirms.
 
-Five iPhone sheets build their own top bar instead (the add and edit forms, the draft exercise sheet, the chord chart editor, profile edit and feedback), so they miss the large text title fix. That is I12 in [the October audit](../../../docs/audit-2026-10-design.md), fixed in #2608. The audit also found several sheets mostly empty at full height (its refinement note 7), which waits for the refinement pass (#2638).
+Five iPhone sheets build their own top bar instead (the add and edit forms, the draft exercise sheet, the chord chart editor, profile edit and feedback), so they miss the large text title fix. That is I12 in [the October audit](../../../docs/audit-2026-10-design.md), fixed in #2608. The audit also found several sheets mostly empty at full height (its refinement note 7), which is not in an issue yet; the refinement pass (#2638) does not cover it.
 
 **On 14 October 2026 Android has no bottom sheet.** It uses other shapes:
 
