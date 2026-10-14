@@ -87,7 +87,7 @@ crate, which is what most UX issues are (for example #1616, #1617, #1618 and
 **A vertical slice is one agent's job.** Never split core and iOS across two
 agents on the same slice: in-session agent teams were tried on #1223 and
 retired, because the shell teammate could not see the core invariant it needed
-and wrote the worst bug in the PR (`docs/reference.md`).
+and wrote the worst bug in the PR.
 
 Fan out only when the pieces are genuinely independent: no shared contract in
 flight, nothing blocked on another's output. Good shapes: an audit or sweep
