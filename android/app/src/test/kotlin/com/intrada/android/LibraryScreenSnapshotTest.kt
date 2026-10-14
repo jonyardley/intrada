@@ -30,23 +30,7 @@ class LibraryScreenSnapshotTest {
             LibraryScreen(
                 rows,
                 countLine = countLine,
-                error = null,
-                halted = false,
-                actions = LibraryActions({}, {}, {}),
-            )
-        }
-    }
-
-    @Test
-    fun libraryWithAnError() = runTest {
-        val (rows, countLine) = loaded()
-        captureRoboImage("src/test/snapshots/library-error.png") {
-            LibraryScreen(
-                rows,
-                countLine = countLine,
-                error = ERROR,
-                halted = false,
-                actions = LibraryActions({}, {}, {}),
+                actions = LibraryActions({}, {}),
             )
         }
     }
@@ -64,9 +48,5 @@ class LibraryScreenSnapshotTest {
         store.settle()
         val view = store.viewModel.value
         return store.libraryRows.value.withIds(view?.visibleIds.orEmpty()) to view?.libraryCountLine
-    }
-
-    private companion object {
-        const val ERROR = "Couldn't delete that item."
     }
 }

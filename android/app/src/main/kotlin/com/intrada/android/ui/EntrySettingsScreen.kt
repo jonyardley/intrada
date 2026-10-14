@@ -61,7 +61,6 @@ fun EntrySettingsRoute(
         send = { store.sendAccepted(Event.Session(it)) },
         onDone = onDone,
         modifier = modifier,
-        alerts = storeAlerts(store),
     )
 }
 
@@ -73,17 +72,13 @@ fun EntrySettingsScreen(
     send: (SessionEvent) -> Boolean,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
-    alerts: ScreenAlerts = ScreenAlerts(),
 ) {
     ScreenScaffold(
         entry.itemTitle,
         modifier,
         actions = { TextAction("Done", "entrySettings.done", onDone, emphasised = true) },
     ) {
-        Column(Modifier.fillMaxSize()) {
-            AlertBanners(alerts)
-            EntrySettingsBody(entry, setlist, limits, send, onDone)
-        }
+        Column(Modifier.fillMaxSize()) { EntrySettingsBody(entry, setlist, limits, send, onDone) }
     }
 }
 

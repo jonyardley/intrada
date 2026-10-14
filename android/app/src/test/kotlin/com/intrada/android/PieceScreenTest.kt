@@ -1,6 +1,5 @@
 package com.intrada.android
 
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,6 +44,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -216,7 +216,7 @@ class PieceScreenTest {
     }
 
     @Test
-    fun aRefusedReorderStaysInReorderWithTheCoresReason() = runTest {
+    fun aRefusedReorderStaysInReorder() = runTest {
         val store = startedStore()
         store.addSections("A", "B", "C")
         val b = store.piece().sections[1].id
@@ -229,7 +229,7 @@ class PieceScreenTest {
         store.settle()
 
         compose.onNodeWithContentDescription("Done reordering sections").assertExists()
-        compose.onNodeWithTag("banner.error").assertExists()
+        assertNotNull(store.viewModel.value?.error)
         assertEquals(listOf("A", "C"), store.piece().sections.map { it.name })
     }
 
@@ -241,17 +241,14 @@ class PieceScreenTest {
         store.settle()
         var closed = false
         compose.setContent {
-            val viewModel by store.viewModel.collectAsState()
             PieceScreen(
                 stale,
                 remember { PieceScreenState() },
                 PieceActions(
                     navigation(onClosed = { closed = true }),
                     send = { store.sendAccepted(it) },
-                    onDismissError = {},
                     sendFromSheet = { null },
                 ),
-                error = viewModel?.error,
             )
         }
 
@@ -260,7 +257,7 @@ class PieceScreenTest {
         store.settle()
 
         assertFalse(closed)
-        compose.onNodeWithTag("banner.error").assertExists()
+        assertNotNull(store.viewModel.value?.error)
     }
 
     @Test

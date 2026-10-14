@@ -81,7 +81,6 @@ fun ProfileRoute(store: Store, modifier: Modifier = Modifier) {
                     onFeedback = { feedback = true },
                 ),
                 modifier,
-                storeAlerts(store),
             )
     }
 }
@@ -93,7 +92,6 @@ fun ProfileScreen(
     limits: LimitsView,
     actions: ProfileActions,
     modifier: Modifier = Modifier,
-    alerts: ScreenAlerts = ScreenAlerts(),
 ) {
     ScreenScaffold(
         "Profile",
@@ -101,7 +99,6 @@ fun ProfileScreen(
         actions = { TextAction("Edit", "profile.edit", actions.onEdit) },
     ) {
         Column(Modifier.fillMaxSize()) {
-            AlertBanners(alerts)
             Column(
                 Modifier.weight(1f)
                     .fillMaxWidth()

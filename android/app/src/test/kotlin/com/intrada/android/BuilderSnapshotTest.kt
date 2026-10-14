@@ -106,7 +106,7 @@ class BuilderSnapshotTest {
         BuilderScreen(
             BuilderModel(setlist, view.limits),
             state,
-            BuilderActions({ true }, BuilderNavigation({}, {}, {}, {}), {}),
+            BuilderActions({ true }, BuilderNavigation({}, {}, {}, {})),
         )
     }
 }

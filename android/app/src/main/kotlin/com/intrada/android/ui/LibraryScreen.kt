@@ -37,7 +37,6 @@ import com.intrada.android.core.withIds
 import com.intrada.android.ui.components.bar
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.label
-import com.intrada.shared.Event
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
 
@@ -50,13 +49,10 @@ fun LibraryRoute(
 ) {
     val viewModel by store.viewModel.collectAsState()
     val rows by store.libraryRows.collectAsState()
-    val halted by store.halted.collectAsState()
     LibraryScreen(
         rows.withIds(viewModel?.visibleIds.orEmpty()),
         countLine = viewModel?.libraryCountLine,
-        error = viewModel?.error,
-        halted = halted,
-        LibraryActions(onDismissError = { store.send(Event.ClearError) }, onAdd, onOpen),
+        LibraryActions(onAdd, onOpen),
         modifier = modifier,
     )
 }
@@ -65,8 +61,6 @@ fun LibraryRoute(
 fun LibraryScreen(
     rows: List<LibraryItemView>,
     countLine: String?,
-    error: String?,
-    halted: Boolean,
     actions: LibraryActions,
     modifier: Modifier = Modifier,
 ) {
@@ -77,9 +71,6 @@ fun LibraryScreen(
         actions = { AddButton(actions.onAdd) },
     ) {
         Column(Modifier.fillMaxSize()) {
-            if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
-            if (error != null)
-                GlobalBanner(error, tag = "banner.error", onDismiss = actions.onDismissError)
             if (rows.isEmpty()) {
                 BasicText(
                     "Pieces and exercises will live here.",

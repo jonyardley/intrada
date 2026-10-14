@@ -1,6 +1,5 @@
 package com.intrada.android
 
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -32,25 +31,6 @@ class LibraryScreenTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun aCoreFailureShowsTheCoresMessageUntilDismissed() = runTest {
-        val store = store(Fixtures.FailingItemStore)
-        store.send(Event.StartApp)
-        store.settle()
-        val message = checkNotNull(store.viewModel.value?.error)
-        show(store)
-
-        val banner = compose.onNodeWithTag("banner.error")
-        banner.assertContentDescriptionEquals(message)
-        val dismiss =
-            banner.fetchSemanticsNode().config[SemanticsActions.CustomActions].single {
-                it.label == "Dismiss"
-            }
-        compose.runOnIdle { dismiss.action() }
-
-        compose.onNodeWithTag("banner.error").assertDoesNotExist()
-    }
-
-    @Test
     fun eachRowReadsItsKindTitleAndSubtitle() = runTest {
         val store = store(InMemoryItemStore(Fixtures.library))
         store.send(Event.StartApp)
@@ -69,7 +49,6 @@ class LibraryScreenTest {
             ),
             spoken.toSet(),
         )
-        compose.onNodeWithTag("banner.error").assertDoesNotExist()
     }
 
     @Test

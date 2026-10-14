@@ -112,7 +112,6 @@ class PieceSnapshotTest {
         PieceActions(
             PieceNavigation({}, {}, {}, {}, {}, {}),
             send = { true },
-            onDismissError = {},
             sendFromSheet = { null },
         )
 
