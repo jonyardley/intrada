@@ -1,1188 +1,437 @@
 # intrada Design Principles
 
-> Living document. Started 2026-05-31. These are **guiding principles**, not
-> hard gates — they set direction and frame decisions. When a principle pulls
-> against another (or against what the app does today), that's a decision to
-> make deliberately, not a rule to mechanically enforce. Document those
-> decisions in the **Open tensions & decisions** log at the bottom.
->
-> Visual/token detail lives in code (`ios/Intrada/DesignSystem/Theme.swift`)
-> and the design rules in `.claude/rules/ios-ui.md`. This doc is the *why* and the
-> *interaction* layer those don't cover.
->
-> What a screen *says* is decided by [`tone-of-voice.md`](tone-of-voice.md), the
-> writing layer of this doc. It inherits these principles; check it before
-> writing any user-facing string.
->
-> Design is now produced in **Claude Design** — see
-> [`design-workflow.md`](design-workflow.md). The native iOS design system lives
-> at [`design/intrada-design-system.dc.html`](../design/intrada-design-system.dc.html),
-> derived from `ios/Intrada/DesignSystem/Theme.swift`. (Pencil is retired.)
-
-## How to use this doc
-
-- Designing a new surface? Read the interaction principles first, then check
-  the open-tensions log for anything relevant.
-- Principles conflict? Don't silently pick one. Surface it, decide, and add a
-  dated entry to the log so the next person inherits the reasoning, not just
-  the outcome.
+> Guiding principles, not hard gates. When two pull against each other, or
+> against the app, decide it and log it under **Open tensions & decisions**.
+> Code and issues cite the T numbers: keep each number and its meaning. Tokens
+> live in `ios/Intrada/DesignSystem/Theme.swift` and `.claude/rules/ios-ui.md`;
+> on-screen words in [`tone-of-voice.md`](tone-of-voice.md); the design process
+> in [`design-workflow.md`](design-workflow.md).
 
 ---
 
 ## Visual principles
 
-These are mostly settled and live in code; captured here so the *intent* behind
-them isn't lost. (See `.claude/rules/ios-ui.md` for the enforcement
-rules and primitive catalogue.)
-
-- **Paper, ink and one marker.** Off-white paper, white cards with a 3pt
-  corner and a faint lift, near-neutral ink for text on paper. See T24 and
-  T27.
-- **Type is colour-coded.** Blue-grey = Piece, sand = Exercise. The
-  mapping repeats across card bars and badges; inline dots and checks are ink
-  for both kinds. Colour is
-  an *accelerator* for recognition, never the only signal (see accessibility
-  tension below).
-- **One bright colour.** The musician's highlighter is the only bright
-  colour: one of eight pastels they choose, butter by default (#1677). It fills
-  primary buttons, the swipe under page titles and the celebration glyph.
-  Interactive colour on paper is ink.
-- **Warmth bias in semantics.** Danger is a brick red, success an olive green,
-  both pulled toward brown. The palette leans warm even where convention is
-  harsh.
-- **Grotesk for words, mono for figures.** Hanken Grotesk for every word,
-  composer and key included; DM Mono only for a value that is a number alone,
-  a clock, a duration, a count, like a metronome readout (T35).
-- **Five sizes, one reading size.** 30, 20, 17, 15 and 13 point. Headings,
-  emphasis and body share 17 and differ by weight; every label, a section's,
-  a field's or a toggle's, is 15 medium in secondary ink; nothing is set in
-  capitals (T35).
-- **Reuse before creating; extend, don't clone.** Hand-rolled markup that
-  duplicates a primitive is the top source of visual drift.
+- **Paper, ink and one marker**: the highlighter is the only bright colour,
+  interactive colour on paper is ink (T24, T27).
+- **Type is colour-coded**: blue-grey Piece, sand Exercise, never colour alone
+  (T3).
+- **Warmth bias in semantics**: brick red danger, olive green success.
+- **Grotesk for words, mono for figures; five sizes, no capitals** (T35).
+- **Reuse before creating; extend, don't clone.** Hand-rolled copies of a
+  primitive are the top source of visual drift.
 
 ---
 
 ## Interaction principles
 
-The app's job is to get the user *practising*, not to make them operate
-software. Every screen should feel like the shortest honest path to the thing
-they came to do — except at the two moments where stopping to think *is* the
-thing they came to do.
+The app's job is to get the musician *practising*, not operating software.
+Every screen is the shortest honest path to what they came to do, except at
+the two moments where stopping to think *is* what they came to do.
 
 ### A. Spend friction deliberately
 
-- **Friction is a tool, not a defect.** There are two kinds, and they get
-  opposite treatment:
-  - *Bad friction* — admin, setup, planning, navigation, configuration. Remove
-    it ruthlessly. The path to practising should be near-frictionless, intuitive,
-    and never overwhelming.
-  - *Good friction* — setting an intention just before a practice item, and
-    reflecting in the moment right after each item. This is where the product's
-    value lives. Preserve it; sometimes deliberately add it.
-
-  The goal is not "fewest steps" everywhere. It's *no wasted steps in the admin,
-  and deliberate, well-placed steps where they create meaning.*
-- **Keep admin & setup flows short.** Adding a piece, building a routine, saving
-  a set, navigating the library — these should feel near-frictionless. If one
-  grows steps, treat it as a signal to rethink, not to accept.
-- **One primary action per screen.** Each screen has one obvious next step,
-  visually dominant (hero CTA / circular button). Secondary actions recede. Two
-  actions competing to be "the" action means the screen is ambiguous.
-- **Defaults beat configuration.** Every flow should be completable with zero
-  setup. Sensible defaults up front; tuning is available but never required to
-  proceed.
+- **Friction is a tool, not a defect.** *Bad friction* (admin, setup,
+  navigation, configuration): remove it ruthlessly, and rethink any admin
+  flow that grows steps. *Good friction* (an intention just before an item, a
+  reflection just after it): keep it (T1).
+- **One primary action per screen.** One obvious, visually dominant next step;
+  secondary actions recede.
+- **Defaults beat configuration.** Every flow completes with zero setup.
 - **Direct manipulation where the platform allows.** Prefer acting on the thing
-  itself (swipe, drag, tap-to-toggle) over opening a form. (Platform caveat in
-  tensions log — web needs visible affordances.)
+  itself (swipe, drag, tap-to-toggle) over opening a form, always with a
+  visible path beside it on both apps (T4).
 
 ### B. Simplicity — defer complexity, don't remove capability
 
-- **Progressive disclosure.** Show the common path first; advanced options live
-  behind a sheet, "More", or Settings. The 80% case shouldn't pay the UI cost of
-  the 20% case.
+- **Progressive disclosure.** The common path first; advanced options behind a
+  sheet, "More" or Settings.
 - **Reversible by default; confirm only the irreversible.** Reversible actions
-  are instant, optimistic, and undoable (toast). Reserve confirmation dialogs for
-  genuinely destructive, non-recoverable actions.
-- **The app disappears during practice.** Active practice is the reason the app
-  exists. Strip non-essential chrome (focus mode). The user operates the music,
-  not the interface.
+  are instant, optimistic and undoable. Confirm only genuinely destructive,
+  non-recoverable actions.
+- **The app disappears during practice.** Strip non-essential chrome. The
+  musician operates the music, not the interface.
 
 ### C. No clutter — easy to reason about
 
-- **Content over chrome.** Maximise the share of the screen showing the user's
-  own data (pieces, sessions, progress) versus navigation and decoration.
-- **Glanceable, not just readable.** A screen should be parseable at a glance.
-  Lean on the type-colour system and consistent layout so users decode by
-  pattern, not by reading every label.
+- **Content over chrome.** Maximise the share of the screen showing the
+  musician's own data.
+- **Glanceable, not just readable.** Decode by pattern, not by reading every
+  label.
 - **Consistency is a simplicity tool.** The same gesture means the same thing
-  everywhere; every list→detail behaves the same. Novelty in interaction is a
-  cost the user pays, not a feature.
-- **One concept per screen.** A screen answers one question or completes one
-  task. The urge to add a second unrelated section usually means a second screen
-  (or a sheet).
+  everywhere; every list to detail behaves the same. Novelty is a cost the
+  user pays.
+- **One concept per screen.** A second unrelated section usually means a
+  second screen or a sheet.
 
 ---
 
 ## Open tensions & decisions
 
-The principles above pull against each other and against today's app in real
-places. Each entry: the conflict, the options, and the decision (or `OPEN`).
+Each entry: the ruling, its status and its issues. Numbers are never reused.
 
-### T1 — Where friction belongs: admin vs intention/reflection
-**Status:** DECIDED 2026-05-31.
-Resolved by the *spend friction deliberately* principle (§A). Setup, planning,
-and admin are **bad friction** — make them near-frictionless and unoverwhelming.
-But there is **good friction** we deliberately keep: setting an intention just
-before each practice item, and reflecting in the moment right after it. A
-pre-start review/intention step is therefore not "an extra step to eliminate" —
-it's the good kind, *provided* it sits at the intention moment and isn't padded
-with admin. Open follow-on: keep the *resume-a-known-routine* path short (don't
-force the full builder when the user just wants to continue) — distinct from the
-intention beat, which stays. Tracked: jonyardley/intrada#760.
+### T1: Where friction belongs, admin vs intention and reflection
 
-### T2 — Mid-session configurability vs "the app disappears during practice"
-**Status:** DECIDED 2026-05-31.
-Mid-session editing of duration/reps/focus stays **one layer down** — revealed by
-a deliberate gesture (e.g. tap-to-reveal), never persistent chrome. The default
-live-session screen stays bare so focus mode holds. Config is reachable, not
-resident.
+**DECIDED 2026-05-31.** Setup, planning and admin are bad friction. Setting an
+intention just before each item and reflecting just after it are good friction,
+kept on purpose, provided they are not padded with admin. Resuming a known
+routine stays short (#760).
 
-### T3 — Decode-by-colour vs accessibility
-**Status:** DECIDED (revisit) 2026-05-31.
-**Colour is always an accelerator, never the sole carrier of meaning.** Every
-type signal must also carry a shape or text cue (dot, badge text, icon). As of 2 October
-2026 `TypeBadge` (glyph and text in a tinted pill, T29) already satisfies this.
-Marked for possible revisit, but the rule holds for now.
+### T2: Mid-session configurability vs "the app disappears during practice"
 
-### T4 — Direct manipulation vs one UI codebase (web + iOS)
-**Status:** DECIDED 2026-05-31.
-The principle is **"the most direct affordance the platform offers"**, with one
-hard floor: **no action may be reachable *only* through a hidden gesture.** iOS
-gestures (swipe-to-delete, long-press menu) are accelerators layered on top of a
-visible, non-gesture path that exists on every platform (e.g. the action lives in
-the detail screen / sheet too). Web users always get a visible affordance.
-Follow-on: spot-check that every gesture-only action today also has a non-gesture
-path on web (rolls into the T6 audit, jonyardley/intrada#761).
+**DECIDED 2026-05-31.** Mid-session editing of duration, reps and focus stays
+**one layer down**, revealed by a deliberate gesture, never persistent chrome.
+The default live-session screen stays bare. Config is reachable, not resident.
 
-### T5 — Content over chrome vs the 2026 visual identity
-**Status:** DECIDED 2026-05-31.
-Chrome earns its space on **navigation/structural** surfaces (tab bar, headers,
-the brand backdrop). On **content** surfaces, every visual element must serve
-recognition, hierarchy, or navigation — not pure ornament. The type gradient
-bars stay because they *encode type* (functional, not decorative). Test before
-adding a visual flourish to a content screen: *does this help the user decode or
-navigate?* If it's ornament only, cut it.
+### T3: Decode-by-colour vs accessibility
+
+**DECIDED (revisit) 2026-05-31.** **Colour is always an accelerator, never the
+sole carrier of meaning.** Every type signal also carries a shape or text cue
+(dot, badge text, icon); `TypeBadge` meets this (T29).
+
+### T4: Direct manipulation on both apps
+
+**DECIDED 2026-05-31.** The principle is **"the most direct affordance the
+platform offers"**, with one hard floor: **no action may be reachable *only*
+through a hidden gesture.** Gestures (swipe-to-delete, long-press menu) are
+accelerators on top of a visible, non-gesture path on both apps, such as the
+action in the detail screen or a sheet, and offered to VoiceOver and TalkBack.
+Audit: #761.
+
+### T5: Content over chrome vs the visual identity
+
+**DECIDED 2026-05-31.** Chrome earns its space on navigation and structural
+surfaces. On content surfaces every element serves recognition, hierarchy or
+navigation; the type bars stay because they encode type. Ornament only: cut it.
 
 ### T6 — Reversible-by-default vs today's confirm sheets
-**Status:** DECIDED (principle) + audit pending, 2026-05-31.
-Rule adopted: **recoverable actions → optimistic + undo toast; only genuinely
-irreversible actions → confirm dialog.** New destructive actions default to the
-undo-toast path unless the data loss is unrecoverable. Existing destructive
-actions (e.g. item delete's confirm sheet) need a per-action audit to reclassify
-— tracked as a follow-on issue.
 
-### T7 — Reflection capture vs "the app disappears during practice"
-**Status:** DECIDED 2026-07-14 (vision/journey audit).
-Reflection is the good friction T1 protects, but capture must never cost flow.
-Rules: **mid-item capture is one tap from the player, saves, and returns
-straight to the running timer; it never forces an advance** (the current
-hand-off sheet conflates "note" with "next"; that coupling is a bug, not a
-design). **End-of-session reflection is structured**: what improved, what's
-still broken, what to target next time, shown against the session's stated
-intention, skippable, and never a gate on saving. What's captured must feed
-forward: the "next target" answer surfaces as the item's suggested aim next
-time, and reflections are re-readable (session detail, item history, progress
-report). A note the user can never see again is admin, not reflection.
-
-### T8 — Segmented pills are inputs, not a second view of a list
-**Status:** DECIDED 2026-07-15 (#1081 B2).
-`SegmentedPills` (and pill/tab controls generally) are for genuine **inputs** —
-an either/or choice (the Piece/Exercise form toggle, `KindSegment`) or tag
-selection. **Do not add a pill row as a filter over content already shown as a
-list on the same screen** — that's two controls for one insight and reads as
-clutter (violates principle C). B2 originally proposed context filter-pills on
-the exercise detail to scope a session history, directly above a "By piece"
-rows list that already carried the same per-piece breakdown; the pills were cut
-and the rows made to carry it. When a list is on screen, let the rows (with
-their own scores/meta, tappable) do the work; reach for pills only for choice
-and tags.
-
-### T9 — Session builder: direct manipulation always on, Edit is bulk remove only
-**Status:** DECIDED 2026-07-15 (builder UX audit vs `design/Linked Exercises.dc.html`).
-The builder's arrange/configure actions must not sit behind a mode switch.
-Every line (block header, nested exercise, standalone) is its **own List row**,
-so the platform's long-press lift reorders any of them outside Edit (static
-grip glyphs advertise it), swipe-to-remove works on every row (mock frame 13),
-and tapping a row opens its settings sheet (which carries the visible "Remove
-from this session" path — T4's non-gesture floor). Edit/Done shrinks to
-**bulk remove** (system minus-circles), per mock frame 14. Invented affordances
-that deviate from the mock (chevron tap-steppers, Edit-gated settings glyphs)
-were removed. This also **overturns decision 3 of
-the related-exercises redesign (2026-07-01; see `docs/decisions.md`)**: the per-exercise
-"include today" toggle returns (off = stays visible but dimmed, excluded from
-totals, dropped at session start) — needs a core event, tracked as
-jonyardley/intrada#1101. Recorded deviation: the mock draws the block dragging
-as one visual unit; here a block moves by its **header row** and the exercises
-follow on drop. A custom in-card drag that preserved the unit visual lost a
-touch-delivery race against the List's own lift (holding a nested grip lifted
-the whole block), so consistency won: the same gesture means the same thing on
-every row.
-
-### T10 — The count-in draws on the during-play page, not the verdict glance
-**Status:** DECIDED 2026-08-04 (jonyardley/intrada#1184, from playing #1183 at
-the piano). RETIRED 2026-08-13. The surface this decided was removed with the
-coach (#1344). Kept as log history.
-The A3 glance after a tap is deliberate (one fact, nothing to read), but the
-count-in is preparation for the *next* rep, so parking it on the page that
-judged the previous one read as jarring. Ruling: the glance is the verdict and
-gate dots alone, no count-in dots; the first count-in click turns the page to
-A2 (tempo, click level, beat position), where the dots draw in place of the
-stuck target. The first click is the boundary because it needs no new timer,
-and the shortened glance (about half a second at 120bpm) is fine because the
-verdict is the user's own tap, an acknowledgement rather than news. Options
-considered: turning immediately on the tap lost the glance; keeping A3 for the
-whole count-in kept the next rep's facts off screen until the hands were
-already moving.
-
-### T11 — The pulse runs for the block, and the beats go either side of it
-
-**Status:** DECIDED 2026-08-06 (jonyardley/intrada#1223, #1224, #1225, from the
-Phase 0 fortnight at the piano; design folded into
-`design/intrada-design-system.dc.html` in #1232). RETIRED 2026-08-13. The
-surface this decided was removed with the coach (#1344). Kept as log history.
-
-**Supersedes the mid-block half of T10.** T10 ruled that the first count-in
-click turns the page from the verdict glance back to the during-play facts.
-There is no longer a count-in between reps to turn it: the click runs unbroken
-for a whole block, counted in once at block entry. So the glance is ended by
-the next beat instead, which lands in the same half-second at 120bpm and reads
-the same way. Everything else T10 decided stands: the glance is still the
-verdict and gate dots alone, and the count-in still draws on the during-play
-page, in place of the stuck target, wherever a count-in does happen (block
-entry, and after a ladder rung that changed the tempo or the phrase).
-
-Why: the per-rep restart was a cost of deferring machine listening (decision
-18), not a design goal. The original loop was continuous (hands never leave
-the keys), and stopping the click to ask a question each pass turned a
-practice loop into a quiz. The verdict window now opens at each phrase
-boundary and rests for one pass while the hands play the next, so the tap is
-still a verdict on one bounded attempt (decision 17 is untouched) and missing
-one costs a dropped rep rather than a frozen screen.
-
-Three surfaces come with it, all instances of T1: intention friction is worth
-keeping, admin friction is not.
-
-- **The block-entry card.** Blocks stop auto-advancing silently. Every block,
-  including the first, opens on a silent card carrying four facts and one
-  sentence: kind, minutes, drill title with its section, and the plan's own
-  why line. Start is the single primary; Skip sits under it with no border or
-  fill, because skipping is cheap and the eye should not be drawn to it. This
-  is T1's intention beat, and it is where the breath between blocks goes now
-  that the loop itself has none. Nothing on the card is configurable (T2) and
-  nothing about the block just finished appears on it, so the beat cannot turn
-  into a report card. Skip takes no confirm: it is reversible by the planner,
-  and a confirm sheet is exactly the stall the card exists to remove (T6).
-  Where a boundary CoachNote fires it resolves before the card, never stacked
-  with it, so there is at most one thing to read at a boundary. The ceiling
-  starts when the hands do, not when the card goes up.
-- **Discard.** A false start is not a fail. "Don't count that" records nothing
-  at all: no attempt, no evidence, no gate progress, no miss run. Without it
-  the continuous pulse makes fumbles expensive, because the loop no longer
-  pauses for you to gather yourself. It is a *cheap* action, not a confirmed
-  one: reversible-by-default applied to the record rather than to the data.
-- **Press start.** The hero shows the shape of the whole session, not just
-  block one and a count: the upcoming blocks as read-only rows, and the lines
-  the plan could not fit today, worded as the plan wrote them. Deferred lines
-  are never dropped, because being told what is not in today is what makes the
-  plan trustworthy enough to press start without editing it. The rows carry no
-  chevron, no tap target and no reordering, since a per-block decision point
-  before playing is a stall, not a choice (research foundation §7). Expanding
-  the list shrinks the hero rather than pushing it off screen, so Start stays
-  under a thumb at every disclosure state.
-
-Options considered: keeping the per-rep count-in and shortening it (still
-breaks the loop, still a quiz); letting the verdict window stay open across
-passes until tapped (ambiguous which pass a late tap judged, which is exactly
-the attempt bounding decision 17 protects); a confirm on Skip (rejected
-above); a tappable block row opening a detail sheet (rejected, it promises a
-screen that must not exist); keeping the "N blocks, about M minutes" footnote
-alone (rejected, it tells you nothing about what you agreed to).
-
-### T12 — The ramp is a default, not a wall (acquisition before the clock)
-
-**Status:** DECIDED 2026-08-07 (decision 20 in the design doc, from planning
-real tune-learning: shells and roots learnt out of tempo in chunks;
-engine + planner work tracked in jonyardley/intrada#1244, #1245). RETIRED
-2026-08-13. The surface this decided was removed with the coach (#1344). Kept
-as log history.
-
-New material opens at the least demanding rung the content authors (l0: no
-click, chunked, from memory) and the loop ramps upward: chunks, joins, full
-form, then the click below target tempo, then the target. A metronome at first
-contact asks for time-keeping from hands still finding the notes; the demand
-was arriving a week early.
-
-The guiding-not-prescriptive rules, since familiarity differs per user, per
-piece and per session:
-
-- Prescriptions default to the ramp; nothing asks where to start.
-- Chunk size is never a parameter: content authors the musical boundaries
-  (sections, phrase marks), the block enters at a whole section, a fumble
-  splits at the nearest boundary and clean passes merge. Two bars for one
-  player's corner, the whole A for another's read-through, from the same
-  authored structure.
-- Skip on the entry card is the whole "I already know this" interface (T2: no
-  mid-session configuration, and no questionnaire before playing).
-- Passing a later gate retires the rungs beneath it, so the ramp can never
-  hold back what the hands already own.
-- Pace is inferred from verdicts alone: clean taps merge chunks and raise
-  tempo; struggle falls onto the existing escalation ladder.
-- The clock still arrives: an l0 gate that keeps passing gets its clocked
-  sibling offered next plan, and the circling check watches acquisition that
-  never ends.
-
-Options considered: a "learning mode" toggle (rejected: decision 11, no mode
-switches); asking the user to self-rate familiarity at block entry (rejected:
-admin friction at the piano, T1, and self-assessed familiarity is exactly what
-decision 17 quarantines); keeping acquisition outside the app as unmonitored
-prose (rejected: the plan would skip the first week of any new material, and
-the evidence from that week would be lost to the mastery track).
-
-### T13 — Voice splits by surface, and the engine never speaks on screen
-
-**Status:** DECIDED 2026-08-07 (decided with Jon while reviewing
-the Built Session A/B/C mockups; lands with jonyardley/intrada#1256). RETIRED
-2026-08-13. The surface this decided was removed with the coach (#1344). Kept
-as log history.
-
-The first copy pass fixed vocabulary but kept the stance: the app narrated its
-own data model in nicer words. The fix is not better sentences; it is fewer,
-and different rules per surface class.
-
-- **In-session — the silent tool** (drill loop, run-throughs, feel moments,
-  off-piste, unmonitored play): prose is budgeted like taps, at most eight
-  words beyond labels and buttons. No captions explaining mechanics: what is
-  and isn't being recorded is carried by the interface itself (the altitude
-  chip; the presence or absence of instrumentation). Buttons and chips are the
-  vocabulary: "Held / Broke down", "Fought it / Getting there / It sang".
-- **Set-up and composition — the plain peer** (steer sheet, resolution
-  questions, composed-session view, altitude choice): one short sentence per
-  card, maximum. Explain a thing once, at the decision point, then never
-  again; repeat visits get labels only. Questions are fine when they are the
-  actual decision.
-- **Reflective and narrative — warmth allowed** (session summary, reflection,
-  the morning proposal, the weekly thread): the user's own words do the
-  emotional work, quoted in serif; the app's words stay brief and concrete
-  around them. The only surface class where the app may have a personality.
-
-Universal: engine vocabulary never appears on screen: gate, verdict,
-evidence, mastery, prerequisite, node, steer, prescribed, judgement track,
-countable, cold test (as a noun). Screen translations: target / the buttons
-themselves / history / progress / "you added this" / "today's plan" / "by
-ear" / "from cold" (as lived experience). Never explain the data model inline
-(if a screen seems to need that paragraph, the design is wrong, not the copy);
-no philosophy headlines; buttons name the action, not the mechanism ("Keep it
-as a drill", never "write the gate").
-
-The design system gains a Voice
-section beside the tokens so future frames are written against it.
-
-Options considered: one app-wide voice with a softer register (rejected: what
-reads warm at session close is chatter mid-drill; the surfaces have opposite
-jobs); keeping the consent explanation as on-screen captions (rejected: the
-deleted three-bullet consent list on A5 is the type specimen; the interface
-carries it, or an ⓘ does); letting spec vocabulary through where it is
-"technically accurate" (rejected: core says `variant`, the screen says
-**Steps**, and the precedent holds everywhere).
-
-### T14 — The click starts on a tap and only then offers a tempo
-
-**Status:** DECIDED 2026-08-19 (jonyardley/intrada#1398, the metronome click
-back in the Focus Player).
-
-**An instance of T2, not an exception to it.** The player's tempo line was a
-passive readout of the item's declared target ("Andante · ♩ = 66"). It now
-doubles as the click: tapping it sounds a click at that tempo, and only while
-it is sounding does the row grow a slower/faster pair either side. At rest the
-screen is unchanged, so focus mode holds; the configuration exists one layer
-down, revealed by the deliberate gesture of starting.
-
-The tap starts the click rather than revealing a panel to start it from,
-because a click at the item's own target is what a musician wants nine times
-in ten, and the reveal-then-start version spends a step on the common case to
-save one on the rare one. Stopping is the same tap, so nothing here is
-irreversible (T6).
-
-Three smaller rulings come with it:
-
-- **The marking belongs to the target, not to the click.** At rest the row
-  reads "Andante · ♩ = 66", the composer's mark. Once sounding it reads
-  "♩ = 72", because attributing a tempo the musician chose to the marking on
-  the page would be the app putting words in the score's mouth. The row keeps
-  reading as the click after it stops, too, for as long as the tempo sits off
-  the item's own: putting "♩ = 66" back on a row whose next tap sounds 76
-  would be a small lie the musician only finds out by ear. Moving to the next
-  item reseeds it.
-- **A click needs no time signature to be useful.** Every beat sounds the
-  same. An accented downbeat would mean asking for a time signature the app
-  does not hold and T2 does not want asked mid-session; that, subdivision and
-  accent patterns wait for the surface #1366 scopes.
-- **The row always exists, even with no declared tempo**, where it reads
-  "Metronome" (V7, #1708) and starts at a neutral 96. Scales and exercises
-  want a click most and declare a target least; hiding the affordance exactly
-  there would be the wrong way round. An item carrying a marking but no
-  number ("Andante", no figure) counts as no declared tempo here: the marking
-  is not something the click can sound, and showing it on a row whose tap
-  plays 96 would be the same small lie.
-
-Options considered: a metronome entry in the options menu (rejected: three
-gestures deep for the thing you want most while playing, and no place to show
-that it is running); a bottom sheet carrying the click (rejected: it covers
-the timer, and the running state needs an on-screen home anyway once the sheet
-is dismissed); a beat-synchronised pulse animation on the row (rejected: the
-player surface sits still while practice runs, per the timer ring, and a
-flashing light is a second metronome competing with the first).
-
-### T15 — The Practice hero carries the suggestion, not a play glyph
-
-**Status:** DECIDED 2026-08-27 (Jon; jonyardley/intrada#1082, the Up next card;
-mock at
-[`specs/up-next-card/design/up-next-card.dc.html`](../specs/up-next-card/design/up-next-card.dc.html)).
-
-The Practice hero was the last thing played, a 96pt play button, and the day.
-Where a suggestion exists it becomes the hero instead: the piece, why it is
-being suggested, its two or three items with their reasons, and one
-`Start · N min`. "Build my own instead" sits under it as the secondary, and
-takes the user to exactly the screen that shipped.
-
-**One primary action is the whole of it.** The alternative, and the literal
-reading of the issue, was a card *underneath* the existing hero. That puts two
-buttons a thumb apart which both begin a session, and asks the user to choose
-between them with no basis for choosing. It also repeats itself: the header
-subtitle already reads "Last practised Tuesday", and the suggested piece is
-usually the last piece played, so the title landed twice on one screen.
-
-Two rulings come with it:
-
-- **Nothing is lost by the hero changing job.** Last practised keeps its line
-  in the header subtitle, which is where the tone-of-voice worked example put
-  it. The hero stops being an affordance explaining itself and becomes the
-  user's own pieces and marks, which is content over chrome (§C).
-- **Suggest, never gate.** With no suggestion the hero is exactly what shipped,
-  and dismissing gives the same screen. The card cannot become a wall in front
-  of the manual builder, and it never blocks a user who wants something else.
-
-Options considered: the card below the hero (rejected above); the card above
-the hero (rejected for the same two-buttons reason, and it pushes the week
-strip below the fold); a suggestion *line* inside the existing hero with no
-item rows (rejected: the reasons are the honest part, and a piece title with
-no reasons is the app having an opinion it will not show its working for,
-which is the road the coach died on).
-
-### T16 — A tempo is recorded when it was measured, never as a default
-
-**Status:** DECIDED 2026-08-27 (Jon, an answered roadmap question, #1420), implemented in
-jonyardley/intrada#1420. Supersedes the question that log entry originally
-asked.
-
-Tempo capture (**T14**, #1398/#1401) put the stepper on the reflection sheet
-for every item and always saved a number, pre-filled from the click. When the
-click had never sounded, that pre-fill was whatever `ClickController` had
-seeded: the item's own declared target where it has one, and a neutral 96 where
-it does not. So a large share of the recorded tempos were a default nobody
-looked at, sitting in the same history as real measurements with nothing
-telling them apart. **For an item declaring ♩ = 132, that default was 132** —
-the app quietly recording the target as achieved, which is a worse falsehood
-than a stray 96 and the strongest argument for the ruling.
-
-**A tempo is worth recording when there is evidence behind it, and never
-otherwise.** Evidence is either of two things: the user moved the stepper, or
-the click was sounding when the item ended, so the pre-filled number measures
-what they actually played to. Anything else is a default, and a default is not
-data.
-
-This dissolves the original question rather than answering it. Tempo is never
-required, and it is not optional-by-item-target either. It is recorded when it
-was measured.
-
-Two rulings come with it:
-
-- **The sheet does not change.** The stepper still appears on every item and
-  still pre-fills, because a musician reaching for it should find it already
-  showing a sensible number. What changed is only whether an untouched number
-  is kept, and no banner or hint says so: nothing was asked of the user, so
-  there is nothing to report. The one visible consequence is downstream — the
-  session summary's meta row reads `Exercise` rather than `Exercise · 96 bpm`
-  when there was nothing to measure, which is the row telling the truth.
-- **Dialling the click without starting it is not evidence.** The tempo has to
-  have been sounding. Changing a number on a silent row is intent, and intent
-  is not measurement; the musician never played to it. Deliberate, not an
-  oversight.
-- **The shell reports, the core rules.** Both facts are shell-observable and
-  neither is a judgement, so Swift forwards them untouched and the core decides
-  what counts as evidence. Deciding in the shell would be domain logic in the
-  dumb pipe, and it would put the rule somewhere no core test could reach it.
-
-**Amended 2026-09-14 (#1761): per play.** Since #1739 an item's record is a
-list of plays, one per variation, so "the click was sounding when the item
-ended" now reads "when the play closed". A switch, the hand-off and ending
-early each stamp the closing play from what the click was doing at that
-instant, and a skipped item keeps no tempo. Moving the stepper stays the other
-kind of evidence, now per row. The first ruling narrows with it: the sheet
-shows a tempo on each row, prefilled from that play's own stamp, rather than
-one for the item. Contract: `specs/exercise-variations.md`, Phase C.
-
-Why it matters beyond tidiness: the tempo trend draws this history as a chart,
-and a chart looks like measurement. Drawing a line through numbers the user
-never considered is the borrowed authority the getting-cold signal (**#1416**)
-was careful to avoid, and much harder to spot in a chart than in a sentence.
-
-Options considered: requiring a tempo on every mark (rejected: it taxes every
-hand-off for a number most items do not want, and a required field gets
-answered carelessly, which is how you manufacture the same noise deliberately);
-recording only when the item declares a target (rejected: scales and exercises
-declare targets least and want a click most, so it would drop exactly the
-measurements worth having); letting the shell send nil (rejected under the
-second ruling above).
-
-### T17 — The tempo trend reports what was played, and shows where it did not
-
-**Status:** DECIDED 2026-08-28 (jonyardley/intrada#1420), implemented in
-jonyardley/intrada#1425. Follows **T16**, which made the recording honest; this
-is how the chart drawing it stays honest.
-
-The chart is a line across the sessions that measured a tempo, on a date axis.
-Four rulings, all of them about not claiming more than the data says:
-
-- **A session that measured no tempo breaks the line.** Never a zero, never a
-  point interpolated between its neighbours. The line stops and restarts, and
-  the session gets a small tick **below the axis, outside the plot**. Inside it,
-  a mark on the baseline would read as ♩ = 0, which is precisely the falsehood
-  T16 exists to prevent.
-- **The count carries the honesty.** `7 of 9 sessions measured`, in one line
-  under the plot, is what stops the breaks reading as a fault. It is also the
-  one part of the footer that survives at accessibility text sizes; the end
-  dates go.
-- **Fewer than two measurements is not a trend, and says so.**
-  `Measured once, at ♩ = 108 · no trend yet` rather than a one-point chart. That
-  ruling is the core's (`TempoTrendView.has_trend`), not Swift's. **Nothing
-  measured at all draws no card**, because nothing was asked of the user and so
-  there is nothing to report (T16's first ruling, applied downstream). That one is the
-  shell's, in `tempoTrendDisplay`, because it is the absence of anything to
-  draw rather than a judgement about the data. If a third state ever needs
-  distinguishing in copy, it moves to the core.
-- **The vertical scale is relative, with a floor.** There are no axis labels:
-  the plot shows the shape and the chip carries the numbers. Left unbounded that
-  would draw a two-beat drift and a thirty-beat climb identically, so the scale
-  never spans less than 8 BPM. Below that the line flattens, which is what
-  actually happened.
-- **The `♩ = 88 → 116` chip is neutral, never a success colour.** A faster
-  tempo is not a better one: deliberately slowing down to fix a passage is
-  practice, not a decline. This is where it departs from `RecentSessions`, whose
-  mastery chip does go teal on the way up, because a mastery score genuinely has
-  a good direction and a tempo does not.
-
-**The item's declared target is not drawn on the plot.** Considered and
-rejected: a reference line repeats what is already on screen, and it costs the
-trend most of its height (an item at ♩ = 96 working towards 132 loses two thirds
-of the plot to empty space above the line). The card is placed **directly under
-the Key/Tempo rows** for exactly this reason, on pieces as well as exercises, so
-the declared tempo and the measured ones are two lines apart. Mocked as option B
-on the [design canvas](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd)
-if the call is ever reopened.
-
-**The tempos recorded before T16 stay.** History from #1398 onwards contains
-click-prefilled defaults, and the chart will draw them. Accepted deliberately
-rather than filtered: nothing distinguishes them from the real measurements a
-user made with the click sounding, so any filter would need a cut-off date
-invented for the purpose and would delete genuine measurements alongside the
-noise. It stops growing at #1422 and ages out as real history accumulates.
-
-### T18 — On a piece, the exercise you write outranks the one the app suggests
-
-**Status:** DECIDED 2026-08-28 (jonyardley/intrada#1431), from Jon's second
-round of real use. Mocked on the
-[design canvas](https://claude.ai/code/artifact/c646b020-6a05-4fe9-9479-73bdbd42528e).
-
-The chord-chart derivation shipped with the loudest affordance on the piece
-page: a full-width brand bar reading **See the curriculum**, one tap from five
-ready-made exercises. Writing your own sat four taps away inside a picker for
-existing ones, and did not even link what it made. The page therefore said the
-app's idea of what to practise mattered more than the musician's.
-
-- **The musician's own exercise is the primary action, and it is the card's
-  only brand bar.** Choosing an existing exercise drops to plain text beneath
-  it. Two brand bars on one screen was the ambiguity that made the page read
-  the wrong way round, and removing the chart card's is most of the fix.
-- **Creating an exercise on a piece saves it already related to that piece.**
-  The primary action is only primary if it completes: a create that leaves you
-  to go and tick your own new exercise in a picker has not done the job. This
-  is what makes the change a core change rather than a layout one.
-- **The derived five are suggestions, offered second, and the word
-  *curriculum* goes.** They keep every mechanic they have. What changes is that
-  the app now proposes rather than prescribes, which is the difference between
-  a suggestion and a syllabus. `Curriculum` becomes `From the chord chart` and
-  `Derived in G minor` becomes `Worked out from these changes`.
-- **The suggestions live in the Related exercises card**, not on the chart
-  card. Everything about exercises for this piece then reads in one place, and
-  the idea does not disappear on a piece with no chart, which is most of the
-  library. The chart-card placement is mocked as `AltOnChartCard` if it is
-  reopened.
-- **The suggestions row is drawn as a control, on `surfaceSunken` with the gold
-  exercise tint.** Drawn as a plain row carrying only a chevron, Jon read the
-  eyebrow above it as the button. A row that creates five library items cannot
-  hang its whole affordance on a chevron, and the gold says what will be
-  produced before it is tapped.
-- **The brand bar belongs to the empty state.** With exercises already in the
-  card the primary action recedes to a plain footer action beside "choose one".
-  One primary action per screen means one obvious *next step*, and once the
-  card is populated, adding another exercise is not it.
-
-**What this does not settle:** whether `Learn the melody` and
-`Constrained improv` are exercises at all (#1389), and the chord chart's own
-display (#1432). Both were deliberately held out.
-
-### T19 — The click can sound a subset of the bar, and then it must show the bar
-
-**Status:** DECIDED 2026-09-02 (jonyardley/intrada#1364, #1367, #1499; spec
-[`specs/practice-instruments.md`](../specs/practice-instruments.md); design
-[`focus-player-instruments.dc.html`](../specs/practice-instruments/design/focus-player-instruments.dc.html)).
-
-**Partly reverses T14.** T14 ruled that "a click needs no time signature to be
-useful", that an accented downbeat "would mean asking for a time signature the
-app does not hold and T2 does not want asked mid-session", and rejected "a
-beat-synchronised pulse animation on the row" because the player surface sits
-still and a flashing light is a second metronome. Both rulings were correct
-**about a flat click** and are wrong once the click sounds a subset of the bar.
-
-The screen budget came first, because with the pass counter on the Focus Player
-already ran to the bottom edge. All three instruments are resident, so something
-had to give, and what gives is the timer ring:
-
-- **The session timer** sits in the top orientation band, in the slot that was
-  28pt of dead space balancing the options menu. Orientation, never feedback: a
-  duration cannot praise you. It costs no row, though it does widen both side
-  slots, so the position label between them loses horizontal room.
-- **The pass counter is always on screen and can be ignored** (Jon,
-  2026-09-02, reversing an earlier opt-in-from-the-menu plan). Deciding in the
-  builder is the wrong moment, and a menu is a gesture nobody spends
-  mid-passage. Untouched it shows no dots, reads `0 of 10`, and **records
-  nothing**.
-- **The click's pattern is two layers down**, in a sheet. Only the bar line
-  stays resident, and only while the click sounds.
-- **The ring shrinks from 236pt to about 200pt**, landing with the resident
-  counter (#1367) rather than with the timer. A resident counter has to come
-  from somewhere, and the ring had the most slack: it is still far and away the
-  dominant element. Stated rather than absorbed silently, because it is the
-  price of the counter being always there.
-
-This is a real departure from T2's "the default live-session screen stays bare",
-and it is deliberate: counting passes is not configuration, it is the practising.
-Configuration (the metre, the pattern, the target) all stays one or two layers
-down, which is the part of T2 that still binds.
-
-Six rulings come with it.
-
-- **A pattern never divides the tempo.** The pulse grid keeps its rate and the
-  pattern gates which beats sound. This is the whole point: "practise at 120
-  with the click on beat 4" used to require setting 30, and the app wrote 30
-  down. `achieved_tempo` therefore keeps meaning what T16 says it means.
-- **The row must never imply every beat when it is not.** The pattern dots are
-  the honesty mechanism, and they are the same argument T14 made about putting a
-  marking back on a row whose next tap would sound something else. Filled and
-  hollow, never colour alone (T3).
-- **The bar gets its own line, under the tempo.** T14 made tapping the readout
-  the start/stop toggle, so the readout cannot also open the pattern sheet: the
-  two gestures would collide on one target. Line one stays exactly T14's row;
-  line two carries the metre and the dots, appears only while sounding, and owns
-  the sheet. It also gives the travelling indicator room to be legible from a
-  music stand. The line says it opens the sheet by sitting in a sunken pill
-  that ends in a settings glyph (2026-09-24, #2139): a faint chevron went
-  unnoticed, motion would break the calm the player holds, and a first-use
-  caption was rejected as more to build for less. On a bar too wide for the
-  row, the pill tightens its groups, then drops the metre, before it overflows.
-- **The metre is offered with an answer already in it, never asked for.** This
-  is what dissolves T14's objection rather than overruling it: the app now holds
-  a metre (from the piece, and the chart derives from it), so nothing is
-  demanded mid-session. Three presets cover nine cases in ten; "Other" opens
-  beats-in-the-bar, the beat value and the grouping, so 5/8, 7/8 and 9/4 are the
-  same mechanism as 4/4 rather than a special case.
-- **The grouping is the accent pattern.** In 7/8 the useful fact is 3+2+2, not
-  seven equal beats, so the bar carries its grouping and "sounds on group
-  starts" becomes one tap in any metre. It also fixes the layout: above six
-  beats the grid takes one row per group, which reads as the shape of the bar
-  and keeps every cell a real tap target. Seven identical squares would make the
-  user toggle each one to get a click any Balkan player calls standard.
-- **A travelling indicator, not a flash.** Two reasons it is a small ring on the
-  pattern dots rather than a pulsing panel. It must say *which* beat, because a
-  click on beat 4 at 120 sounds exactly like a flat click at 30 and the ear
-  cannot separate them either. And at the top of the tempo range (208bpm, 3.5Hz)
-  a large high-contrast flash crosses WCAG's general flash threshold, while
-  ceasing to be legible anyway. The dots therefore show whenever the click
-  sounds, not only when the pattern is a subset, so the indicator always has a
-  home.
-
-**The indicator reads the audio's clock, not its own.** `ClickEngine` schedules
-beats on a host-time grid precisely because a timer-driven click drifts, and the
-existing poll runs at 100ms, which is 20% of a beat at 120bpm. A view animating
-off its own timer drifts *against* the click, and a light visibly separating
-from the sound is worse than no light. The pure `schedule(beats:pulse:)` is the
-shared source of truth.
-
-**A displayed target is not a recorded one.** Because the counter is always
-drawn, the target it draws against must be a view concern; `rep_count` and
-`rep_history` stay unset until the first tap. Otherwise every entry banks a
-zero nobody earned and the summaries fill with defaults, which is T16's exact
-failure mode a third time.
-
-**Reaching the pass target is not congratulated.** The dots fill, `Got it` greys
-out, and the count drops its "to go" clause. Tone V1: the app has no microphone
-and does not know how it went, so a banner at ten would be the notebook claiming
-to have listened.
-
-**`Repetitions`, `Got it`, `Not quite`.** The header stays `Repetitions`, and the
-builder spells it out too (`Track repetitions`): it is the word musicians
-already use for the count, and `Passes` was reversed on 2026-09-22 (#1938). Both
-buttons change, because `Clean` and `Missed` were mismatched in kind: one
-described the pass, the other the player, and you miss a note rather than a
-pass. `Got it` is already the core's own word for this (`SessionEvent::RepGotIt`),
-British, and warm without boasting. `Not quite` narrows nothing, covering
-slipped notes, rushing and stiffness alike, and reads `Not quite right` at
-accessibility sizes where the pair stacks. The two halves are deliberately equal
-in length and register: a pair weighted toward the gentle option biases the tap
-and skews the count low, which is the same concern behind the coach-era ruling
-that a miss must be equally hittable. Rejected: `Fluffed` (jokey at twenty taps
-a session, and it blames the fingers), `Nailed it` (a US idiom where British is
-mandated, and it overclaims a routine `+1`), `Clean / Not clean` (symmetrical
-but dead), `Solid / Scrappy`, `Clean / Rough`.
-
-Options considered: a metre picker on the resident row (rejected, it is the
-resident chrome T2 forbids and it would push the transport off screen); a
-scrolling row of metre pills out to 12/8 (rejected, still a finite list and 11/8
-is undiscoverable); typing the signature (rejected, `TempoStepper` exists to
-keep a keyboard out of a mid-session sheet); a tick travelling the timer ring's
-rim (rejected, the ring is the per-item timer and overloading it muddies both);
-a background flash (rejected on the flash threshold above); flat beats with a
-cell-by-cell grid for irregular metres (rejected, it makes 7/8 fiddly every
-single time for the sake of one less field); the pattern inline on the tempo row
-(rejected, it collides with T14's toggle and leaves the dots too small to read
-at arm's length); the counter behind the options menu (rejected by Jon above).
-
-**What this does not settle:** an accent timbre on the downbeat, subdivisions,
-whether a dotted crotchet can be named as the felt beat in 6/8, and what unit
-the tempo trend labels its axis with. All held out in the spec's open questions.
-
-### T20 — The starred route is a text action under the hero, never a second button
-
-**Status:** DECIDED 2026-09-05 (jonyardley/intrada#981, the screens half; the
-core half in #1540 and #1544).
-
-**Reads T15 forward rather than reversing it.** T15 ruled that a card under the
-Practice hero puts two buttons a thumb apart which both begin a session, and
-asks the user to choose between them with no basis for choosing. "Practise your
-priorities" is a third way in, so drawn as a filled CTA it lands in exactly that
-trap. The issue's own wording (an entry point on "the Priorities section header
-in the Library, and/or the Practice tab") predates both the star filter that
-replaced that section and the Up next card that took the hero.
-
-So the route is one line: a star glyph and three words, in secondary ink, under
-whichever hero is showing. One primary action per screen survives, and the
-starred set reads as an alternative rather than a rival.
-
-Three rulings come with it:
-
-- **It shows only from Idle.** The core refuses the event outside Idle with "A
-  practice is already in progress", so a button surviving into building, playing
-  or the summary would raise an error the user never caused. The shell gate is
-  `PracticeScreen.showsPriorities`, and deleting any clause of it fails a test.
-- **Nothing starred, nothing offered.** The flag is derived before the library
-  filter (#1544), so filtering to exercises cannot make the route flicker out
-  from under a musician who just starred a piece.
-- **Two secondaries under one primary is fine; two primaries is not.** With a
-  suggestion on screen, "Build my own instead" and "Practise your priorities"
-  both sit under one Start. Both are text, neither competes with it, and that is
-  the layout a snapshot now pins, because it is the one that can drift.
-
-Options considered: a filled button under the hero (rejected, T15's exact case);
-making the starred set the hero when anything is starred (rejected, the
-suggestion already owns that slot, and a star is a standing preference rather
-than a statement about today); putting it on the Library star filter instead
-(not rejected, deliberately held: it is a different question about where a
-musician goes looking, tracked as #1538).
+**DECIDED (principle) + audit pending, 2026-05-31.** **Recoverable actions:
+optimistic plus undo toast; only genuinely irreversible actions: confirm
+dialog.** New destructive actions default to the undo path unless the loss is
+unrecoverable. Existing confirm sheets need a per-action audit (#761).
+
+### T7: Reflection capture vs "the app disappears during practice"
+
+**DECIDED 2026-07-14.** Capture never costs flow: **mid-item capture is one tap
+from the player, saves, and returns straight to the running timer; it never
+forces an advance.** End-of-session reflection is structured (what improved,
+what is still broken, what to target next), shown against the intention,
+skippable, never a gate on saving. What is captured feeds forward and stays
+re-readable: **a note the musician can never see again is admin, not
+reflection.**
+
+### T8: Segmented pills are inputs, not a second view of a list
+
+**DECIDED 2026-07-15 (#1081).** Pills are for genuine **inputs**: an either/or
+choice (`KindSegment`) or tag selection. **Do not add a pill row as a filter
+over content already shown as a list on the same screen.** Let the rows carry
+it.
+
+### T9: Session builder: direct manipulation always on, Edit is bulk remove only
+
+**DECIDED 2026-07-15.** Every line (block header, nested exercise, standalone)
+is its own List row: long-press reorders outside Edit (static grip glyphs
+advertise it), swipe removes, a tap opens its settings sheet with "Remove from
+this session" (T4's floor). **Edit is bulk remove only.** The "include today"
+toggle returns (#1101). A block moves by its header row; its exercises follow
+on drop.
+
+### T10 to T13: retired
+
+Decided for the coach and retired with it on 2026-08-13 (#1344). The voice
+rules from T13 live in [`tone-of-voice.md`](tone-of-voice.md).
+
+### T14: The click starts on a tap and only then offers a tempo
+
+**DECIDED 2026-08-19 (#1398).** An instance of T2. Tapping the tempo line
+sounds a click at that tempo; only while it sounds does the row grow a
+slower/faster pair. Stopping is the same tap.
+
+- **The marking belongs to the target, not the click.** At rest the row reads
+  "Andante · ♩ = 66"; once the tempo moves off the item's own it reads
+  "♩ = 72" until the next item reseeds it.
+- **The row always exists**, reading "Metronome" (V7, #1708) at a neutral 96
+  when the item declares no number.
+- The flat click and no-pulse rulings are superseded by T19.
+
+### T15: The Practice hero carries the suggestion, not a play glyph
+
+**DECIDED 2026-08-27 (#1082).** Where a suggestion exists it is the hero: the
+piece, why, its items with their reasons, and one `Start · N min`. "Build my
+own instead" sits under it as the secondary (amended by T22 and T32).
+
+- **One primary action.** Never a second card that also starts a session.
+- **Last practised keeps its line in the header subtitle** (T25).
+- **Suggest, never gate.** With no suggestion the hero is the plain one. Every
+  reason string is the core's.
+
+### T16: A tempo is recorded when it was measured, never as a default
+
+**DECIDED 2026-08-27 (#1420).** **A tempo is recorded only with evidence
+behind it:** the musician moved the stepper, or the click was sounding when the
+play closed. Anything else is a default, and a default is not data.
+
+- **The sheet does not change.** The stepper still pre-fills; an untouched,
+  unmeasured number is not kept, with no banner. Dialling a silent click is
+  not evidence.
+- **The shell reports, the core rules** what counts as evidence.
+- **Per play (#1761).** Each play is stamped from what the click was doing when
+  it closed; a skipped item keeps no tempo. Contract:
+  [`specs/exercise-variations.md`](../specs/exercise-variations.md).
+
+### T17: The tempo trend reports what was played, and shows where it did not
+
+**DECIDED 2026-08-28 (#1420, #1425).** Follows T16.
+
+- **A session with no measured tempo breaks the line** (never a zero), with a
+  tick below the axis; `7 of 9 sessions measured` carries the honesty. It is
+  also the one part of the footer that survives at accessibility text sizes;
+  the end dates go.
+- **Fewer than two measurements is not a trend** (`TempoTrendView.has_trend`,
+  the core's); nothing measured draws no card (the shell's).
+- **The scale is relative, with an 8 BPM floor; the chip is neutral**, never
+  a success colour. The declared target is not drawn. The card is placed
+  **directly under the Key/Tempo rows** for exactly this reason, on pieces as
+  well as exercises, so the declared tempo and the measured ones are two lines
+  apart.
+- **The tempos recorded before T16 stay.** History from #1398 onwards contains
+  click-prefilled defaults, and the chart will draw them. Accepted deliberately
+  rather than filtered: nothing distinguishes them from the real measurements
+  a user made with the click sounding, so any filter would need a cut-off date
+  invented for the purpose and would delete genuine measurements alongside the
+  noise.
+
+### T18: On a piece, the exercise you write outranks the one the app suggests
+
+**DECIDED 2026-08-28 (#1431).**
+
+- **The musician's own exercise is the primary action and the card's only
+  brand bar**; choosing an existing one is plain text beneath it.
+- **Creating an exercise on a piece saves it already related.**
+- **The chord-chart five are suggestions, offered second** (`From the chord
+  chart`, never *curriculum*), in the Related exercises card, drawn as a
+  control with the exercise tint because they create several library items.
+- **The brand bar belongs to the empty state**; once the card holds exercises
+  the action recedes to a footer.
+
+### T19: The click can sound a subset of the bar, and then it must show the bar
+
+**DECIDED 2026-09-02 (#1364, #1367, #1499;
+[`specs/practice-instruments.md`](../specs/practice-instruments.md)).** Partly
+reverses T14. Counting passes is practising, not configuration; metre, pattern
+and target stay one or two layers down.
+
+- **Screen budget.** The session timer sits in the top band as orientation,
+  labelled apart from the item timer. **The pass counter is resident and
+  ignorable**: untouched, it records nothing. The ring shrinks to about 200pt,
+  the price of the resident counter.
+- **A pattern never divides the tempo.** The grid keeps its rate; the pattern
+  gates which beats sound.
+- **The row never implies every beat.** Pattern dots, filled and hollow, never
+  colour alone (T3).
+- **The bar gets its own line under the tempo**, while sounding, as a sunken
+  pill with a settings glyph (#2139) that opens the pattern sheet, so T14's
+  start/stop tap is never contested. On a bar too wide for the row, the pill
+  tightens its groups, then drops the metre, before it overflows.
+- **The metre is offered with an answer already in it**, from the piece; the
+  grouping (3+2+2) is the accent pattern. Three presets cover nine cases in
+  ten; "Other" opens beats-in-the-bar, the beat value and the grouping, so 5/8,
+  7/8 and 9/4 are the same mechanism as 4/4 rather than a special case. Above
+  six beats the grid takes one row per group, which reads as the shape of the
+  bar and keeps every cell a real tap target.
+- **A travelling ring on the dots, not a flash**, driven by the audio's clock,
+  never a view timer that drifts.
+- **A displayed target is not a recorded one**: `rep_count` and `rep_history`
+  stay unset until the first tap.
+- **Reaching the pass target is not congratulated** (V1). The dots fill,
+  `Got it` greys out, and the count drops its "to go" clause.
+- **`Repetitions`, `Got it`, `Not quite`** (#1938). `Not quite` reads
+  `Not quite right` at accessibility sizes where the pair stacks. The two
+  halves are deliberately equal in length and register: a pair weighted toward
+  the gentle option biases the tap and skews the count low, which is the same
+  concern behind the coach-era ruling that a miss must be equally hittable.
+
+### T20: The starred route is a text action under the hero, never a second button
+
+**DECIDED 2026-09-05 (#981, #1540, #1544).** Reads T15 forward: a star glyph
+and "Practise your priorities" in secondary ink under whichever hero shows.
+
+- **It shows only from Idle** (`PracticeScreen.showsPriorities`).
+- **Nothing starred, nothing offered**, derived before the library filter.
+- **Two secondaries under one primary is fine; two primaries is not.**
 
 ### T21: Adding a piece captures what it can carry, in one pass
 
-**Status:** DECIDED 2026-09-07 (jonyardley/intrada#1390; spec
-[`../specs/one-pass-create.md`](../specs/one-pass-create.md)). The layout is
-settled at the Claude Design pass before the screens commits; what is decided here
-is the shape that pass works inside.
+**DECIDED 2026-09-07 (#1390;
+[`specs/one-pass-create.md`](../specs/one-pass-create.md)).**
 
-Adding a piece is admin, so its friction is the bad kind (§A). Today the chart
-and the exercises are two further trips through the piece's detail screen, and
-nothing on the create form says either is possible, so both depend on having
-found them once before.
-
-Four rulings.
-
-- **The minimal form stays minimal.** The chart and the exercises are two
-  collapsed rows below the fields, not two more always-open sections. The
-  common case, a piece with neither, pays nothing for the case that has both
-  (principle B).
-- **Nothing is written until Add.** The staged chart and exercises are shell
-  state, and the core validates everything before it mutates anything, so a
-  parse error in bar 24 leaves no half-made piece behind.
+- **The minimal form stays minimal.** Chart and exercises are two collapsed
+  rows below the fields.
+- **Nothing is written until Add.** Staged material is shell state; the core
+  validates everything before it mutates anything.
 - **What the form captures is the musician's own material, never the app's
-  suggestions.** T18 put the chart-derived five in the Related exercises card
-  on the piece, offered after it exists. Generating them at create time would
-  have the app write five library items before the musician has seen the piece
-  save once, which is prescription wearing capture's clothes.
-- **The chart sheet is extended, not cloned.** On the create path there is no
-  piece id to send `SetChordChart` to, the same shape phase B hit when
-  `ReadPhoto` ended up taking only a `photo_id`.
+  suggestions.** Generating the chart five at create time would be
+  prescription wearing capture's clothes.
+- **The chart sheet is extended, not cloned.**
 
-**What this does not settle:** whether the edit path grows the same sections
-(held: create is where the material is fresh), the per-bar parse feedback the
-text format still wants (#1387 part 1), and the words on the two rows, which
-are matched to the detail card at the design pass rather than invented here.
+Not settled: the edit path, per-bar parse feedback (#1387), the row wording.
 
 ### T22: "Build my own instead" opens the builder, and dismissal is never a one-way door
 
-**Status:** DECIDED 2026-09-10 (jonyardley/intrada#1617, #1618). Amends T15's
-"takes the user to exactly the screen that shipped": revealing the plain hero
-and asking for a second tap turned out to be one tap too many for a decision
-the musician had already made.
+**DECIDED 2026-09-10 (#1617, #1618).** Amends T15.
 
-Two rulings, read together:
-
-- **The tap does the thing it names.** "Build my own instead" is a decision,
-  not a dismissal, so it drives straight into the empty builder in the same
-  tap that hides the suggestion. Nothing else about T15 moves: the suggestion
-  is still the hero, still suggests rather than gates, and the manual builder
-  is still exactly the screen that shipped once you are in it.
-- **A curious or accidental tap is not a one-way door.** Once dismissed, the
-  plain hero carries a text route back to the suggestion ("Show suggestion"),
-  on the same footing as T20's starred route: both are secondary text actions
-  under one primary, and both can show together, so the busiest case stacks
-  two secondaries rather than one. `suggestionDismissed` stays shell-local
-  `@State`; nothing about which sessions the core offers to suggest changes.
-
-Options considered: leaving "Build my own instead" as dismissal-only and
-adding a separate always-visible "Build session" entry point elsewhere
-(rejected: reads as a second primary action next to Start, the exact trap T15
-and T20 both ruled out); bringing the suggestion back automatically after a
-cool-down rather than on a tap (rejected: a timer is a rule about the user's
-attention the app has no basis for, and re-litigates T15's "never a gate" in
-the other direction).
+- **The tap does the thing it names:** it hides the suggestion and opens the
+  empty builder.
+- **Not a one-way door.** The plain hero then carries "Show suggestion", a
+  secondary text action like T20's. `suggestionDismissed` stays shell-local.
 
 ### T23: A weak photo read dims the glyph, never the label
 
-**Status:** DECIDED 2026-09-11 (jonyardley/intrada#1458). #1436 settled that a
-weak read wears the same "From the photo" mark, dimmed, with the difference
-also spoken to VoiceOver. The dim chosen was `inkFaint` on the whole mark, but
-`inkFaint` is documented as failing WCAG AA on text (2.9:1) and the mark is
-10pt body text, not an eyebrow.
-
-The label ("From the photo") stays at `inkSecondary` in both states: it is
-text, so the 4.5:1 AA floor applies and there is almost no headroom above it
-to dim into. Only the leading glyph dims, to a new `inkFaintIcon` token
-(3.29:1 on `cardFill`), which clears the 3:1 floor WCAG sets for a non-text
-graphical object. The visual difference is now the glyph alone; VoiceOver
-still speaks the weak state explicitly, so contrast is not the only channel.
-
-*Note, 2 October 2026:* measured against the current `Theme.swift` hexes with
-the WCAG formula, `inkFaint` is 2.45:1 on paper (2.69:1 on cards), and
-`inkFaintIcon` is 3.49:1 on paper and 3.83:1 on `cardFill`. The figures above
-are what was recorded at the time; the decision stands.
+**DECIDED 2026-09-11 (#1458).** "From the photo" stays at `inkSecondary` in
+both states, because text needs 4.5:1. Only the glyph dims, to `inkFaintIcon`,
+which clears the 3:1 floor for graphics. VoiceOver speaks the weak state.
 
 ### T24: One marker on paper replaces indigo and serif
 
-**Status:** DECIDED 2026-09-11 (jonyardley/intrada#1676). The Claude Design
-visual direction exploration settled on "8f": paper #F7F4EF, white cards, brown
-ink #3B2A1E, 3pt corners, a faint lift, and a butter highlighter #FFE9A3 as the
-only bright colour. It retires two earlier principles: indigo as the
-interactive colour, and serif page titles.
+**DECIDED 2026-09-11 (#1676).** Paper, white cards, ink, 3pt corners, a faint
+lift, and the highlighter as the one bright colour. Indigo and serif titles are
+retired.
 
-Interactive colour on paper is ink, not the marker: butter text on paper is
-about 1.1:1 and cannot carry a link or an outline. The marker is a fill, with ink
-on it (11.3:1), on primary buttons, the hero's start button and the swipe
-under page titles. The Practice hero and the celebration toast become dark ink
-surfaces with butter as their one accent, so no second hue enters.
-
-Type colours are duller pastels than the marker, so a piece badge never reads
-as a button. A check or outline stays ink for both kinds, because a pastel
-border on white misses the 3:1 WCAG sets for a control. The practice player
-stays light for now, its ink buttons included; a dark focus screen is #1679, and choosing your own marker
-is #1677.
+- **Interactive colour on paper is ink.** The marker is a fill, with ink on it
+  (11.3:1), on primary buttons, the hero's start button and the swipe under
+  page titles. The hero and celebration toast are dark ink with the marker as
+  accent.
+- Type colours are duller than the marker, so a badge never reads as a button.
+  A check or outline stays ink for both kinds, because a pastel border on white
+  misses the 3:1 WCAG sets for a control.
+- The player stays light for now; a dark focus screen is #1679, and choosing
+  your own marker is #1677.
 
 ### T25: The Practice greeting leads the subtitle
 
-**Status:** DECIDED 2026-09-11 (jonyardley/intrada#1690). The Practice screen
-greets the musician by name at the start of the subtitle under its title, and
-the last-practised fact stays after it: "Morning, Jon · Last practised
-Tuesday". That keeps T15's ruling that last practised holds its line in the
-header, since the Up next card shows no date. Morning is 04:00 to 11:59,
-afternoon 12:00 to 17:59, evening 18:00 to 03:59; the core owns the rule and
-the string. With no name set, the subtitle stays as it was ("No sessions yet"
-or "Last practised Tuesday"). The wording is tone-of-voice V6.
-
-The rejected alternative put the greeting in the title and left "Practice" to
-the tab bar. It is warmer, but every other tab titles itself, and a title that
-changes through the day is harder to find by eye.
+**DECIDED 2026-09-11 (#1690).** The subtitle under the Practice title reads
+"Morning, Jon · Last practised Tuesday": last practised stays in the header
+(T15). Morning is 04:00 to 11:59, afternoon 12:00 to 17:59, evening 18:00 to
+03:59; the core owns the rule and the string (V6).
 
 The way into the profile is the musician's own instrument icon on their
 highlighter, top right of Practice: 36pt in the same 44pt target as the
 Library's add button, a new marker-filled trailing style rather than the ink
 one, read as "Profile" by VoiceOver. With no profile yet it shows the plain
-note on butter. It is the only way in. The mocks are
-`design/Profile and Greeting.dc.html`.
+note on butter. It is the only way in.
 
 ### T26: The reading scale sits at the platform's sizes, not below them
 
-**Status:** DECIDED 2026-09-12 (jonyardley/intrada#1723). Every reading size in
-`IntradaFont` moves up by one to three points, to sit at iOS defaults rather than
-under them: body 14 to 16, bodyMedium 15 to 17, field 16 to 17, cardTitle 16 to
-18, pageTitle 29 to 32, button 13.5 to 15, segment 14 to 15, subtitle and meta
-12.5 to 14, metaMedium 12 to 13.5, badge 12 to 13, eyebrow 11 to 12, micro 10
-to 12.
-
-No step is smaller than a point, and that is a rule rather than an accident: a
-half-point change to a custom font can render byte-identically, so it reads as a
-decision in the file that nobody can see on screen. `badge` was drafted at 12.5
-and produced no pixels of difference at all; 13 is the smallest honest version of
-the same intent.
-
-`body` and `bodyMedium` also re-anchor from `.subheadline` to `.body`. That does
-not change their size, which the literal argument has always set; it changes the
-curve they grow along when a musician turns text size up. The point is that a
-16pt body growing on the body curve is coherent, where a 16pt body growing on the
-subheadline curve was a size claiming to be a smaller style. It is worth being
-clear about what it does not buy: `.body` grows more slowly than `.subheadline`,
-so at the largest accessibility sizes body and meta converge rather than holding
-their one point of separation. Fixing that needs the metadata anchors revisited,
-which this decision does not do.
-
-The old scale was not chosen, it accumulated: a display-led visual direction
-priced every supporting line as small print, and the metadata line under a piece
-in the Library is where that bill came due. Key, tempo and composer are what you
-read at a glance from a music stand, and 12.5pt at inkSecondary is a squint at
-arm's length. Nothing about the identity needed them that small.
-
-What this does not change: the display sizes (`timer`, `scoreNumeral`,
-`pageTitle`'s callers that pass their own size) and `tab`, which stays at 13
-because the tab bar is a platform surface with its own convention.
-
-The rejected alternative raised only the metadata sizes and left body at 14. It
-is a smaller diff, but it inverts the ramp: metadata a point under body reads as
-a deliberate hierarchy, metadata level with body reads as a mistake.
-
-`micro` survives at 12 rather than being retired into `meta`. Retiring it means
-editing twenty call sites across eleven files, which is churn this decision does
-not need to buy its readability.
-
-Two tokens now render identically at the default size: `subtitle` and `meta` are
-both DM Mono at 14, separated only by their Dynamic Type curve. That is a fold
-waiting to happen, and until it does, reach for `meta` unless the text is a
-screen subtitle.
+**DECIDED 2026-09-12 (#1723); sizes superseded by T35.** Reading sizes sit at
+the platform defaults, not under them. **No size step is smaller than a
+point**: a half-point change can render identically. Body text grows on the
+body Dynamic Type curve.
 
 ### T27: Text ink drops most of its brown; the hero gradient keeps its warmth
 
-**Status:** DECIDED 2026-09-13 (jonyardley/intrada#1723). T24 set the main
-text colour to brown ink `#3B2A1E`, chosen alongside the paper and marker
-colours rather than measured on its own terms. Read on its own, it and the
-secondary text colour carried more colour than a neutral needs: the gap
-between a hex value's red and blue channels is a proxy for how "brown" a
-supposedly neutral reads, and both were in the high twenties to low thirties on
-that measure.
-
-`ink` moves to `#2A2725` (R-B spread 5, was 29) and `inkSecondary` to
-`#6E6A66` (R-B spread 8, was 32), both landing in single figures. Contrast
-improves rather than trades away: `ink` on paper goes 12.46:1 to 13.52:1, on
-white cards 13.67:1 to 14.84:1; `inkSecondary` on paper 4.74:1 to 4.89:1, on
-white cards 5.20:1 to 5.36:1, both still clear of the 4.5:1 AA floor text
-needs. `inkFaint` and `inkFainter` are untouched: the eyebrow label already
-trades contrast for restraint on purpose (T23), and that trade is not
-reopened here.
-
-The Practice hero card's gradient (`heroGradientTop` is `ink`,
-`heroGradientBottom` was `#56412C`) does not follow the same desaturation.
-`heroGradientBottom` moves to `#4F3B28`, keeping close to its old hue and
-saturation rather than scaling down with the now near-neutral top stop: the
-card reads as a warm brown deepening into the calmer ink at the top corner,
-not as one flat neutral wash. That is a deliberate two-tone read, not an
-oversight; a pure lightness ramp at the new ink's saturation was the rejected
-alternative.
-
-The terracotta accent (`IntradaColor.accent`, resolving to `ink` everywhere it
-is used today) is untouched: which of its roughly twenty call sites become
-terracotta and which stay ink is a per-site decision still open as the third
-piece of #1723.
-
-*Note, 2 October 2026:* there is no terracotta accent. `Theme.swift` defines
-`accent` as `ink` with no brand hue (#1676), so every interactive colour on
-paper is ink.
+**DECIDED 2026-09-13 (#1723).** `ink` and `inkSecondary` move to near-neutral,
+both clearing AA with more margin. The hero's lower stop stays warm, a
+deliberate two-tone read (now T33's). There is no terracotta accent: `accent`
+is `ink`.
 
 ### T28: Header actions are native toolbar items; the page's own add and identity stay by the title
 
-**Status:** DECIDED 2026-09-14 (jonyardley/intrada#1868). Cancel, Edit and the
-priority star sit in the native navigation bar as system toolbar items, with
-system typography and tint rather than `IntradaFont.bodyMedium` and the accent.
-That is what gives them the iOS 26 glass pill the back chevron already has, and
-restyling them would bring back the custom look this decision removes.
-
-Two things stay beside the page title as our own drawing: the round "+" that
-adds to a page, and the Practice profile badge. The "+" is the page's primary
-action and the badge is who you are, not a page action; both read as part of
-the heading, and in the toolbar the badge floated free of it.
-
-The bar itself is an opaque `paperTop` fill with no hairline, so it is the
-same colour as the page with no seam. A system blur stays configured under the
-fill although it never shows: without one, the toolbar items render flat.
+**DECIDED 2026-09-14 (#1868).** On iPhone, Cancel, Edit and the priority star
+are system toolbar items with system type and tint, which gives them the glass
+pill. The round "+" that adds to a page and the Practice profile badge stay
+beside the large title as our own drawing. The bar is an opaque `paperTop`
+fill with no seam. An iPhone ruling; Android follows T36.
 
 ### T29: Section, field and tag each have one look; the type badge is a tag
 
-**Status:** DECIDED 2026-09-15 (jonyardley/intrada#1876); the looks amended
-by T35 on 2026-10-03. The item details screen had five label styles with no
-order between them. Now there are three:
+**DECIDED 2026-09-15 (#1876); looks amended by T35.** Three label kinds:
 
-- **A section** (replaced by T35) is named by the small-capitals eyebrow (`SectionHeader`) inside
-  its card: Notes, Chord chart and Related exercises match Keys and Variations.
-  A count sits beside the name as "· 3", and an Edit action at the trailing edge.
-- **A field label** (replaced by T35) such as Key or Tempo is `metaMedium`, quieter than its value.
-- **A tag** is a pill, and the piece or exercise badge is the first pill in the
-  same scrolling row, tinted by type. The badge is a pill wherever it appears,
-  the Practice player included, so one shape means "what kind of thing this is".
+- **A section** (replaced by T35) is named inside its card, with a count as
+  "· 3" and Edit at the trailing edge.
+- **A field label** (replaced by T35) is quieter than its value.
+- **A tag** is a pill, and the piece or exercise badge is the first pill in
+  the same row, tinted by type. The badge is a pill wherever it appears, the
+  player included: one shape means "what kind of thing this is".
 
 ### T30: The banner has two tones, and grey means it worked
 
-**Status:** DECIDED 2026-09-22 (jonyardley/intrada#1325). The red banner was the
-only way the app could say anything, so a true outcome that was not a failure
-either showed up red or went unsaid. Now `GlobalBanner` has two tones:
+**DECIDED 2026-09-22 (#1325).** `GlobalBanner` has two tones:
 
-- **Danger** stays for a refusal or a failed write: `danger` ink on
-  `dangerBanner`, the warning triangle, and the success haptic withheld.
-- **Notice** is for something that worked but needs a word: `inkSecondary` on
-  `cardFill` with a hairline underneath and the info circle. It reads as a note
-  on the page, not an alarm. The tap that raised it keeps its success haptic.
+- **Danger**, for a refusal or failed write: `danger` on `dangerBanner`, the
+  warning triangle, no success haptic.
+- **Notice**, for something that worked but needs a word: `inkSecondary` on
+  `cardFill`, a hairline underneath, the info circle; the success haptic stays.
 
-Both can stand at once, error on top, and each dismisses on its own. The first
-notice is a play closing with the metronome at a speed the app cannot keep as a
-crotchet tempo.
+Both can stand at once, error on top, each dismissed on its own.
 
 ### T31: Not played is said by a colour step, never a fade
 
-**Status:** DECIDED 2026-09-24 (jonyardley/intrada#2032, #2033). A piece you did
-not get to was faded to half strength on the session summary and on a past
-session, which pushed its status line below the contrast floor. Following T23,
-the words stay readable and only the glyph dims:
-
-- The status line ("Saved for next time", "Not played") is `inkSecondary` at
-  full strength.
-- The title steps down from `ink` to `inkSecondary`; the hollow dot is
-  `inkFaintIcon`, which clears the 3:1 floor for graphics.
-- The earlier score in a mastery change and the dates of days still to come in
-  the week strip take `inkSecondary`; the paler colours they used are deleted.
-
-A future day now differs from a past one by that same step, ink against
-`inkSecondary`, the step a title has over its meta line elsewhere.
+**DECIDED 2026-09-24 (#2032, #2033).** Following T23, words stay readable and
+only the glyph dims. The status line ("Saved for next time", "Not played") is
+`inkSecondary` at full strength; the title steps from `ink` to `inkSecondary`;
+the hollow dot is `inkFaintIcon`. The earlier score in a mastery change and
+future days in the week strip take `inkSecondary`; the paler colours they used
+are deleted.
 
 ### T32: The hero carries today's plan, and Start plays it
 
-**Status:** DECIDED 2026-10-01 (jonyardley/intrada#57, #999). Amends T15: the
-hero still carries the suggestion, but with a preferred session length the
-suggestion is a plan of several blocks, and Start begins playing it in one tap
-rather than opening the builder.
+**DECIDED 2026-10-01 (#57, #999).** Amends T15: with a preferred length the
+suggestion is a plan of several blocks, and Start plays it in one tap.
 
-- The eyebrow reads "Today's plan" with no minutes; the count line beside it
-  carries the plan's items and minutes. Two lengths on one line (the preference
-  and the estimate) read as a contradiction.
-- The lead block keeps its rows and reasons; later blocks are one line each,
-  with their items and minutes, so the total adds up on screen.
-- Changing the plan is the second path: "Change it first" opens the builder
-  with the plan in it, a text action beside "Build my own instead". With
-  something starred, T20's priorities action stacks under both, so three
-  secondary text actions sit under one primary. They stay text, never a second
-  filled button, which is the line T15 and T20 hold.
+- The eyebrow reads "Today's plan" with no minutes; the count line carries
+  items and minutes.
+- The lead block keeps its rows and reasons; later blocks are one line each.
+- "Change it first" opens the builder with the plan in it, beside "Build my
+  own instead"; with T20's action, three secondary text actions sit under one
+  primary, never a second filled button.
 
 ### T33: The hero's ground follows the musician's colour
 
-**Status:** DECIDED 2026-10-01 (jonyardley/intrada#1877). The Practice hero and
-the Up next card fade from ink to a deep version of the chosen highlighter,
-not a fixed brown for everyone.
-
-- The lower stop is the highlighter's hue at 22% lightness: deep enough that
-  the light text, the reason lines on the item card and the highlighter button
-  all keep their contrast for every swatch. A test holds those three floors.
-- Butter keeps the original brown; its computed stop is indistinguishable.
-- Rejected: a greyer tint (the colour barely reads), both stops in the hue
-  (the whole card shifts, not just its fade), and a pastel ground with ink text
-  (the highlighter button disappears into it).
+**DECIDED 2026-10-01 (#1877).** The Practice hero and Up next card fade from
+ink to the highlighter's hue at 22% lightness, so the light text, reason lines
+and highlighter button keep contrast for every swatch; a test holds the three
+floors. Butter keeps the original brown.
 
 ### T34: The first run teaches by doing
 
-**Status:** DECIDED 2026-09-24 (jonyardley/intrada#2121) for the welcome, no
-sample content and ticks from core data; the last two rulings are proposed with
-#2116. A new musician
-learns the app by making their first session, not by reading about it.
+**DECIDED 2026-09-24 (#2121).** A new musician learns by making their first
+session.
 
-- **One welcome, then the work.** A single screen with one plain line on what the app is for and a
-  way to set up a profile or skip. No tour, no swipe-through cards: Nielsen
-  Norman Group's tutorial study and Apple's onboarding guidance, cited on
-  #2121, both favour getting to real use fast over explaining first.
-- **One short splash ahead of it, once.** The first launch plays a four
-  second splash whose wordmark rises into the welcome's title (#2277). It
-  plays only on the launch that opens the welcome, a tap skips it, and Reduce
-  Motion fades the welcome in instead, so it never stands between a returning
-  musician and their practice.
-- **No sample content.** The app does not write pieces into the library for
-  the musician to try, for the reason T21 keeps the app's suggestions out of
-  the create form. Example content is its own question (#2115).
-- **The Start here card ticks from the musician's own data.** Added, built,
-  played and marked are read from the library and the history, so a tick can
-  never disagree with them and nothing about progress is stored. Built means a
-  session has started: a setlist left half made in the builder is not kept, so
-  it earns no tick.
-- **Musicians who already use the app never see the welcome.** It needs an
+- **One welcome, then the work**: one screen, set up a profile or skip, no
+  tour. **One short splash ahead of it, once** (#2277). It plays only on the
+  launch that opens the welcome, a tap skips it, and Reduce Motion fades the
+  welcome in instead, so it never stands between a returning musician and
+  their practice.
+- **No sample content** (T21); example content is #2115.
+- **The Start here card ticks from the musician's own data**, never stored.
+  Built means a session has started.
+- **Musicians who already use the app never see the welcome**: it needs an
   empty library, an empty history and no saved profile, as well as not having
-  been dismissed. The Start here card is different: it stays until a session
-  is marked, so a musician who has never marked one sees it after updating.
+  been dismissed. The Start here card stays until a session is marked.
 
 ### T35: Five sizes, sentence case, and one place for a field's label
 
-**Status:** DECIDED 2026-10-03 (jonyardley/intrada#1881, which also settles
-#1729 and #1907). Options and mocks:
-https://claude.ai/artifact/HWjTrCTuGsAe5cYnac8UXx. The type jumped from a 32
-point title to a 12 point pale capitals label with nothing between, thirteen
-named sizes sat inside six points, screens passed in fourteen sizes of their
-own, and a field's label had four looks. It read as busy and machine made.
+**DECIDED 2026-10-03 (#1881, settling #1729 and #1907).**
 
-- **Five sizes.** 30 for the page title, 20 for a hero or the key picker, 17
-  for card titles, body, fields and emphasis, 15 for section titles, field
-  labels, secondary lines and buttons, 13 for tabs, badges and chips. Weight
-  and colour carry the hierarchy inside a size. No screen passes a size; the
-  timer, the tempo readouts and the score and mastery numerals are the only figures sized by the
-  dial or readout they sit in. Rejected: four sizes, which left the key picker
-  and the session headline with only the page title to reach for.
-- **Every label looks the same.** A section's title, a field's label and a
-  toggle's title are all 15 point medium in secondary ink, in sentence case
-  (`IntradaFont.label`; `SectionTitle` and `FieldLabel` look identical), at the
-  top of what they name. Values, and anything the musician reads or sets, are
-  17 point in full ink. The one exception is the dark Practice and Up next
-  cards, whose labels stay light on dark. Replaces T29's small capitals eyebrow
-  and retires the faint ink token it needed. Rejected: a 20 point heading,
-  which competes with card titles; softened capitals, which keeps the look this
-  replaces. Rejected: ink section titles beside grey field labels, which read
-  as two kinds of label inside cards that look alike (Jon, 2026-10-03).
+- **Five sizes.** 30 page title; 20 hero or key picker; 17 card titles, body,
+  fields and emphasis; 15 section titles, field labels, secondary lines and
+  buttons; 13 tabs, badges and chips. Weight and colour carry the rest. No
+  screen passes a size; only the timer, tempo readouts and score and mastery
+  numerals are sized by their dial or readout.
+- **Every label looks the same.** Section titles, field labels and toggle
+  titles are 15 point medium in secondary ink, sentence case
+  (`IntradaFont.label`; `SectionTitle` and `FieldLabel`), at the top of what
+  they name. Values are 17 point in full ink. The dark Practice and Up next
+  cards keep light labels. Replaces T29's small capitals.
 - **A field's label sits inside its card, above the value** (`FieldCard`,
-  `FieldLabel`), on every form and sheet. Rejected: labels above and outside
-  the card, which doubles the height of a form; label left and value right,
-  where long titles and notes do not fit. A read-only fact row on a details
-  screen keeps label left and value right.
-- **Mono is for figures.** A clock, a duration or a count set alone; a line
-  that mixes words and numbers is Hanken with even-width figures.
+  `FieldLabel`), on every form and sheet. A read-only fact row on a details
+  screen keeps label left, value right.
+- **Mono is for figures.** A clock, duration or count set alone; mixed words
+  and numbers are Hanken with even-width figures.
 
 ### T36: Android behaves like Android, and looks like intrada
 
-**Status:** DECIDED 2026-10-13 (jonyardley/intrada#2599). Review page: https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
+**DECIDED 2026-10-13 (#2599).** Review page: https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
 
 On Android, intrada keeps its look and adopts the platform's behaviour. The
 look is paper, ink, one highlighter, Hanken Grotesk and DM Mono, the five
@@ -1198,7 +447,7 @@ takes the platform's answer drawn in intrada's look.
 
 ### T37: One catalogue says how every component looks on both apps
 
-**Status:** DECIDED 2026-10-13 (jonyardley/intrada#2620).
+**DECIDED 2026-10-13 (#2620).**
 
 Every component the screens are built from has one page in
 `design/components/`: what it is for, when to use it and when not, its parts,
