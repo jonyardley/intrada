@@ -33,11 +33,10 @@ Choosing one of two to five options in place, with the choice showing at once.
 
 ## Variants
 
-- **Inline scrolling** (`.inlineScrolling`): pills that hug their labels and scroll sideways. No screen uses it on 13 October 2026; #2635 decides whether to keep it.
 - **Full width track** (`.fullWidthTrack`): use for a form choice. Equal segments on a bordered card track; at accessibility sizes the segments stack.
 - **Wrapping track** (`.wrappingTrack`): use when a label can be long, such as a grouping like 2 + 2 + 3. Whole pills move to a new row rather than a label breaking (#2490).
 
-Android has one track with a `wraps` flag that covers the last two.
+Every caller names its track; there is no default. Android has one track with a `wraps` flag that covers both.
 
 ## States
 
@@ -100,3 +99,4 @@ SegmentedPills(
 | Date | Issue | What changed |
 |---|---|---|
 | 2026-10-13 | #2620 | First page. Records that the two apps draw it differently. |
+| 2026-10-14 | #2635 | Deleted the inline scrolling track, which no screen used; recover it from this change. |

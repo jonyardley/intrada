@@ -5,8 +5,6 @@ import SwiftUI
 /// capsule across `options`, so the pill language lives in one place (#807).
 struct SegmentedPills<Option: Hashable>: View {
   enum Layout: Equatable {
-    /// Leading, horizontally-scrollable tabs that hug their labels.
-    case inlineScrolling(edgeInset: CGFloat)
     /// Equal-width segments on a bordered card track.
     case fullWidthTrack
     /// Equal segments while the widest label fits, then label-sized pills on one
@@ -21,7 +19,7 @@ struct SegmentedPills<Option: Hashable>: View {
   var identifier: ((Option) -> String)?
   var font: Font = IntradaFont.smallMedium
   var unselectedColor: Color = IntradaColor.inkSecondary
-  var layout: Layout = .inlineScrolling(edgeInset: 0)
+  let layout: Layout
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var typeSize
@@ -30,12 +28,6 @@ struct SegmentedPills<Option: Hashable>: View {
 
   var body: some View {
     switch layout {
-    case .inlineScrolling(let edgeInset):
-      // Horizontal scroll so the pills slide rather than wrap mid-word once the
-      // labels grow past the width at large Dynamic Type (#810).
-      ScrollView(.horizontal, showsIndicators: false) { track }
-        .contentMargins(.leading, edgeInset, for: .scrollContent)
-        .padding(.leading, -edgeInset)
     case .fullWidthTrack:
       if typeSize.isAccessibilitySize {
         ViewThatFits(in: .horizontal) {
@@ -64,14 +56,6 @@ struct SegmentedPills<Option: Hashable>: View {
     case equalRow
     case labelSized
     case stacked
-  }
-
-  private var track: some View {
-    HStack(spacing: IntradaSpacing.controlGap) {
-      ForEach(options, id: \.self) { option in
-        pillButton(option, style: .row)
-      }
-    }
   }
 
   private func fullWidthTrack(_ style: TrackStyle) -> some View {
@@ -160,8 +144,6 @@ struct SegmentedPills<Option: Hashable>: View {
       .font(font)
       .foregroundStyle(isSelected ? IntradaColor.onAccent : unselectedColor)
     switch layout {
-    case .inlineScrolling:
-      text.lineLimit(1).padding(.vertical, 6).padding(.horizontal, IntradaSpacing.card)
     case .wrappingTrack where style == .stacked:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .wrappingTrack where style == .labelSized:
@@ -218,15 +200,11 @@ private struct SpareSharedRow: Layout {
 
 #if DEBUG
   private struct SegmentedPillsPreview: View {
-    @State private var tab: LibraryFilter = .pieces
     @State private var kind: ItemKind = .piece
     var body: some View {
       ZStack {
         PaperBackground()
         VStack(spacing: IntradaSpacing.card) {
-          SegmentedPills(
-            options: LibraryFilter.allCases, selection: $tab, label: \.label,
-            layout: .inlineScrolling(edgeInset: 0))
           SegmentedPills(
             options: [.piece, .exercise], selection: $kind, label: \.label,
             font: IntradaFont.segment,

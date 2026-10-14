@@ -221,8 +221,6 @@ final class ComponentSnapshotTests: SnapshotTestCase {
       PaperBackground()
       VStack(alignment: .leading, spacing: 24) {
         SegmentedPills(
-          options: LibraryFilter.allCases, selection: .constant(.pieces), label: \.label)
-        SegmentedPills(
           options: [ItemKind.piece, .exercise], selection: .constant(.exercise), label: \.label,
           font: IntradaFont.segment, layout: .fullWidthTrack)
         SegmentedPills(
@@ -232,6 +230,62 @@ final class ComponentSnapshotTests: SnapshotTestCase {
       .padding(16)
     }
     assertSnapshot(of: host(pills), as: config)
+  }
+
+  func testSegmentedProgress() {
+    let strips = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        SegmentedProgress(types: [.piece, .exercise, .exercise, .piece, .piece], filled: 2)
+        SegmentedProgress(count: 12, filled: 7, label: "7 of 12 solid")
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(strips), as: config)
+  }
+
+  func testSectionTitle() {
+    let titles = ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+        SectionTitle("Recent sessions")
+        HeroPanel {
+          SectionTitle("Then", tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+        }
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(titles), as: config)
+  }
+
+  func testFieldCard() {
+    let cards = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        FieldCard("Beats in the bar") {
+          Text("4").font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
+        }
+        FieldCard("Beat value") {
+          SegmentedPills(
+            options: [2, 4, 8], selection: .constant(4), label: { "\($0)" },
+            layout: .fullWidthTrack)
+        }
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(cards), as: config)
+  }
+
+  func testFieldLabel() {
+    let labels = ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        FieldLabel("Key")
+        FieldLabel("Title", tint: IntradaColor.danger)
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(labels), as: config)
   }
 
   func testPrimaryButtons() {
@@ -270,5 +324,19 @@ final class ComponentSnapshotTests: SnapshotTestCase {
         .padding(IntradaSpacing.card)
     }
     assertSnapshot(of: host(strip), as: config)
+  }
+}
+
+/// The dark hero surface a tinted section title sits on.
+private struct HeroPanel<Content: View>: View {
+  @Environment(\.heroGradient) private var heroGradient
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(IntradaSpacing.card)
+      .background(heroGradient)
+      .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
   }
 }
