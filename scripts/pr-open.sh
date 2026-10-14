@@ -73,13 +73,14 @@ numbers="$(grep -oE '#[0-9]+' <<<"$title" | tr -d '#' | sort -u || true)"
 for n in $numbers; do
   claim_body="$(gh issue view "$n" --repo "$repo" --json comments -q \
     '[.comments[] | select(.body | test("^Claimed"; "i"))] | last | .body // empty')"
-  claim_branch="$(claim_branch_from_body "$claim_body")"
-  if [ -z "$claim_branch" ]; then
+  claim_branches="$(claim_branches_from_body "$claim_body")"
+  if [ -z "$claim_branches" ]; then
     echo "✗ #$n has no claim comment naming a branch: run \`just claim $n\` first." >&2
     exit 1
   fi
-  if [ "$claim_branch" != "$branch" ]; then
-    echo "✗ #$n is claimed on \`$claim_branch\`, not \`$branch\`: check before opening this PR." >&2
+  if ! grep -qxF -- "$branch" <<<"$claim_branches"; then
+    named="$(sed 's/.*/`&`/' <<<"$claim_branches" | paste -sd, - | sed 's/,/, /g')"
+    echo "✗ #$n is claimed on $named, not \`$branch\`: check before opening this PR." >&2
     exit 1
   fi
 done
