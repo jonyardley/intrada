@@ -5,6 +5,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 ## Product direction
 
 - Native shells on the one Rust core replaced the Tauri webview in June 2026: an instrument side tool must feel native and work offline (#775).
+- The Leptos web shell and Tauri iOS host were removed in July 2026, leaving the two native shells (PR #1133).
 - Coach pivot reversed on 2026-08-13 (#1344): session builder restored, coach machinery removed; it went too far, too fast, in an unwanted direction.
 - API, account, sync service and MCP removed on 2026-09-12 (#1746): nothing on the roadmap needed a server; any return starts from scratch.
 - July 2026: the ten-step notebook journey stopped being the yardstick; the roadmap now ranks the work (#1146, #1344).

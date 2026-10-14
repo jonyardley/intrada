@@ -23,7 +23,8 @@ Item { …, key, keys: Vec<Key>, variation_ids, sections: Vec<ItemSection>,
 SetlistEntry { …, planned_key, planned_variation_ids, planned_rep_target,
                plays: Vec<Play> }
 Play { id, section_id, key, variation_ids, started_at, seconds, rep_target,
-       rep_count, rep_history, tempo_changes, achieved_tempo, click_pattern, score }
+       rep_count, rep_history, tempo_changes, achieved_tempo, click_pattern, score,
+       away: Vec<Away> }
 ```
 
 ## Key decisions (#1739)
@@ -45,8 +46,8 @@ Play { id, section_id, key, variation_ids, started_at, seconds, rep_target,
 7. **A tempo is recorded when there is evidence, per play** (T16): when the
    musician moved the stepper or the click was sounding, never from a default.
 8. **Old history is read, not migrated.** A saved entry with no `plays` folds
-   its legacy per-entry fields into one play when the shell decodes it; a
-   skipped row folds into none. A shape change to the crash-recovery blob
+   its legacy per-entry fields into one play when the core reads the stored
+   row; a skipped row folds into none. A shape change to the crash-recovery blob
    bumps its key in the same PR.
 9. **One lossy projection, named.** `score_summary` is the mean of the plays
    that carry a score, rounded to nearest, `None` when none do. History per
@@ -110,10 +111,9 @@ plays when read, never stored on it.
 - **The target tempo is stored as given.** `None` means the piece's tempo.
 - **Removal always tombstones**, so old plays stay resolvable.
 
-`UpdateSections` is the item screen's whole list in one write: a row whose id
-names a section claims it, a row with no id is new, and a live section the list
-leaves out is tombstoned. The write is refused whole on the first invalid row.
-An identical list writes nothing. `parse_bar_range` reads what a musician types
+`ItemEvent::ChangeSection` changes one section at a time with
+`SectionChange::Save`, `Remove` or `Arrange` (#2447); a change that leaves the
+list as it was writes nothing. `parse_bar_range` reads what a musician types
 ("1-16", "bars 5 to 12", "bb. 5-12", any dash) and refuses a reversed range,
 bar 0, a half range, two ranges or words around it.
 
@@ -127,15 +127,17 @@ lives on the piece; `section_id: None` is the whole piece.
 - **Whole piece and sections together are allowed**, with no rule between them.
 - **The host is a piece.** Unlinking tombstones.
 
-`SetPieceLinks` (the piece's card, list order is card order) and
-`SetExerciseLinks` (the exercise's "Used in" picker, saved in one batch) each
-write the whole chosen set. Both refuse whole on the first invalid row, and an
-identical set writes nothing. Removing a section tombstones every live link
-naming it in the same save.
+The piece's card changes one exercise at a time with `ChangePieceLink` and
+`LinkChange::Set`, `Move` or `Unlink` (#2447); the pickers send
+`ChoosePieceExercises` and `ChooseExercisePieces` (#2379), and
+`SetExerciseLinks` writes an exercise's whole set in one batch. An identical
+set writes nothing, and removing a section tombstones every live link naming it
+in the same save.
 
 ## Open questions
 
 - Whether a mark should fade with time (#58).
 - Whether a play should carry its own note. Not in v1.
 
-Mockups: [`exercise-variations/design/`](exercise-variations/design/).
+Mockups: [`exercise-variations/design/`](exercise-variations/design/), with
+sections and keys in [`design/sections/`](exercise-variations/design/sections/).
