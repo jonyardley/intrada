@@ -31,7 +31,7 @@ One. There is no tone, size or action option.
 ## Behaviour
 
 - No motion of its own; a caller may fade it in.
-- The banner announces its message to VoiceOver and TalkBack, as a polite live region. Android's banner does this today; moving it into the iPhone banner, so no iPhone form swallows its error, is #2655.
+- The banner announces its message to VoiceOver and TalkBack, as a polite live region. Android's banner does this; moving it into the iPhone banner, so no iPhone form swallows its error, is #2655.
 - One iPhone sheet, the chord chart editor, draws its own error box; #2608 moves it onto this banner.
 
 ## Content
@@ -42,7 +42,7 @@ One. There is no tone, size or action option.
 - Shown while the caller holds a message, gone when it does not.
 - Say what happened and what it means for the musician's data, in one sentence ([tone of voice](../../../docs/tone-of-voice.md), rule 8). The core writes the form messages; #2610 rewrites them to say what is wrong, such as "Add a composer".
 - The shells write only two kinds of message: photo and scan failures, which never reach the core ("Couldn't save the photo. Try again."), and a fallback when the core refused but left no message ("Couldn't save. Try again.").
-- When the app has halted, the banner shows the halted message instead (`Store.haltedMessage`, `Store.HALTED_MESSAGE`).
+- Callers that can run while the app has halted, such as the reflection, show the halted message instead (`Store.haltedMessage`, `Store.HALTED_MESSAGE`).
 
 ## Accessibility
 

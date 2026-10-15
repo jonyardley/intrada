@@ -47,7 +47,7 @@ On iPhone the arc draws in from empty when the ring appears, easing out over `In
 - The top mark comes from the core (`scoreRange` on iPhone, `topMark` on Android); never assume ten.
 - No mark yet is the track alone with an eighth rest in `inkFaintIcon`. With a key label, the label shows in secondary ink instead.
 - A key label shrinks to half size before it truncates. The hero's "of 10" is `IntradaFont.small` in secondary ink.
-- The number alone: no "/10" and no word inside the ring; the hero's "of 10" is the one caption.
+- The number alone: no "/10" and no word inside the ring.
 
 ## Accessibility
 

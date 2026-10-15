@@ -34,7 +34,7 @@ One button on both apps, named `MarkerButton`. iPhone folds `BrandBarButton` int
 ## Behaviour
 
 - Tapping it sends one event to the core. Any success haptic fires only after the core confirms.
-- Pressed, it shrinks slightly and springs back (`PressRebound`), with no change of colour.
+- Pressed, it changes no colour. iPhone's `MarkerButton` also shrinks slightly and springs back (`PressRebound`); whether both apps do is #2638.
 
 ## Content
 

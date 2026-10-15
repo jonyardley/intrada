@@ -21,13 +21,13 @@ Names a section above its card, with an optional count, a fact at the trailing e
 
 ## When not to use
 
-- A section with only a name, on iPhone: use `SectionTitle`, unless it sits in a run of headers that carry more.
+- A section with only a name, on iPhone: use `SectionTitle`. The Progress pooled marks sections are the known exception.
 - A field's label inside its card: use `FieldLabel` in a `FieldCard`.
 - The page title: that is `ScreenScaffold`'s.
 
 ## Variants
 
-- **Title only:** use where a section sits in a run of headers that carry more, so the titles line up.
+- **Title only:** use for a list section's name in a sheet, such as Library and Recently practised in Add to session.
 - **Caption:** use for a count that qualifies the title, straight after it.
 - **Trailing fact:** use for a summary of the whole section, at the trailing edge.
 - **Action:** use for one text action on the section, at the trailing edge.

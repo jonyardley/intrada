@@ -44,7 +44,7 @@ Android draws a plain pill and plain text instead; the shared badge is #2636, an
 ## Accessibility
 
 - One element, read as "Piece" or "Exercise". The glyph adds nothing to it.
-- Colour is never the only signal (T3): the glyph and the word always show.
+- Colour is never the only signal (T3 in [the design principles](../../../docs/design-principles.md)): the word always shows, and the glyph wherever the app has it (Android's is #2636).
 - With the Powder highlighter chosen, the piece tint is close to the highlighter, so a piece badge can look pressable; #2638.
 
 ## Do and don't

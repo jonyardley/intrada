@@ -39,7 +39,7 @@ The frame of every top-level screen: paper behind it, the page title and its lin
 - On Android it pads for the system bars and cutouts (`safeDrawing`).
 - No motion and no haptic.
 
-The look both apps keep is intrada's: the highlighter swipe, the round add disc and the rule. The structure follows each platform (T36).
+The look both apps keep is intrada's: the highlighter swipe, the round add disc and the rule. The structure follows each platform (T36 in [the design principles](../../../docs/design-principles.md)).
 
 - Android's back arrow on pushed screens, close cross on forms and headers without Cancel are #2619.
 - The swipe on Android is #2605; the round add disc and how quick settings open on Android are #2606.

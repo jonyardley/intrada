@@ -28,7 +28,7 @@ One labelled setting on a form or sheet: a card with the label inside, above wha
 ## Variants
 
 - **Label and content** (`FieldCard`): use for a field with one label.
-- **Surface alone** (`fieldCardSurface()`, iPhone only): use when the label sits beside its value or is a toggle's title, such as Key › in entry settings. Android builds this surface by hand with differing padding; matching it is #2606.
+- **Surface alone** (`fieldCardSurface()`, iPhone only): use when the label sits beside its value or is a toggle's title, such as Key › in entry settings. Android builds this surface by hand with differing padding; sharing it is #2689.
 
 ## Behaviour
 
@@ -40,7 +40,7 @@ No motion and no haptic.
 - The label is `FieldLabel`, 15 point medium, in `inkSecondary`.
 - The control sits `IntradaSpacing.controlGap` (8) under the label.
 - The content sits 16 in from the sides (`IntradaSpacing.card`) and 10 from the top and bottom. Moving the 10 onto a spacing token is #2665 on Android and #2237 on iPhone.
-- The item form's rows match this padding. Android's sit taller at 12dp, which #2606 settles.
+- The item form's rows match this padding. Android's sit taller at 12dp; #2606 settles the padding (its A28 means the padding, not a card per field).
 - No states of its own; the control inside it has its states.
 - The label is one to three words, sentence case, naming what the musician sets. The shells write the labels.
 

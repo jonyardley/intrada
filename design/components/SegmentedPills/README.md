@@ -49,7 +49,7 @@ Every caller names its track; there is no default. Android has one track with a 
 
 - Each pill is a button with the selected trait on iPhone and a tab with `selected` on Android, so a screen reader says which is chosen.
 - On iPhone, `hint` adds a spoken hint to the label. On Android, `spoken` replaces the label for TalkBack. Use them when the label alone is unclear.
-- Android pills are at least 48dp tall. On iPhone the touch area reaches 44 points without the drawn pill growing; the pills fall short of that today, which #2686 fixes.
+- Android pills are at least 48dp tall. On iPhone the touch area reaches 44 points without the drawn pill growing; reaching it is #2686.
 
 ## Do and don't
 

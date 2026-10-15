@@ -38,7 +38,7 @@ Android's metronome bar draws its upright line by hand; moving it onto this comp
 
 No motion. Lists draw it before every row but the first (`if index > 0`), so the card's own edge closes the list.
 
-Whether a divider should be inset at all is open, with the refinement observations in #2608; until it is settled, the inset variant stays as both apps ship it.
+Whether a divider should be inset at all is with Jon (the refinement observations in #2608); until he decides, the inset variant stays as both apps ship it.
 
 ## Content
 

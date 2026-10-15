@@ -36,7 +36,7 @@ Every card has the same 3 point corner. The corner parameter goes from both apps
 
 None. Motion belongs to what the card holds. A card that slides or fades in keeps its opaque fill, so the transition never ghosts.
 
-Most cards on both apps are drawn without the lift today; restoring it everywhere is part of the refinement pass, #2638.
+No card on either app is drawn with the lift yet; restoring it everywhere is part of the refinement pass, #2638.
 
 ## Content
 
