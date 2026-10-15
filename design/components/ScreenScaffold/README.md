@@ -37,6 +37,7 @@ The frame of every top-level screen: paper behind it, the page title and its lin
 
 - On iPhone the native navigation bar stays, with a blank inline title, so a pushed screen keeps the system back chevron and its edge swipe. A tab's first screen can hide the empty bar (`navigationBarHiddenAtRoot`).
 - On Android it pads for the system bars and cutouts (`safeDrawing`).
+- While the Library is empty its round add button is hidden: the empty state's own button is the one action, and the disc returns with the first item (Jon, 15 October 2026; the Library follows in #2694).
 - No motion and no haptic.
 
 The look both apps keep is intrada's: the highlighter swipe, the round add disc and the rule. The structure follows each platform (T36 in [the design principles](../../../docs/design-principles.md)).
@@ -53,6 +54,7 @@ The look both apps keep is intrada's: the highlighter swipe, the round add disc 
 - The rule is a 1 point line in `divider`, `IntradaSpacing.cardCompact` (12) under the header, full width. The content fills the rest and owns its own scrolling.
 - The page title names the place in one or two words, sentence case, with no possessive ("Library", not "Your library"; [tone of voice](../../../docs/tone-of-voice.md), rule 3). The piece page uses the item's title.
 - The subtitle is a fact about the page, joined with " · ". The core writes it when it is data (`libraryCountLine`).
+- The empty Library has no subtitle, and the line keeps its space so the rule stays level (Jon, 15 October 2026; the Library follows in #2694).
 - No states of its own.
 
 ## Accessibility

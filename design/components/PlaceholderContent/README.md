@@ -55,6 +55,7 @@ Android has no shared version: #2636 builds one or records why not. The empty Li
 ## Do and don't
 
 - **Do** give the empty screen its one primary action as the first button.
+- **Don't** leave the Library's header add button beside it: the Library hides its round add until it has an item (Jon, 15 October 2026; #2694).
 - **Don't** apologise or explain why the screen is empty.
 
 ## Usage
