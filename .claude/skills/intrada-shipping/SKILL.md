@@ -61,9 +61,9 @@ comment with it. An unexpected gap gets a test or a PR comment before ready.
 
 ## Deferred issues
 
-Every deferred or out-of-scope item becomes a labelled issue
-(`horizon:now|next|later` plus a kind: `ux`, `architecture`, `bug`,
-`accessibility`, `ios`, `pillar:*`) before the self-review comment is posted;
+Every deferred or out-of-scope item becomes an issue before the self-review
+comment is posted. Open it with `just issue-open`, which refuses one without
+a horizon and a kind label;
 a PR description is not tracking. The comment ends `Deferred items tracked:
 #N, #M` or `none, all flagged items addressed inline`. A deferred issue joins
 its epic with `just epic-add EPIC N`; a genuine one-off stays single
@@ -104,7 +104,8 @@ failed. Checklist lines that do not apply are deleted.
 
 Issues: what you would notice, why it matters, what to do, done looks like,
 where it lives. A bug gives the steps (the tap path, for a screen), what was
-expected and what happened; logs and measurements go last.
+expected and what happened. It names the app (iPhone, Android or both), the
+build and the device. Logs and measurements go last.
 
 ## Plan comments
 

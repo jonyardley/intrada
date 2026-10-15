@@ -43,7 +43,7 @@ sound, the camera, and closing the app in the middle of a session (#2566).
   (#2220) closes, one fault per issue, with a screenshot and the step number:
 
   ```bash
-  gh issue create --milestone "1.0.0" --label android --label bug
+  just issue-open "Title" body.md "horizon:now,android,bug" --milestone 1.0.0
   ```
 
   Put the issue number in the step's Result column. A step passes when every

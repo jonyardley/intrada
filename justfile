@@ -91,6 +91,7 @@ hygiene:
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
+        "issue-open-test:bash scripts/tests/issue-open-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
@@ -207,6 +208,13 @@ epic-move parent +children:
 [doc("Open a PR, refusing an unclaimed issue in the title or an over-long Tier 1 or 2 body")]
 pr-open title body *flags:
     bash scripts/pr-open.sh --title {{quote(title)}} --body {{quote(body)}} {{flags}}
+
+# Wrap `gh issue create`, refusing an issue without a horizon and a kind label
+# (#2696): `just issue-open "Title" body.md "horizon:next,ux"`. Extra flags
+# (e.g. --milestone 1.0.0) must be simple, space-free tokens, as for pr-open.
+[doc("Open an issue, refusing one without a horizon and a kind label")]
+issue-open title body_file labels *flags:
+    bash scripts/issue-open.sh --title {{quote(title)}} --body-file {{quote(body_file)}} --label {{quote(labels)}} {{flags}}
 
 [doc("Mark a reviewed PR ready and move its issue to In review, e.g. just pr-ready 2600 2593")]
 pr-ready pr issue:

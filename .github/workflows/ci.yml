@@ -849,6 +849,8 @@ jobs:
         run: bash scripts/tests/claim-issue-test.sh
       - name: just pr-open still refuses an unclaimed issue
         run: bash scripts/tests/pr-open-test.sh
+      - name: just issue-open still refuses an unlabelled issue
+        run: bash scripts/tests/issue-open-test.sh
       - name: The session claims list still reads in-flight issues
         run: bash scripts/tests/session-claims-test.sh
       - name: just status still shows each epic's next child

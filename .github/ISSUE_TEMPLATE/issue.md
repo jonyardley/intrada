@@ -15,8 +15,9 @@ labels: ""
 ## What you would notice
 
 <!-- The observable situation. For a bug: the steps (the tap path, for a
-     screen), what you expected and what happened instead. For a change, what
-     is missing or awkward today. -->
+     screen), what you expected and what happened instead. Then name the app
+     (iPhone, Android or both), the build and the device. For a change, say
+     what is missing or awkward today, and on which app if only one. -->
 
 ## Why it matters
 
@@ -39,7 +40,6 @@ labels: ""
 <!-- Steps, file paths, symbol names, logs, measurements. Everything technical
      lives here. -->
 
-<!-- Labels before saving: horizon:now / horizon:next / horizon:later, plus a
-     kind (bug, ux, architecture, accessibility, documentation, ios). Use bug
-     only where the app does something other than what it was built to do; a
-     thing never built is not a bug. -->
+<!-- Open it with `just issue-open`. It refuses an issue without a horizon
+     label (horizon:now, next or later) and a kind label; the kinds are in
+     docs/how-the-work-runs.md under Labels. -->
