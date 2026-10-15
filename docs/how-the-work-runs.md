@@ -5,10 +5,16 @@ How issues, epics, the board and releases are organised. What to build is in
 
 ## Labels
 
+Every issue a person or an agent opens carries a horizon and a kind (`bug`,
+`ux`, `architecture`, `accessibility`, `documentation`, `ios`, `android`,
+`security` or `epic`). `just issue-open` refuses one without both (#2696).
+
 | Label | Purpose |
 |-------|---------|
 | `layer:capture` / `:plan` / `:space` / `:show` / `:guide` | The vision's five layers; `:space` is the Nudge layer |
 | `horizon:now` / `:next` / `:later` | Rough timing, defined under [Horizons](#horizons) |
+| `bug` | The app does something other than what it was built to do; a thing never built is not a bug |
+| `documentation` | Docs, templates and the harness |
 | `architecture` | Technical debt and infrastructure |
 | `ux` / `accessibility` | Cross-cutting work on how the app feels and who can use it |
 | `security` | Security-relevant |

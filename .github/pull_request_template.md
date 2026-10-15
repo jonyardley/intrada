@@ -33,13 +33,13 @@ Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. Tier 1: n/a. -
 
 ## Checklist
 
-<!-- Delete a line that does not apply. A line left unticked is still owed. -->
+<!-- Only what CI cannot prove: the gates, formatting and snapshots run in
+     CI. Delete a line that does not apply. A line left unticked is still
+     owed. -->
 
 - [ ] Roadmap item or issue: #___ (or explicitly agreed with Jon)
 - [ ] One PR across the stack: core, iOS and Android together, core commits first (on the sensitive surfaces, `reviewer` read the core commits alone before the screens commits)
-- [ ] `just check` passes
-- [ ] `ios/` changes: `just ios-fmt-check`, `just ios-test` and `just ios-test-ui-class` for each UI class the diff edits pass; snapshots re-recorded and `just ios-snapshots-optimize` run if UI changed
-- [ ] `android/` changes: `just android-test` passes; a screen change carries the `just android-run` screenshot beside the iPhone one
+- [ ] A screen change carries the `just android-run` screenshot beside the iPhone one
 - [ ] New UI uses `Intrada*` tokens (colour, spacing, radius, type), no raw literals
 - [ ] Persistence or new-entity changes: the offline-first checklist in `.claude/rules/offline-first.md` applied
 - [ ] CLAUDE.md updated (if architecture, components or patterns changed)

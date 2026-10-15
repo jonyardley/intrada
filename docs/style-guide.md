@@ -1,7 +1,8 @@
 # Style guide
 
 How we write the prose around the code: pull request bodies, commit messages,
-issues, docs, specs, plans and code comments. People and agents both write to
+issues, plans and code comments. It binds every technical or design document
+too, from `docs/` and `specs/` to design files and pages in Claude Design. People and agents both write to
 it, and review holds everyone to the same standard (#2100). Keep it short: a
 style guide nobody finishes governs nothing.
 
@@ -33,11 +34,11 @@ means?
    earns its place stays.
 4. **Match length to the reader's need.** A pull request body is a summary; a
    spec can run long when the length is doing work. What the reader needs to
-   act goes on the first screen. In pull request bodies and issues, borrow
+   act goes on the first screen. In everything this guide covers, borrow
    ASD-STE100's sentence caps: at most 20 words in a sentence that instructs
    and 25 in one that describes, the active voice, one idea to a sentence.
-   `just pr-open` warns on a longer sentence; its word list is not adopted
-   (#2593).
+   `just pr-open` warns on a longer sentence in a pull request; its word list
+   is not adopted (#2593, #2696).
 5. **Use a list for three or more items.** Put each item on its own line. Keep
    one or two points as prose, because a list of two is slower to read than a
    sentence.

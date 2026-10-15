@@ -58,6 +58,6 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Reco
 - Decisions whose records were removed: [`docs/decisions.md`](docs/decisions.md).
 - Shipping: `/ship` and the `intrada-shipping` skill; more than one session: the
   `intrada-parallel-streams` skill.
-- Writing: British English, no dashes, plain language, in PR bodies, issues and comments
-  too, where nothing checks ([`docs/style-guide.md`](docs/style-guide.md),
+- Writing: British English, no dashes, plain language, in PR bodies, issues,
+  comments and every technical or design document, checked or not ([`docs/style-guide.md`](docs/style-guide.md),
   [`docs/tone-of-voice.md`](docs/tone-of-voice.md)).
