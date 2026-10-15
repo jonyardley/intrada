@@ -76,6 +76,7 @@
       "mcp__xcode__XcodeSwitchRunDestination",
       "Bash(just claim:*)",
       "Bash(just pr-open:*)",
+      "Bash(just issue-open:*)",
       "Bash(just ios-test-full)"
     ],
     "ask": [
