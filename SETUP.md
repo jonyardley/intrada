@@ -32,8 +32,7 @@ iOS on the self-hosted Mac, Android), plus security and hygiene every time. A
 push to main reruns them and alerts when main goes red.
 
 iOS ships through TestFlight (section 3). Android ships through
-`release-play.yml` to Play internal testing, whose setup is not yet written up
-(#2631).
+`release-play.yml` to Play internal testing (section 4).
 
 ### GitHub Actions secrets
 
@@ -47,6 +46,17 @@ iOS ships through TestFlight (section 3). Android ships through
 | `MATCH_PASSWORD` | fastlane match | TestFlight |
 | `SENTRY_AUTH_TOKEN` | Sentry | Release tracking for TestFlight |
 | `SENTRY_DSN_NATIVE` | Sentry | Crash reporting in TestFlight builds; a tagged run fails without it |
+| `ANDROID_UPLOAD_KEYSTORE_BASE64` | Upload keystore | Signing the Play bundle and the tester APK |
+| `ANDROID_UPLOAD_KEYSTORE_PASSWORD` | Upload keystore | Signing |
+| `ANDROID_UPLOAD_KEY_ALIAS` | Upload keystore | Signing (`upload`) |
+| `ANDROID_UPLOAD_KEY_PASSWORD` | Upload keystore | Signing |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud and Play Console | Uploading to Play internal testing |
+| `SENTRY_DSN_ANDROID` | Sentry | Crash reporting in Play builds; a tagged run fails without it |
+| `GRADLE_ENCRYPTION_KEY` | Gradle | Encrypting the Gradle cache in Android CI and the Play release |
+
+Repo variables: `SENTRY_PROJECT_ANDROID` (the Sentry project slug, for the
+Play release and its native symbols) and, only until the first rollout,
+`PLAY_RELEASE_STATUS=draft`.
 
 Set at: **GitHub repo → Settings → Secrets and variables → Actions**
 
@@ -96,7 +106,64 @@ in `fastlane/Fastfile`:
 
 After the setup, `just testflight` does the same locally.
 
-## 4. Local Development
+## 4. Native Android to Play internal testing
+
+`.github/workflows/release-play.yml` runs on Ubuntu on the same `v*` tag as
+TestFlight, or by hand (#2499). It builds a signed bundle and APK, keeps both
+as run artifacts, and uploads the bundle to the internal track through the
+`android internal` lane in `fastlane/Fastfile`. The version code is the
+workflow's run number and the version name comes from the tag. On a tag it also
+creates the Sentry release and uploads the native symbols (#2517).
+
+One key signs everything: the upload key is also the app signing key Play
+holds, so a Play build installs over a sideloaded APK and a tester keeps their
+notebook.
+
+**One-time setup, in order** (done for intrada in October 2026):
+
+1. **Upload key.** Make it with Android Studio's `keytool`, since the Mac's
+   own has no Java behind it, and keep it outside the repo:
+   ```bash
+   "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool" \
+     -genkeypair -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. **Signing secrets** (table above):
+   ```bash
+   base64 -i upload.jks | gh secret set ANDROID_UPLOAD_KEYSTORE_BASE64
+   gh secret set ANDROID_UPLOAD_KEY_ALIAS --body upload
+   gh secret set ANDROID_UPLOAD_KEYSTORE_PASSWORD
+   gh secret set ANDROID_UPLOAD_KEY_PASSWORD
+   ```
+   Plus `SENTRY_DSN_ANDROID` (with `printf %s`, no trailing newline) and the
+   `SENTRY_PROJECT_ANDROID` variable.
+3. **Play Console app.** Create it with package `com.intrada.android`. The API
+   cannot do this.
+4. **Play App Signing with your own key, before any bundle goes up.** Internal
+   testing → Create new release → Change app signing key → Export and upload a
+   key from Java keystore. Run the `pepk.jar` command it shows with Android
+   Studio's `java` and upload the zip. Check: App integrity → App signing shows
+   the same SHA-256 for the app signing key and the upload key, and it matches
+   `keytool -printcert -jarfile app-release.aab` on a CI bundle.
+5. **First bundle by hand.** Run the workflow with upload switched off:
+   `gh workflow run release-play.yml -f upload=false`. Download the bundle from
+   the run, upload it to the internal release, add a testers list, and roll it
+   out. Taking it from the workflow keeps its version code below every later
+   run. Complete the advertising ID declaration (Policy → App content) with
+   *No* if Play asks.
+6. **Service account.** In Google Cloud: enable the **Google Play Android
+   Developer API**, create a service account, add a JSON key, and store it:
+   `gh secret set PLAY_SERVICE_ACCOUNT_JSON < key.json`, then delete the file.
+   No Google Cloud roles are needed.
+7. **Its Play permissions.** Play Console → Users and permissions → invite the
+   service account's email. Tick **View app information and download bulk
+   reports (read-only)** as well as **Release apps to testing tracks** and
+   **Manage testing tracks**. Without the first, every upload fails with
+   *The caller does not have permission* and nothing says which permission is
+   missing.
+8. **Run it**: `gh workflow run release-play.yml`, or push a `v*` tag. Testers
+   join from the opt-in link on the internal testing track's Testers tab.
+
+## 5. Local Development
 
 Install Rust through [rustup](https://rustup.rs) first, since mise's `cargo:`
 backend builds with it; `rust-toolchain.toml` pins the version. Then
