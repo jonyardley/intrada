@@ -25,32 +25,25 @@ The white surface every grouped block of content sits on, lifted faintly off the
 - Rows inside a card: separate them with `HairlineDivider`, not a card each.
 - A form field: use `FieldCard`, which is a card with the label inside.
 
-## Anatomy
-
-1. **Fill:** `cardFill`, white.
-2. **Edge:** a one point `hairline` stroke along the corner (inside it on Android, centred on the edge on iPhone).
-3. **Corner:** `IntradaRadius.card`, 3 points.
-4. **Lift:** `IntradaShadow.card`, radius 1, one point down, through `cardShadow()`.
-
 ## Variants
 
-- **Card with lift** (`cardSurface()` with `cardShadow()`): use for every card on paper. This is the look T24 decided ("white cards with a 3pt corner and a faint lift").
+- **Card with lift** (`cardSurface()` with `cardShadow()`): use for every card on paper. This is the look T24 in [the design principles](../../../docs/design-principles.md) decided ("white cards with a 3pt corner and a faint lift").
 - **Card without lift** (`cardSurface()` alone): use only inside something already lifted, such as a sheet or a card in a card.
-- **Corner by role** (`cardSurface(cornerRadius:)`): takes a radius token. On iPhone 9 callers pass `IntradaRadius.control` or `panel` and 3 pass `card`, the default (`PracticeSessionDetailScreen.swift`, `VariationsSection.swift`, `SolidCountRow.swift`); on Android 7 callers pass `control` or `panel`. Every token a caller passes is 3 points, so it changes nothing on screen. This page decides that the parameter goes, because no caller draws a corner other than 3 points (T24). Removing it from both apps is #2664.
 
-## States
-
-A card has no states of its own. A pressable card (a library row) uses the press style of the control inside it.
+Every card has the same 3 point corner. The corner parameter goes from both apps in #2664.
 
 ## Behaviour
 
 None. Motion belongs to what the card holds. A card that slides or fades in keeps its opaque fill, so the transition never ghosts.
 
-**On 13 October 2026 no card on either app has the lift** (I36 in [the October audit](../../../docs/audit-2026-10-design.md)). On iPhone, 67 lines call `cardSurface()`; the four `cardShadow()` calls are on a capsule, a disc, a header and a hand-drawn card, none of them a `cardSurface()` card. On Android, 68 lines call `cardSurface()` and the one `cardShadow()` call is on the key wheel. Restoring the lift everywhere is the first step of the refinement pass (#2638, direction 6a), not a fix on its own.
+No card on either app is drawn with the lift yet; restoring it everywhere is part of the refinement pass, #2638.
 
 ## Content
 
-Content sits `IntradaSpacing.card` (16) in from the edge, or `cardCompact` (12) in a dense list. A card's lead line is `cardTitle`; secondary lines are `inkSecondary`.
+- The fill is `cardFill`, white, with a one point `hairline` edge, the `IntradaRadius.card` corner (3 points) and the `IntradaShadow.card` lift through `cardShadow()`.
+- Content sits `IntradaSpacing.card` (16) in from the edge, or `cardCompact` (12) in a dense list.
+- A card's lead line is `cardTitle`; secondary lines are `inkSecondary`.
+- A card has no states of its own. A pressable card (a library row) uses the press style of the control inside it.
 
 ## Accessibility
 
@@ -59,7 +52,7 @@ A card adds nothing to VoiceOver or TalkBack. When a whole card is one action, c
 ## Do and don't
 
 - **Do** put a group of rows in one card, separated by hairlines.
-- **Don't** stack equal cards with no lead line (audit refinement note 2, the piece detail page).
+- **Don't** stack equal cards with no lead line.
 - **Don't** draw a card by hand with a background, a clip and a stroke: that is the copy that drifts.
 
 ## Usage
@@ -80,10 +73,3 @@ On Android the shadow comes first in the modifier chain, so it is drawn outside 
 ## Related
 
 `FieldCard`, `HairlineDivider`, `SectionTitle`.
-
-## Changes
-
-| Date | Issue | What changed |
-|---|---|---|
-| 2026-10-13 | #2620 | First page. Records that most cards lack the lift (I36). |
-| 2026-10-14 | #2635 | Decides to remove the corner parameter, which every caller passes as 3 points (#2664). |

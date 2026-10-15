@@ -22,6 +22,10 @@ index. Keys sit one to a line so scripts/check-components.sh can read them:
   `not_on_android: <why, or the issue that builds it>`.
 
 Delete any section below that has nothing to say, rather than filling it.
+The page is the lasting reference: its purpose, the one look and its rules.
+No caller counts or lists of where it is used, which go stale with every
+change; a difference between the apps is one line naming the issue that
+settles it. Name the tokens in Content rather than listing parts.
 -->
 
 # Card
@@ -34,25 +38,17 @@ One sentence on what it is for. The Claude Design page shows this as the summary
 
 Name the component to use instead.
 
-## Anatomy
-
-The named parts.
-
 ## Variants
 
 One line each: "use for ...".
 
-## States
-
-Default, pressed, disabled, error.
-
 ## Behaviour
 
-Interaction, motion and haptics, and any difference between the apps.
+Interaction, motion and haptics. Where the apps differ, one line naming the issue that settles it.
 
 ## Content
 
-Wording rules and how long the text can be.
+The tokens it is drawn with, wording rules and how long the text can be. States the picture does not show, such as disabled or error.
 
 ## Accessibility
 
@@ -71,8 +67,3 @@ Pairs, each with a snapshot.
 ```
 
 ## Related
-
-## Changes
-
-| Date | Issue | What changed |
-|---|---|---|
