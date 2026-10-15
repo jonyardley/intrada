@@ -15,7 +15,7 @@ Names a section, in sentence case, above what it names.
 ## When to use
 
 - A section with only a name: Recent sessions, What you played, Practice defaults.
-- A name and one fact in a single line, joined by a middle dot: "Item complete · " and the time played, "Tempo reached · target " and the tempo, "Aim met? · optional" and "Last practised · " and the day.
+- A name and one fact in a single line, joined by a middle dot: "Item complete · " and the time played, "Tempo reached · target " and the tempo, "Last practised · " and the day.
 - A title on the dark Practice and Up next cards, with the light tint.
 
 ## When not to use
@@ -24,30 +24,23 @@ Names a section, in sentence case, above what it names.
 - A field's label inside its card: use `FieldLabel` in a `FieldCard`.
 - The page title: that is `ScreenScaffold`'s.
 
-## Anatomy
-
-One line of text: `IntradaFont.label`, 15 point medium, in `inkSecondary` (#6E6A66). It draws `FieldLabel`, so a section title and a field label look the same (T35 in [the design principles](../../../docs/design-principles.md)).
-
 ## Variants
 
 - **On paper** (the default): use for every section on a screen or sheet.
-- **On a dark card** (`tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary)`): use only on the Practice and Up next cards, where T35 keeps the label light on dark. It has 3 callers: the Practice card's heading and the Up next card's heading and "Then".
-
-## States
-
-None.
+- **On a dark card** (`tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary)`): use only on the Practice and Up next cards, where T35 in [the design principles](../../../docs/design-principles.md) keeps the label light on dark.
 
 ## Behaviour
 
 No motion and no haptic.
 
-iPhone uses it at 40 call sites in 25 files. 3 of them are `SectionHeader` drawing its own title, so screens and components call it 37 times in 24 files.
-
-**On 14 October 2026 Android has no `SectionTitle`.** A section with only a name uses `SectionHeader` with no caption, fact or action (7 call sites in 3 files: Add to session, the icon picker and Practice defaults in `ProfileParts.kt`, and Profile's Highlighter and Beta), or `FieldLabel` directly, as the reflection sheet does. The dark cards draw their titles by hand in `IntradaFont.label` with the same light tint: the Practice card in `PracticeParts.kt` and the Up next card's heading and "Then" in `UpNextCard.kt`. Each looks the same as on iPhone, because `SectionHeader`'s title is `FieldLabel`. Building `SectionTitle` in Compose is #2636.
+Android has no `SectionTitle` yet; building it is #2636. Until then a section with only a name uses `SectionHeader` with nothing else, or `FieldLabel`, and the dark cards draw their titles in `IntradaFont.label` with the same light tint. Each looks the same as on iPhone, because `SectionHeader`'s title is `FieldLabel`.
 
 ## Content
 
-A name, or name · fact: the name in sentence case, then one middle dot with single spaces and the fact, no full stop. Most names are one to three words; "From the chord chart" (`RelatedExercisesCard.swift`) is the longer one that ships. The shells write the titles. The Practice card's heading joins "Last practised · " to the day the musician last practised (`relativeDay`).
+- One line of text: `IntradaFont.label` in `inkSecondary`. It draws `FieldLabel`, so a section title and a field label look the same (T35).
+- A name, or name · fact: the name in sentence case, then one middle dot with single spaces and the fact, no full stop.
+- Most names are one to three words; "From the chord chart" is the longest that ships. The shells write the titles.
+- No states.
 
 ## Accessibility
 
@@ -69,9 +62,3 @@ SectionTitle("Then", tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondar
 ## Related
 
 `SectionHeader` for a title with more. `FieldLabel`, which it draws.
-
-## Changes
-
-| Date | Issue | What changed |
-|---|---|---|
-| 2026-10-14 | #2635 | First page. Records how Android titles a section without it. |

@@ -21,47 +21,31 @@ Says whether an item is a piece or an exercise, at a glance, with a glyph, a wor
 
 - In a list row: library cards carry the type as the kind bar down their edge, so a badge would say it twice.
 - A musician's own tag: use `TagChip`.
-- Any control: the badge is never pressed. Its tints are kept duller than the highlighter so it never reads as a button (T24).
-
-## Anatomy
-
-1. **Fill:** `pieceBadgeBg` (#CBD6E0, blue grey) or `exerciseBadgeBg` (#DCD3C0, sand).
-2. **Glyph:** a note (`music.note`) for a piece, a dumbbell (`dumbbell.fill`) for an exercise, at small scale.
-3. **Word:** "Piece" or "Exercise", from the shell's label for the core's kind (`ItemKind.label` in `ItemKindStyle.swift` and `ItemKindStyle.kt`).
-4. **Ink:** `pieceBadgeFg` and `exerciseBadgeFg`, both `ink`, set in `IntradaFont.badge` (13 point semibold).
-5. **Shape:** a capsule, 5 by 10 points of padding, 5 points between glyph and word.
+- Any control: the badge is never pressed. Its tints are kept duller than the highlighter so it never reads as a button (T24 in [the design principles](../../../docs/design-principles.md)).
 
 ## Variants
 
-Two, one per kind. There is no size or style option.
-
-## States
-
-None. The badge shows a fact and does nothing when tapped.
+Two, one per kind. There is no size or style option. It is a pill wherever it appears, the player included (T29).
 
 ## Behaviour
 
-No motion and no haptic.
+None. The badge shows a fact and does nothing when tapped, with no motion and no haptic.
 
-**On 14 October 2026 Android has no badge component.** iPhone uses `TypeBadge` on the piece and exercise page (`LibraryDetailScreen`) and on the player (`FocusPlayerScreen`). Android draws its own:
-
-| | iPhone | Android piece page | Android player |
-|---|---|---|---|
-| Shape | tinted capsule | tinted capsule, padding set by hand | none, plain text |
-| Glyph | note or dumbbell | none | none |
-| Word | 13 point semibold, ink | 13 point medium, ink | 13 point semibold, secondary ink |
-
-The iPhone badge is the one both apps use. T3 needs a cue beyond colour, which the glyph and the word give, and T29 makes the badge a pill wherever it appears, the player included. Android builds a shared `TypeBadge` in #2636, and moves the piece page and the player onto it with A10 and A11 in #2606 ([the October audit](../../../docs/audit-2026-10-design.md)). Android has no note or dumbbell drawable yet.
+Android draws a plain pill and plain text instead; the shared badge is #2636, and the piece page and the player move onto it in #2606.
 
 ## Content
 
-"Piece" or "Exercise", written once in each shell's `ItemKindStyle` and used unchanged.
+- The fill is `pieceBadgeBg` (#CBD6E0, blue grey) or `exerciseBadgeBg` (#DCD3C0, sand).
+- The glyph is a note (`music.note`) for a piece, a dumbbell (`dumbbell.fill`) for an exercise, at small scale.
+- The word is "Piece" or "Exercise", written once in each shell's `ItemKindStyle` (`ItemKind.label`) and used unchanged.
+- The ink is `pieceBadgeFg` and `exerciseBadgeFg`, both `ink`, set in `IntradaFont.badge` (13 point semibold).
+- The shape is a capsule, 5 by 10 points of padding, 5 points between glyph and word.
 
 ## Accessibility
 
 - One element, read as "Piece" or "Exercise". The glyph adds nothing to it.
-- Colour is never the only signal (T3): the word always shows.
-- With the Powder highlighter chosen, the piece tint is close to the highlighter (I38 in the audit), so a piece badge can look pressable. That waits for the refinement pass (#2638).
+- Colour is never the only signal (T3): the glyph and the word always show.
+- With the Powder highlighter chosen, the piece tint is close to the highlighter, so a piece badge can look pressable; #2638.
 
 ## Do and don't
 
@@ -81,9 +65,3 @@ TypeBadge(kind: item.itemType)
 ## Related
 
 `TagChip`, the kind bar on `LibraryItemCard`.
-
-## Changes
-
-| Date | Issue | What changed |
-|---|---|---|
-| 2026-10-14 | #2635 | First page. Records that Android has no badge, only a plain pill and plain text. |
