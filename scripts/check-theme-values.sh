@@ -2,20 +2,19 @@
 # The code is the design kit (#2698), so a screen built from a sketch must take
 # its colours and spacing from the theme: a typed value keeps every other check
 # green while the app drifts apart (#2699). Each shell's theme file is the one
-# place a raw colour or spacing number may appear; zero is not a value.
+# place a raw colour or spacing number may appear; zero, clear and transparent
+# are not values.
 #
-# What counts as raw:
-#   Swift   Color(red:, Color(hex:, Color(white:, Color(.sRGB, UIColor(red:,
-#           .init(red:; .padding(N) and .padding(.edge, N); spacing: N
-#   Kotlin  Color(0x, Color(red =; N.dp inside padding(, PaddingValues(,
-#           spacedBy( and Spacer(Modifier.height( or .width(
-# A size (a frame, a stroke, a height off a Spacer) is not spacing and stays
-# literal. A value wrapped over lines, or after a `//` in a string, slips
-# through: deliberate, not tracked.
+# A size (a frame, a stroke, a height on anything but a Spacer) is not spacing
+# and stays out of scope. A value wrapped over lines, or after a `//` in a
+# string, slips through, and a string that reads like code (`Text("spacing: 6
+# notes")`) is caught: deliberate, not tracked.
 #
-# The allowlist froze the uses found on 2026-10-18 and only shrinks: one entry
-# covers every match of that text in that file, and an entry that matches
-# nothing fails until it is removed.
+# The allowlist holds only what the screens used on 18 October 2026, each entry
+# with its count and #2706, the issue that removes them. It only shrinks: a
+# count above the entry fails, and so does one below it, until the entry is
+# lowered or removed. Nothing new goes on it; a value the theme lacks becomes a
+# token in both theme files.
 #
 # The roots and the list are overridable so the self-test can point them at
 # fixtures (scripts/tests/hygiene-checks-test.sh).
@@ -36,6 +35,14 @@ for path in "$root" "$android_root" "$allowlist"; do
   fi
 done
 
+# Each allowlist line: path, matched text, count and its issue, tab separated.
+malformed=$(awk -F'\t' '!/^#/ && NF && !(NF == 4 && $3 ~ /^[1-9][0-9]*$/ && $4 ~ /^#[0-9]+$/)' "$allowlist")
+if [ -n "$malformed" ]; then
+  echo "✗ check-theme-values: $allowlist lines need a path, the text, a count and an issue, tab separated:" >&2
+  printf '%s\n' "$malformed" | sed 's/^/    /' >&2
+  exit 2
+fi
+
 # One line per raw value: path, the matched text, line number and the line.
 hits=$(find "$root" -name '*.swift' \
   ! -path "$root/DesignSystem/Theme.swift" -print0 |
@@ -45,40 +52,58 @@ hits=$(find "$root" -name '*.swift' \
     my $line = $_; chomp $line; $line =~ s/^\s+//;
     my @found;
     my $num = qr/(\d+(?:\.\d+)?)/;
+    my $args = qr/\((?:[^()]|\([^()]*\))*\)/;
+    my $hue = qr/(?:red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|primary|secondary)\b/;
     if ($ARGV =~ /\.swift$/) {
       push @found, $1 while /(\b(?:UI)?Color\(\s*(?:\.sRGB|\.displayP3|red:|hex:|white:|hue:)|\.init\(\s*(?:red|hex|white|hue):)/g;
+      push @found, $1 while /(\bColor\.$hue|\b(?:foregroundStyle|foregroundColor|tint|fill|stroke|background)\(\s*\.$hue)/g;
       while (/(\.padding\((?:\s*(?:\.\w+|\[[^\]]*\])\s*,)?\s*$num\s*\))/g) { push @found, $1 if $2 != 0 }
-      while (/(\bspacing:\s*$num)/g) { push @found, $1 if $2 != 0 }
+      while (/(\b(?:spacing|minLength):\s*$num)/g) { push @found, $1 if $2 != 0 }
+      while (/((?:\bEdgeInsets|\.padding\(\s*\.init)\([^()]*\))/g) {
+        my $call = $1;
+        push @found, $call if grep { $_ != 0 } $call =~ /\b(?:top|leading|bottom|trailing):\s*$num/g;
+      }
     } else {
-      push @found, $1 while /(\bColor\(\s*(?:0x|red\s*=))/g;
-      while (/(\b(?:padding|PaddingValues|spacedBy)\([^()]*\))/g) {
+      push @found, $1 while /(\bColor\(\s*(?:\d|red\s*=)|\bColor\.(?!Transparent\b|TRANSPARENT\b)[A-Z]\w*)/g;
+      while (/(\b(?:padding|PaddingValues|spacedBy)$args)/g) {
         my $call = $1;
         push @found, $call if grep { $_ != 0 } $call =~ /$num\.dp/g;
       }
-      while (/(\bSpacer\(\s*(?:modifier\s*=\s*)?Modifier\.(?:height|width)\(\s*$num\.dp\s*\))/g) { push @found, $1 if $2 != 0 }
+      while (/(\bSpacer\(\s*(?:modifier\s*=\s*)?Modifier\.(?:height|width)\(\s*$num\.dp\s*\)\s*\))/g) { push @found, $1 if $2 != 0 }
     }
     for (@found) { (my $s = $_) =~ s/\s+/ /g; print "$ARGV\t$s\t$.\t$line\n" }
     close ARGV if eof
   ')
 
-allowed=$(sed -e 's/#.*//' -e 's/[[:space:]]*$//' "$allowlist" | grep -v '^$' | sort -u || true)
-keys=$(printf '%s\n' "$hits" | awk -F'\t' 'NF { print $1 " " $2 }' | sort -u)
-
-new=$(awk -F'\t' 'NR == FNR { ok[$0] = 1; next }
-  NF && !(($1 " " $2) in ok) { print $1 ":" $3 ": " $4 }' \
-  <(printf '%s\n' "$allowed") <(printf '%s\n' "$hits"))
-stale=$(comm -23 <(printf '%s\n' "$allowed") <(printf '%s\n' "$keys") | grep -v '^$' || true)
+# Compare the live count of each path and text with its allowed count.
+report=$(awk -F'\t' '
+  NR == FNR { if (!/^#/ && NF) allowed[$1 "\t" $2] = $3; next }
+  NF { key = $1 "\t" $2; seen[key]++; where[key] = where[key] "over\t    " $1 ":" $3 ": " $4 "\n" }
+  END {
+    for (key in seen) {
+      n = (key in allowed) ? allowed[key] : 0
+      if (seen[key] > n) printf "%s", where[key]
+    }
+    for (key in allowed) {
+      if (seen[key] < allowed[key]) {
+        split(key, k, "\t")
+        printf "under\t    %s  %s: allowed %d, found %d\n", k[1], k[2], allowed[key], seen[key]
+      }
+    }
+  }' "$allowlist" <(printf '%s\n' "$hits"))
+over=$(printf '%s\n' "$report" | grep '^over' | cut -f2- | sort || true)
+under=$(printf '%s\n' "$report" | grep '^under' | cut -f2- | sort || true)
 
 status=0
-if [ -n "$new" ]; then
+if [ -n "$over" ]; then
   echo "✗ a raw colour or spacing number outside the theme (#2699):" >&2
-  printf '%s\n' "$new" | sed 's/^/    /' >&2
-  echo "  Use an IntradaColor or IntradaSpacing token; a missing token goes into both theme files first." >&2
+  printf '%s\n' "$over" >&2
+  echo "  Use an IntradaColor or IntradaSpacing token; a value the theme lacks becomes a token in both theme files." >&2
   status=1
 fi
-if [ -n "$stale" ]; then
-  echo "✗ $allowlist lists entries it no longer needs; remove them:" >&2
-  printf '%s\n' "$stale" | sed 's/^/    /' >&2
+if [ -n "$under" ]; then
+  echo "✗ $allowlist allows more than the screens now use; lower the count, or remove the entry at 0:" >&2
+  printf '%s\n' "$under" >&2
   status=1
 fi
 exit $status

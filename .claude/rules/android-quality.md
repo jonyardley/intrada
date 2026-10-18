@@ -49,8 +49,9 @@ this file holds only how they read in Kotlin and Compose.
   Android lacks is copied from `Theme.swift` with the same name and value,
   never invented. Genuine one-offs stay literal, as on iOS.
 - **New screens use catalogue components and theme values only**;
-  `scripts/check-theme-values.sh` fails a raw colour or spacing number, and a
-  genuine one-off goes on its allowlist with a reason (#2699).
+  `scripts/check-theme-values.sh` fails a raw colour or spacing number (#2699).
+  A value the theme lacks becomes a token in both theme files; the allowlist
+  holds only what existed on 18 October 2026 and shrinks under #2706.
 - **No `MaterialTheme` colours or Material components** standing in for an
   intrada primitive.
 - **Reach for a component in `design/components/README.md` first** (#2620);

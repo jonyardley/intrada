@@ -49,7 +49,9 @@ push to the open PR (#1891). The Android half follows
 
 New screens are built from the catalogue components (`design/components/README.md`)
 and theme values only; `scripts/check-theme-values.sh` fails a raw colour or
-spacing number, and a genuine one-off goes on its allowlist with a reason (#2699).
+spacing number (#2699). A value the theme lacks becomes a token in both theme
+files; the allowlist holds only what existed on 18 October 2026 and shrinks
+under #2706.
 
 Deviation is allowed only in an explicit redesign, a flagged conversation
 (Claude Design first, then the plan comment) that updates the tokens and
