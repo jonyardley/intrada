@@ -168,7 +168,7 @@ android/app/src/main/kotlin/com/intrada/android/ui/ItemFormExercises.kt	spacedBy
 android/app/src/main/kotlin/com/intrada/android/ui/ItemFormParts.kt	spacedBy(4.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/KeyWheel.kt	padding(top = IntradaSpacing.cardCompact, bottom = 20.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/KeyWheel.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/LibraryScreen.kt	Spacer(Modifier.height(3.dp))	1	#2706
+android/app/src/main/kotlin/com/intrada/android/ui/LibraryScreen.kt	Spacer(Modifier.height(3.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PageParts.kt	spacedBy(3.dp)	2	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PieceKeys.kt	spacedBy(6.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PieceLinks.kt	spacedBy(3.dp)	1	#2706

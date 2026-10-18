@@ -452,8 +452,8 @@ theme_check() {
 }
 printf 'static let ink = Color(hex: 0x2A2622)\nstatic let card: CGFloat = 16\nlet x = Text("a").padding(16).foregroundStyle(.red)\n' >"$themed/DesignSystem/Theme.swift"
 printf 'val ink = Color(0xFF2A2622)\nval x = Modifier.padding(16.dp).background(Color.Red)\n' >"$themed_ui/Theme.kt"
-printf 'VStack(spacing: IntradaSpacing.card) {}\n  .padding(.horizontal, IntradaSpacing.card)\n  .foregroundStyle(IntradaColor.ink)\n  .background(Color.clear)\nHStack(spacing: 0) { Spacer(minLength: 0) }.padding(0)\n  .padding(EdgeInsets(top: 0, leading: IntradaSpacing.card, bottom: 0, trailing: IntradaSpacing.card))\n' >"$themed/Views/Row.swift"
-printf 'Column(Modifier.padding(horizontal = IntradaSpacing.card), verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {}\nText("a", color = IntradaColor.ink, modifier = Modifier.padding(0.dp).background(Color.Transparent))\n' >"$themed_ui/Row.kt"
+printf 'VStack(spacing: IntradaSpacing.card) {}\n  .padding(.horizontal, IntradaSpacing.card)\n  .foregroundStyle(IntradaColor.ink)\n  .background(Color.clear)\nLinearGradient(colors: [IntradaColor.shadow, .clear], startPoint: .top, endPoint: .bottom)\nHStack(spacing: 0) { Spacer(minLength: 0) }.padding(0)\n  .padding(EdgeInsets(top: 0, leading: IntradaSpacing.card, bottom: 0, trailing: IntradaSpacing.card))\n' >"$themed/Views/Row.swift"
+printf 'Column(Modifier.padding(horizontal = IntradaSpacing.card), verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {}\nText("a", color = IntradaColor.ink, modifier = Modifier.padding(0.dp).background(Color.Transparent))\nText("b", color = Color.Unspecified)\n' >"$themed_ui/Row.kt"
 expect 0 "theme tokens, zero, clear, and raw values inside both theme files" theme_check
 
 theme_case() {
@@ -475,6 +475,12 @@ theme_case 1 "a positional colour on Android" "$themed_ui/Tint.kt" 'Box(Modifier
 theme_case 1 "a typed padding beside a token on Android" "$themed_ui/Gap.kt" 'Box(Modifier.padding(horizontal = IntradaSpacing.card, vertical = 10.dp))'
 theme_case 1 "a typed padding behind a condition on Android" "$themed_ui/Gap.kt" 'Box(Modifier.padding(horizontal = if (wide) IntradaSpacing.card else 8.dp))'
 theme_case 1 "a typed spacer on Android" "$themed_ui/Spacer.kt" 'Spacer(Modifier.height(12.dp))'
+theme_case 1 "a typed spacer with more modifiers on Android" "$themed_ui/Spacer.kt" 'Spacer(Modifier.width(12.dp).fillMaxHeight())'
+theme_case 1 "a colour from hue on Android" "$themed_ui/Tint.kt" 'Box(Modifier.background(Color.hsl(10f, 0.5f, 0.5f)))'
+theme_case 1 "a named shadow colour on iPhone" "$themed/Views/Tint.swift" 'Card().shadow(color: .black, radius: 4)'
+theme_case 1 "a named colour in a gradient on iPhone" "$themed/Views/Tint.swift" 'LinearGradient(colors: [IntradaColor.ink, .white], startPoint: .top, endPoint: .bottom)'
+theme_case 1 "the accent colour on iPhone" "$themed/Views/Tint.swift" 'Text("a").foregroundStyle(.accentColor)'
+theme_case 1 "a tertiary style on iPhone" "$themed/Views/Tint.swift" 'Text("a").foregroundStyle(.tertiary)'
 
 gap_kt="$themed_ui/Gap.kt"
 printf 'Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {}\n' >"$gap_kt"
