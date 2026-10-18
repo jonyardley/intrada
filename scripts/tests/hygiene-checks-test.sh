@@ -438,6 +438,60 @@ expect 2 "a root that is not there" env FAINT_INK_ROOT="$work/nowhere" bash "$re
 
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-faint-ink.sh"
 
+# ── The theme value check ───────────────────────────────────────────────────
+
+themed="$work/themed"
+themed_kt="$work/themed-kt"
+themed_ui="$themed_kt/com/intrada/android/ui"
+themed_allow="$work/themed-allow.txt"
+mkdir -p "$themed/DesignSystem" "$themed/Views" "$themed_ui"
+: >"$themed_allow"
+theme_check() {
+  THEME_VALUES_ROOT="$themed" THEME_VALUES_ANDROID_ROOT="$themed_kt" THEME_VALUES_ALLOWLIST="$themed_allow" \
+    bash "$repo_root/scripts/check-theme-values.sh"
+}
+printf 'static let ink = Color(hex: 0x2A2622)\nstatic let card: CGFloat = 16\nlet x = Text("a").padding(16)\n' >"$themed/DesignSystem/Theme.swift"
+printf 'val ink = Color(0xFF2A2622)\nval x = Modifier.padding(16.dp)\n' >"$themed_ui/Theme.kt"
+printf 'VStack(spacing: IntradaSpacing.card) {}\n  .padding(.horizontal, IntradaSpacing.card)\n  .foregroundStyle(IntradaColor.ink)\nHStack(spacing: 0) {}.padding(0)\n' >"$themed/Views/Row.swift"
+printf 'Column(Modifier.padding(horizontal = IntradaSpacing.card), verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {}\nText("a", color = IntradaColor.ink, modifier = Modifier.padding(0.dp))\n' >"$themed_ui/Row.kt"
+expect 0 "theme tokens, zero, and raw values inside both theme files" theme_check
+
+printf 'Text("a").foregroundStyle(Color(red: 0.9, green: 0.1, blue: 0.1))\n' >"$themed/Views/Tint.swift"
+expect 1 "a typed colour on iPhone" theme_check
+rm "$themed/Views/Tint.swift"
+
+printf 'Text("a").padding(.vertical, 10)\n' >"$themed/Views/Gap.swift"
+expect 1 "a typed padding on iPhone" theme_check
+rm "$themed/Views/Gap.swift"
+
+printf 'VStack(alignment: .leading, spacing: 6) {}\n' >"$themed/Views/Stack.swift"
+expect 1 "a typed stack spacing on iPhone" theme_check
+rm "$themed/Views/Stack.swift"
+
+printf 'Text("a", color = Color(0xFFE53935))\n' >"$themed_ui/Tint.kt"
+expect 1 "a typed colour on Android" theme_check
+rm "$themed_ui/Tint.kt"
+
+printf 'Box(Modifier.padding(horizontal = IntradaSpacing.card, vertical = 10.dp))\n' >"$themed_ui/Gap.kt"
+expect 1 "a typed padding beside a token on Android" theme_check
+
+printf '%s spacedBy(2.dp)\n' "$themed_ui/Gap.kt" >"$themed_allow"
+expect 1 "an allowed value in the file does not cover a different one" theme_check
+
+printf '%s padding(horizontal = IntradaSpacing.card, vertical = 10.dp)\n' "$themed_ui/Gap.kt" >"$themed_allow"
+expect 0 "a typed padding on the allowlist" theme_check
+rm "$themed_ui/Gap.kt"
+expect 1 "an allowlist entry that matches nothing" theme_check
+: >"$themed_allow"
+
+printf 'Spacer(Modifier.height(12.dp))\n' >"$themed_ui/Spacer.kt"
+expect 1 "a typed spacer on Android" theme_check
+rm "$themed_ui/Spacer.kt"
+
+expect 2 "a root that is not there" env THEME_VALUES_ROOT="$work/nowhere" bash "$repo_root/scripts/check-theme-values.sh"
+
+expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-theme-values.sh"
+
 # ── The design token check ──────────────────────────────────────────────────
 
 tokens="$work/tokens"

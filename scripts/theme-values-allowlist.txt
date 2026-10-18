@@ -1,0 +1,214 @@
+# Raw spacing numbers on the screens on 2026-10-18, when the theme check began
+# (#2699). Most are gaps below IntradaSpacing.controlGap (8), which has no
+# token yet; the rest predate the rule. Rewriting them is out of scope for
+# #2699. This list only shrinks: scripts/check-theme-values.sh fails on an
+# entry that matches nothing, and on any raw value missing here.
+# Each line is a path and the text matched in it. No raw colours were found.
+
+# iPhone
+ios/Intrada/DesignSystem/FieldMark.swift spacing: 5
+ios/Intrada/DesignSystem/GlobalBanner.swift .padding(.vertical, 10)
+ios/Intrada/DesignSystem/PlaceholderContent.swift .padding(32)
+ios/Intrada/DesignSystem/ScreenScaffold.swift spacing: 3
+ios/Intrada/DesignSystem/TagChip.swift spacing: 5
+ios/Intrada/Views/Components/AddRowButton.swift spacing: 16
+ios/Intrada/Views/Components/AddRowButton.swift spacing: 4
+ios/Intrada/Views/Components/AutocompleteField.swift .padding(.vertical, 10)
+ios/Intrada/Views/Components/AutocompleteField.swift spacing: 4
+ios/Intrada/Views/Components/BrowseControlsBar.swift .padding(.horizontal, 10)
+ios/Intrada/Views/Components/BrowseControlsBar.swift .padding(.vertical, 6)
+ios/Intrada/Views/Components/CapsuleActionButton.swift .padding(.horizontal, 10)
+ios/Intrada/Views/Components/CapsuleActionButton.swift .padding(.vertical, 5)
+ios/Intrada/Views/Components/ChordChartEditSheet.swift .padding(.horizontal, 5)
+ios/Intrada/Views/Components/ChordChartEditSheet.swift .padding(.vertical, 8)
+ios/Intrada/Views/Components/ChordChartEditSheet.swift spacing: 6
+ios/Intrada/Views/Components/ClickBarLine.swift spacing: 24
+ios/Intrada/Views/Components/ClickControl.swift spacing: 32
+ios/Intrada/Views/Components/ConsistencyBars.swift spacing: 6
+ios/Intrada/Views/Components/ConsistencyBars.swift spacing: 9
+ios/Intrada/Views/Components/DraftItemRow.swift .padding(.leading, 20)
+ios/Intrada/Views/Components/DraftItemRow.swift spacing: 3
+ios/Intrada/Views/Components/EntryFocusCard.swift spacing: 2
+ios/Intrada/Views/Components/EntrySegmentsCard.swift spacing: 2
+ios/Intrada/Views/Components/FinishRecordSections.swift .padding(.vertical, 6)
+ios/Intrada/Views/Components/FinishRecordSections.swift spacing: 2
+ios/Intrada/Views/Components/FinishRecordSections.swift spacing: 6
+ios/Intrada/Views/Components/FormField.swift .padding(.vertical, 10)
+ios/Intrada/Views/Components/FormField.swift spacing: 4
+ios/Intrada/Views/Components/InlineSuggestionList.swift .padding(.vertical, 10)
+ios/Intrada/Views/Components/InlineSuggestionList.swift spacing: 10
+ios/Intrada/Views/Components/InstrumentIconPicker.swift spacing: 6
+ios/Intrada/Views/Components/KeyPicker.swift .padding(.bottom, 20)
+ios/Intrada/Views/Components/KeyPicker.swift .padding(.vertical, 10)
+ios/Intrada/Views/Components/KeyPicker.swift spacing: 2
+ios/Intrada/Views/Components/KeyPicker.swift spacing: 4
+ios/Intrada/Views/Components/KeyWheel.swift spacing: 1
+ios/Intrada/Views/Components/LibraryFilterMenu.swift spacing: 4
+ios/Intrada/Views/Components/LibraryItemCard.swift .padding(.horizontal, 7)
+ios/Intrada/Views/Components/LibraryItemCard.swift .padding(.leading, 20)
+ios/Intrada/Views/Components/LibraryItemCard.swift .padding(.top, 5)
+ios/Intrada/Views/Components/LibraryItemCard.swift .padding(.vertical, 3)
+ios/Intrada/Views/Components/LibraryItemCard.swift spacing: 3
+ios/Intrada/Views/Components/LibraryItemCard.swift spacing: 6
+ios/Intrada/Views/Components/LibrarySearchBar.swift .padding(.vertical, 9)
+ios/Intrada/Views/Components/LibrarySearchBar.swift spacing: 10
+ios/Intrada/Views/Components/LinkedItemPickerSheet.swift .padding(.horizontal, 10)
+ios/Intrada/Views/Components/LinkedItemPickerSheet.swift .padding(.vertical, 6)
+ios/Intrada/Views/Components/LinkedItemPickerSheet.swift spacing: 3
+ios/Intrada/Views/Components/MasteryDelta.swift .padding(.horizontal, 14)
+ios/Intrada/Views/Components/MasteryDelta.swift .padding(.horizontal, 16)
+ios/Intrada/Views/Components/MasteryDelta.swift .padding(.vertical, 11)
+ios/Intrada/Views/Components/MasteryDelta.swift .padding(.vertical, 14)
+ios/Intrada/Views/Components/MasteryDelta.swift spacing: 11
+ios/Intrada/Views/Components/MasteryDelta.swift spacing: 13
+ios/Intrada/Views/Components/MasteryDelta.swift spacing: 2
+ios/Intrada/Views/Components/MasteryDelta.swift spacing: 4
+ios/Intrada/Views/Components/MasteryDelta.swift spacing: 5
+ios/Intrada/Views/Components/MasteryDial.swift spacing: 2
+ios/Intrada/Views/Components/MasteryHeroCard.swift spacing: 5
+ios/Intrada/Views/Components/MasteryHeroCard.swift spacing: 6
+ios/Intrada/Views/Components/OfferChip.swift spacing: 16
+ios/Intrada/Views/Components/OfferChip.swift spacing: 6
+ios/Intrada/Views/Components/PickerRow.swift spacing: 2
+ios/Intrada/Views/Components/PracticeDefaultsSection.swift spacing: 2
+ios/Intrada/Views/Components/ProfileFields.swift spacing: 6
+ios/Intrada/Views/Components/RecentSessions.swift spacing: 4
+ios/Intrada/Views/Components/RepCounter.swift .padding(.vertical, 13)
+ios/Intrada/Views/Components/RepCounter.swift spacing: 5
+ios/Intrada/Views/Components/RepCounter.swift spacing: 7
+ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift .padding(.horizontal, 6)
+ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift .padding(.leading, 20)
+ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift .padding(.vertical, 2)
+ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift spacing: 3
+ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift spacing: 6
+ios/Intrada/Views/Components/ScanPageEntry.swift .padding(.vertical, 10)
+ios/Intrada/Views/Components/ScanPageEntry.swift spacing: 10
+ios/Intrada/Views/Components/ScanPageEntry.swift spacing: 2
+ios/Intrada/Views/Components/ScoreRing.swift spacing: 16
+ios/Intrada/Views/Components/ScoreSelector.swift spacing: 24
+ios/Intrada/Views/Components/ScoreSelector.swift spacing: 4
+ios/Intrada/Views/Components/SegmentedPills.swift .padding(.horizontal, 4)
+ios/Intrada/Views/Components/SegmentedPills.swift .padding(4)
+ios/Intrada/Views/Components/SegmentedPills.swift spacing: 4
+ios/Intrada/Views/Components/SegmentedProgress.swift spacing: 5
+ios/Intrada/Views/Components/SessionCard.swift .padding(.top, 2)
+ios/Intrada/Views/Components/SessionCard.swift spacing: 3
+ios/Intrada/Views/Components/SessionLengthControl.swift spacing: 2
+ios/Intrada/Views/Components/SessionOrientationBand.swift spacing: 12
+ios/Intrada/Views/Components/StartHereCard.swift spacing: 4
+ios/Intrada/Views/Components/TagChipInput.swift .padding(.vertical, 10)
+ios/Intrada/Views/Components/TagChipInput.swift spacing: 6
+ios/Intrada/Views/Components/TagPills.swift spacing: 6
+ios/Intrada/Views/Components/TempoStepper.swift spacing: 24
+ios/Intrada/Views/Components/TempoTrend.swift spacing: 2
+ios/Intrada/Views/Components/TickRow.swift spacing: 3
+ios/Intrada/Views/Components/TransportButton.swift spacing: 32
+ios/Intrada/Views/Components/TypeBadge.swift .padding(.horizontal, 10)
+ios/Intrada/Views/Components/TypeBadge.swift .padding(.vertical, 5)
+ios/Intrada/Views/Components/TypeBadge.swift spacing: 5
+ios/Intrada/Views/Components/UpNextHero.swift .padding(.top, 6)
+ios/Intrada/Views/Components/UpNextHero.swift spacing: 2
+ios/Intrada/Views/Components/UpNextHero.swift spacing: 6
+ios/Intrada/Views/Components/UsedInCard.swift spacing: 3
+ios/Intrada/Views/Components/VariationRowsSection.swift .padding(.top, 10)
+ios/Intrada/Views/Components/WeekStrip.swift spacing: 4
+ios/Intrada/Views/Components/WeekStrip.swift spacing: 5
+ios/Intrada/Views/Screens/FirstRunScreen.swift spacing: 2
+ios/Intrada/Views/Screens/FocusPlayerScreen.swift .padding(.horizontal, 14)
+ios/Intrada/Views/Screens/FocusPlayerScreen.swift .padding(18)
+ios/Intrada/Views/Screens/FocusPlayerScreen.swift spacing: 14
+ios/Intrada/Views/Screens/FocusPlayerScreen.swift spacing: 32
+ios/Intrada/Views/Screens/FocusPlayerScreen.swift spacing: 4
+ios/Intrada/Views/Screens/FocusPlayerScreen.swift spacing: 7
+ios/Intrada/Views/Screens/FocusPlayerScreen.swift spacing: 8
+ios/Intrada/Views/Screens/LibraryAddScreen.swift spacing: 6
+ios/Intrada/Views/Screens/LibraryDetail/ChordChartCard.swift .padding(.horizontal, 4)
+ios/Intrada/Views/Screens/LibraryDetail/ChordChartCard.swift spacing: 6
+ios/Intrada/Views/Screens/LibraryDetail/ExerciseHero.swift spacing: 6
+ios/Intrada/Views/Screens/LibraryDetail/RelatedExercisesCard.swift .padding(.leading, 20)
+ios/Intrada/Views/Screens/LibraryDetail/RelatedExercisesCard.swift spacing: 3
+ios/Intrada/Views/Screens/LibraryDetail/SectionsSection.swift spacing: 3
+ios/Intrada/Views/Screens/LibraryDetail/VariationsSection.swift spacing: 2
+ios/Intrada/Views/Screens/LibraryDetail/VariationsSection.swift spacing: 6
+ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift .padding(.top, 2)
+ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift spacing: 2
+ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift spacing: 3
+ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift spacing: 4
+ios/Intrada/Views/Screens/ProfileEditSheet.swift spacing: 3
+ios/Intrada/Views/Screens/ProfileScreen.swift .padding(.horizontal, 4)
+ios/Intrada/Views/Screens/ProfileScreen.swift spacing: 4
+ios/Intrada/Views/Screens/ReflectionSheet.swift spacing: 2
+ios/Intrada/Views/Screens/ReflectionSheet.swift spacing: 8
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift .padding(.horizontal, 6)
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift .padding(.top, 2)
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift .padding(.top, 4)
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift .padding(.vertical, 2)
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift spacing: 1
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift spacing: 2
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift spacing: 6
+ios/Intrada/Views/Screens/SessionSummaryScreen.swift .padding(.leading, 19)
+ios/Intrada/Views/Screens/SessionSummaryScreen.swift spacing: 10
+ios/Intrada/Views/Screens/SessionSummaryScreen.swift spacing: 11
+ios/Intrada/Views/Screens/SessionSummaryScreen.swift spacing: 2
+ios/Intrada/Views/Screens/SessionSummaryScreen.swift spacing: 4
+
+# Android
+android/app/src/main/kotlin/com/intrada/android/ui/AppFrame.kt padding(vertical = 6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/AppFrame.kt spacedBy(2.dp, Alignment.CenterVertically)
+android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt padding(top = 4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt spacedBy(2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/EntrySettingsScreen.kt spacedBy(2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/FirstRunScreen.kt spacedBy(2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/GlobalBanner.kt padding(vertical = 10.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ItemFormExercises.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ItemFormParts.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/KeyWheel.kt padding(top = IntradaSpacing.cardCompact, bottom = 20.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/KeyWheel.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/LibraryScreen.kt Spacer(Modifier.height(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PageParts.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PieceKeys.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PieceLinks.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PieceScreen.kt padding(horizontal = 10.dp, vertical = 5.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PieceSections.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PieceVariations.kt spacedBy(2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt padding(18.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PlayerRecordParts.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt padding(top = 2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt spacedBy(5.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProfileParts.kt padding(horizontal = 4.dp, vertical = IntradaSpacing.controlGap)
+android/app/src/main/kotlin/com/intrada/android/ui/ProfileParts.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProfileParts.kt spacedBy(6.dp, Alignment.CenterVertically)
+android/app/src/main/kotlin/com/intrada/android/ui/ProfileScreen.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt padding(horizontal = 14.dp, vertical = 11.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt padding(horizontal = 16.dp, vertical = 14.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt spacedBy(11.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt spacedBy(13.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt spacedBy(2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt spacedBy(5.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt spacedBy(9.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ProgressScreen.kt padding(32.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ReflectionWayParts.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt spacedBy(10.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt spacedBy(2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt spacedBy(5.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/ScreenScaffold.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/SessionDetailScreen.kt padding(top = 2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/SessionDetailScreen.kt spacedBy(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/SessionDetailScreen.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/SettingControls.kt padding(3.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/SummaryScreen.kt spacedBy(4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt padding(top = 4.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt padding(top = 7.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt spacedBy(2.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt spacedBy(6.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/components/FieldCard.kt padding(horizontal = IntradaSpacing.card, vertical = 10.dp)
+android/app/src/main/kotlin/com/intrada/android/ui/components/TagChip.kt spacedBy(5.dp)

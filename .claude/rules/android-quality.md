@@ -48,6 +48,9 @@ this file holds only how they read in Kotlin and Compose.
 - **Every colour, font, spacing and radius comes from `ui/Theme.kt`.** A token
   Android lacks is copied from `Theme.swift` with the same name and value,
   never invented. Genuine one-offs stay literal, as on iOS.
+- **New screens use catalogue components and theme values only**;
+  `scripts/check-theme-values.sh` fails a raw colour or spacing number, and a
+  genuine one-off goes on its allowlist with a reason (#2699).
 - **No `MaterialTheme` colours or Material components** standing in for an
   intrada primitive.
 - **Reach for a component in `design/components/README.md` first** (#2620);

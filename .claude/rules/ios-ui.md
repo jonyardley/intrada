@@ -47,6 +47,10 @@ push to the open PR (#1891). The Android half follows
    `SectionTitle` and `FieldLabel`. Spacing, icon sizes, opacity, shadows and
    motion come from their `Theme.swift` and `Motion.swift` tokens too.
 
+New screens are built from the catalogue components (`design/components/README.md`)
+and theme values only; `scripts/check-theme-values.sh` fails a raw colour or
+spacing number, and a genuine one-off goes on its allowlist with a reason (#2699).
+
 Deviation is allowed only in an explicit redesign, a flagged conversation
 (Claude Design first, then the plan comment) that updates the tokens and
 primitives in `Theme.swift`, not a clone in one view.

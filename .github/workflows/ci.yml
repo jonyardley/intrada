@@ -800,6 +800,10 @@ jobs:
       # token stays out of the screens (#1941).
       - name: Faint ink stays on eyebrows
         run: bash scripts/check-faint-ink.sh
+      # The code is the design kit, so a typed colour or spacing number lets a
+      # screen drift from the theme while every other check stays green (#2699).
+      - name: Screens take colours and spacing from the theme
+        run: bash scripts/check-theme-values.sh
       # Theme.swift is the token source and the design system page only shows
       # it, so a colour the page lacks is drift nothing else sees (#2603).
       - name: Every Theme.swift colour is on the design system page
