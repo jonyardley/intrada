@@ -30,8 +30,8 @@ push to the open PR (#1891). The Android half follows
 
 1. Every colour, font, spacing and radius traces to `IntradaColor`,
    `IntradaFont`, `IntradaSpacing` or `IntradaRadius`: never a raw hex,
-   `.padding(16)` or `cornerRadius: 12`. Genuine one-offs (a fixed component
-   height, a 2pt baseline nudge) stay literal.
+   `.padding(16)` or `cornerRadius: 12`. A genuine one-off size (a fixed
+   component height) stays literal; a colour or spacing value never does.
 2. Reuse before creating: read the component's page in
    `design/components/README.md` before using or changing it; a change to a
    component starts with its page (#2620). Parts
@@ -46,6 +46,12 @@ push to the open PR (#1891). The Android half follows
    capitals, no screen-local size; section titles, field labels and toggle titles go through
    `SectionTitle` and `FieldLabel`. Spacing, icon sizes, opacity, shadows and
    motion come from their `Theme.swift` and `Motion.swift` tokens too.
+
+New screens are built from the catalogue components (`design/components/README.md`)
+and theme values only; `scripts/check-theme-values.sh` fails a raw colour or
+spacing number (#2699). A value the theme lacks becomes a token in both theme
+files; the allowlist holds only what existed on 18 October 2026 and shrinks
+under #2706.
 
 Deviation is allowed only in an explicit redesign, a flagged conversation
 (Claude Design first, then the plan comment) that updates the tokens and
