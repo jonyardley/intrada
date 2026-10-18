@@ -163,8 +163,8 @@ impl Play {
 }
 
 /// What is planned for one item: enough to start practising it, and nothing
-/// about how it went. A session entry, a routine row and a week's row all hold
-/// one (#2582).
+/// about how it went. A session entry holds one; routines and the week will
+/// hold a list of them (#2582).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PlannedItem {
