@@ -663,7 +663,7 @@ mod tests {
     /// 200 items and 100 sessions of six entries, the size step 1 measured (#1801).
     fn a_musicians_library() -> Model {
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, Play, PracticeSession, SetlistEntry,
+            CompletionStatus, EntryStatus, PlannedItem, Play, PracticeSession, SetlistEntry,
         };
         let mut model = Model::default();
         let samples = crate::sample::sample_items();
@@ -692,9 +692,12 @@ mod tests {
                         let item = &model.items[((s * 6 + e) % 200) as usize];
                         SetlistEntry {
                             id: format!("se{s:03}_{e}"),
-                            item_id: item.id.clone(),
+                            plan: PlannedItem {
+                                item_id: item.id.clone(),
+                                item_type: item.kind.clone(),
+                                ..SetlistEntry::fixture().plan
+                            },
                             item_title: item.title.clone(),
-                            item_type: item.kind.clone(),
                             position: e as usize,
                             duration_secs: 300,
                             status: EntryStatus::Completed,

@@ -19,8 +19,8 @@ pub use app::{AppEffect, Effect, Event, Intrada};
 pub use domain::item::{Item, ItemEvent, ItemKind, Modality, VariationEvent};
 pub use domain::key::{Accidental, Key, Letter};
 pub use domain::session::{
-    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionEvent, SessionStatus,
-    SetlistEntry,
+    ActiveSession, CompletionStatus, EntryStatus, PlannedItem, PracticeSession, SessionEvent,
+    SessionStatus, SetlistEntry,
 };
 pub use domain::types::{
     CreateItem, KeyEdit, LibraryData, LibrarySort, ListQuery, SessionsData, SortDirection,

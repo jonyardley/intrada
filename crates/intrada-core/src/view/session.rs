@@ -164,14 +164,15 @@ impl PlayLabels<'_> {
 
     pub fn plan(&self, entry: &SetlistEntry) -> Option<String> {
         let sections: Vec<&str> = entry
+            .plan
             .segments
             .iter()
             .map(|s| s.section_id.as_str())
             .collect();
         Self::joined(self.parts(
             &sections,
-            entry.planned_key.as_ref(),
-            &entry.planned_variation_ids,
+            entry.plan.key.as_ref(),
+            &entry.plan.variation_ids,
         ))
     }
 
@@ -286,24 +287,25 @@ fn target_reached(play: &Play) -> Option<bool> {
 pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryView {
     SetlistEntryView {
         id: entry.id.clone(),
-        item_id: entry.item_id.clone(),
+        item_id: entry.plan.item_id.clone(),
         item_title: entry.item_title.clone(),
-        item_type: entry.item_type.clone(),
+        item_type: entry.plan.item_type.clone(),
         position: entry.position,
         duration_display: format_duration_display(entry.duration_secs),
         status: entry.status.clone(),
         notes: entry.notes.clone(),
-        intention: entry.intention.clone(),
-        planned_duration_secs: entry.planned_duration_secs,
+        intention: entry.plan.intention.clone(),
+        planned_duration_secs: entry.plan.duration_secs,
         planned_duration_display: entry
-            .planned_duration_secs
+            .plan
+            .duration_secs
             .map(|secs| format_planned_duration(u64::from(secs))),
-        group_id: entry.group_id.clone(),
-        removable: !(entry.item_type == ItemKind::Piece && entry.group_id.is_some()),
-        planned_section_ids: entry.planned_section_ids(),
-        planned_variation_ids: entry.planned_variation_ids.clone(),
+        group_id: entry.plan.group_id.clone(),
+        removable: !(entry.plan.item_type == ItemKind::Piece && entry.plan.group_id.is_some()),
+        planned_section_ids: entry.plan.section_ids(),
+        planned_variation_ids: entry.plan.variation_ids.clone(),
         planned_label: labels.plan(entry),
-        planned_rep_target: entry.planned_rep_target,
+        planned_rep_target: entry.plan.rep_target,
         plays: entry
             .plays
             .iter()
@@ -311,7 +313,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .collect(),
         score_summary: entry.score_summary(),
         record: entry_record_view(entry, labels),
-        planned_key: entry.planned_key,
+        planned_key: entry.plan.key,
         plan_tags: Vec::new(),
     }
 }
@@ -340,13 +342,15 @@ pub(crate) fn plan_tags(
 fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordView {
     let read = session::intention_met_read(entry);
     let suggested_focus = entry
+        .plan
         .intention
         .as_deref()
-        .and_then(|text| session::suggest_focus(text, labels.named_sections(&entry.item_id)))
-        .filter(|suggested| entry.focus.as_ref() != Some(suggested))
+        .and_then(|text| session::suggest_focus(text, labels.named_sections(&entry.plan.item_id)))
+        .filter(|suggested| entry.plan.focus.as_ref() != Some(suggested))
         .map(|suggested| labels.focus(&suggested));
     EntryRecordView {
         segments: entry
+            .plan
             .segments
             .iter()
             .enumerate()
@@ -355,12 +359,12 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
                 label: labels.section(&s.section_id).unwrap_or_default(),
                 planned_secs: s.planned_secs,
                 planned_display: format_planned_duration(u64::from(s.planned_secs)),
-                can_add_minute: session::can_step_segment(&entry.segments, index, 1),
-                can_take_minute: session::can_step_segment(&entry.segments, index, -1),
+                can_add_minute: session::can_step_segment(&entry.plan.segments, index, 1),
+                can_take_minute: session::can_step_segment(&entry.plan.segments, index, -1),
             })
             .collect(),
-        can_add_section: session::can_add_segment(&entry.segments, entry.planned_duration_secs),
-        focus: entry.focus.as_ref().map(|f| labels.focus(f)),
+        can_add_section: session::can_add_segment(&entry.plan.segments, entry.plan.duration_secs),
+        focus: entry.plan.focus.as_ref().map(|f| labels.focus(f)),
         suggested_focus,
         intention_met: entry.intention_met.or(read),
         intention_met_read: entry.intention_met.is_none() && read.is_some(),
@@ -436,11 +440,11 @@ fn spelt_as(item: &Item, choices: &[KeyChoiceView], key: Option<Key>) -> Option<
 /// The builder's Key row: listed while there is a key besides the written
 /// one, so a key from last time can be set back to the written one.
 pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysView> {
-    let keys = key_choices(item, entry.planned_key.as_slice());
+    let keys = key_choices(item, entry.plan.key.as_slice());
     if keys.len() < 2 {
         return None;
     }
-    let current = spelt_as(item, &keys, entry.planned_key);
+    let current = spelt_as(item, &keys, entry.plan.key);
     let current_label = keys
         .iter()
         .find(|k| k.key == current)
@@ -561,9 +565,10 @@ fn shown_item_start(active: &ActiveSession) -> DateTime<Utc> {
 fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveRecordView {
     let current = active.current_entry();
     let segment = active.segment.as_ref().and_then(|clock| {
-        let here = current.segments.get(clock.index as usize)?;
+        let here = current.plan.segments.get(clock.index as usize)?;
         let label = labels.section(&here.section_id).unwrap_or_default();
         let next = current
+            .plan
             .segments
             .get(clock.index as usize + 1)
             .map(|s| labels.section(&s.section_id).unwrap_or_default());
@@ -619,7 +624,7 @@ fn finish_sheet_view(
     FinishSheetView {
         note_offers: session::note_offers(
             &draft.answers.note,
-            labels.named_sections(&entry.item_id),
+            labels.named_sections(&entry.plan.item_id),
         )
         .iter()
         .map(|p| labels.note_point(p, draft.answers.note_points.contains(&p.span)))
@@ -750,34 +755,37 @@ pub fn build_active_session_view(
 
     // Breadcrumb only applies to a related exercise practiced inside a block,
     // not the anchor piece itself.
-    let current_related_piece_title = (current.item_type != ItemKind::Piece)
-        .then_some(current.group_id.as_deref())
+    let current_related_piece_title = (current.plan.item_type != ItemKind::Piece)
+        .then_some(current.plan.group_id.as_deref())
         .flatten()
         .and_then(|group_id| {
             active
                 .entries
                 .iter()
-                .find(|e| e.item_type == ItemKind::Piece && e.group_id.as_deref() == Some(group_id))
+                .find(|e| {
+                    e.plan.item_type == ItemKind::Piece
+                        && e.plan.group_id.as_deref() == Some(group_id)
+                })
                 .map(|e| e.item_title.clone())
         });
 
     // O(1) via the caller's id→Item index (same one build_view uses for
     // linked-exercise lookups) rather than a linear scan over the library.
     let current_item_tempo = item_index
-        .get(current.item_id.as_str())
+        .get(current.plan.item_id.as_str())
         .and_then(|i| i.tempo.as_ref());
     let (current_item_tempo_line, current_item_tempo_line_spoken) =
         TempoWords::split(tempo_words::tempo_line(current_item_tempo));
 
     let click_seed_metre = item_index
-        .get(current.item_id.as_str())
+        .get(current.plan.item_id.as_str())
         .and_then(|i| i.metre.clone())
         .unwrap_or_default();
     let (click_seed_bpm, click_seed_sounds_target) =
         click_seed_metre.click_seed(current_item_tempo.and_then(|t| t.bpm));
     ActiveSessionView {
         current_item_title: current.item_title.clone(),
-        current_item_type: current.item_type.clone(),
+        current_item_type: current.plan.item_type.clone(),
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
@@ -800,14 +808,14 @@ pub fn build_active_session_view(
         current_key: open.and_then(|p| p.key),
         current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
         current_play_label: open.and_then(|p| labels.play(p)),
-        current_planned_duration_secs: current.planned_duration_secs,
+        current_planned_duration_secs: current.plan.duration_secs,
         next_item_title: active
             .entries
             .get(safe_index + 1)
             .map(|e| e.item_title.clone()),
-        current_item_intention: current.intention.clone(),
+        current_item_intention: current.plan.intention.clone(),
         current_item_notes: item_index
-            .get(current.item_id.as_str())
+            .get(current.plan.item_id.as_str())
             .and_then(|i| i.notes.clone()),
         current_related_piece_title,
         current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
@@ -922,14 +930,14 @@ fn session_changes(
         let Some(score) = entry.score_summary() else {
             continue;
         };
-        latest.retain(|(e, _)| e.item_id != entry.item_id);
+        latest.retain(|(e, _)| e.plan.item_id != entry.plan.item_id);
         latest.push((entry, score));
     }
     latest
         .into_iter()
         .map(|(entry, current)| {
-            let previous = before.get(&entry.item_id).and_then(|p| p.latest_score);
-            ScoreChange::new(&entry.item_id, &entry.item_title, previous, current)
+            let previous = before.get(&entry.plan.item_id).and_then(|p| p.latest_score);
+            ScoreChange::new(&entry.plan.item_id, &entry.item_title, previous, current)
         })
         .collect()
 }
@@ -959,7 +967,7 @@ pub fn session_to_view(
 
 fn format_item_count(entries: &[SetlistEntry]) -> String {
     let count = entries.len();
-    let all = |kind: ItemKind| entries.iter().all(|e| e.item_type == kind);
+    let all = |kind: ItemKind| entries.iter().all(|e| e.plan.item_type == kind);
     let (one, many) = if all(ItemKind::Piece) {
         ("piece", "pieces")
     } else if all(ItemKind::Exercise) {
@@ -1067,6 +1075,7 @@ fn join_played_fragments(fragments: &[String], max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::session::PlannedItem;
 
     #[test]
     fn the_length_line_counts_only_planned_minutes_against_today() {
@@ -1154,9 +1163,12 @@ mod tests {
     fn make_entry(id: &str, item_id: &str, title: &str, position: usize) -> SetlistEntry {
         SetlistEntry {
             id: id.to_string(),
-            item_id: item_id.to_string(),
+            plan: PlannedItem {
+                item_id: item_id.to_string(),
+                item_type: ItemKind::Piece,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: title.to_string(),
-            item_type: ItemKind::Piece,
             position,
             ..SetlistEntry::fixture()
         }
@@ -1172,11 +1184,14 @@ mod tests {
     ) -> SetlistEntryView {
         let entry = SetlistEntry {
             id: id.to_string(),
-            item_id: format!("item-{id}"),
+            plan: PlannedItem {
+                item_id: format!("item-{id}"),
+                item_type: kind,
+                duration_secs: secs,
+                group_id: group.map(str::to_string),
+                ..SetlistEntry::fixture().plan
+            },
             item_title: id.to_string(),
-            item_type: kind,
-            group_id: group.map(str::to_string),
-            planned_duration_secs: secs,
             ..SetlistEntry::fixture()
         };
         entry_to_view(&entry, &PlayLabels::new())
@@ -1372,7 +1387,7 @@ mod tests {
     #[test]
     fn entry_to_view_planned_duration_whole_minutes() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
-        entry.planned_duration_secs = Some(300);
+        entry.plan.duration_secs = Some(300);
         let view = entry_to_view(&entry, &PlayLabels::new());
         assert_eq!(view.planned_duration_display.as_deref(), Some("5 min"));
     }
@@ -1380,7 +1395,7 @@ mod tests {
     #[test]
     fn entry_to_view_planned_duration_partial_minutes() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
-        entry.planned_duration_secs = Some(90);
+        entry.plan.duration_secs = Some(90);
         let view = entry_to_view(&entry, &PlayLabels::new());
         assert_eq!(view.planned_duration_display.as_deref(), Some("1m 30s"));
     }
@@ -1388,12 +1403,12 @@ mod tests {
     #[test]
     fn entry_to_view_carries_the_plan_and_names_it() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
-        entry.planned_variation_ids = vec!["v-1".to_string(), "v-2".to_string()];
+        entry.plan.variation_ids = vec!["v-1".to_string(), "v-2".to_string()];
         let labels: PlayLabels = [("v-1", "Hands separately"), ("v-2", "Slow")]
             .into_iter()
             .collect();
         let view = entry_to_view(&entry, &labels);
-        assert_eq!(view.planned_variation_ids, entry.planned_variation_ids);
+        assert_eq!(view.planned_variation_ids, entry.plan.variation_ids);
         assert_eq!(
             view.planned_label.as_deref(),
             Some("Hands separately · Slow")
@@ -1663,7 +1678,7 @@ mod tests {
     #[test]
     fn active_session_view_draws_the_builder_target_or_the_musicians_default() {
         let mut targeted = make_entry("e1", "i1", "Scale", 0);
-        targeted.planned_rep_target = Some(7);
+        targeted.plan.rep_target = Some(7);
         targeted.plays = vec![Play {
             rep_target: Some(7),
             ..Play::fixture()
@@ -1748,7 +1763,7 @@ mod tests {
     #[test]
     fn active_session_view_promotes_current_item_intention() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
-        entry.intention = Some("evenness".to_string());
+        entry.plan.intention = Some("evenness".to_string());
         let active = ActiveSession {
             id: "as1".to_string(),
             entries: vec![entry],
@@ -1771,11 +1786,11 @@ mod tests {
     #[test]
     fn active_session_view_related_piece_title_for_grouped_exercise() {
         let mut exercise = make_entry("e1", "i1", "Scale", 0);
-        exercise.item_type = ItemKind::Exercise;
-        exercise.group_id = Some("g1".to_string());
+        exercise.plan.item_type = ItemKind::Exercise;
+        exercise.plan.group_id = Some("g1".to_string());
         let mut piece = make_entry("e2", "i2", "Clair de Lune", 1);
-        piece.item_type = ItemKind::Piece;
-        piece.group_id = Some("g1".to_string());
+        piece.plan.item_type = ItemKind::Piece;
+        piece.plan.group_id = Some("g1".to_string());
         let active = ActiveSession {
             id: "as1".to_string(),
             entries: vec![exercise, piece],
@@ -1806,7 +1821,7 @@ mod tests {
         // exercise the "ungrouped exercise" branch rather than short-circuiting
         // on the item_type check alone.
         let mut entry = make_entry("e1", "i1", "Scale", 0);
-        entry.item_type = ItemKind::Exercise;
+        entry.plan.item_type = ItemKind::Exercise;
         let active = ActiveSession {
             id: "as1".to_string(),
             entries: vec![entry],
@@ -1829,11 +1844,11 @@ mod tests {
     #[test]
     fn active_session_view_no_related_piece_title_when_current_is_the_anchor_piece() {
         let mut piece = make_entry("e1", "i1", "Clair de Lune", 0);
-        piece.item_type = ItemKind::Piece;
-        piece.group_id = Some("g1".to_string());
+        piece.plan.item_type = ItemKind::Piece;
+        piece.plan.group_id = Some("g1".to_string());
         let mut exercise = make_entry("e2", "i2", "Scale", 1);
-        exercise.item_type = ItemKind::Exercise;
-        exercise.group_id = Some("g1".to_string());
+        exercise.plan.item_type = ItemKind::Exercise;
+        exercise.plan.group_id = Some("g1".to_string());
         let active = ActiveSession {
             id: "as1".to_string(),
             entries: vec![piece, exercise],
@@ -2477,7 +2492,10 @@ mod tests {
                 .iter()
                 .enumerate()
                 .map(|(i, kind)| SetlistEntry {
-                    item_type: kind.clone(),
+                    plan: PlannedItem {
+                        item_type: kind.clone(),
+                        ..make_entry(&format!("e{i}"), &format!("i{i}"), "Item", i).plan
+                    },
                     ..make_entry(&format!("e{i}"), &format!("i{i}"), "Item", i)
                 })
                 .collect();
@@ -2795,8 +2813,11 @@ mod tests {
     #[test]
     fn played_summary_names_a_piece_plainly() {
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Piece,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Nocturne in E\u{266d}".to_string(),
-            item_type: ItemKind::Piece,
             status: EntryStatus::Completed,
             plays: vec![Play::fixture()],
             ..SetlistEntry::fixture()
@@ -2812,8 +2833,11 @@ mod tests {
     fn played_summary_names_the_only_variation_played() {
         let labels: PlayLabels = [("v-eb", "E\u{266d} major")].into_iter().collect();
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Arpeggios".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays: vec![labelled_play("p1", "v-eb")],
             ..SetlistEntry::fixture()
@@ -2831,8 +2855,11 @@ mod tests {
             .into_iter()
             .collect();
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Major scales".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays: vec![
                 labelled_play("p1", "v-c"),
@@ -2862,8 +2889,11 @@ mod tests {
             .collect();
         let labels = PlayLabels::new();
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Major scales".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays,
             ..SetlistEntry::fixture()
@@ -2891,8 +2921,11 @@ mod tests {
             .map(|(i, id)| labelled_play(&format!("p{i}"), id))
             .collect();
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Arpeggios".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays,
             ..SetlistEntry::fixture()
@@ -2908,15 +2941,21 @@ mod tests {
     fn played_summary_ignores_an_entry_that_was_never_attempted() {
         let entries = vec![
             SetlistEntry {
+                plan: PlannedItem {
+                    item_type: ItemKind::Exercise,
+                    ..SetlistEntry::fixture().plan
+                },
                 item_title: "Skipped exercise".to_string(),
-                item_type: ItemKind::Exercise,
                 status: EntryStatus::NotAttempted,
                 plays: vec![],
                 ..SetlistEntry::fixture()
             },
             SetlistEntry {
+                plan: PlannedItem {
+                    item_type: ItemKind::Piece,
+                    ..SetlistEntry::fixture().plan
+                },
                 item_title: "Nocturne in E\u{266d}".to_string(),
-                item_type: ItemKind::Piece,
                 status: EntryStatus::Completed,
                 plays: vec![Play::fixture()],
                 ..SetlistEntry::fixture()
@@ -2935,8 +2974,11 @@ mod tests {
     #[test]
     fn played_summary_ignores_a_skipped_entry_even_with_a_surviving_play() {
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Hanon No. 1".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Skipped,
             plays: vec![Play {
                 score: Some(6),
@@ -2955,8 +2997,11 @@ mod tests {
     #[test]
     fn played_summary_ignores_a_stray_tap_with_nothing_recorded() {
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Major scales".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays: vec![Play {
                 seconds: 2,
@@ -2977,8 +3022,11 @@ mod tests {
     fn played_summary_counts_only_plays_with_a_resolvable_label() {
         let labels: PlayLabels = [("v-c", "C")].into_iter().collect();
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Major scales".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays: vec![
                 labelled_play("p1", "v-c"),
@@ -3002,8 +3050,11 @@ mod tests {
     fn played_summary_deduplicates_a_repeated_variation() {
         let labels: PlayLabels = [("v-c", "C"), ("v-g", "G")].into_iter().collect();
         let entries = vec![SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Exercise,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Major scales".to_string(),
-            item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays: vec![
                 labelled_play("p1", "v-c"),
@@ -3021,8 +3072,11 @@ mod tests {
 
     fn piece_entry(title: &str) -> SetlistEntry {
         SetlistEntry {
+            plan: PlannedItem {
+                item_type: ItemKind::Piece,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: title.to_string(),
-            item_type: ItemKind::Piece,
             status: EntryStatus::Completed,
             plays: vec![Play::fixture()],
             ..SetlistEntry::fixture()
@@ -3084,8 +3138,11 @@ mod tests {
             .collect();
         let entries = vec![
             SetlistEntry {
+                plan: PlannedItem {
+                    item_type: ItemKind::Exercise,
+                    ..SetlistEntry::fixture().plan
+                },
                 item_title: "Major scales".to_string(),
-                item_type: ItemKind::Exercise,
                 status: EntryStatus::Completed,
                 plays: vec![
                     labelled_play("p1", "v-c"),
@@ -3151,8 +3208,11 @@ mod tests {
         let session = crate::domain::session::PracticeSession {
             id: "s1".to_string(),
             entries: vec![SetlistEntry {
+                plan: PlannedItem {
+                    item_type: ItemKind::Piece,
+                    ..SetlistEntry::fixture().plan
+                },
                 item_title: "Nocturne in E\u{266d}".to_string(),
-                item_type: ItemKind::Piece,
                 status: EntryStatus::Completed,
                 plays: vec![Play::fixture()],
                 ..SetlistEntry::fixture()

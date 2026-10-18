@@ -155,6 +155,7 @@ fn set_segments(m: &mut Model, id: &str, segments: Vec<Segment>) {
 
 fn minutes(m: &Model, index: usize) -> Vec<(String, u32)> {
     entries(m)[index]
+        .plan
         .segments
         .iter()
         .map(|s| (s.section_id.clone(), s.planned_secs / 60))
@@ -256,7 +257,7 @@ fn a_segment_must_name_a_live_section_of_the_item_once() {
     ] {
         set_segments(&mut m, &id, bad);
         assert!(m.last_error.is_some());
-        assert!(entries(&m)[0].segments.is_empty());
+        assert!(entries(&m)[0].plan.segments.is_empty());
     }
 }
 
@@ -274,7 +275,7 @@ fn one_planned_section_is_one_segment_of_the_planned_time() {
         },
     );
 
-    assert_eq!(entries(&m)[0].segments, [seg("s-b", 900)]);
+    assert_eq!(entries(&m)[0].plan.segments, [seg("s-b", 900)]);
 }
 
 #[test]
@@ -500,7 +501,7 @@ fn a_focus_is_refused_without_what_it_needs() {
     ] {
         set_focus(&mut m, &id, kind, section, target);
         assert!(m.last_error.is_some(), "{kind:?} {section:?} {target:?}");
-        assert_eq!(entries(&m)[0].focus, None);
+        assert_eq!(entries(&m)[0].plan.focus, None);
     }
 }
 
@@ -857,8 +858,8 @@ fn a_variation_on_a_two_minute_item_split_into_three_keeps_its_sections() {
 
     assert!(m.last_error.is_none(), "{:?}", m.last_error);
     let entry = &entries(&m)[0];
-    assert_eq!(entry.planned_section_ids(), ["s-a", "s-b", "s-coda"]);
-    assert_eq!(entry.planned_variation_ids, ["v-dot"]);
+    assert_eq!(entry.plan.section_ids(), ["s-a", "s-b", "s-coda"]);
+    assert_eq!(entry.plan.variation_ids, ["v-dot"]);
 }
 
 #[test]
@@ -891,7 +892,7 @@ fn an_unknown_variation_is_refused_and_plans_nothing() {
     );
 
     assert!(m.last_error.is_some());
-    assert!(entries(&m)[0].planned_variation_ids.is_empty());
+    assert!(entries(&m)[0].plan.variation_ids.is_empty());
 }
 
 #[test]
@@ -1010,7 +1011,7 @@ fn a_numbered_focus_sent_without_a_target_starts_from_the_core() {
         set_focus(&mut m, &id, kind, section, None);
         assert!(m.last_error.is_none(), "{:?}", m.last_error);
         assert_eq!(
-            entries(&m)[0].focus.as_ref().and_then(|f| f.target),
+            entries(&m)[0].plan.focus.as_ref().and_then(|f| f.target),
             Some(starts),
             "{kind:?} {section:?}"
         );
@@ -1119,7 +1120,7 @@ fn a_typed_tempo_the_click_cannot_play_suggests_nothing() {
 
 fn saved_session_playing(item_id: &str, way: PlayWay, started: DateTime<Utc>) -> PracticeSession {
     let mut entry = SetlistEntry::fixture();
-    entry.item_id = item_id.to_string();
+    entry.plan.item_id = item_id.to_string();
     entry.status = EntryStatus::Completed;
     entry.plays = vec![Play {
         section_id: way.section_id,
@@ -1178,8 +1179,8 @@ fn last_time_is_offered_and_one_tap_plans_it() {
 
     send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
     let entry = &entries(&m)[0];
-    assert_eq!(entry.planned_section_ids(), ["s-b"]);
-    assert_eq!(entry.planned_variation_ids, ["v-dot"]);
+    assert_eq!(entry.plan.section_ids(), ["s-b"]);
+    assert_eq!(entry.plan.variation_ids, ["v-dot"]);
 }
 
 #[test]
@@ -1293,8 +1294,8 @@ fn a_trouble_spot_lands_nameless_in_score_order() {
 fn every_field_set() -> ActiveSession {
     let mut entry = SetlistEntry::fixture();
     entry.status = EntryStatus::Completed;
-    entry.segments = vec![seg("s-a", 600), seg("s-b", 600)];
-    entry.focus = Some(IntentionFocus {
+    entry.plan.segments = vec![seg("s-a", 600), seg("s-b", 600)];
+    entry.plan.focus = Some(IntentionFocus {
         kind: FocusKind::Tempo,
         section_id: Some("s-a".to_string()),
         target: Some(84),
@@ -1782,7 +1783,7 @@ fn segment_minutes_past_the_planned_time_are_refused() {
     );
 
     assert!(m.last_error.is_some());
-    assert!(entries(&m)[0].segments.is_empty());
+    assert!(entries(&m)[0].plan.segments.is_empty());
 }
 
 #[test]
@@ -2091,6 +2092,7 @@ fn odd_seconds_stay_with_the_section_that_gives() {
     add_section(&mut m, &id, "c-coda");
 
     let secs: Vec<u32> = entries(&m)[0]
+        .plan
         .segments
         .iter()
         .map(|s| s.planned_secs)
@@ -2117,7 +2119,7 @@ fn removing_the_only_section_leaves_no_split() {
     remove_section(&mut m, &id, "c-b");
 
     assert!(m.last_error.is_none(), "{:?}", m.last_error);
-    assert!(entries(&m)[0].segments.is_empty());
+    assert!(entries(&m)[0].plan.segments.is_empty());
 }
 
 #[test]
@@ -2151,7 +2153,7 @@ fn a_section_from_another_piece_is_refused() {
     add_section(&mut m, &id, "s-coda");
 
     assert!(m.last_error.is_some());
-    assert_eq!(entries(&m)[0].segments.len(), 3);
+    assert_eq!(entries(&m)[0].plan.segments.len(), 3);
 }
 
 #[test]
@@ -2160,7 +2162,7 @@ fn removing_a_section_not_in_the_split_is_refused() {
     remove_section(&mut m, &id, "c-coda");
 
     assert!(m.last_error.is_some());
-    assert_eq!(entries(&m)[0].segments.len(), 3);
+    assert_eq!(entries(&m)[0].plan.segments.len(), 3);
 }
 
 #[test]
@@ -2170,7 +2172,7 @@ fn sections_are_only_added_while_building() {
     add_section(&mut m, &id, "c-coda");
 
     assert!(m.last_error.is_some());
-    assert_eq!(entries(&m)[0].segments.len(), 3);
+    assert_eq!(entries(&m)[0].plan.segments.len(), 3);
 }
 
 // ── Drills, keys and the scoring confirm (the rest of #2249) ──
@@ -2236,7 +2238,7 @@ fn building_clair(whole_piece_drill: bool) -> (Model, String) {
     );
     let id = entries(&m)
         .iter()
-        .find(|e| e.item_id == "clair")
+        .find(|e| e.plan.item_id == "clair")
         .expect("clair entry")
         .id
         .clone();
@@ -2271,7 +2273,10 @@ fn offered(m: &Model) -> Vec<(String, String, bool)> {
 fn adding_a_piece_brings_only_its_whole_piece_drills() {
     let (m, _) = building_clair(true);
 
-    let items: Vec<&str> = entries(&m).iter().map(|e| e.item_id.as_str()).collect();
+    let items: Vec<&str> = entries(&m)
+        .iter()
+        .map(|e| e.plan.item_id.as_str())
+        .collect();
     assert_eq!(items, ["ex-warm", "clair"]);
 }
 
@@ -2305,11 +2310,14 @@ fn ticking_a_drill_puts_it_in_a_block_with_its_piece() {
         },
     );
 
-    let items: Vec<&str> = entries(&m).iter().map(|e| e.item_id.as_str()).collect();
+    let items: Vec<&str> = entries(&m)
+        .iter()
+        .map(|e| e.plan.item_id.as_str())
+        .collect();
     assert_eq!(items, ["ex-arp", "clair"]);
-    let group = entries(&m)[1].group_id.clone();
+    let group = entries(&m)[1].plan.group_id.clone();
     assert!(group.is_some());
-    assert_eq!(entries(&m)[0].group_id, group);
+    assert_eq!(entries(&m)[0].plan.group_id, group);
     assert!(offered(&m)[0].2, "the ticked drill reads as added");
 }
 
@@ -2326,10 +2334,15 @@ fn a_drill_joins_the_block_the_piece_already_heads() {
         },
     );
 
-    let items: Vec<&str> = entries(&m).iter().map(|e| e.item_id.as_str()).collect();
+    let items: Vec<&str> = entries(&m)
+        .iter()
+        .map(|e| e.plan.item_id.as_str())
+        .collect();
     assert_eq!(items, ["ex-warm", "ex-pedal", "clair"]);
-    let groups: std::collections::HashSet<_> =
-        entries(&m).iter().map(|e| e.group_id.clone()).collect();
+    let groups: std::collections::HashSet<_> = entries(&m)
+        .iter()
+        .map(|e| e.plan.group_id.clone())
+        .collect();
     assert_eq!(groups.len(), 1);
 }
 
@@ -2576,7 +2589,7 @@ fn last_time_carries_its_key_into_the_plan() {
     send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
 
     assert_eq!(
-        entries(&m)[0].planned_key,
+        entries(&m)[0].plan.key,
         crate::domain::key::Key::parse("G major")
     );
     assert!(
@@ -2680,7 +2693,7 @@ fn the_written_key_is_stored_as_no_key_wherever_it_is_named() {
             key: d_flat_major(),
         },
     );
-    assert_eq!(entries(&m)[0].planned_key, None, "planning");
+    assert_eq!(entries(&m)[0].plan.key, None, "planning");
 
     let (mut m, id, play_id) = finishing_clair_in_d();
     let answers = ReflectionAnswers {
@@ -2791,7 +2804,7 @@ fn ticking_a_drill_already_in_the_session_forms_no_block() {
         },
     );
 
-    assert!(entries(&m).iter().all(|e| e.group_id.is_none()));
+    assert!(entries(&m).iter().all(|e| e.plan.group_id.is_none()));
     assert!(offered(&m)[0].2, "it reads as ticked");
 }
 
@@ -2970,7 +2983,8 @@ fn the_key_row_names_a_planned_key_outside_the_pieces_own() {
             .iter_mut()
             .find(|e| e.id == id)
             .expect("clair")
-            .planned_key = key("G major");
+            .plan
+            .key = key("G major");
     }
 
     let view = building_view(&m);
@@ -2990,7 +3004,7 @@ fn the_key_row_shows_for_a_planned_key_on_a_piece_that_keeps_none() {
     let mut m = building(&["p"]);
     let id = entry_id(&m, 0);
     if let SessionStatus::Building(b) = &mut m.session_status {
-        b.entries[0].planned_key = key("G major");
+        b.entries[0].plan.key = key("G major");
     }
 
     let view = building_view(&m);
@@ -3099,7 +3113,8 @@ fn the_key_row_spells_a_planned_key_as_the_piece_keeps_it() {
             .iter_mut()
             .find(|e| e.id == id)
             .expect("clair")
-            .planned_key = key("F sharp major");
+            .plan
+            .key = key("F sharp major");
     }
 
     let view = building_view(&m);

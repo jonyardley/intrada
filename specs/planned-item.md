@@ -73,8 +73,9 @@ What stays on the entry, and why:
 is, so a routine can be shown before the library loads.
 
 Starting a session from a list of plans is a copy:
-`SetlistEntry::from_plan(id, position, plan)` sets every played field to
-empty. The builder's existing entry constructor calls it, so there is one way
+`SetlistEntry::from_plan(id, position, item_title, plan)` sets every played
+field to empty. The title comes in beside the plan because it belongs to the
+entry until #2583. The builder's existing entry constructor calls it, so there is one way
 to make an entry.
 
 ## How routines and the week hold it

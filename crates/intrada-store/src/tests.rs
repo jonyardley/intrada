@@ -15,7 +15,7 @@ use intrada_core::persistence::{StoredItem, StoredPracticeSession, StoredRecords
 use intrada_core::sync::{RecordKey, RecordKind};
 use intrada_core::{
     Accidental, CompletionStatus, EntryStatus, Item, ItemKind, Key, Letter, Modality,
-    PersistenceOperation, PersistenceOutput, PracticeSession, SetlistEntry, Tempo,
+    PersistenceOperation, PersistenceOutput, PlannedItem, PracticeSession, SetlistEntry, Tempo,
 };
 use rusqlite::Connection;
 
@@ -253,18 +253,23 @@ fn tap(action: RepAction, time: &str) -> RepEvent {
 fn entry(id: &str) -> SetlistEntry {
     SetlistEntry {
         id: id.into(),
-        item_id: format!("item-{id}"),
+        plan: PlannedItem {
+            item_id: format!("item-{id}"),
+            item_type: ItemKind::Exercise,
+            intention: Some("evenness".into()),
+            focus: None,
+            duration_secs: Some(300),
+            group_id: None,
+            variation_ids: vec![],
+            rep_target: Some(5),
+            segments: vec![],
+            key: None,
+        },
         item_title: "Etude".into(),
-        item_type: ItemKind::Exercise,
         position: 0,
         duration_secs: 300,
         status: EntryStatus::Completed,
         notes: Some("good".into()),
-        intention: Some("evenness".into()),
-        planned_duration_secs: Some(300),
-        group_id: None,
-        planned_variation_ids: vec![],
-        planned_rep_target: Some(5),
         plays: vec![Play {
             id: format!("{id}-p1"),
             section_id: None,
@@ -285,13 +290,10 @@ fn entry(id: &str) -> SetlistEntry {
             score: Some(4),
             away: vec![],
         }],
-        segments: vec![],
-        focus: None,
         intention_met: None,
         felt: None,
         got_in_the_way: vec![],
         note_points: vec![],
-        planned_key: None,
     }
 }
 
@@ -569,7 +571,7 @@ fn v19_keeps_every_key_chart_and_session() {
     let session = store.sessions().pop().expect("a session");
     assert_eq!(session.capture_version, None);
     let entry = &session.entries[0];
-    assert_eq!(entry.planned_variation_ids, Vec::<String>::new());
+    assert_eq!(entry.plan.variation_ids, Vec::<String>::new());
     let play = &entry.plays[0];
     assert_eq!(play.score, Some(7));
     assert_eq!(play.variation_ids, Vec::<String>::new());
