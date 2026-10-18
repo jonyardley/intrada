@@ -30,8 +30,8 @@ push to the open PR (#1891). The Android half follows
 
 1. Every colour, font, spacing and radius traces to `IntradaColor`,
    `IntradaFont`, `IntradaSpacing` or `IntradaRadius`: never a raw hex,
-   `.padding(16)` or `cornerRadius: 12`. Genuine one-offs (a fixed component
-   height, a 2pt baseline nudge) stay literal.
+   `.padding(16)` or `cornerRadius: 12`. A genuine one-off size (a fixed
+   component height) stays literal; a colour or spacing value never does.
 2. Reuse before creating: read the component's page in
    `design/components/README.md` before using or changing it; a change to a
    component starts with its page (#2620). Parts
