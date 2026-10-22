@@ -2692,6 +2692,21 @@ mod tests {
         assert_eq!(view.tempo_display, Some(168));
     }
 
+    /// A variation named like a section keeps both tags (#2404).
+    #[test]
+    fn a_variation_named_like_a_section_keeps_both_tags() {
+        let segment = SegmentView {
+            section_id: "s1".to_string(),
+            label: "Dotted".to_string(),
+            planned_secs: 0,
+            planned_display: String::new(),
+            can_add_minute: false,
+            can_take_minute: false,
+        };
+        let tags = plan_tags(&[segment], std::iter::once("Dotted".to_string()), None);
+        assert_eq!(tags, vec!["Dotted", "Dotted"]);
+    }
+
     /// The history reads the beat the musician counted (#2543).
     #[test]
     fn a_plays_facts_read_its_tempo_in_the_metronomes_unit() {

@@ -500,7 +500,7 @@ struct SessionBuilderScreen: View {
     let tags = entry.planTags
     if !tags.isEmpty {
       FlowLayout(spacing: 6) {
-        ForEach(tags, id: \.self) { TagChip($0) }
+        ForEach(Array(tags.enumerated()), id: \.offset) { TagChip($0.element) }
       }
       .padding(.top, 4)
     }
