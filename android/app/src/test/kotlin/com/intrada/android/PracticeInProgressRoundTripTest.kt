@@ -23,7 +23,7 @@ import org.junit.Test
 
 class PracticeInProgressRoundTripTest {
     // A practice in progress with every plan field set crosses Kotlin's encoder into the core
-    // and back out as the saved copy, in field order (#846, #2582).
+    // and back out as the saved copy (#846, #2582).
     @Test
     fun aPracticeInProgressKeepsEveryPlanField() {
         val plan =
@@ -83,5 +83,6 @@ class PracticeInProgressRoundTripTest {
                     ((it.effect as? Effect.App)?.value as? AppEffect.SaveSessionInProgress)?.value
                 }
         assertEquals(plan, saved.entries.single().plan)
+        assertEquals(EntryStatus.NOTATTEMPTED, saved.entries.single().status)
     }
 }

@@ -89,7 +89,7 @@ its list.
 ## The three ways an entry is written down
 
 1. **Crash recovery (positional bincode).** The shape changes, so
-   `ActiveSession::BLOB_VERSION` goes from 8 to 9 in the core commit and the
+   `ActiveSession::BLOB_VERSION` goes from 8 to 9 in the core change and the
    pinned hex is re-recorded. The shells build their storage key from
    `session_blob_version()`, so they follow without an edit. A practice in
    progress at the moment of updating is lost once, as with every bump.

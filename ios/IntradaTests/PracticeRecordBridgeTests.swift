@@ -195,9 +195,9 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertEqual(entry.plays.first?.key, dMajor, "the confirmed key is what was played")
   }
 
-  /// A v8 blob with every new field set goes Swift to Rust on resume and
-  /// comes back Rust to Swift in the next saved copy, unchanged.
-  func testRealBridgeAV9PracticeInProgressRoundTripsWithEveryFieldSet() throws {
+  /// A practice in progress with every field set crosses Swift to Rust on
+  /// resume and comes back in the next saved copy, unchanged.
+  func testRealBridgeAPracticeInProgressRoundTripsWithEveryFieldSet() throws {
     let play = Play(
       id: "p1", sectionId: "s-a", key: nil, variationIds: [], startedAt: at(0), seconds: 0,
       repTarget: nil, repCount: nil, repHistory: nil, tempoChanges: [], achievedTempo: nil,
@@ -224,7 +224,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
     let clock = SegmentClock(
       index: 0, startedAt: at(0), allowanceSecs: 720, takenFromNextSecs: 120, leftOutSecs: 45)
     let blob = ActiveSession(
-      id: "v7", entries: [entry], currentIndex: 0, currentItemStartedAt: at(0),
+      id: "resumed", entries: [entry], currentIndex: 0, currentItemStartedAt: at(0),
       sessionStartedAt: at(0), reflection: nil, segment: clock)
     XCTAssertEqual(
       try ActiveSession.bincodeDeserialize(input: try blob.bincodeSerialize()), blob,
@@ -242,7 +242,8 @@ final class PracticeRecordBridgeTests: XCTestCase {
       }.first, "going away saves the copy")
 
     let back = try XCTUnwrap(saved.entries.first)
-    XCTAssertEqual(back.plan, plan, "every plan field crosses the bridge in order (#2582)")
+    XCTAssertEqual(back.plan, plan, "every plan field crosses the bridge (#2582)")
+    XCTAssertEqual(back.status, entry.status)
     XCTAssertEqual(back.intentionMet, entry.intentionMet)
     XCTAssertEqual(back.felt, entry.felt)
     XCTAssertEqual(back.gotInTheWay, entry.gotInTheWay)
