@@ -163,8 +163,7 @@ impl Play {
 }
 
 /// What is planned for one item: enough to start practising it, and nothing
-/// about how it went. A session entry holds one; routines and the week will
-/// hold a list of them (#2582).
+/// about how it went (#2582).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PlannedItem {
@@ -233,7 +232,6 @@ pub struct SetlistEntry {
 }
 
 impl SetlistEntry {
-    /// Starting from a plan is a copy: nothing about how it went comes along.
     pub fn from_plan(id: String, position: usize, item_title: &str, plan: PlannedItem) -> Self {
         Self {
             id,

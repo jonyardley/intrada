@@ -18,8 +18,8 @@ The specs that remain:
 - [`one-pass-create.md`](one-pass-create.md): a piece with its chart and exercises in one save
 - [`one-tap-start.md`](one-tap-start.md): today's plan in one tap
 - [`piece-from-photo.md`](piece-from-photo.md): a piece from a photo of the page
-- [`practice-defaults.md`](practice-defaults.md): default rep target and click start
 - [`planned-item.md`](planned-item.md): one planned-item shape for sessions, routines and the week
+- [`practice-defaults.md`](practice-defaults.md): default rep target and click start
 - [`practice-instruments.md`](practice-instruments.md): timer, rep counter and click
 - [`priority-items.md`](priority-items.md): priority items in place of goals
 - [`session-delete.md`](session-delete.md): deleting a saved session

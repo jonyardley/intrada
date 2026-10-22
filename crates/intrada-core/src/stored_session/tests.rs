@@ -481,8 +481,7 @@ fn a_v016_planned_section_reads_as_one_segment_of_the_planned_time() {
     );
 }
 
-/// Every plan field set, in the flat shape builds before #2582 wrote and this
-/// one still writes: the nested plan changes nothing on disk.
+/// The flat row every build writes, with every plan field set.
 const FULL_PLAN_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v-dotted"],"plannedRepTarget":5,"plays":[],"segments":[{"sectionId":"sec-a","plannedSecs":420},{"sectionId":"sec-b","plannedSecs":180}],"focus":{"kind":"tempo","sectionId":"sec-a","target":84},"gotInTheWay":[],"notePoints":[],"plannedKey":{"key":"Ab","modality":"major"}}]"#;
 
 fn full_plan() -> PlannedItem {
@@ -528,10 +527,11 @@ fn a_saved_row_reads_back_to_the_same_plan_field_by_field() {
     assert_eq!(plan.rep_target, expected.rep_target);
     assert_eq!(plan.segments, expected.segments);
     assert_eq!(plan.key, expected.key);
+    assert_eq!(plan, expected, "a new plan field is read too");
 }
 
 #[test]
-fn a_plan_writes_the_flat_row_builds_before_it_read() {
+fn a_plan_writes_the_same_flat_row() {
     let mut session = read(FULL_PLAN_ENTRY).session;
     session.entries[0].plan = full_plan();
     let written = session_to_stored(&session).expect("writes");

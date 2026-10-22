@@ -19,8 +19,8 @@ pub use flow::{update, upload_for, SyncEvent, SyncState};
 
 /// Bump when any synced type's JSON changes, then re-pin the bodies in
 /// `tests.rs`. An older app parks a record written at a newer version.
-/// No record has left a device yet (#2355), so version 1 is still whatever
-/// shape ships first: the nested session plan (#2582) re-pinned without a bump.
+/// No record has left a device yet (#2355), so version 1 is whatever shape
+/// ships first.
 pub const SCHEMA_VERSION: u32 = 1;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

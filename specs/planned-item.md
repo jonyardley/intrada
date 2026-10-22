@@ -12,7 +12,7 @@ What a session plans for an item lives only inside a session entry
 (`SetlistEntry`), mixed in with what then happened. Routines (#1348) and the
 week's practice set (#2579) need exactly the plan half as a list, and sync
 will need one record kind for each. Without a shared type, each of them grows
-its own copy of the same nine fields, and the copies drift the first time
+its own copy of the same ten fields, and the copies drift the first time
 someone adds a plan field.
 
 ## The type
@@ -89,7 +89,7 @@ its list.
 ## The three ways an entry is written down
 
 1. **Crash recovery (positional bincode).** The shape changes, so
-   `ActiveSession::BLOB_VERSION` goes from 8 to 9 in the first commit and the
+   `ActiveSession::BLOB_VERSION` goes from 8 to 9 in the core commit and the
    pinned hex is re-recorded. The shells build their storage key from
    `session_blob_version()`, so they follow without an edit. A practice in
    progress at the moment of updating is lost once, as with every bump.
