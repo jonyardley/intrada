@@ -216,7 +216,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       # nextest runs the same assertions as `cargo test` but with a smarter
       # scheduler: typically 40 to 50% faster.
-      - uses: taiki-e/install-action@v2.87.26
+      - uses: taiki-e/install-action@v2.87.28
         with:
           tool: cargo-llvm-cov,cargo-nextest
       # One instrumented run emits both the junit XML dorny/test-reporter
@@ -290,7 +290,7 @@ jobs:
         with:
           prefix-key: "clippy"
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: taiki-e/install-action@v2.87.26
+      - uses: taiki-e/install-action@v2.87.28
         with:
           tool: clippy-sarif,sarif-fmt
       # Run clippy with JSON output piped through clippy-sarif for GitHub
@@ -524,7 +524,7 @@ jobs:
           shared-key: android
           cache-on-failure: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: taiki-e/install-action@v2.87.26
+      - uses: taiki-e/install-action@v2.87.28
         with:
           tool: just,cargo-ndk@4.1.2
       # 21, not 17: Robolectric's API 36 sandbox needs it for the snapshot test.
@@ -602,7 +602,7 @@ jobs:
           shared-key: android
           cache-on-failure: true
           save-if: false
-      - uses: taiki-e/install-action@v2.87.22
+      - uses: taiki-e/install-action@v2.87.28
         with:
           tool: just,cargo-ndk@4.1.2
       - uses: actions/setup-java@v6
@@ -739,7 +739,7 @@ jobs:
           fetch-depth: 0
       # Pinned: typos dictionary updates can start flagging previously-clean
       # words, failing unrelated PRs. Bump deliberately, with mise.toml.
-      - uses: taiki-e/install-action@v2.87.26
+      - uses: taiki-e/install-action@v2.87.28
         with:
           tool: typos@1.48,cargo-shear@1.13,cargo-deny@0.20.2
       # actionlint is a Go binary, not a crate: install-action carries no entry
@@ -800,6 +800,10 @@ jobs:
       # token stays out of the screens (#1941).
       - name: Faint ink stays on eyebrows
         run: bash scripts/check-faint-ink.sh
+      # The code is the design kit, so a typed colour or spacing number lets a
+      # screen drift from the theme while every other check stays green (#2699).
+      - name: Screens take colours and spacing from the theme
+        run: bash scripts/check-theme-values.sh
       # Theme.swift is the token source and the design system page only shows
       # it, so a colour the page lacks is drift nothing else sees (#2603).
       - name: Every Theme.swift colour is on the design system page
