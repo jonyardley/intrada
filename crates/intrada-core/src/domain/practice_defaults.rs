@@ -40,6 +40,13 @@ pub struct PracticeDefaults {
     pub session_length_mins: Option<u16>,
 }
 
+impl PracticeDefaults {
+    /// The blob is positional bincode, so a build reads only a blob of its
+    /// own shape. The shell names its storage key by this number, so a shape
+    /// change bumps it here and nowhere else (#2216). Version 1 is retired.
+    pub const BLOB_VERSION: u32 = 2;
+}
+
 impl Default for PracticeDefaults {
     fn default() -> Self {
         PracticeDefaults {
@@ -326,9 +333,11 @@ mod tests {
 
     const PINNED_DEFAULTS_HEX: &str = "0501000000011900";
     const PINNED_UNTOUCHED_DEFAULTS_HEX: &str = "0a0000000000";
+    const PINNED_BLOB_VERSION: u32 = 2;
 
-    /// Positional bincode: a new field breaks every stored blob (#1345).
-    /// Bump `Store.practiceDefaultsKey`, then re-pin.
+    /// Positional bincode: a new field breaks every stored blob (#1345). The
+    /// shell's key follows `BLOB_VERSION` (#2216); the test cannot tell a
+    /// re-pin with a bump from one without, so the failure message is the protocol.
     #[test]
     fn practice_defaults_blob_wire_is_pinned() {
         use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
@@ -340,8 +349,9 @@ mod tests {
             BincodeFfiFormat::serialize(&mut bytes, &defaults).expect("serialize");
             let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
             assert_eq!(
-                hex, pinned,
-                "the practice defaults blob changed shape: bump Store.practiceDefaultsKey, then re-pin"
+                (PracticeDefaults::BLOB_VERSION, hex.as_str()),
+                (PINNED_BLOB_VERSION, pinned),
+                "the practice defaults blob changed shape: bump PracticeDefaults::BLOB_VERSION and PINNED_BLOB_VERSION, then re-pin the hex. Never only the hex."
             );
             let back: PracticeDefaults =
                 BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
