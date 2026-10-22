@@ -16,8 +16,9 @@ use crate::model::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
     FeltChoiceView, FinishRowView, FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView,
     LastTimeView, NotePointView, ObstacleChoiceView, PickerVariationView, PlayView,
-    PracticeSessionView, ReflectionTempoView, ReflectionView, SectionView, SegmentClockView,
-    SegmentView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
+    PracticeSessionView, ReflectionTempoView, ReflectionView, SectionView, SegmentBarView,
+    SegmentClockView, SegmentProgress, SegmentView, SetlistBlockView, SetlistEntryView,
+    SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -610,7 +611,39 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
                     session::STAY_SECS / 60
                 )
             });
+        let running = clock.index as usize;
+        let bars = current
+            .plan
+            .segments
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let taken_secs = if i == running + 1 {
+                    clock.taken_from_next_secs
+                } else {
+                    0
+                };
+                SegmentBarView {
+                    label: labels.section(&s.section_id).unwrap_or_default(),
+                    progress: match i.cmp(&running) {
+                        std::cmp::Ordering::Less => SegmentProgress::Done,
+                        std::cmp::Ordering::Equal => SegmentProgress::Running,
+                        std::cmp::Ordering::Greater => SegmentProgress::ToCome,
+                    },
+                    planned_secs: s.planned_secs,
+                    taken_secs,
+                    caption: (taken_secs > 0).then(|| {
+                        format!(
+                            "{} to {label}",
+                            format_planned_duration(u64::from(taken_secs))
+                        )
+                    }),
+                }
+            })
+            .collect();
         Some(SegmentClockView {
+            position_label: format!("Section {} of {}", running + 1, current.plan.segments.len()),
+            bars,
             move_label: next.as_ref().map(|next| format!("On to {next}")),
             stay_label,
             ends_at: ends_at.to_rfc3339(),

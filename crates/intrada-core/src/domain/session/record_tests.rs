@@ -3,7 +3,7 @@ use crate::app::{Event, Intrada};
 use crate::domain::item::Item;
 use crate::domain::section::{BarRange, ItemSection, SectionKind};
 use crate::domain::variation::Variation;
-use crate::model::{ActiveSessionView, BuildingSetlistView};
+use crate::model::{ActiveSessionView, BuildingSetlistView, SegmentProgress};
 use crux_core::App;
 
 fn t(secs: i64) -> DateTime<Utc> {
@@ -332,6 +332,79 @@ fn stay_on_a_takes_two_minutes_from_b() {
     );
     let clock = active_view(&m).record.segment.expect("segment clock");
     assert_eq!(clock.ends_at, t(720 + 480).to_rfc3339());
+}
+
+fn strip(m: &Model) -> Vec<(String, SegmentProgress, u32, u32, Option<String>)> {
+    active_view(m)
+        .record
+        .segment
+        .expect("segment clock")
+        .bars
+        .into_iter()
+        .map(|b| (b.label, b.progress, b.planned_secs, b.taken_secs, b.caption))
+        .collect()
+}
+
+fn bar(
+    label: &str,
+    progress: SegmentProgress,
+    taken_secs: u32,
+    caption: Option<&str>,
+) -> (String, SegmentProgress, u32, u32, Option<String>) {
+    (
+        label.to_string(),
+        progress,
+        600,
+        taken_secs,
+        caption.map(str::to_string),
+    )
+}
+
+#[test]
+fn the_strip_shows_every_section_done_running_or_to_come() {
+    let mut m = practising_a_then_b();
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Running, 0, None),
+            bar("B", SegmentProgress::ToCome, 0, None)
+        ]
+    );
+    let spoken = active_view(&m).record.segment.map(|c| c.position_label);
+    assert_eq!(spoken.as_deref(), Some("Section 1 of 2"));
+
+    send(
+        &mut m,
+        SessionEvent::MoveToNextSegment {
+            now: t(600),
+            reading: TempoReading::silent(),
+        },
+    );
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Done, 0, None),
+            bar("B", SegmentProgress::Running, 0, None)
+        ]
+    );
+    let spoken = active_view(&m).record.segment.map(|c| c.position_label);
+    assert_eq!(spoken.as_deref(), Some("Section 2 of 2"));
+}
+
+#[test]
+fn staying_on_a1_shows_the_minutes_taken_on_bs_bar() {
+    let mut m = practising_a_then_b();
+
+    send(&mut m, SessionEvent::StayOnSegment);
+
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Running, 0, None),
+            bar("B", SegmentProgress::ToCome, 120, Some("2 min to A1"))
+        ]
+    );
+    crate::domain::types::assert_round_trips(active_view(&m).record);
 }
 
 #[test]

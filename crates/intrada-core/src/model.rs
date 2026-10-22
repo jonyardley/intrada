@@ -1012,6 +1012,32 @@ pub struct SegmentClockView {
     pub move_label: Option<String>,
     /// "Stay on A1, 2 more minutes taken from B"; `None` when B cannot give it.
     pub stay_label: Option<String>,
+    /// Every section of the item, in order (#2394).
+    pub bars: Vec<SegmentBarView>,
+    /// "Section 2 of 3".
+    pub position_label: String,
+}
+
+/// One section on the practice screen's strip.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SegmentBarView {
+    pub label: String,
+    pub progress: SegmentProgress,
+    pub planned_secs: u32,
+    /// What Stay has taken from this section for the one running.
+    pub taken_secs: u32,
+    /// "2 min to A1" while time is taken.
+    pub caption: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum SegmentProgress {
+    Done,
+    Running,
+    ToCome,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
