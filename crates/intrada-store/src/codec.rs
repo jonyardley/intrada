@@ -60,14 +60,29 @@ pub(crate) fn item_kind_text(kind: &ItemKind) -> &'static str {
     }
 }
 
-pub(crate) fn item_kind(raw: &str, unreadable: &mut Unreadable) -> ItemKind {
+fn known_item_kind(raw: &str) -> Option<ItemKind> {
     match raw {
-        "piece" => ItemKind::Piece,
-        "exercise" => ItemKind::Exercise,
-        _ => {
-            unknown("ItemKind", raw, unreadable);
-            ItemKind::Piece
-        }
+        "piece" => Some(ItemKind::Piece),
+        "exercise" => Some(ItemKind::Exercise),
+        _ => None,
+    }
+}
+
+const UNKNOWN_ITEM_KIND: ItemKind = ItemKind::Piece;
+
+pub(crate) fn item_kind(raw: &str, unreadable: &mut Unreadable) -> ItemKind {
+    known_item_kind(raw).unwrap_or_else(|| {
+        unknown("ItemKind", raw, unreadable);
+        UNKNOWN_ITEM_KIND
+    })
+}
+
+/// Text a newer build wrote loads as the fallback, so saving the fallback
+/// keeps the text until the musician picks a kind this build knows (#2437).
+pub(crate) fn item_kind_to_write(kind: &ItemKind, stored: Option<String>) -> String {
+    match stored {
+        Some(text) if known_item_kind(&text).is_none() && *kind == UNKNOWN_ITEM_KIND => text,
+        _ => item_kind_text(kind).to_string(),
     }
 }
 
@@ -78,14 +93,27 @@ pub(crate) fn section_kind_text(kind: SectionKind) -> &'static str {
     }
 }
 
-pub(crate) fn section_kind(raw: &str, unreadable: &mut Unreadable) -> SectionKind {
+fn known_section_kind(raw: &str) -> Option<SectionKind> {
     match raw {
-        "form" => SectionKind::Form,
-        "trouble_spot" => SectionKind::TroubleSpot,
-        _ => {
-            unknown("SectionKind", raw, unreadable);
-            SectionKind::Form
-        }
+        "form" => Some(SectionKind::Form),
+        "trouble_spot" => Some(SectionKind::TroubleSpot),
+        _ => None,
+    }
+}
+
+const UNKNOWN_SECTION_KIND: SectionKind = SectionKind::Form;
+
+pub(crate) fn section_kind(raw: &str, unreadable: &mut Unreadable) -> SectionKind {
+    known_section_kind(raw).unwrap_or_else(|| {
+        unknown("SectionKind", raw, unreadable);
+        UNKNOWN_SECTION_KIND
+    })
+}
+
+pub(crate) fn section_kind_to_write(kind: SectionKind, stored: Option<String>) -> String {
+    match stored {
+        Some(text) if known_section_kind(&text).is_none() && kind == UNKNOWN_SECTION_KIND => text,
+        _ => section_kind_text(kind).to_string(),
     }
 }
 
@@ -96,15 +124,24 @@ fn modality_text(modality: Modality) -> &'static str {
     }
 }
 
-fn modality(raw: &str, unreadable: &mut Unreadable) -> Option<Modality> {
+fn known_modality(raw: &str) -> Option<Modality> {
     match raw {
         "major" => Some(Modality::Major),
         "minor" => Some(Modality::Minor),
-        _ => {
-            unknown("Modality", raw, unreadable);
-            None
-        }
+        _ => None,
     }
+}
+
+fn modality(raw: &str, unreadable: &mut Unreadable) -> Option<Modality> {
+    let mode = known_modality(raw);
+    if mode.is_none() {
+        unknown("Modality", raw, unreadable);
+    }
+    mode
+}
+
+pub(crate) fn is_unknown_modality(raw: Option<&str>) -> bool {
+    raw.is_some_and(|raw| known_modality(raw).is_none())
 }
 
 fn chord_quality_text(quality: ChordQuality) -> &'static str {
@@ -127,6 +164,17 @@ fn chord_quality_text(quality: ChordQuality) -> &'static str {
 }
 
 fn chord_quality(raw: &str, unreadable: &mut Unreadable) -> Option<ChordQuality> {
+    let quality = known_chord_quality(raw);
+    if quality.is_none() {
+        unknown("ChordQuality", raw, unreadable);
+    }
+    quality
+}
+
+/// The core's reading of a chord symbol it cannot name.
+const UNKNOWN_CHORD_QUALITY: ChordQuality = ChordQuality::Other;
+
+fn known_chord_quality(raw: &str) -> Option<ChordQuality> {
     let quality = match raw {
         "maj7" => ChordQuality::Maj7,
         "dom7" => ChordQuality::Dom7,
@@ -142,10 +190,7 @@ fn chord_quality(raw: &str, unreadable: &mut Unreadable) -> Option<ChordQuality>
         "aug" => ChordQuality::Aug,
         "dom7Sharp5" => ChordQuality::Dom7Sharp5,
         "other" => ChordQuality::Other,
-        _ => {
-            unknown("ChordQuality", raw, unreadable);
-            return None;
-        }
+        _ => return None,
     };
     Some(quality)
 }
@@ -169,6 +214,25 @@ pub(crate) fn key(
     let text = text?;
     let mode = modality_raw.and_then(|raw| modality(raw, unreadable));
     key_from_stored(Some(text), mode)
+}
+
+/// The stored key stays, verbatim, when the core could not read it and the
+/// save holds no key (#2106), or when its mode is one a newer build wrote and
+/// the save holds the key as it loaded (#2437).
+pub(crate) fn kept_key(
+    text: &str,
+    modality_raw: Option<&str>,
+    saving: Option<&Key>,
+) -> Option<StoredKeyJson> {
+    let loaded = key(Some(text), modality_raw, &mut Vec::new());
+    let keep = match &loaded {
+        None => saving.is_none(),
+        Some(_) => is_unknown_modality(modality_raw) && loaded.as_ref() == saving,
+    };
+    keep.then(|| StoredKeyJson {
+        key: text.to_string(),
+        modality: modality_raw.map(str::to_string),
+    })
 }
 
 pub(crate) fn stored_key(key: &Key) -> StoredKeyJson {
@@ -274,12 +338,25 @@ pub(crate) struct StoredChordSymbol {
     pub raw: String,
 }
 
+/// `stored` is the chart on disk, if it reads, so a key or chord quality the
+/// core could not read survives a save that leaves it alone.
 pub(crate) fn encode_chord_chart(
     chart: Option<&ChordChart>,
-    key_if_unreadable: Option<StoredKeyJson>,
+    stored: Option<&StoredChart>,
 ) -> Result<Option<String>, serde_json::Error> {
     let Some(chart) = chart else { return Ok(None) };
-    let key = chart.key.as_ref().map(stored_key).or(key_if_unreadable);
+    let key = stored
+        .filter(|stored| !stored.key.is_empty())
+        .and_then(|stored| kept_key(&stored.key, Some(&stored.modality), chart.key.as_ref()))
+        .or_else(|| chart.key.as_ref().map(stored_key));
+    let unknown_qualities: Vec<&StoredChordSymbol> = stored
+        .into_iter()
+        .flat_map(|stored| &stored.sections)
+        .flat_map(|section| &section.bars)
+        .flat_map(|bar| &bar.chords)
+        .map(|chord| &chord.symbol)
+        .filter(|symbol| known_chord_quality(&symbol.quality).is_none())
+        .collect();
     let stored = StoredChart {
         key: key.as_ref().map(|k| k.key.clone()).unwrap_or_default(),
         modality: key
@@ -301,7 +378,7 @@ pub(crate) fn encode_chord_chart(
                             .map(|chord| StoredChartChord {
                                 symbol: StoredChordSymbol {
                                     root: chord.symbol.root,
-                                    quality: chord_quality_text(chord.symbol.quality).to_string(),
+                                    quality: quality_to_write(&chord.symbol, &unknown_qualities),
                                     extensions: chord.symbol.extensions.clone(),
                                     bass: chord.symbol.bass,
                                     raw: chord.symbol.raw.clone(),
@@ -314,6 +391,25 @@ pub(crate) fn encode_chord_chart(
             .collect(),
     };
     encode_json(&stored).map(Some)
+}
+
+/// A quality a newer build wrote loads as the fallback, so a chord saved as it
+/// loaded keeps the stored text, matched by its symbol so an edit elsewhere in
+/// the chart does not lose it (#2437).
+fn quality_to_write(symbol: &ChordSymbol, unknown: &[&StoredChordSymbol]) -> String {
+    unknown
+        .iter()
+        .find(|stored| {
+            symbol.quality == UNKNOWN_CHORD_QUALITY
+                && stored.root == symbol.root
+                && stored.extensions == symbol.extensions
+                && stored.bass == symbol.bass
+                && stored.raw == symbol.raw
+        })
+        .map_or_else(
+            || chord_quality_text(symbol.quality).to_string(),
+            |stored| stored.quality.clone(),
+        )
 }
 
 pub(crate) fn decode_chord_chart(
@@ -339,9 +435,8 @@ pub(crate) fn decode_chord_chart(
                             .map(|chord| ChartChord {
                                 symbol: ChordSymbol {
                                     root: chord.symbol.root,
-                                    // An unknown quality falls back to arpeggio.
                                     quality: chord_quality(&chord.symbol.quality, unreadable)
-                                        .unwrap_or(ChordQuality::Other),
+                                        .unwrap_or(UNKNOWN_CHORD_QUALITY),
                                     extensions: chord.symbol.extensions,
                                     bass: chord.symbol.bass,
                                     raw: chord.symbol.raw,

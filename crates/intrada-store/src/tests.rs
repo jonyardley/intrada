@@ -1036,6 +1036,179 @@ fn an_unknown_stored_value_falls_back_and_is_named() {
     }
 }
 
+// ── Values a newer build wrote survive a save that leaves them alone (#2437) ──
+
+#[test]
+fn an_unknown_kind_survives_a_save_that_leaves_it_alone() {
+    let mut store = upgraded(
+        migrations::latest(),
+        &format!(
+            "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('p1', 'Etude', 'etude', '[]', '{EARLY}', '{EARLY}')"
+        ),
+    );
+    let mut item = store.item("p1");
+    assert_eq!(item.kind, ItemKind::Piece);
+    item.title = "Etude, renamed".into();
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT kind FROM item WHERE id = 'p1'"),
+        Some("etude".into())
+    );
+
+    item.kind = ItemKind::Exercise;
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT kind FROM item WHERE id = 'p1'"),
+        Some("exercise".into()),
+        "a real choice replaces it"
+    );
+}
+
+#[test]
+fn an_unknown_section_kind_survives_a_save_that_leaves_it_alone() {
+    let mut store = upgraded(
+        migrations::latest(),
+        &format!(
+            "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('p1', 'Tune', 'piece', '[]', '{EARLY}', '{EARLY}');
+             INSERT INTO section (id, item_id, name, kind, position, updated_at)
+             VALUES ('s1', 'p1', 'A', 'coda', 0, '{EARLY}');"
+        ),
+    );
+    let mut item = store.item("p1");
+    assert_eq!(item.sections[0].kind, SectionKind::Form);
+    item.sections[0].name = "Coda".into();
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT kind FROM section WHERE id = 's1'"),
+        Some("coda".into())
+    );
+
+    item.sections[0].kind = SectionKind::TroubleSpot;
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT kind FROM section WHERE id = 's1'"),
+        Some("trouble_spot".into()),
+        "a real choice replaces it"
+    );
+}
+
+fn stored_chart(store: &Store) -> serde_json::Value {
+    serde_json::from_str(&store.raw("SELECT chord_chart FROM item").expect("a chart"))
+        .expect("json")
+}
+
+#[test]
+fn an_unknown_chord_quality_survives_a_save_that_leaves_the_chord_alone() {
+    let chart = r#"{"key":"C","modality":"major","sections":[{"bars":[{"chords":[{"symbol":{"root":0,"quality":"lydian","extensions":[],"raw":"Clyd"}}]}]}]}"#;
+    let mut store = with_stored("tags, chord_chart", &format!("'[]', '{chart}'"));
+    let mut item = store.item("p1");
+    let bars = &mut item.chord_chart.as_mut().expect("a chart").sections[0].bars;
+    assert_eq!(bars[0].chords[0].symbol.quality, ChordQuality::Other);
+    let added = ChordSymbol {
+        root: 7,
+        quality: ChordQuality::Dom7,
+        extensions: vec![],
+        bass: None,
+        raw: "G7".into(),
+    };
+    bars.insert(
+        0,
+        Bar {
+            chords: vec![ChartChord { symbol: added }],
+        },
+    );
+    store.save(&item);
+    let quality = |store: &Store, bar: usize| {
+        stored_chart(store)["sections"][0]["bars"][bar]["chords"][0]["symbol"]["quality"].clone()
+    };
+    assert_eq!(
+        (quality(&store, 0), quality(&store, 1)),
+        ("dom7".into(), "lydian".into()),
+        "a bar added before it does not lose it"
+    );
+
+    item.chord_chart.as_mut().expect("a chart").sections[0].bars[1].chords[0]
+        .symbol
+        .quality = ChordQuality::Maj7;
+    store.save(&item);
+    assert_eq!(quality(&store, 1), "maj7", "a real choice replaces it");
+}
+
+#[test]
+fn an_unknown_key_mode_survives_a_save_that_leaves_the_key_alone() {
+    let mut store = with_stored("tags, key, modality", "'[]', 'D', 'dorian'");
+    let mut item = store.item("p1");
+    assert_eq!(item.key, Some(key(Letter::D, Accidental::Natural, None)));
+    item.title = "Waltz, renamed".into();
+    let answer = store.handle(&PersistenceOperation::SaveItem(item.clone()));
+    assert_eq!(
+        (answer.output, answer.unreadable),
+        (PersistenceOutput::Ack, vec![]),
+        "a save does not report the mode again"
+    );
+    assert_eq!(
+        store.raw("SELECT key || ' ' || modality FROM item"),
+        Some("D dorian".into())
+    );
+
+    item.key = Some(key(Letter::D, Accidental::Natural, Some(Modality::Minor)));
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT key || ' ' || modality FROM item"),
+        Some("D minor".into()),
+        "a real choice replaces it"
+    );
+}
+
+#[test]
+fn an_unknown_chart_key_mode_survives_a_save_that_leaves_the_key_alone() {
+    let chart = r#"{"key":"D","modality":"dorian","sections":[]}"#;
+    let mut store = with_stored("tags, chord_chart", &format!("'[]', '{chart}'"));
+    let mut item = store.item("p1");
+    let loaded = Some(key(Letter::D, Accidental::Natural, None));
+    assert_eq!(item.chord_chart.as_ref().and_then(|c| c.key), loaded);
+    store.save(&item);
+    assert_eq!(
+        (
+            stored_chart(&store)["key"].clone(),
+            stored_chart(&store)["modality"].clone()
+        ),
+        ("D".into(), "dorian".into())
+    );
+
+    item.chord_chart.as_mut().expect("a chart").key =
+        Some(key(Letter::D, Accidental::Natural, Some(Modality::Minor)));
+    store.save(&item);
+    assert_eq!(
+        stored_chart(&store)["modality"],
+        "minor",
+        "a real choice replaces it"
+    );
+}
+
+#[test]
+fn an_unknown_mode_in_the_key_list_survives_a_save_that_leaves_the_list_alone() {
+    let stored = r#"[{"key":"D","modality":"dorian"}]"#;
+    let mut store = with_stored("tags, keys", &format!("'[]', '{stored}'"));
+    let mut item = store.item("p1");
+    assert_eq!(item.keys, vec![key(Letter::D, Accidental::Natural, None)]);
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT keys FROM item WHERE id = 'p1'"),
+        Some(stored.into())
+    );
+
+    item.keys = vec![key(Letter::C, Accidental::Natural, None)];
+    store.save(&item);
+    assert_eq!(
+        store.item("p1").keys,
+        item.keys,
+        "a real change replaces it"
+    );
+}
+
 #[test]
 fn a_row_with_a_time_that_will_not_read_is_skipped_and_left_alone() {
     let mut store = upgraded(
