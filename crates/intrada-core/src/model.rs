@@ -1024,10 +1024,7 @@ pub struct SegmentClockView {
 pub struct SegmentBarView {
     pub label: String,
     pub progress: SegmentProgress,
-    pub planned_secs: u32,
-    /// What Stay has taken from this section for the one running.
-    pub taken_secs: u32,
-    /// "2 min to A1" while time is taken.
+    /// "A1 took 2 min" while Stay has borrowed from this section.
     pub caption: Option<String>,
 }
 

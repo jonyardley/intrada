@@ -37,7 +37,7 @@ No motion and no haptic. The error colour comes and goes with the field's fault.
 
 - One line of text: `IntradaFont.label`, 15 point medium, in `inkSecondary`; `danger` in the error state.
 - A name in sentence case, no colon. A fact can follow after a middle dot, "Reflection · optional".
-- Most labels are one to three words; the longest that ship are "What got in the way" and "Drills for" a section's name.
+- Most labels are one to three words; the longest that ship are "What got in the way" and "Exercises for" a section's name.
 - The shells write the labels.
 
 ## Accessibility

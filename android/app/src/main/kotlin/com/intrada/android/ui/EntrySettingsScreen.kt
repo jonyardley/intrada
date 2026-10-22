@@ -306,7 +306,7 @@ private fun DrillGroup(
             .background(IntradaColor.paperTop, RoundedCornerShape(IntradaRadius.control))
     ) {
         FieldLabel(
-            "Drills for $sectionLabel",
+            "Exercises for $sectionLabel",
             Modifier.padding(horizontal = IntradaSpacing.card)
                 .padding(top = IntradaSpacing.cardCompact)
                 .semantics { heading() },

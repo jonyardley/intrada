@@ -247,7 +247,7 @@ pub(super) fn add_drill(
     exercise_id: String,
 ) -> Command<Effect, Event> {
     let SessionStatus::Building(ref building) = model.session_status else {
-        model.raise_error("A drill can only be added while building".to_string());
+        model.raise_error("An exercise for a section can only be added while building".to_string());
         return crux_core::render::render();
     };
     let Some(entry) = building.entries.iter().find(|e| e.id == entry_id) else {

@@ -130,7 +130,7 @@ struct EntrySegmentsCard: View {
 
   private func drillGroup(_ sectionLabel: String, _ offers: [DrillOfferView]) -> some View {
     VStack(alignment: .leading, spacing: 0) {
-      FieldLabel("Drills for \(sectionLabel)")
+      FieldLabel("Exercises for \(sectionLabel)")
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.cardCompact)
         .accessibilityAddTraits(.isHeader)
@@ -140,7 +140,7 @@ struct EntrySegmentsCard: View {
         ) {
           tickDrill(offer)
         }
-        .accessibilityValue("drill for \(sectionLabel)")
+        .accessibilityValue("exercise for \(sectionLabel)")
       }
     }
     .background(IntradaColor.paperTop)

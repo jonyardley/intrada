@@ -73,6 +73,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     let mut view = entry_to_view(e, &labels);
                     view.plan_tags = plan_tags(
                         &view.record.segments,
+                        e.plan.key.map(|k| k.label()),
                         live_variation_labels(&cached.library, e).into_iter(),
                         view.record.focus.as_ref(),
                     );

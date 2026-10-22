@@ -82,7 +82,8 @@ class PlayerRecordFlowTest {
     @Test
     fun theSectionClockRoundsUpAndOffersOnlyOncePastItsEnd() {
         val end = Instant.parse("2026-10-07T09:05:00Z")
-        val segment = SegmentClockView("A1", end.toString(), "Move on to Run", "Stay on A1")
+        val segment =
+            SegmentClockView("A1", end.toString(), "Move on to Run", "Stay on A1", emptyList(), "")
 
         assertEquals(1, secondsLeft(end, end.minusMillis(400)))
         assertEquals(0, secondsLeft(end, end))
@@ -95,7 +96,15 @@ class PlayerRecordFlowTest {
     fun aSectionPastItsTimeOffersToMoveOnOrStay() = runTest {
         val store = openedStore()
         store.startTwoItems()
-        val ended = SegmentClockView("A1", "2026-10-07T09:03:00Z", "Move on to Run", "Stay on A1")
+        val ended =
+            SegmentClockView(
+                "A1",
+                "2026-10-07T09:03:00Z",
+                "Move on to Run",
+                "Stay on A1",
+                emptyList(),
+                "",
+            )
         showPlayer(store) { it.copy(record = it.record.copy(segment = ended)) }
 
         compose.onAllNodesWithTag("player.troubleSpot").assertCountEquals(0)

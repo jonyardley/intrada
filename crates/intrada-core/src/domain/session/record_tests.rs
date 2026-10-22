@@ -334,30 +334,23 @@ fn stay_on_a_takes_two_minutes_from_b() {
     assert_eq!(clock.ends_at, t(720 + 480).to_rfc3339());
 }
 
-fn strip(m: &Model) -> Vec<(String, SegmentProgress, u32, u32, Option<String>)> {
+fn strip(m: &Model) -> Vec<(String, SegmentProgress, Option<String>)> {
     active_view(m)
         .record
         .segment
         .expect("segment clock")
         .bars
         .into_iter()
-        .map(|b| (b.label, b.progress, b.planned_secs, b.taken_secs, b.caption))
+        .map(|b| (b.label, b.progress, b.caption))
         .collect()
 }
 
 fn bar(
     label: &str,
     progress: SegmentProgress,
-    taken_secs: u32,
     caption: Option<&str>,
-) -> (String, SegmentProgress, u32, u32, Option<String>) {
-    (
-        label.to_string(),
-        progress,
-        600,
-        taken_secs,
-        caption.map(str::to_string),
-    )
+) -> (String, SegmentProgress, Option<String>) {
+    (label.to_string(), progress, caption.map(str::to_string))
 }
 
 #[test]
@@ -366,8 +359,8 @@ fn the_strip_shows_every_section_done_running_or_to_come() {
     assert_eq!(
         strip(&m),
         [
-            bar("A1", SegmentProgress::Running, 0, None),
-            bar("B", SegmentProgress::ToCome, 0, None)
+            bar("A1", SegmentProgress::Running, None),
+            bar("B", SegmentProgress::ToCome, None)
         ]
     );
     let spoken = active_view(&m).record.segment.map(|c| c.position_label);
@@ -383,8 +376,8 @@ fn the_strip_shows_every_section_done_running_or_to_come() {
     assert_eq!(
         strip(&m),
         [
-            bar("A1", SegmentProgress::Done, 0, None),
-            bar("B", SegmentProgress::Running, 0, None)
+            bar("A1", SegmentProgress::Done, None),
+            bar("B", SegmentProgress::Running, None)
         ]
     );
     let spoken = active_view(&m).record.segment.map(|c| c.position_label);
@@ -400,11 +393,27 @@ fn staying_on_a1_shows_the_minutes_taken_on_bs_bar() {
     assert_eq!(
         strip(&m),
         [
-            bar("A1", SegmentProgress::Running, 0, None),
-            bar("B", SegmentProgress::ToCome, 120, Some("2 min to A1"))
+            bar("A1", SegmentProgress::Running, None),
+            bar("B", SegmentProgress::ToCome, Some("A1 took 2 min"))
         ]
     );
     crate::domain::types::assert_round_trips(active_view(&m).record);
+
+    send(
+        &mut m,
+        SessionEvent::MoveToNextSegment {
+            now: t(720),
+            reading: TempoReading::silent(),
+        },
+    );
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Done, None),
+            bar("B", SegmentProgress::Running, None)
+        ],
+        "once B runs, its clock carries the shorter time"
+    );
 }
 
 #[test]
@@ -2574,6 +2583,10 @@ fn a_planned_key_opens_the_first_play_and_variations_stay_a_plan() {
     assert_eq!(
         building_view(&m).entries[0].planned_label.as_deref(),
         Some("A1 · D major · Dotted")
+    );
+    assert_eq!(
+        building_view(&m).entries[0].plan_tags[..2],
+        ["A1", "D major"]
     );
 
     send(&mut m, SessionEvent::StartSession { now: t(0) });

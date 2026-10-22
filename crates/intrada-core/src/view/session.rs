@@ -326,6 +326,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
 /// A section's minutes show only when the time is split between several.
 pub(crate) fn plan_tags(
     segments: &[SegmentView],
+    key: Option<String>,
     variations: impl Iterator<Item = String>,
     focus: Option<&FocusView>,
 ) -> Vec<String> {
@@ -339,6 +340,7 @@ pub(crate) fn plan_tags(
                 s.label.clone()
             }
         })
+        .chain(key)
         .chain(variations)
         .chain(focus.map(|f| format!("Focus: {}", f.label)))
         .collect()
@@ -617,28 +619,19 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
             .segments
             .iter()
             .enumerate()
-            .map(|(i, s)| {
-                let taken_secs = if i == running + 1 {
-                    clock.taken_from_next_secs
-                } else {
-                    0
-                };
-                SegmentBarView {
-                    label: labels.section(&s.section_id).unwrap_or_default(),
-                    progress: match i.cmp(&running) {
-                        std::cmp::Ordering::Less => SegmentProgress::Done,
-                        std::cmp::Ordering::Equal => SegmentProgress::Running,
-                        std::cmp::Ordering::Greater => SegmentProgress::ToCome,
-                    },
-                    planned_secs: s.planned_secs,
-                    taken_secs,
-                    caption: (taken_secs > 0).then(|| {
-                        format!(
-                            "{} to {label}",
-                            format_planned_duration(u64::from(taken_secs))
-                        )
-                    }),
-                }
+            .map(|(i, s)| SegmentBarView {
+                label: labels.section(&s.section_id).unwrap_or_default(),
+                progress: match i.cmp(&running) {
+                    std::cmp::Ordering::Less => SegmentProgress::Done,
+                    std::cmp::Ordering::Equal => SegmentProgress::Running,
+                    std::cmp::Ordering::Greater => SegmentProgress::ToCome,
+                },
+                caption: (i == running + 1 && clock.taken_from_next_secs > 0).then(|| {
+                    format!(
+                        "{label} took {}",
+                        format_planned_duration(u64::from(clock.taken_from_next_secs))
+                    )
+                }),
             })
             .collect();
         Some(SegmentClockView {
@@ -1425,6 +1418,7 @@ mod tests {
         for (name, segments, variations, focus, expected) in cases {
             let tags = plan_tags(
                 &segments,
+                None,
                 variations.into_iter().map(str::to_string),
                 focus.as_ref(),
             );
@@ -2746,7 +2740,7 @@ mod tests {
         assert_eq!(view.tempo_display, Some(168));
     }
 
-    /// A variation named like a section keeps both tags (#2404).
+    /// The iPhone row once drew tags by their text and dropped a repeat (#2404).
     #[test]
     fn a_variation_named_like_a_section_keeps_both_tags() {
         let segment = SegmentView {
@@ -2757,8 +2751,33 @@ mod tests {
             can_add_minute: false,
             can_take_minute: false,
         };
-        let tags = plan_tags(&[segment], std::iter::once("Dotted".to_string()), None);
+        let tags = plan_tags(
+            &[segment],
+            None,
+            std::iter::once("Dotted".to_string()),
+            None,
+        );
         assert_eq!(tags, vec!["Dotted", "Dotted"]);
+    }
+
+    /// A planned key reads after the sections, decided 2026-10-22 on #2392.
+    #[test]
+    fn a_planned_key_is_a_tag_after_the_sections() {
+        let segment = |id: &str, label: &str| SegmentView {
+            section_id: id.to_string(),
+            label: label.to_string(),
+            planned_secs: 360,
+            planned_display: "6 min".to_string(),
+            can_add_minute: false,
+            can_take_minute: false,
+        };
+        let tags = plan_tags(
+            &[segment("s1", "A1"), segment("s2", "B")],
+            Some("D major".to_string()),
+            std::iter::once("Dotted".to_string()),
+            None,
+        );
+        assert_eq!(tags, vec!["A1 6 min", "B 6 min", "D major", "Dotted"]);
     }
 
     /// The history reads the beat the musician counted (#2543).

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +45,7 @@ import com.intrada.android.R
 import com.intrada.android.ui.components.scaled
 import com.intrada.shared.ActiveSessionView
 import com.intrada.shared.SegmentClockView
+import com.intrada.shared.SegmentProgress
 import java.time.Instant
 
 // ── The section clock and its move-on offer (#2315, #2471) ──
@@ -86,6 +88,7 @@ internal fun SegmentClockRow(
             BasicText(segment.label, style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
             BasicText(clock, style = IntradaFont.figure.copy(color = IntradaColor.inkSecondary))
         }
+        SectionStrip(segment)
         if (moveLabel != null && left <= 0) {
             InkButton(moveLabel, "player.moveOn", onMove)
             segment.stayLabel?.let { stay ->
@@ -108,6 +111,58 @@ internal fun SegmentClockRow(
                                 textAlign = TextAlign.Center,
                             ),
                     )
+                }
+            }
+        }
+    }
+}
+
+// Every section of the item, filled once done, with what Stay took (#2394). Drawn by hand until
+// the shared strip lands (#2636).
+@Composable
+private fun SectionStrip(segment: SegmentClockView) {
+    val bars = segment.bars
+    Column(
+        Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = segment.positionLabel },
+        verticalArrangement = Arrangement.spacedBy(IntradaSpacing.segmentGap),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.segmentGap),
+        ) {
+            bars.forEach { bar ->
+                Box(
+                    Modifier.weight(1f)
+                        .height(6.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (bar.progress == SegmentProgress.DONE) IntradaColor.ink
+                            else IntradaColor.divider
+                        )
+                )
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.segmentGap),
+        ) {
+            bars.forEach { bar ->
+                val running = bar.progress == SegmentProgress.RUNNING
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    BasicText(
+                        bar.label,
+                        style =
+                            (if (running) IntradaFont.smallMedium else IntradaFont.small).copy(
+                                color = if (running) IntradaColor.ink else IntradaColor.inkSecondary
+                            ),
+                    )
+                    val caption = bar.caption
+                    if (caption != null) {
+                        BasicText(
+                            caption,
+                            style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
+                        )
+                    }
                 }
             }
         }

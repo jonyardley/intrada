@@ -13,7 +13,8 @@
   extension EntryRecordView {
     static var empty: EntryRecordView {
       EntryRecordView(
-        segments: [], canAddSection: true, addSectionCaption: nil, focus: nil, suggestedFocus: nil, intentionMet: nil,
+        segments: [], canAddSection: true, addSectionCaption: nil, focus: nil, suggestedFocus: nil,
+        intentionMet: nil,
         intentionMetRead: false,
         felt: nil, gotInTheWay: [], notePoints: [])
     }
@@ -850,7 +851,16 @@
       var active = previewActive
       active.record.segment = SegmentClockView(
         label: "A1", endsAt: "2026-05-30T09:04:08Z", moveLabel: "On to B",
-        stayLabel: "Stay on A1, 2 more minutes taken from B")
+        stayLabel: "Stay on A1, 2 more minutes taken from B",
+        bars: [
+          SegmentBarView(
+            label: "A1", progress: .running, caption: nil),
+          SegmentBarView(
+            label: "B", progress: .toCome, caption: nil),
+          SegmentBarView(
+            label: "A2", progress: .toCome, caption: nil),
+        ],
+        positionLabel: "Section 1 of 3")
       return active
     }
 

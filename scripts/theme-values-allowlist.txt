@@ -91,7 +91,6 @@ ios/Intrada/Views/Components/ScoreSelector.swift	spacing: 4	1	#2706
 ios/Intrada/Views/Components/SegmentedPills.swift	.padding(.horizontal, 4)	2	#2706
 ios/Intrada/Views/Components/SegmentedPills.swift	.padding(4)	2	#2706
 ios/Intrada/Views/Components/SegmentedPills.swift	spacing: 4	5	#2706
-ios/Intrada/Views/Components/SegmentedProgress.swift	spacing: 5	1	#2706
 ios/Intrada/Views/Components/SessionCard.swift	.padding(.top, 2)	2	#2706
 ios/Intrada/Views/Components/SessionCard.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Components/SessionLengthControl.swift	spacing: 2	1	#2706
