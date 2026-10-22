@@ -385,8 +385,8 @@ fn live_section_ids<'a>(model: &'a Model, item_id: &str) -> Vec<&'a str> {
 }
 
 pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Effect, Event> {
-    let way = entry_for_plan(model, &entry_id).and_then(|e| last_time(model, &e.plan.item_id));
-    let Some(way) = way else {
+    let last = entry_for_plan(model, &entry_id).and_then(|e| last_plan(model, &e.plan.item_id));
+    let Some((way, focus)) = last else {
         model.raise_error("There's no last time to plan from".to_string());
         return crux_core::render::render();
     };
@@ -403,7 +403,33 @@ pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Ef
         entry.plan.segments = segments;
         entry.plan.key = way.key;
         entry.plan.variation_ids = way.variation_ids;
+        entry.plan.focus = focus;
     })
+}
+
+/// Last time's way and aim, for the builder's one-tap start (#2397).
+pub(crate) fn last_plan(model: &Model, item_id: &str) -> Option<(PlayWay, Option<IntentionFocus>)> {
+    let way = last_time(model, item_id);
+    let focus = last_focus(model, item_id);
+    (way.is_some() || focus.is_some()).then(|| (way.unwrap_or_default(), focus))
+}
+
+/// Offered only when the builder would accept it today, so a section since
+/// deleted or a tempo the click cannot play is left behind.
+fn last_focus(model: &Model, item_id: &str) -> Option<IntentionFocus> {
+    let focus = model
+        .sessions
+        .iter()
+        .filter(|s| s.entries.iter().any(|e| e.plan.item_id == item_id))
+        .max_by_key(|s| s.started_at)?
+        .entries
+        .iter()
+        .rev()
+        .filter(|e| e.plan.item_id == item_id)
+        .find_map(|e| e.plan.focus.clone())?;
+    validate_focus(&focus, &live_section_ids(model, item_id))
+        .is_ok()
+        .then_some(focus)
 }
 
 /// Kept to what is still in the library; the whole piece, plain, offers nothing.

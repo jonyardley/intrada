@@ -124,8 +124,14 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                         && entry.plan.key.is_none()
                 })
                 .filter_map(|entry| {
-                    let way = crate::domain::session::last_time(model, &entry.plan.item_id)?;
-                    Some(crate::view::session::last_time_view(entry, way, &labels))
+                    let (way, focus) =
+                        crate::domain::session::last_plan(model, &entry.plan.item_id)?;
+                    Some(crate::view::session::last_time_view(
+                        entry,
+                        way,
+                        focus.as_ref(),
+                        &labels,
+                    ))
                 })
                 .collect();
             let entry_keys = building
@@ -204,7 +210,9 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             view.record.last_time =
                 crate::domain::session::last_time(model, &current_entry.plan.item_id)
                     .filter(|_| on_the_whole_piece_plain && active.reflection.is_none())
-                    .map(|way| crate::view::session::last_time_view(current_entry, way, &labels));
+                    .map(|way| {
+                        crate::view::session::last_time_view(current_entry, way, None, &labels)
+                    });
             if let (Some(finish), Some(item), Some(draft)) = (
                 view.record.finish.as_mut(),
                 model

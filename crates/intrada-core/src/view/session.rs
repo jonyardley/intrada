@@ -352,7 +352,18 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
         .and_then(|text| session::suggest_focus(text, labels.named_sections(&entry.plan.item_id)))
         .filter(|suggested| entry.plan.focus.as_ref() != Some(suggested))
         .map(|suggested| labels.focus(&suggested));
+    let can_add_section = session::can_add_segment(&entry.plan.segments, entry.plan.duration_secs);
     EntryRecordView {
+        add_section_caption: entry
+            .plan
+            .duration_secs
+            .filter(|_| !can_add_section)
+            .map(|secs| {
+                format!(
+                    "No more sections fit in {}",
+                    format_planned_duration(u64::from(secs))
+                )
+            }),
         segments: entry
             .plan
             .segments
@@ -367,7 +378,7 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
                 can_take_minute: session::can_step_segment(&entry.plan.segments, index, -1),
             })
             .collect(),
-        can_add_section: session::can_add_segment(&entry.plan.segments, entry.plan.duration_secs),
+        can_add_section,
         focus: entry.plan.focus.as_ref().map(|f| labels.focus(f)),
         suggested_focus,
         intention_met: entry.intention_met.or(read),
@@ -382,10 +393,20 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
     }
 }
 
-pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -> LastTimeView {
+pub fn last_time_view(
+    entry: &SetlistEntry,
+    way: PlayWay,
+    focus: Option<&IntentionFocus>,
+    labels: &PlayLabels,
+) -> LastTimeView {
+    let parts: Vec<String> = labels
+        .way(&way)
+        .into_iter()
+        .chain(focus.map(|f| labels.focus(f).label))
+        .collect();
     LastTimeView {
         entry_id: entry.id.clone(),
-        label: format!("Last time: {}", labels.way(&way).unwrap_or_default()),
+        label: format!("Last time: {}", parts.join(" · ")),
         section_id: way.section_id,
         variation_ids: way.variation_ids,
         key: way.key,

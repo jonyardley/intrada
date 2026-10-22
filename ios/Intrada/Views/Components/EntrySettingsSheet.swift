@@ -122,6 +122,7 @@ struct EntrySettingsSheet: View {
       drills: drills,
       hasPlannedTime: live.plannedDurationSecs != nil,
       canAddSection: live.record.canAddSection,
+      addSectionCaption: live.record.addSectionCaption,
       wholePiece: { store.send(.session(.setSegments(entryId: entry.id, segments: []))) },
       add: { store.send(.session(.addSegment(entryId: entry.id, sectionId: $0))) },
       remove: { store.send(.session(.removeSegment(entryId: entry.id, sectionId: $0))) },

@@ -1183,6 +1183,89 @@ fn last_time_is_offered_and_one_tap_plans_it() {
     assert_eq!(entry.plan.variation_ids, ["v-dot"]);
 }
 
+fn saved_with_focus(way: PlayWay, focus: IntentionFocus) -> PracticeSession {
+    let mut saved = saved_session_playing("p", way, t(-100_000));
+    saved.entries[0].plan.focus = Some(focus);
+    saved
+}
+
+fn tempo_focus(section_id: &str, target: u16) -> IntentionFocus {
+    IntentionFocus {
+        kind: FocusKind::Tempo,
+        section_id: Some(section_id.to_string()),
+        target: Some(target),
+    }
+}
+
+fn building_p(m: &mut Model) -> String {
+    send(m, SessionEvent::StartBuilding);
+    send(
+        m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    entry_id(m, 0)
+}
+
+#[test]
+fn last_times_aim_is_offered_and_one_tap_plans_it_too() {
+    let mut m = model();
+    let way = PlayWay {
+        section_id: Some("s-b".to_string()),
+        key: None,
+        variation_ids: vec!["v-dot".to_string()],
+    };
+    m.sessions = vec![saved_with_focus(way, tempo_focus("s-a", 84))].into();
+    let id = building_p(&mut m);
+
+    let offers = building_view(&m).last_times;
+    assert_eq!(offers[0].label, "Last time: B · Dotted · A1 at 84");
+
+    send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+    let entry = &entries(&m)[0];
+    assert_eq!(entry.plan.section_ids(), ["s-b"]);
+    assert_eq!(entry.plan.variation_ids, ["v-dot"]);
+    assert_eq!(entry.plan.focus, Some(tempo_focus("s-a", 84)));
+}
+
+#[test]
+fn an_aim_the_builder_would_refuse_is_not_offered() {
+    for focus in [
+        tempo_focus("s-a", 30),
+        tempo_focus("s-a", 220),
+        tempo_focus("s-gone", 84),
+    ] {
+        let mut m = model();
+        let way = PlayWay {
+            section_id: Some("s-b".to_string()),
+            ..PlayWay::default()
+        };
+        m.sessions = vec![saved_with_focus(way, focus.clone())].into();
+        let id = building_p(&mut m);
+
+        assert_eq!(
+            building_view(&m).last_times[0].label,
+            "Last time: B",
+            "{focus:?}"
+        );
+        send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+        assert_eq!(entries(&m)[0].plan.focus, None, "{focus:?}");
+    }
+}
+
+#[test]
+fn an_aim_alone_on_the_whole_piece_is_still_offered() {
+    let mut m = model();
+    m.sessions = vec![saved_with_focus(PlayWay::default(), tempo_focus("s-a", 84))].into();
+    let id = building_p(&mut m);
+
+    assert_eq!(building_view(&m).last_times[0].label, "Last time: A1 at 84");
+    send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+    assert_eq!(entries(&m)[0].plan.focus, Some(tempo_focus("s-a", 84)));
+    assert!(entries(&m)[0].plan.segments.is_empty());
+}
+
 #[test]
 fn last_time_is_offered_only_while_nothing_is_planned() {
     let mut m = model();
@@ -1991,7 +2074,12 @@ fn a_two_minute_item_split_one_and_one_refuses_a_third_section() {
         Some("Those minutes don't fit in this item's 2 min")
     );
     assert_eq!(minutes(&m, 0), [pair("c-a1", 1), pair("c-b", 1)]);
-    assert!(!building_view(&m).entries[0].record.can_add_section);
+    let record = &building_view(&m).entries[0].record;
+    assert!(!record.can_add_section);
+    assert_eq!(
+        record.add_section_caption.as_deref(),
+        Some("No more sections fit in 2 min")
+    );
 }
 
 #[test]
@@ -2012,7 +2100,9 @@ fn a_section_already_in_a_full_split_says_so_rather_than_the_minutes() {
 fn a_split_with_room_offers_another_section() {
     let (m, _) = clair_tuned();
 
-    assert!(building_view(&m).entries[0].record.can_add_section);
+    let record = &building_view(&m).entries[0].record;
+    assert!(record.can_add_section);
+    assert_eq!(record.add_section_caption, None);
 }
 
 #[test]

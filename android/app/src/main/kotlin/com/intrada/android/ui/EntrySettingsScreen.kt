@@ -248,7 +248,7 @@ private fun SectionsCard(
             FieldLabel("Sections", Modifier.weight(1f))
             if (segments.isNotEmpty()) {
                 TextAction(
-                    "Whole piece",
+                    "Clear sections",
                     "entrySettings.wholePiece",
                     { send(SessionEvent.SetSegments(entry.id, emptyList())) },
                 )
@@ -280,6 +280,14 @@ private fun SectionsCard(
                     "Add ${section.label}",
                     "entrySettings.addSection",
                     { send(SessionEvent.AddSegment(entry.id, section.id)) },
+                )
+            }
+        } else if (unplanned.isNotEmpty()) {
+            entry.record.addSectionCaption?.let {
+                BasicText(
+                    it,
+                    Modifier.padding(vertical = IntradaSpacing.controlGap),
+                    style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
                 )
             }
         }
