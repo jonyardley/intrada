@@ -430,7 +430,7 @@ fn stored_if_unreadable<T: DeserializeOwned>(
 }
 
 /// A key list holding one the core cannot read loads without it, and a mode
-/// a newer build wrote loads as no mode; while the item's list is what
+/// this build does not recognise loads as none; while the item's list is what
 /// loaded, the stored one stays so neither is lost (#2097, #2106, #2437).
 fn stored_keys_if_unreadable(
     tx: &Transaction,

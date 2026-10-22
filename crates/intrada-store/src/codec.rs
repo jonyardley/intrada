@@ -77,8 +77,9 @@ pub(crate) fn item_kind(raw: &str, unreadable: &mut Unreadable) -> ItemKind {
     })
 }
 
-/// Text a newer build wrote loads as the fallback, so saving the fallback
-/// keeps the text until the musician picks a kind this build knows (#2437).
+/// Text this build does not recognise loads as the fallback, so saving the
+/// fallback keeps the text until the musician picks a kind this build knows
+/// (#2437).
 pub(crate) fn item_kind_to_write(kind: &ItemKind, stored: Option<String>) -> String {
     match stored {
         Some(text) if known_item_kind(&text).is_none() && *kind == UNKNOWN_ITEM_KIND => text,
@@ -171,7 +172,6 @@ fn chord_quality(raw: &str, unreadable: &mut Unreadable) -> Option<ChordQuality>
     quality
 }
 
-/// The core's reading of a chord symbol it cannot name.
 const UNKNOWN_CHORD_QUALITY: ChordQuality = ChordQuality::Other;
 
 fn known_chord_quality(raw: &str) -> Option<ChordQuality> {
@@ -217,8 +217,8 @@ pub(crate) fn key(
 }
 
 /// The stored key stays, verbatim, when the core could not read it and the
-/// save holds no key (#2106), or when its mode is one a newer build wrote and
-/// the save holds the key as it loaded (#2437).
+/// save holds no key (#2106), or when this build does not recognise its mode
+/// and the save holds the key as it loaded (#2437).
 pub(crate) fn kept_key(
     text: &str,
     modality_raw: Option<&str>,
@@ -339,7 +339,7 @@ pub(crate) struct StoredChordSymbol {
 }
 
 /// `stored` is the chart on disk, if it reads, so a key or chord quality the
-/// core could not read survives a save that leaves it alone.
+/// core could not read survives a save that leaves it alone (#2106, #2437).
 pub(crate) fn encode_chord_chart(
     chart: Option<&ChordChart>,
     stored: Option<&StoredChart>,
@@ -393,19 +393,13 @@ pub(crate) fn encode_chord_chart(
     encode_json(&stored).map(Some)
 }
 
-/// A quality a newer build wrote loads as the fallback, so a chord saved as it
-/// loaded keeps the stored text, matched by its symbol so an edit elsewhere in
-/// the chart does not lose it (#2437).
+/// A quality this build does not recognise loads as the fallback, so a chord
+/// saved as it loaded keeps the stored text. It is matched by the typed
+/// symbol, since an edit re-parses the whole chart from text (#2437).
 fn quality_to_write(symbol: &ChordSymbol, unknown: &[&StoredChordSymbol]) -> String {
     unknown
         .iter()
-        .find(|stored| {
-            symbol.quality == UNKNOWN_CHORD_QUALITY
-                && stored.root == symbol.root
-                && stored.extensions == symbol.extensions
-                && stored.bass == symbol.bass
-                && stored.raw == symbol.raw
-        })
+        .find(|stored| symbol.quality == UNKNOWN_CHORD_QUALITY && stored.raw == symbol.raw)
         .map_or_else(
             || chord_quality_text(symbol.quality).to_string(),
             |stored| stored.quality.clone(),

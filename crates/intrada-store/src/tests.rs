@@ -5,7 +5,7 @@
 
 use chrono::{DateTime, Utc};
 use intrada_core::domain::chart::{
-    Bar, ChartChord, ChartSection, ChordChart, ChordQuality, ChordSymbol,
+    parse_chart, Bar, ChartChord, ChartSection, ChordChart, ChordQuality, ChordSymbol,
 };
 use intrada_core::domain::link::ExerciseLink;
 use intrada_core::domain::section::{BarRange, ItemSection, SectionKind};
@@ -1036,7 +1036,7 @@ fn an_unknown_stored_value_falls_back_and_is_named() {
     }
 }
 
-// ── Values a newer build wrote survive a save that leaves them alone (#2437) ──
+// ── Values this build does not recognise survive a save that leaves them alone (#2437) ──
 
 #[test]
 fn an_unknown_kind_survives_a_save_that_leaves_it_alone() {
@@ -1104,29 +1104,17 @@ fn an_unknown_chord_quality_survives_a_save_that_leaves_the_chord_alone() {
     let chart = r#"{"key":"C","modality":"major","sections":[{"bars":[{"chords":[{"symbol":{"root":0,"quality":"lydian","extensions":[],"raw":"Clyd"}}]}]}]}"#;
     let mut store = with_stored("tags, chord_chart", &format!("'[]', '{chart}'"));
     let mut item = store.item("p1");
-    let bars = &mut item.chord_chart.as_mut().expect("a chart").sections[0].bars;
-    assert_eq!(bars[0].chords[0].symbol.quality, ChordQuality::Other);
-    let added = ChordSymbol {
-        root: 7,
-        quality: ChordQuality::Dom7,
-        extensions: vec![],
-        bass: None,
-        raw: "G7".into(),
-    };
-    bars.insert(
-        0,
-        Bar {
-            chords: vec![ChartChord { symbol: added }],
-        },
-    );
+    let loaded = item.chord_chart.as_ref().expect("a chart");
+    assert_eq!(loaded.changes()[0].quality, ChordQuality::Other);
+    item.chord_chart = Some(parse_chart("| G7 | Clyd | Cphryg |", Key::C_MAJOR).expect("parses"));
     store.save(&item);
     let quality = |store: &Store, bar: usize| {
         stored_chart(store)["sections"][0]["bars"][bar]["chords"][0]["symbol"]["quality"].clone()
     };
     assert_eq!(
-        (quality(&store, 0), quality(&store, 1)),
-        ("dom7".into(), "lydian".into()),
-        "a bar added before it does not lose it"
+        (quality(&store, 0), quality(&store, 1), quality(&store, 2)),
+        ("dom7".into(), "lydian".into(), "other".into()),
+        "an edit elsewhere keeps it, and only on its own chord"
     );
 
     item.chord_chart.as_mut().expect("a chart").sections[0].bars[1].chords[0]
@@ -1134,6 +1122,44 @@ fn an_unknown_chord_quality_survives_a_save_that_leaves_the_chord_alone() {
         .quality = ChordQuality::Maj7;
     store.save(&item);
     assert_eq!(quality(&store, 1), "maj7", "a real choice replaces it");
+}
+
+#[test]
+fn a_known_value_is_never_kept_over_the_fallback() {
+    let mut store = upgraded(
+        migrations::latest(),
+        &format!(
+            "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('p1', 'Scales', 'exercise', '[]', '{EARLY}', '{EARLY}');
+             INSERT INTO section (id, item_id, name, kind, position, updated_at)
+             VALUES ('s1', 'p1', 'A', 'trouble_spot', 0, '{EARLY}');"
+        ),
+    );
+    let mut item = store.item("p1");
+    item.kind = ItemKind::Piece;
+    item.sections[0].kind = SectionKind::Form;
+    store.save(&item);
+    assert_eq!(
+        store.raw(
+            "SELECT item.kind || ' ' || section.kind FROM item JOIN section ON item_id = item.id"
+        ),
+        Some("piece form".into())
+    );
+}
+
+#[test]
+fn a_readable_key_is_written_as_the_core_spells_it() {
+    let mut store = with_stored("tags, key", "'[]', 'G minor'");
+    let item = store.item("p1");
+    assert_eq!(
+        item.key,
+        Some(key(Letter::G, Accidental::Natural, Some(Modality::Minor)))
+    );
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT key || ' ' || modality FROM item"),
+        Some("G minor".into())
+    );
 }
 
 #[test]
