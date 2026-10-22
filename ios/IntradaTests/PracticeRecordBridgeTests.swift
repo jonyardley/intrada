@@ -197,7 +197,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
 
   /// A v8 blob with every new field set goes Swift to Rust on resume and
   /// comes back Rust to Swift in the next saved copy, unchanged.
-  func testRealBridgeAV8PracticeInProgressRoundTripsWithEveryFieldSet() throws {
+  func testRealBridgeAV9PracticeInProgressRoundTripsWithEveryFieldSet() throws {
     let play = Play(
       id: "p1", sectionId: "s-a", key: nil, variationIds: [], startedAt: at(0), seconds: 0,
       repTarget: nil, repCount: nil, repHistory: nil, tempoChanges: [], achievedTempo: nil,
@@ -209,17 +209,18 @@ final class PracticeRecordBridgeTests: XCTestCase {
     let point = NotePoint(
       kind: NotePointKind.bars(BarRange(first: 12, last: 14)), sectionId: "s-a",
       span: NoteSpan(start: 0, end: 12))
-    let entry = SetlistEntry(
-      id: "e1", itemId: "i1", itemTitle: "Nocturne", itemType: .piece, position: 0,
-      durationSecs: 0, status: .notAttempted, notes: "bars 12-14 rough", intention: "A at 84",
-      plannedDurationSecs: 1200, groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
-      plays: [play],
+    let plan = PlannedItem(
+      itemId: "i1", itemType: .exercise, intention: "A at 84",
+      focus: IntentionFocus(kind: .cleanReps, sectionId: "s-b", target: 5), durationSecs: 1200,
+      groupId: "block-1", variationIds: ["v-a", "v-b"], repTarget: 6,
       segments: [
         Segment(sectionId: "s-a", plannedSecs: 600), Segment(sectionId: "s-b", plannedSecs: 600),
       ],
-      focus: IntentionFocus(kind: .cleanReps, sectionId: "s-b", target: 5),
-      intentionMet: .partly, felt: .hardWork, gotInTheWay: [.fingering, .tone],
-      notePoints: [point], plannedKey: Key(letter: .g, accidental: .natural, mode: .major))
+      key: Key(letter: .g, accidental: .natural, mode: .major))
+    let entry = SetlistEntry(
+      id: "e1", plan: plan, itemTitle: "Nocturne", position: 0, durationSecs: 0,
+      status: .notAttempted, notes: "bars 12-14 rough", plays: [play], intentionMet: .partly,
+      felt: .hardWork, gotInTheWay: [.fingering, .tone], notePoints: [point])
     let clock = SegmentClock(
       index: 0, startedAt: at(0), allowanceSecs: 720, takenFromNextSecs: 120, leftOutSecs: 45)
     let blob = ActiveSession(
@@ -241,13 +242,11 @@ final class PracticeRecordBridgeTests: XCTestCase {
       }.first, "going away saves the copy")
 
     let back = try XCTUnwrap(saved.entries.first)
-    XCTAssertEqual(back.segments, entry.segments)
-    XCTAssertEqual(back.focus, entry.focus)
+    XCTAssertEqual(back.plan, plan, "every plan field crosses the bridge in order (#2582)")
     XCTAssertEqual(back.intentionMet, entry.intentionMet)
     XCTAssertEqual(back.felt, entry.felt)
     XCTAssertEqual(back.gotInTheWay, entry.gotInTheWay)
     XCTAssertEqual(back.notePoints, entry.notePoints)
-    XCTAssertEqual(back.plannedKey, entry.plannedKey)
     XCTAssertEqual(back.plays.first?.away.prefix(2), play.away[...])
     XCTAssertEqual(back.plays.first?.away.last?.leftAt, at(700))
     XCTAssertEqual(saved.segment?.allowanceSecs, 720)
@@ -258,16 +257,17 @@ final class PracticeRecordBridgeTests: XCTestCase {
   func testRealBridgeEachFeltChoiceRoundTripsInAPracticeInProgress() throws {
     for felt: Felt in [.comfortable, .hardWork, .strained] {
       let entry = SetlistEntry(
-        id: "e1", itemId: "i1", itemTitle: "Nocturne", itemType: .piece, position: 0,
-        durationSecs: 0, status: .notAttempted, notes: nil, intention: nil,
-        plannedDurationSecs: nil, groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
+        id: "e1",
+        plan: PlannedItem(
+          itemId: "i1", itemType: .piece, intention: nil, focus: nil, durationSecs: nil,
+          groupId: nil, variationIds: [], repTarget: nil, segments: [], key: nil),
+        itemTitle: "Nocturne", position: 0, durationSecs: 0, status: .notAttempted, notes: nil,
         plays: [
           Play(
             id: "p1", sectionId: nil, key: nil, variationIds: [], startedAt: at(0), seconds: 0,
             repTarget: nil, repCount: nil, repHistory: nil, tempoChanges: [], achievedTempo: nil,
             clickPattern: nil, score: nil, away: [])
-        ], segments: [], focus: nil, intentionMet: nil, felt: felt, gotInTheWay: [],
-        notePoints: [], plannedKey: nil)
+        ], intentionMet: nil, felt: felt, gotInTheWay: [], notePoints: [])
       let blob = ActiveSession(
         id: "felt", entries: [entry], currentIndex: 0, currentItemStartedAt: at(0),
         sessionStartedAt: at(0), reflection: nil, segment: nil)
