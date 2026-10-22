@@ -236,7 +236,11 @@ pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> P
 
 fn play_meta_parts(play: &Play) -> Vec<String> {
     let mut parts = vec![format_duration_display(play.seconds)];
-    if let Some(tempo) = play.achieved_tempo {
+    if let Some(crotchets) = play.achieved_tempo {
+        let tempo = play
+            .click_pattern
+            .as_ref()
+            .map_or(crotchets, |click| click.metre.displayed_bpm(crotchets));
         parts.push(format!("{tempo} bpm"));
     }
     if let Some(target) = play.rep_target {
@@ -2686,6 +2690,30 @@ mod tests {
 
         assert_eq!(view.achieved_tempo, Some(84));
         assert_eq!(view.tempo_display, Some(168));
+    }
+
+    /// The history reads the beat the musician counted (#2543).
+    #[test]
+    fn a_plays_facts_read_its_tempo_in_the_metronomes_unit() {
+        let six_eight = ClickState {
+            metre: crate::domain::Metre {
+                beats: 6,
+                unit: 8,
+                groups: None,
+            },
+            sounding: 0b001001,
+        };
+        let entry = SetlistEntry::fixture();
+        for (click, expected) in [(Some(six_eight), "176 bpm"), (None, "88 bpm")] {
+            let play = Play {
+                seconds: 240,
+                achieved_tempo: Some(88),
+                click_pattern: click,
+                ..Play::fixture()
+            };
+            let view = play_to_view(&play, &entry, &PlayLabels::new());
+            assert_eq!(view.meta_parts, vec!["4m 0s", expected]);
+        }
     }
 
     #[test]
