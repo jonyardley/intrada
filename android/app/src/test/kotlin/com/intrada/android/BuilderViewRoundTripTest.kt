@@ -81,6 +81,39 @@ class BuilderViewRoundTripTest {
         assertEquals(null, bridge.view().buildingSetlist?.entries?.firstOrNull()?.intention)
     }
 
+    // A two minute item split 1, 1 says why no third section is offered (#2405).
+    @Test
+    fun aFullSplitSaysWhyNoMoreSectionsFit() {
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val nocturne = savedItem(bridge, Event.Item(ItemEvent.Add(piece)))
+        val sectionIds =
+            listOf("A", "B", "C")
+                .map { name ->
+                    val edit = SectionEdit(null, name, BarsInput.Blank, SectionKind.FORM, "")
+                    savedItem(
+                        bridge,
+                        Event.Item(ItemEvent.ChangeSection(nocturne.id, SectionChange.Save(edit))),
+                    )
+                }
+                .last()
+                .sections
+                .map { it.id }
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne.id)))
+        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
+        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 120u)))
+        bridge.update(
+            Event.Session(
+                SessionEvent.SetSegments(entryId, sectionIds.take(2).map { Segment(it, 0u) })
+            )
+        )
+
+        val record = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record
+        assertEquals(false, record?.canAddSection)
+        assertEquals("No more sections fit in 2 min", record?.addSectionCaption)
+    }
+
     private val piece =
         CreateItem(
             title = "Nocturne",

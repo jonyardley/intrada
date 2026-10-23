@@ -39,7 +39,9 @@ import com.intrada.shared.Event
 import com.intrada.shared.LastTimeView
 import com.intrada.shared.Metre
 import com.intrada.shared.ReflectionAnswers
+import com.intrada.shared.SegmentBarView
 import com.intrada.shared.SegmentClockView
+import com.intrada.shared.SegmentProgress
 import com.intrada.shared.SessionEvent
 import java.time.Instant
 import java.time.ZoneOffset
@@ -198,7 +200,18 @@ class PlayerSnapshotTest {
         val record =
             active.record.copy(
                 segment =
-                    SegmentClockView("A1", "2026-10-07T09:03:00Z", "Move on to Run", "Stay on A1"),
+                    SegmentClockView(
+                        "A1",
+                        "2026-10-07T09:03:00Z",
+                        "Move on to Run",
+                        "Stay on A1",
+                        listOf(
+                            SegmentBarView("Intro", SegmentProgress.DONE, null),
+                            SegmentBarView("A1", SegmentProgress.RUNNING, null),
+                            SegmentBarView("Run", SegmentProgress.TOCOME, "A1 took 2 min"),
+                        ),
+                        "Section 2 of 3, 2 min taken from Run",
+                    ),
                 lastTime =
                     LastTimeView(
                         active.entries.first().id,

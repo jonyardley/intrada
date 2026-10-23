@@ -199,6 +199,8 @@ object IntradaFont {
 }
 
 object IntradaSpacing {
+    // Between the segments of a strip, and the strip and its labels.
+    val segmentGap = 5.dp
     val controlGap = 8.dp
     val cardCompact = 12.dp
     val card = 16.dp

@@ -177,5 +177,21 @@ struct BuilderRulesBridgeTests {
     #expect(segments.map(\.sectionId) == sections)
     #expect(segments.map(\.plannedSecs) == [180, 300, 240])
     #expect(try entry(bridge).record.canAddSection)
+    #expect(try entry(bridge).record.addSectionCaption == nil)
+  }
+
+  /// A two minute item split 1, 1 says why no third section is offered (#2405).
+  @Test func aFullSplitSaysWhyNoMoreSectionsFit() throws {
+    let (bridge, entryId, sections, _) = try twelveSplitThree()
+    _ = try bridge.update(
+      .session(
+        .setSegments(
+          entryId: entryId,
+          segments: sections.prefix(2).map { Segment(sectionId: $0, plannedSecs: 0) })))
+    _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: 120)))
+
+    #expect(try bridge.rendered().error == nil)
+    #expect(try !entry(bridge).record.canAddSection)
+    #expect(try entry(bridge).record.addSectionCaption == "No more sections fit in 2 min")
   }
 }

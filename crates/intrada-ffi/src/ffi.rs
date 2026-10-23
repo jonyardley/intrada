@@ -587,6 +587,13 @@ pub fn library_sort_blob_version() -> u32 {
     crate::domain::types::LibrarySort::BLOB_VERSION
 }
 
+/// The shell builds the practice defaults' storage key from this (#2216).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn practice_defaults_blob_version() -> u32 {
+    crate::domain::practice_defaults::PracticeDefaults::BLOB_VERSION
+}
+
 /// The shell builds the first-run blob's storage key from this (#2116).
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 #[must_use]

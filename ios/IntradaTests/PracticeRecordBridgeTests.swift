@@ -121,8 +121,16 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertNil(try bridge.rendered().activeSession?.record.awayOffer)
 
     _ = try bridge.update(.session(.stayOnSegment))
+    let stayed: [SegmentBarView] = try XCTUnwrap(
+      try bridge.rendered().activeSession?.record.segment?.bars)
+    XCTAssertEqual(stayed.map(\.label), ["A", "B"])
+    XCTAssertEqual(stayed.map(\.progress), [.running, .toCome])
+    XCTAssertEqual(stayed.map(\.caption), [nil, "A took 2 min"])
     _ = try bridge.update(.session(.moveToNextSegment(now: at(1000), reading: sounding(84))))
     let active = try XCTUnwrap(try bridge.rendered().activeSession)
+    XCTAssertEqual(
+      active.record.segment?.bars.map(\.progress), [SegmentProgress.done, .running])
+    XCTAssertEqual(active.record.segment?.positionLabel, "Section 2 of 2")
     XCTAssertEqual(active.currentSectionId, b)
     let first = try XCTUnwrap(active.entries.first?.plays.first)
     XCTAssertEqual(first.seconds, 1000 - 360, "six minutes left out")

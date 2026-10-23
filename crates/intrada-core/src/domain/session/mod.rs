@@ -891,7 +891,7 @@ mod summary;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use building::last_time;
+pub(crate) use building::{last_plan, last_time};
 pub(crate) use live::can_stay;
 pub(crate) use record::*;
 pub use record::{

@@ -13,7 +13,8 @@
   extension EntryRecordView {
     static var empty: EntryRecordView {
       EntryRecordView(
-        segments: [], canAddSection: true, focus: nil, suggestedFocus: nil, intentionMet: nil,
+        segments: [], canAddSection: true, addSectionCaption: nil, focus: nil, suggestedFocus: nil,
+        intentionMet: nil,
         intentionMetRead: false,
         felt: nil, gotInTheWay: [], notePoints: [])
     }
@@ -844,13 +845,21 @@
   }
 
   extension ActiveSessionView {
-    /// Clair de Lune split into A1, B and A2, with A1's time up four seconds
-    /// before the reference instant, so the move-on offer is drawn (#2315).
+    /// Clair de Lune split into A1, B and A2, with A1 done and B's time up
+    /// four seconds before the reference instant, after a Stay that took two
+    /// minutes from A2, so the move-on offer and the strip's caption are drawn
+    /// (#2315, #2394).
     static var previewActiveSectionTimeUp: ActiveSessionView {
       var active = previewActive
       active.record.segment = SegmentClockView(
-        label: "A1", endsAt: "2026-05-30T09:04:08Z", moveLabel: "On to B",
-        stayLabel: "Stay on A1, 2 more minutes taken from B")
+        label: "B", endsAt: "2026-05-30T09:04:08Z", moveLabel: "On to A2",
+        stayLabel: "Stay on B, 2 more minutes taken from A2",
+        bars: [
+          SegmentBarView(label: "A1", progress: .done, caption: nil),
+          SegmentBarView(label: "B", progress: .running, caption: nil),
+          SegmentBarView(label: "A2", progress: .toCome, caption: "B took 2 min"),
+        ],
+        positionLabel: "Section 2 of 3, 2 min taken from A2")
       return active
     }
 

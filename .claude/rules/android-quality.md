@@ -21,8 +21,7 @@ this file holds only how they read in Kotlin and Compose.
   bytes and never reads a row (#2421). Singletons and the crash-recovery blob go
   to `SharedPreferences` as Base64 of the core's bincode. Each key's version
   comes from the core's `*BlobVersion()` export, never a number in Kotlin
-  (#1345, #2026); the one exception, shared with iOS, is practice defaults'
-  `v2`, which has no export yet (#2216).
+  (#1345, #2026, #2216).
 
 ## Kotlin
 

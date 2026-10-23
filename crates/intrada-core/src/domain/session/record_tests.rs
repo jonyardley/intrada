@@ -3,7 +3,7 @@ use crate::app::{Event, Intrada};
 use crate::domain::item::Item;
 use crate::domain::section::{BarRange, ItemSection, SectionKind};
 use crate::domain::variation::Variation;
-use crate::model::{ActiveSessionView, BuildingSetlistView};
+use crate::model::{ActiveSessionView, BuildingSetlistView, SegmentProgress};
 use crux_core::App;
 
 fn t(secs: i64) -> DateTime<Utc> {
@@ -332,6 +332,93 @@ fn stay_on_a_takes_two_minutes_from_b() {
     );
     let clock = active_view(&m).record.segment.expect("segment clock");
     assert_eq!(clock.ends_at, t(720 + 480).to_rfc3339());
+}
+
+fn strip(m: &Model) -> Vec<(String, SegmentProgress, Option<String>)> {
+    active_view(m)
+        .record
+        .segment
+        .expect("segment clock")
+        .bars
+        .into_iter()
+        .map(|b| (b.label, b.progress, b.caption))
+        .collect()
+}
+
+fn bar(
+    label: &str,
+    progress: SegmentProgress,
+    caption: Option<&str>,
+) -> (String, SegmentProgress, Option<String>) {
+    (label.to_string(), progress, caption.map(str::to_string))
+}
+
+#[test]
+fn the_strip_shows_every_section_done_running_or_to_come() {
+    let mut m = practising_a_then_b();
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Running, None),
+            bar("B", SegmentProgress::ToCome, None)
+        ]
+    );
+    let spoken = active_view(&m).record.segment.map(|c| c.position_label);
+    assert_eq!(spoken.as_deref(), Some("Section 1 of 2"));
+
+    send(
+        &mut m,
+        SessionEvent::MoveToNextSegment {
+            now: t(600),
+            reading: TempoReading::silent(),
+        },
+    );
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Done, None),
+            bar("B", SegmentProgress::Running, None)
+        ]
+    );
+    let spoken = active_view(&m).record.segment.map(|c| c.position_label);
+    assert_eq!(spoken.as_deref(), Some("Section 2 of 2"));
+}
+
+#[test]
+fn staying_on_a1_shows_the_minutes_taken_on_bs_bar() {
+    let mut m = practising_a_then_b();
+
+    send(&mut m, SessionEvent::StayOnSegment);
+
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Running, None),
+            bar("B", SegmentProgress::ToCome, Some("A1 took 2 min"))
+        ]
+    );
+    let spoken = active_view(&m).record.segment.map(|c| c.position_label);
+    assert_eq!(
+        spoken.as_deref(),
+        Some("Section 1 of 2, 2 min taken from B")
+    );
+    crate::domain::types::assert_round_trips(active_view(&m).record);
+
+    send(
+        &mut m,
+        SessionEvent::MoveToNextSegment {
+            now: t(720),
+            reading: TempoReading::silent(),
+        },
+    );
+    assert_eq!(
+        strip(&m),
+        [
+            bar("A1", SegmentProgress::Done, None),
+            bar("B", SegmentProgress::Running, None)
+        ],
+        "B's bar drops the caption once it runs"
+    );
 }
 
 #[test]
@@ -1183,6 +1270,89 @@ fn last_time_is_offered_and_one_tap_plans_it() {
     assert_eq!(entry.plan.variation_ids, ["v-dot"]);
 }
 
+fn saved_with_focus(way: PlayWay, focus: IntentionFocus) -> PracticeSession {
+    let mut saved = saved_session_playing("p", way, t(-100_000));
+    saved.entries[0].plan.focus = Some(focus);
+    saved
+}
+
+fn tempo_focus(section_id: &str, target: u16) -> IntentionFocus {
+    IntentionFocus {
+        kind: FocusKind::Tempo,
+        section_id: Some(section_id.to_string()),
+        target: Some(target),
+    }
+}
+
+fn building_p(m: &mut Model) -> String {
+    send(m, SessionEvent::StartBuilding);
+    send(
+        m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    entry_id(m, 0)
+}
+
+#[test]
+fn last_times_aim_is_offered_and_one_tap_plans_it_too() {
+    let mut m = model();
+    let way = PlayWay {
+        section_id: Some("s-b".to_string()),
+        key: None,
+        variation_ids: vec!["v-dot".to_string()],
+    };
+    m.sessions = vec![saved_with_focus(way, tempo_focus("s-a", 84))].into();
+    let id = building_p(&mut m);
+
+    let offers = building_view(&m).last_times;
+    assert_eq!(offers[0].label, "Last time: B · Dotted · A1 at 84");
+
+    send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+    let entry = &entries(&m)[0];
+    assert_eq!(entry.plan.section_ids(), ["s-b"]);
+    assert_eq!(entry.plan.variation_ids, ["v-dot"]);
+    assert_eq!(entry.plan.focus, Some(tempo_focus("s-a", 84)));
+}
+
+#[test]
+fn an_aim_the_builder_would_refuse_is_not_offered() {
+    for focus in [
+        tempo_focus("s-a", 30),
+        tempo_focus("s-a", 220),
+        tempo_focus("s-gone", 84),
+    ] {
+        let mut m = model();
+        let way = PlayWay {
+            section_id: Some("s-b".to_string()),
+            ..PlayWay::default()
+        };
+        m.sessions = vec![saved_with_focus(way, focus.clone())].into();
+        let id = building_p(&mut m);
+
+        assert_eq!(
+            building_view(&m).last_times[0].label,
+            "Last time: B",
+            "{focus:?}"
+        );
+        send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+        assert_eq!(entries(&m)[0].plan.focus, None, "{focus:?}");
+    }
+}
+
+#[test]
+fn an_aim_alone_on_the_whole_piece_is_still_offered() {
+    let mut m = model();
+    m.sessions = vec![saved_with_focus(PlayWay::default(), tempo_focus("s-a", 84))].into();
+    let id = building_p(&mut m);
+
+    assert_eq!(building_view(&m).last_times[0].label, "Last time: A1 at 84");
+    send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+    assert_eq!(entries(&m)[0].plan.focus, Some(tempo_focus("s-a", 84)));
+    assert!(entries(&m)[0].plan.segments.is_empty());
+}
+
 #[test]
 fn last_time_is_offered_only_while_nothing_is_planned() {
     let mut m = model();
@@ -1991,7 +2161,12 @@ fn a_two_minute_item_split_one_and_one_refuses_a_third_section() {
         Some("Those minutes don't fit in this item's 2 min")
     );
     assert_eq!(minutes(&m, 0), [pair("c-a1", 1), pair("c-b", 1)]);
-    assert!(!building_view(&m).entries[0].record.can_add_section);
+    let record = &building_view(&m).entries[0].record;
+    assert!(!record.can_add_section);
+    assert_eq!(
+        record.add_section_caption.as_deref(),
+        Some("No more sections fit in 2 min")
+    );
 }
 
 #[test]
@@ -2012,7 +2187,9 @@ fn a_section_already_in_a_full_split_says_so_rather_than_the_minutes() {
 fn a_split_with_room_offers_another_section() {
     let (m, _) = clair_tuned();
 
-    assert!(building_view(&m).entries[0].record.can_add_section);
+    let record = &building_view(&m).entries[0].record;
+    assert!(record.can_add_section);
+    assert_eq!(record.add_section_caption, None);
 }
 
 #[test]
@@ -2411,6 +2588,10 @@ fn a_planned_key_opens_the_first_play_and_variations_stay_a_plan() {
     assert_eq!(
         building_view(&m).entries[0].planned_label.as_deref(),
         Some("A1 · D major · Dotted")
+    );
+    assert_eq!(
+        building_view(&m).entries[0].plan_tags[..2],
+        ["A1", "D major"]
     );
 
     send(&mut m, SessionEvent::StartSession { now: t(0) });

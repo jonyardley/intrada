@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.intrada.ffi.firstRunBlobVersion
 import com.intrada.ffi.librarySortBlobVersion
+import com.intrada.ffi.practiceDefaultsBlobVersion
 import com.intrada.ffi.profileBlobVersion
 import com.intrada.ffi.sessionBlobVersion
 import com.intrada.shared.ActiveSession
@@ -61,7 +62,8 @@ class Settings(
     val sessionInProgress = PrefsSlot(sessionKey(sessionBlobVersion()), practice, log)
     val profile = PrefsSlot("intrada.profile.v${profileBlobVersion()}", prefs, log)
     // Its own blob, never fields on the profile, so no profile is lost to a failed decode (#1915).
-    val practiceDefaults = PrefsSlot("intrada.practice-defaults.v2", prefs, log)
+    val practiceDefaults =
+        PrefsSlot("intrada.practice-defaults.v${practiceDefaultsBlobVersion()}", prefs, log)
     val firstRun = PrefsSlot("intrada.first-run.v${firstRunBlobVersion()}", prefs, log)
 
     /** Practices saved by older builds, whose shape this one cannot read (#2246). */
