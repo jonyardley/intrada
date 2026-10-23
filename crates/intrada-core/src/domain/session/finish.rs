@@ -84,7 +84,7 @@ pub(super) fn confirm_note_point(
     let Some(entry) = entry_for_plan(model, &entry_id) else {
         return crux_core::render::render();
     };
-    let sections = named_sections(model, &entry.item_id);
+    let sections = named_sections(model, &entry.plan.item_id);
     let offered = note_offers(entry.notes.as_deref().unwrap_or_default(), &sections)
         .into_iter()
         .find(|p| p.span == span);

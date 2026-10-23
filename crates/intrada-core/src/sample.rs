@@ -141,7 +141,7 @@ pub(crate) fn sample_items() -> Vec<Item> {
 /// reference the ids minted by `sample_items()` so the home screen's
 /// "duration · item count" line and any future detail view stay consistent.
 pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
-    use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
+    use crate::domain::session::{CompletionStatus, EntryStatus, PlannedItem, SetlistEntry};
     let now = chrono::Utc::now();
 
     fn sample_play(
@@ -176,25 +176,27 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
      -> SetlistEntry {
         SetlistEntry {
             id: format!("{item_id}-entry-{position}"),
-            item_id: item_id.to_string(),
+            plan: PlannedItem {
+                item_id: item_id.to_string(),
+                item_type,
+                intention: None,
+                focus: None,
+                duration_secs: None,
+                group_id: None,
+                variation_ids: vec![],
+                rep_target: None,
+                segments: Vec::new(),
+                key: None,
+            },
             item_title: item_title.to_string(),
-            item_type,
             position,
             duration_secs,
             status: EntryStatus::Completed,
             notes: None,
-            intention: None,
-            planned_duration_secs: None,
-            group_id: None,
-            segments: Vec::new(),
-            focus: None,
             intention_met: None,
             felt: None,
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
-            planned_key: None,
-            planned_variation_ids: vec![],
-            planned_rep_target: None,
             plays: vec![sample_play(
                 &format!("{item_id}-play-{position}"),
                 None,

@@ -672,11 +672,12 @@ final class SessionBridgeTests: XCTestCase {
     // never crossed the live bridge from Swift before (#846, #962). The stale
     // anchor must come back re-anchored to the `now` we send.
     let blobEntry = SetlistEntry(
-      id: "re1", itemId: "i1", itemTitle: "Recovered Scales", itemType: .exercise,
-      position: 0, durationSecs: 0, status: .notAttempted,
-      notes: nil, intention: nil, plannedDurationSecs: nil,
-      groupId: nil, plannedVariationIds: [], plannedRepTarget: nil, plays: [], segments: [],
-      focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [], plannedKey: nil
+      id: "re1",
+      plan: PlannedItem(
+        itemId: "i1", itemType: .exercise, intention: nil, focus: nil, durationSecs: nil,
+        groupId: nil, variationIds: [], repTarget: nil, segments: [], key: nil),
+      itemTitle: "Recovered Scales", position: 0, durationSecs: 0, status: .notAttempted,
+      notes: nil, plays: [], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []
     )
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,

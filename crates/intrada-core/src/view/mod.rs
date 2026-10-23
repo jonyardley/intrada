@@ -84,7 +84,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             let planned_total_secs: u64 = building
                 .entries
                 .iter()
-                .filter_map(|e| e.planned_duration_secs)
+                .filter_map(|e| e.plan.duration_secs)
                 .map(u64::from)
                 .sum();
             let (total_duration_display, total_duration_summary) = if planned_total_secs > 0 {
@@ -103,7 +103,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .entries
                 .iter()
                 .filter_map(|entry| {
-                    let item = cached.library.iter().find(|i| i.id == entry.item_id)?;
+                    let item = cached.library.iter().find(|i| i.id == entry.plan.item_id)?;
                     (!item.variations.is_empty() || !item.sections.is_empty()).then(|| {
                         EntryVariationsView {
                             entry_id: entry.id.clone(),
@@ -118,13 +118,13 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .iter()
                 // Decided 2026-10-04 (#2249, spec): an offer only while nothing is planned.
                 .filter(|entry| {
-                    entry.segments.is_empty()
-                        && entry.focus.is_none()
-                        && entry.planned_variation_ids.is_empty()
-                        && entry.planned_key.is_none()
+                    entry.plan.segments.is_empty()
+                        && entry.plan.focus.is_none()
+                        && entry.plan.variation_ids.is_empty()
+                        && entry.plan.key.is_none()
                 })
                 .filter_map(|entry| {
-                    let way = crate::domain::session::last_time(model, &entry.item_id)?;
+                    let way = crate::domain::session::last_time(model, &entry.plan.item_id)?;
                     Some(crate::view::session::last_time_view(entry, way, &labels))
                 })
                 .collect();
@@ -132,7 +132,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .entries
                 .iter()
                 .filter_map(|entry| {
-                    let item = model.items.iter().find(|i| i.id == entry.item_id)?;
+                    let item = model.items.iter().find(|i| i.id == entry.plan.item_id)?;
                     crate::view::session::entry_keys_view(entry, item)
                 })
                 .collect();
@@ -186,7 +186,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             let current_variations = cached
                 .library
                 .iter()
-                .find(|i| i.id == current_entry.item_id)
+                .find(|i| i.id == current_entry.plan.item_id)
                 .map_or(&[][..], |i| i.variations.as_slice());
             let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
                 model.items.iter().map(|i| (i.id.as_str(), i)).collect();
@@ -202,12 +202,15 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .open_play()
                 .is_some_and(|p| p.is_played(&crate::domain::session::PlayWay::default()));
             view.record.last_time =
-                crate::domain::session::last_time(model, &current_entry.item_id)
+                crate::domain::session::last_time(model, &current_entry.plan.item_id)
                     .filter(|_| on_the_whole_piece_plain && active.reflection.is_none())
                     .map(|way| crate::view::session::last_time_view(current_entry, way, &labels));
             if let (Some(finish), Some(item), Some(draft)) = (
                 view.record.finish.as_mut(),
-                model.items.iter().find(|i| i.id == current_entry.item_id),
+                model
+                    .items
+                    .iter()
+                    .find(|i| i.id == current_entry.plan.item_id),
                 active.reflection.as_ref(),
             ) {
                 crate::view::session::fill_finish_choices(
@@ -368,10 +371,11 @@ fn live_variation_labels(
 ) -> Vec<String> {
     let live = library
         .iter()
-        .find(|i| i.id == entry.item_id)
+        .find(|i| i.id == entry.plan.item_id)
         .map_or(&[][..], |i| i.variations.as_slice());
     entry
-        .planned_variation_ids
+        .plan
+        .variation_ids
         .iter()
         .filter_map(|id| live.iter().find(|v| &v.id == id).map(|v| v.label.clone()))
         .collect()
@@ -395,10 +399,10 @@ fn drill_offers(
 ) -> Vec<DrillOfferView> {
     let mut offers = Vec::new();
     for entry in entries {
-        let Some(piece) = model.items.iter().find(|i| i.id == entry.item_id) else {
+        let Some(piece) = model.items.iter().find(|i| i.id == entry.plan.item_id) else {
             continue;
         };
-        for segment in &entry.segments {
+        for segment in &entry.plan.segments {
             for link in piece.live_links() {
                 if link.section_id.as_deref() != Some(segment.section_id.as_str()) {
                     continue;
@@ -413,7 +417,7 @@ fn drill_offers(
                     title: exercise.title.clone(),
                     added_entry_id: entries
                         .iter()
-                        .find(|e| e.item_id == exercise.id)
+                        .find(|e| e.plan.item_id == exercise.id)
                         .map(|e| e.id.clone()),
                 });
             }

@@ -261,25 +261,26 @@
         id: "recover-1",
         entries: [
           SetlistEntry(
-            id: "re1", itemId: "i1", itemTitle: "Scales · D♭ major", itemType: .exercise,
-            position: 0, durationSecs: 180, status: .completed,
-            notes: nil, intention: nil, plannedDurationSecs: nil,
-            groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
+            id: "re1",
+            plan: PlannedItem(
+              itemId: "i1", itemType: .exercise, intention: nil, focus: nil, durationSecs: nil,
+              groupId: nil, variationIds: [], repTarget: nil, segments: [], key: nil),
+            itemTitle: "Scales · D♭ major", position: 0, durationSecs: 180, status: .completed,
+            notes: nil,
             plays: [
               Play(
                 id: "re1-p1", sectionId: nil, key: nil, variationIds: [],
                 startedAt: "2026-06-16T08:59:00Z", seconds: 180, repTarget: nil, repCount: nil,
                 repHistory: nil, tempoChanges: [], achievedTempo: nil, clickPattern: nil,
                 score: nil, away: [])
-            ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [],
-            notePoints: [], plannedKey: nil),
+            ], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []),
           SetlistEntry(
-            id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
-            position: 1, durationSecs: 0, status: .notAttempted,
-            notes: nil, intention: nil, plannedDurationSecs: nil,
-            groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
-            plays: [], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [],
-            notePoints: [], plannedKey: nil),
+            id: "re2",
+            plan: PlannedItem(
+              itemId: "i2", itemType: .piece, intention: nil, focus: nil, durationSecs: nil,
+              groupId: nil, variationIds: [], repTarget: nil, segments: [], key: nil),
+            itemTitle: "Clair de Lune", position: 1, durationSecs: 0, status: .notAttempted,
+            notes: nil, plays: [], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []),
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",

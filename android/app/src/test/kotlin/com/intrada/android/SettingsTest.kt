@@ -104,6 +104,9 @@ class SettingsTest {
         val settings = Settings(prefs, practice)
         val bytes = pinnedSessionBlob().second
         val session = ActiveSession.bincodeDeserialize(bytes)
+        // Two optional strings swapped in the generated field list would still round trip (#2582).
+        assertEquals("evenness", session.entries.first().plan.intention)
+        assertEquals("g1", session.entries.first().plan.groupId)
         assertTrue(settings.keep(AppEffect.SaveSessionInProgress(session)))
         assertArrayEquals(bytes, settings.sessionInProgress.read())
         val store = store(settings)

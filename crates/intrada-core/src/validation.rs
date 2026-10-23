@@ -729,7 +729,7 @@ fn validate_entry_section(
     let live = model
         .items
         .iter()
-        .find(|i| i.id == entry.item_id)
+        .find(|i| i.id == entry.plan.item_id)
         .is_some_and(|item| {
             item.sections
                 .iter()

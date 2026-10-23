@@ -14,29 +14,12 @@ pub(super) fn create_entry(
     item_type: ItemKind,
     position: usize,
 ) -> SetlistEntry {
-    SetlistEntry {
-        id: ulid::Ulid::generate().to_string(),
-        item_id: item_id.to_string(),
-        item_title: item_title.to_string(),
-        item_type,
+    SetlistEntry::from_plan(
+        ulid::Ulid::generate().to_string(),
         position,
-        duration_secs: 0,
-        status: EntryStatus::NotAttempted,
-        notes: None,
-        intention: None,
-        planned_duration_secs: None,
-        group_id: None,
-        planned_variation_ids: Vec::new(),
-        planned_rep_target: None,
-        plays: Vec::new(),
-        segments: Vec::new(),
-        focus: None,
-        intention_met: None,
-        felt: None,
-        got_in_the_way: Vec::new(),
-        note_points: Vec::new(),
-        planned_key: None,
-    }
+        item_title,
+        PlannedItem::new(item_id, item_type),
+    )
 }
 
 pub(super) fn reindex_entries(entries: &mut [SetlistEntry]) {
@@ -50,12 +33,12 @@ pub(super) fn reindex_entries(entries: &mut [SetlistEntry]) {
 pub(super) fn into_units(entries: Vec<SetlistEntry>) -> Vec<Vec<SetlistEntry>> {
     let mut units: Vec<Vec<SetlistEntry>> = Vec::new();
     for entry in entries {
-        match &entry.group_id {
+        match &entry.plan.group_id {
             Some(g) => {
                 let extends = units
                     .last()
                     .and_then(|u| u.first())
-                    .and_then(|e| e.group_id.as_deref())
+                    .and_then(|e| e.plan.group_id.as_deref())
                     == Some(g.as_str());
                 if extends {
                     units.last_mut().expect("checked above").push(entry);
@@ -75,21 +58,22 @@ pub(super) fn into_units(entries: Vec<SetlistEntry>) -> Vec<Vec<SetlistEntry>> {
 pub(super) fn dissolve_pieceless_groups(entries: &mut [SetlistEntry]) {
     let anchored: std::collections::HashSet<&str> = entries
         .iter()
-        .filter(|e| e.item_type == ItemKind::Piece)
-        .filter_map(|e| e.group_id.as_deref())
+        .filter(|e| e.plan.item_type == ItemKind::Piece)
+        .filter_map(|e| e.plan.group_id.as_deref())
         .collect();
     let orphans: std::collections::HashSet<String> = entries
         .iter()
-        .filter_map(|e| e.group_id.clone())
+        .filter_map(|e| e.plan.group_id.clone())
         .filter(|g| !anchored.contains(g.as_str()))
         .collect();
     for entry in entries.iter_mut() {
         if entry
+            .plan
             .group_id
             .as_deref()
             .is_some_and(|g| orphans.contains(g))
         {
-            entry.group_id = None;
+            entry.plan.group_id = None;
         }
     }
 }
@@ -120,7 +104,9 @@ pub(super) fn set_entry_intention(
         .map(|text| text.trim().to_string())
         .filter(|text| !text.is_empty());
     let check = validation::validate_intention(&intention);
-    set_planned(model, &entry_id, check, |entry| entry.intention = intention)
+    set_planned(model, &entry_id, check, |entry| {
+        entry.plan.intention = intention
+    })
 }
 
 pub(super) fn set_entry_plan(
@@ -158,9 +144,9 @@ pub(super) fn set_entry_plan(
             planned_secs: 0,
         })
         .collect();
-    split_evenly(&mut segments, entry.planned_duration_secs);
-    entry.segments = segments;
-    entry.planned_variation_ids = variation_ids;
+    split_evenly(&mut segments, entry.plan.duration_secs);
+    entry.plan.segments = segments;
+    entry.plan.variation_ids = variation_ids;
     model.last_error = None;
     crux_core::render::render()
 }
@@ -172,7 +158,7 @@ pub(super) fn set_rep_target(
 ) -> Command<Effect, Event> {
     let check = validation::validate_rep_target(&target);
     set_planned(model, &entry_id, check, |entry| {
-        entry.planned_rep_target = target;
+        entry.plan.rep_target = target;
     })
 }
 
@@ -183,8 +169,8 @@ pub(super) fn set_entry_duration(
 ) -> Command<Effect, Event> {
     let check = validation::validate_planned_duration(&duration_secs);
     set_planned(model, &entry_id, check, |entry| {
-        entry.planned_duration_secs = duration_secs;
-        split_evenly(&mut entry.segments, duration_secs);
+        entry.plan.duration_secs = duration_secs;
+        split_evenly(&mut entry.plan.segments, duration_secs);
     })
 }
 
@@ -202,8 +188,10 @@ pub(super) fn set_segments(
         return crux_core::render::render();
     };
     let check = validation::validate_segment_sections(entry, &segments, model)
-        .and_then(|()| rebalance(&mut segments, entry.planned_duration_secs));
-    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+        .and_then(|()| rebalance(&mut segments, entry.plan.duration_secs));
+    set_planned(model, &entry_id, check, |entry| {
+        entry.plan.segments = segments
+    })
 }
 
 pub(super) fn set_focus(
@@ -211,7 +199,7 @@ pub(super) fn set_focus(
     entry_id: String,
     focus: Option<IntentionFocus>,
 ) -> Command<Effect, Event> {
-    let item_id = entry_for_plan(model, &entry_id).map(|e| e.item_id.clone());
+    let item_id = entry_for_plan(model, &entry_id).map(|e| e.plan.item_id.clone());
     let focus = focus.map(|mut focus| {
         if focus.target.is_none() {
             let section_bpm = item_id.as_deref().and_then(|item_id| {
@@ -228,7 +216,7 @@ pub(super) fn set_focus(
         }
         _ => Ok(()),
     };
-    set_planned(model, &entry_id, check, |entry| entry.focus = focus)
+    set_planned(model, &entry_id, check, |entry| entry.plan.focus = focus)
 }
 
 pub(super) fn set_entry_variations(
@@ -238,7 +226,7 @@ pub(super) fn set_entry_variations(
 ) -> Command<Effect, Event> {
     let check = validation::validate_variation_ids(model, &variation_ids);
     set_planned(model, &entry_id, check, |entry| {
-        entry.planned_variation_ids = variation_ids;
+        entry.plan.variation_ids = variation_ids;
     })
 }
 
@@ -247,9 +235,9 @@ pub(super) fn set_entry_key(
     entry_id: String,
     key: Option<crate::domain::key::Key>,
 ) -> Command<Effect, Event> {
-    let key =
-        entry_for_plan(model, &entry_id).and_then(|e| written_key_as_none(model, &e.item_id, key));
-    set_planned(model, &entry_id, Ok(()), |entry| entry.planned_key = key)
+    let key = entry_for_plan(model, &entry_id)
+        .and_then(|e| written_key_as_none(model, &e.plan.item_id, key));
+    set_planned(model, &entry_id, Ok(()), |entry| entry.plan.key = key)
 }
 
 /// Offered drills only: an exercise linked to a section the entry plans.
@@ -269,9 +257,10 @@ pub(super) fn add_drill(
     let offered = model
         .items
         .iter()
-        .find(|i| i.id == entry.item_id)
+        .find(|i| i.id == entry.plan.item_id)
         .is_some_and(|piece| {
             entry
+                .plan
                 .segments
                 .iter()
                 .any(|s| piece.has_live_link(&exercise_id, Some(&s.section_id)))
@@ -285,15 +274,19 @@ pub(super) fn add_drill(
         return crux_core::render::render();
     }
     // Membership is binary (#939): a drill already in the session is ticked.
-    if building.entries.iter().any(|e| e.item_id == exercise_id) {
+    if building
+        .entries
+        .iter()
+        .any(|e| e.plan.item_id == exercise_id)
+    {
         model.last_error = None;
         return crux_core::render::render();
     }
-    let group_id = entry.group_id.clone().unwrap_or_else(|| {
+    let group_id = entry.plan.group_id.clone().unwrap_or_else(|| {
         let group_id = ulid::Ulid::generate().to_string();
         if let SessionStatus::Building(ref mut building) = model.session_status {
             if let Some(piece) = building.entries.iter_mut().find(|e| e.id == entry_id) {
-                piece.group_id = Some(group_id.clone());
+                piece.plan.group_id = Some(group_id.clone());
             }
         }
         group_id
@@ -307,12 +300,15 @@ pub(super) fn step_segment(
     section_id: String,
     minutes: i8,
 ) -> Command<Effect, Event> {
-    let Some(mut segments) = entry_for_plan(model, &entry_id).map(|e| e.segments.clone()) else {
+    let Some(mut segments) = entry_for_plan(model, &entry_id).map(|e| e.plan.segments.clone())
+    else {
         return set_planned(model, &entry_id, Ok(()), |_| {});
     };
     let check = section_index(&segments, &section_id)
         .and_then(|index| record::step_segment(&mut segments, index, minutes));
-    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+    set_planned(model, &entry_id, check, |entry| {
+        entry.plan.segments = segments
+    })
 }
 
 pub(super) fn add_segment(
@@ -323,12 +319,14 @@ pub(super) fn add_segment(
     let Some(entry) = entry_for_plan(model, &entry_id) else {
         return set_planned(model, &entry_id, Ok(()), |_| {});
     };
-    let mut segments = entry.segments.clone();
-    let added = record::add_segment(&mut segments, section_id, entry.planned_duration_secs);
+    let mut segments = entry.plan.segments.clone();
+    let added = record::add_segment(&mut segments, section_id, entry.plan.duration_secs);
     // A refused section outranks refused minutes: a duplicate says so, not
     // that the minutes don't fit.
     let check = validation::validate_segment_sections(entry, &segments, model).and(added);
-    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+    set_planned(model, &entry_id, check, |entry| {
+        entry.plan.segments = segments
+    })
 }
 
 /// Unchecked against the piece, so a section deleted from it mid-build can
@@ -339,13 +337,15 @@ pub(super) fn remove_segment(
     section_id: String,
 ) -> Command<Effect, Event> {
     let Some((mut segments, planned)) =
-        entry_for_plan(model, &entry_id).map(|e| (e.segments.clone(), e.planned_duration_secs))
+        entry_for_plan(model, &entry_id).map(|e| (e.plan.segments.clone(), e.plan.duration_secs))
     else {
         return set_planned(model, &entry_id, Ok(()), |_| {});
     };
     let check = section_index(&segments, &section_id)
         .map(|index| record::remove_segment(&mut segments, index, planned));
-    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+    set_planned(model, &entry_id, check, |entry| {
+        entry.plan.segments = segments
+    })
 }
 
 fn section_index(segments: &[Segment], section_id: &str) -> Result<usize, LibraryError> {
@@ -385,7 +385,7 @@ fn live_section_ids<'a>(model: &'a Model, item_id: &str) -> Vec<&'a str> {
 }
 
 pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Effect, Event> {
-    let way = entry_for_plan(model, &entry_id).and_then(|e| last_time(model, &e.item_id));
+    let way = entry_for_plan(model, &entry_id).and_then(|e| last_time(model, &e.plan.item_id));
     let Some(way) = way else {
         model.raise_error("There's no last time to plan from".to_string());
         return crux_core::render::render();
@@ -399,10 +399,10 @@ pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Ef
                 planned_secs: 0,
             })
             .collect();
-        split_evenly(&mut segments, entry.planned_duration_secs);
-        entry.segments = segments;
-        entry.planned_key = way.key;
-        entry.planned_variation_ids = way.variation_ids;
+        split_evenly(&mut segments, entry.plan.duration_secs);
+        entry.plan.segments = segments;
+        entry.plan.key = way.key;
+        entry.plan.variation_ids = way.variation_ids;
     })
 }
 
@@ -411,11 +411,11 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
     let play = model
         .sessions
         .iter()
-        .filter(|s| s.entries.iter().any(|e| e.item_id == item_id))
+        .filter(|s| s.entries.iter().any(|e| e.plan.item_id == item_id))
         .max_by_key(|s| s.started_at)?
         .entries
         .iter()
-        .filter(|e| e.item_id == item_id)
+        .filter(|e| e.plan.item_id == item_id)
         .flat_map(|e| e.plays.iter())
         .rev()
         .find(|p| !p.is_incidental())?;
@@ -538,7 +538,7 @@ fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
                 suggested.item_type.clone(),
                 position,
             );
-            entry.group_id = Some(group_id.clone());
+            entry.plan.group_id = Some(group_id.clone());
             building.entries.push(entry);
         }
     }
@@ -586,7 +586,7 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
     // Membership is binary (the picker/sheet toggle relies on it):
     // re-adding a present item is an idempotent no-op, not a duplicate (#939).
     if let SessionStatus::Building(ref building) = model.session_status {
-        if building.entries.iter().any(|e| e.item_id == item_id) {
+        if building.entries.iter().any(|e| e.plan.item_id == item_id) {
             model.last_error = None;
             return crux_core::render::render();
         }
@@ -620,8 +620,11 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
     };
 
     // Skip related exercises already in the setlist; don't duplicate.
-    let existing: std::collections::HashSet<String> =
-        building.entries.iter().map(|e| e.item_id.clone()).collect();
+    let existing: std::collections::HashSet<String> = building
+        .entries
+        .iter()
+        .map(|e| e.plan.item_id.clone())
+        .collect();
     let related_to_add: Vec<(String, String, ItemKind)> = related
         .into_iter()
         .filter(|(id, _, _)| !existing.contains(id))
@@ -638,12 +641,12 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
     for (id, title, kind) in &related_to_add {
         let position = building.entries.len();
         let mut entry = create_entry(id, title, kind.clone(), position);
-        entry.group_id.clone_from(&group_id);
+        entry.plan.group_id.clone_from(&group_id);
         building.entries.push(entry);
     }
     let position = building.entries.len();
     let mut piece_entry = create_entry(&piece.0, &piece.1, piece.2, position);
-    piece_entry.group_id = group_id;
+    piece_entry.plan.group_id = group_id;
     building.entries.push(piece_entry);
 
     model.last_error = None;
@@ -713,7 +716,8 @@ pub(super) fn move_related(
         model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
         return crux_core::render::render();
     };
-    let (Some(group_id), ItemKind::Exercise) = (entry.group_id.clone(), &entry.item_type) else {
+    let (Some(group_id), ItemKind::Exercise) = (entry.plan.group_id.clone(), &entry.plan.item_type)
+    else {
         model.raise_error("Only a related exercise moves within its block".to_string());
         return crux_core::render::render();
     };
@@ -723,7 +727,8 @@ pub(super) fn move_related(
         .iter()
         .enumerate()
         .filter(|(_, e)| {
-            e.group_id.as_deref() == Some(group_id.as_str()) && e.item_type == ItemKind::Exercise
+            e.plan.group_id.as_deref() == Some(group_id.as_str())
+                && e.plan.item_type == ItemKind::Exercise
         })
         .map(|(i, _)| i)
         .collect();
@@ -755,7 +760,7 @@ pub(super) fn keep_only_piece(model: &mut Model, group_id: String) -> Command<Ef
         return crux_core::render::render();
     };
 
-    let in_block = |e: &SetlistEntry| e.group_id.as_deref() == Some(group_id.as_str());
+    let in_block = |e: &SetlistEntry| e.plan.group_id.as_deref() == Some(group_id.as_str());
     if !building.entries.iter().any(in_block) {
         model.raise_error(format!("Block '{group_id}' not found in setlist"));
         return crux_core::render::render();
@@ -763,10 +768,10 @@ pub(super) fn keep_only_piece(model: &mut Model, group_id: String) -> Command<Ef
 
     building
         .entries
-        .retain(|e| !(in_block(e) && e.item_type == ItemKind::Exercise));
+        .retain(|e| !(in_block(e) && e.plan.item_type == ItemKind::Exercise));
     // The lone piece left behind is no longer a block.
     for entry in building.entries.iter_mut().filter(|e| in_block(e)) {
-        entry.group_id = None;
+        entry.plan.group_id = None;
     }
     reindex_entries(&mut building.entries);
     model.last_error = None;
@@ -783,9 +788,9 @@ pub(super) fn ungroup_block(model: &mut Model, group_id: String) -> Command<Effe
     for entry in building
         .entries
         .iter_mut()
-        .filter(|e| e.group_id.as_deref() == Some(group_id.as_str()))
+        .filter(|e| e.plan.group_id.as_deref() == Some(group_id.as_str()))
     {
-        entry.group_id = None;
+        entry.plan.group_id = None;
         found = true;
     }
     if !found {
@@ -802,7 +807,7 @@ pub(super) fn ungroup_all_blocks(model: &mut Model) -> Command<Effect, Event> {
         return crux_core::render::render();
     };
     for entry in &mut building.entries {
-        entry.group_id = None;
+        entry.plan.group_id = None;
     }
     model.last_error = None;
     crux_core::render::render()
@@ -817,7 +822,7 @@ pub(super) fn remove_block(model: &mut Model, group_id: String) -> Command<Effec
     let len_before = building.entries.len();
     building
         .entries
-        .retain(|e| e.group_id.as_deref() != Some(group_id.as_str()));
+        .retain(|e| e.plan.group_id.as_deref() != Some(group_id.as_str()));
     if building.entries.len() == len_before {
         model.raise_error(format!("Block '{group_id}' not found in setlist"));
         return crux_core::render::render();
@@ -838,13 +843,13 @@ pub(super) fn add_exercise_to_block(
     };
 
     // Membership is binary, same idempotency as `AddToSetlist` (#939).
-    if building.entries.iter().any(|e| e.item_id == item_id) {
+    if building.entries.iter().any(|e| e.plan.item_id == item_id) {
         model.last_error = None;
         return crux_core::render::render();
     }
 
     let Some(anchor_index) = building.entries.iter().position(|e| {
-        e.group_id.as_deref() == Some(group_id.as_str()) && e.item_type == ItemKind::Piece
+        e.plan.group_id.as_deref() == Some(group_id.as_str()) && e.plan.item_type == ItemKind::Piece
     }) else {
         model.raise_error(format!("Block '{group_id}' not found in setlist"));
         return crux_core::render::render();
@@ -865,7 +870,7 @@ pub(super) fn add_exercise_to_block(
         return crux_core::render::render();
     };
     let mut entry = create_entry(&id, &title, kind, anchor_index);
-    entry.group_id = Some(group_id);
+    entry.plan.group_id = Some(group_id);
     building.entries.insert(anchor_index, entry);
     reindex_entries(&mut building.entries);
     model.last_error = None;
@@ -962,10 +967,10 @@ fn place_row(units: &[Vec<SetlistEntry>], row: &BuilderRowRef) -> Result<RowPlac
                 .enumerate()
                 .find_map(|(u, entries)| entries.iter().find(|e| &e.id == entry_id).map(|e| (u, e)))
                 .ok_or_else(|| format!("Entry '{entry_id}' not found in setlist"))?;
-            let related_index = if entry.group_id.is_some() {
+            let related_index = if entry.plan.group_id.is_some() {
                 units[unit]
                     .iter()
-                    .filter(|e| e.item_type == ItemKind::Exercise)
+                    .filter(|e| e.plan.item_type == ItemKind::Exercise)
                     .position(|e| &e.id == entry_id)
             } else {
                 None
@@ -979,7 +984,7 @@ fn place_row(units: &[Vec<SetlistEntry>], row: &BuilderRowRef) -> Result<RowPlac
         BuilderRowRef::Header { group_id } | BuilderRowRef::AddRelated { group_id } => {
             let unit = units
                 .iter()
-                .position(|u| u.first().and_then(|e| e.group_id.as_ref()) == Some(group_id))
+                .position(|u| u.first().and_then(|e| e.plan.group_id.as_ref()) == Some(group_id))
                 .ok_or_else(|| format!("Block '{group_id}' not found in setlist"))?;
             Ok(RowPlace {
                 unit,
