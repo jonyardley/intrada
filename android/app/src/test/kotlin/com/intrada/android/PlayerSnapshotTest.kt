@@ -206,10 +206,11 @@ class PlayerSnapshotTest {
                         "Move on to Run",
                         "Stay on A1",
                         listOf(
+                            SegmentBarView("Intro", SegmentProgress.DONE, null),
                             SegmentBarView("A1", SegmentProgress.RUNNING, null),
-                            SegmentBarView("Run", SegmentProgress.TOCOME, null),
+                            SegmentBarView("Run", SegmentProgress.TOCOME, "A1 took 2 min"),
                         ),
-                        "Section 1 of 2",
+                        "Section 2 of 3, 2 min taken from Run",
                     ),
                 lastTime =
                     LastTimeView(

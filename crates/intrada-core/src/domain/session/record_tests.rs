@@ -397,6 +397,11 @@ fn staying_on_a1_shows_the_minutes_taken_on_bs_bar() {
             bar("B", SegmentProgress::ToCome, Some("A1 took 2 min"))
         ]
     );
+    let spoken = active_view(&m).record.segment.map(|c| c.position_label);
+    assert_eq!(
+        spoken.as_deref(),
+        Some("Section 1 of 2, 2 min taken from B")
+    );
     crate::domain::types::assert_round_trips(active_view(&m).record);
 
     send(
@@ -412,7 +417,7 @@ fn staying_on_a1_shows_the_minutes_taken_on_bs_bar() {
             bar("A1", SegmentProgress::Done, None),
             bar("B", SegmentProgress::Running, None)
         ],
-        "once B runs, its clock carries the shorter time"
+        "B's bar drops the caption once it runs"
     );
 }
 

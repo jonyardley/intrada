@@ -614,6 +614,16 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
                 )
             });
         let running = clock.index as usize;
+        let taken_spoken = next
+            .as_ref()
+            .filter(|_| clock.taken_from_next_secs > 0)
+            .map(|next| {
+                format!(
+                    ", {} taken from {next}",
+                    format_planned_duration(u64::from(clock.taken_from_next_secs))
+                )
+            })
+            .unwrap_or_default();
         let bars = current
             .plan
             .segments
@@ -635,7 +645,8 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
             })
             .collect();
         Some(SegmentClockView {
-            position_label: format!("Section {} of {}", running + 1, current.plan.segments.len()),
+            position_label: format!("Section {} of {}", running + 1, current.plan.segments.len())
+                + &taken_spoken,
             bars,
             move_label: next.as_ref().map(|next| format!("On to {next}")),
             stay_label,

@@ -136,7 +136,7 @@ private fun SectionStrip(segment: SegmentClockView) {
                         .height(6.dp)
                         .clip(CircleShape)
                         .background(
-                            if (bar.progress == SegmentProgress.DONE) IntradaColor.ink
+                            if (bar.progress == SegmentProgress.DONE) IntradaColor.accent
                             else IntradaColor.divider
                         )
                 )
@@ -151,6 +151,8 @@ private fun SectionStrip(segment: SegmentClockView) {
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     BasicText(
                         bar.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         style =
                             (if (running) IntradaFont.smallMedium else IntradaFont.small).copy(
                                 color = if (running) IntradaColor.ink else IntradaColor.inkSecondary
@@ -160,6 +162,8 @@ private fun SectionStrip(segment: SegmentClockView) {
                     if (caption != null) {
                         BasicText(
                             caption,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
                         )
                     }

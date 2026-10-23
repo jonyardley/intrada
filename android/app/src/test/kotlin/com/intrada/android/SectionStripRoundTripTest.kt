@@ -54,7 +54,7 @@ class SectionStripRoundTripTest {
             stayed?.bars?.map { it.progress },
         )
         assertEquals(listOf(null, "A took 2 min"), stayed?.bars?.map { it.caption })
-        assertEquals("Section 1 of 2", stayed?.positionLabel)
+        assertEquals("Section 1 of 2, 2 min taken from B", stayed?.positionLabel)
 
         bridge.update(
             Event.Session(

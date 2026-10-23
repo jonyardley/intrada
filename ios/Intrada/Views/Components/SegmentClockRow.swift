@@ -81,11 +81,13 @@ struct SegmentClockRow: View {
         ForEach(Array(segment.bars.enumerated()), id: \.offset) { _, bar in
           VStack(spacing: 0) {
             Text(bar.label)
+              .lineLimit(1)
               .font(bar.progress == .running ? IntradaFont.smallMedium : IntradaFont.small)
               .foregroundStyle(
                 bar.progress == .running ? IntradaColor.ink : IntradaColor.inkSecondary)
             if let caption = bar.caption {
               Text(caption)
+                .lineLimit(1)
                 .font(IntradaFont.small)
                 .foregroundStyle(IntradaColor.inkSecondary)
             }
