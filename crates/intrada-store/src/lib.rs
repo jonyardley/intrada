@@ -110,12 +110,12 @@ fn run_in(
     Ok(match operation {
         PersistenceOperation::LoadItems => PersistenceOutput::Items(items::load(tx, unreadable)?),
         PersistenceOperation::SaveItem(item) => {
-            items::upsert(tx, item, unreadable)?;
+            items::upsert(tx, item)?;
             PersistenceOutput::Ack
         }
         PersistenceOperation::SaveItems(batch) => {
             for item in batch {
-                items::upsert(tx, item, unreadable)?;
+                items::upsert(tx, item)?;
             }
             PersistenceOutput::Ack
         }
@@ -145,7 +145,7 @@ fn run_in(
         }
         PersistenceOperation::ApplyMerged(merged) => {
             for item in &merged.items {
-                items::put_merged(tx, item, unreadable)?;
+                items::put_merged(tx, item)?;
             }
             sessions::save_variations(tx, &merged.variations)?;
             for session in &merged.sessions {
