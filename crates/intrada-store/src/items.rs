@@ -12,9 +12,9 @@ use serde::de::DeserializeOwned;
 
 use crate::codec::{
     self, decode_chord_chart, decode_json, decode_keys, decode_metre, encode_chord_chart,
-    encode_json, encode_keys, encode_metre, item_kind, item_kind_text, parse_time, section_kind,
-    section_kind_text, stored_key, time_text, try_decode_json, StoredChart, StoredKeyJson,
-    StoredMetre, Unreadable,
+    encode_json, encode_keys, encode_metre, is_unknown_modality, item_kind, item_kind_to_write,
+    parse_time, section_kind, section_kind_to_write, stored_key, time_text, try_decode_json,
+    StoredChart, StoredKeyJson, StoredMetre, Unreadable,
 };
 use crate::StoreError;
 
@@ -83,13 +83,9 @@ fn load_rows(
 /// The merge's copy, its tombstone written exactly as it arrived. The piece
 /// wins whole: a section or link only this device has is deleted as of the
 /// winner's change.
-pub(crate) fn put_merged(
-    tx: &Transaction,
-    stored: &StoredItem,
-    unreadable: &mut Unreadable,
-) -> Result<(), StoreError> {
+pub(crate) fn put_merged(tx: &Transaction, stored: &StoredItem) -> Result<(), StoreError> {
     let item = &stored.item;
-    upsert(tx, item, unreadable)?;
+    upsert(tx, item)?;
     if let Some(deleted_at) = &stored.deleted_at {
         delete(tx, &item.id, deleted_at)?;
     }
@@ -269,19 +265,14 @@ fn exercise_link(row: &Row) -> Result<(String, ExerciseLink), String> {
 // ── Saving ───────────────────────────────────────────────────────────
 
 /// Insert or update by id; clears any tombstone (an upsert revives a row).
-pub(crate) fn upsert(
-    tx: &Transaction,
-    item: &Item,
-    unreadable: &mut Unreadable,
-) -> Result<(), StoreError> {
-    let chord_chart = match encode_chord_chart(
-        item.chord_chart.as_ref(),
-        stored_chart_key_if_unreadable(tx, &item.id, unreadable)?,
-    )? {
+pub(crate) fn upsert(tx: &Transaction, item: &Item) -> Result<(), StoreError> {
+    let stored_chart = stored_text(tx, "chord_chart", &item.id)?
+        .and_then(|stored| try_decode_json::<StoredChart>(&stored));
+    let chord_chart = match encode_chord_chart(item.chord_chart.as_ref(), stored_chart.as_ref())? {
         Some(json) => Some(json),
         None => stored_if_unreadable::<StoredChart>(tx, "chord_chart", &item.id)?,
     };
-    let keys = match stored_keys_if_unreadable(tx, &item.id, &item.keys, unreadable)? {
+    let keys = match stored_keys_if_unreadable(tx, &item.id, &item.keys)? {
         Some(json) => json,
         None => encode_keys(&item.keys)?,
     };
@@ -289,10 +280,11 @@ pub(crate) fn upsert(
         Some(json) => Some(json),
         None => stored_if_unreadable::<StoredMetre>(tx, "metre", &item.id)?,
     };
-    let key = match &item.key {
-        Some(key) => Some(stored_key(key)),
-        None => stored_key_if_unreadable(tx, &item.id, unreadable)?,
+    let key = match kept_item_key(tx, &item.id, item.key.as_ref())? {
+        Some(kept) => Some(kept),
+        None => item.key.as_ref().map(stored_key),
     };
+    let kind = item_kind_to_write(&item.kind, stored_text(tx, "kind", &item.id)?);
     tx.execute(
         &format!(
             "INSERT INTO item
@@ -318,7 +310,7 @@ pub(crate) fn upsert(
         params![
             item.id,
             item.title,
-            item_kind_text(&item.kind),
+            kind,
             item.composer,
             key.as_ref().map(|k| &k.key),
             key.as_ref().and_then(|k| k.modality.as_ref()),
@@ -337,6 +329,7 @@ pub(crate) fn upsert(
         ],
     )?;
     for s in &item.sections {
+        let kind = section_kind_to_write(s.kind, stored_section_kind(tx, &s.id)?);
         tx.execute(
             "INSERT INTO section
                (id, item_id, name, bar_first, bar_last, kind, target_bpm, position, updated_at,
@@ -354,7 +347,7 @@ pub(crate) fn upsert(
                 s.name,
                 s.bars.map(|b| b.first),
                 s.bars.map(|b| b.last),
-                section_kind_text(s.kind),
+                kind,
                 s.target_bpm,
                 position(s.position)?,
                 time_text(&s.updated_at),
@@ -436,14 +429,13 @@ fn stored_if_unreadable<T: DeserializeOwned>(
     Ok(stored_text(tx, column, id)?.filter(|stored| try_decode_json::<T>(stored).is_none()))
 }
 
-/// A key list holding one the core cannot read loads without it; while the
-/// item's list is what loaded, the stored one stays so that key is not lost
-/// (#2097, #2106).
+/// A key list holding one the core cannot read loads without it, and a mode
+/// this build does not recognise loads as none; while the item's list is what
+/// loaded, the stored one stays so neither is lost (#2097, #2106, #2437).
 fn stored_keys_if_unreadable(
     tx: &Transaction,
     id: &str,
     keys: &[Key],
-    unreadable: &mut Unreadable,
 ) -> Result<Option<String>, StoreError> {
     let Some(stored) = stored_text(tx, "keys", id)? else {
         return Ok(None);
@@ -451,36 +443,20 @@ fn stored_keys_if_unreadable(
     let Some(all) = try_decode_json::<Vec<StoredKeyJson>>(&stored) else {
         return Ok(keys.is_empty().then_some(stored));
     };
-    let readable = decode_keys(Some(&stored), id, unreadable);
-    Ok((readable.len() < all.len() && readable == keys).then_some(stored))
+    let readable = decode_keys(Some(&stored), id, &mut Vec::new());
+    let lossy = readable.len() < all.len()
+        || all
+            .iter()
+            .any(|k| is_unknown_modality(k.modality.as_deref()));
+    Ok((lossy && readable == keys).then_some(stored))
 }
 
-fn stored_chart_key_if_unreadable(
+fn kept_item_key(
     tx: &Transaction,
     id: &str,
-    unreadable: &mut Unreadable,
+    saving: Option<&Key>,
 ) -> Result<Option<StoredKeyJson>, StoreError> {
-    let Some(chart) = stored_text(tx, "chord_chart", id)?
-        .and_then(|stored| try_decode_json::<StoredChart>(&stored))
-    else {
-        return Ok(None);
-    };
-    let unread = !chart.key.is_empty()
-        && codec::key(Some(&chart.key), Some(&chart.modality), unreadable).is_none();
-    Ok(unread.then_some(StoredKeyJson {
-        key: chart.key,
-        modality: Some(chart.modality),
-    }))
-}
-
-/// A key the core could not read loads as none, so writing none back would
-/// lose the musician's text; it stays until they pick a key (#2106).
-fn stored_key_if_unreadable(
-    tx: &Transaction,
-    id: &str,
-    unreadable: &mut Unreadable,
-) -> Result<Option<StoredKeyJson>, StoreError> {
-    let Some((text, modality)) = tx
+    let stored = tx
         .query_row(
             "SELECT key, modality FROM item WHERE id = ?1",
             [id],
@@ -491,14 +467,17 @@ fn stored_key_if_unreadable(
                 ))
             },
         )
-        .optional()?
-    else {
-        return Ok(None);
-    };
-    let Some(text) = text else { return Ok(None) };
-    let unread = codec::key(Some(&text), modality.as_deref(), unreadable).is_none();
-    Ok(unread.then_some(StoredKeyJson {
-        key: text,
-        modality,
-    }))
+        .optional()?;
+    Ok(match stored {
+        Some((Some(text), modality)) => codec::kept_key(&text, modality.as_deref(), saving),
+        _ => None,
+    })
+}
+
+fn stored_section_kind(tx: &Transaction, id: &str) -> Result<Option<String>, StoreError> {
+    Ok(tx
+        .query_row("SELECT kind FROM section WHERE id = ?1", [id], |row| {
+            row.get::<_, String>(0)
+        })
+        .optional()?)
 }
