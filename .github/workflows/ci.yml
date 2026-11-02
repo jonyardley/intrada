@@ -326,8 +326,11 @@ jobs:
     # "require approval for all external contributors" setting is the second
     # line, not the first. A push to main whose native paths did not change
     # skips it too: a docs-only merge ran the full gate for nothing (#2113).
+    # The repository variable IOS_RUNNER set to `hosted` moves the gate to
+    # GitHub's Mac below while this one is away; unset, it runs here.
     if: >-
       needs.changes.outputs.native == 'true'
+      && vars.IOS_RUNNER != 'hosted'
       && (github.event_name == 'push'
       || (github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository))
@@ -487,21 +490,151 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The same gate on GitHub's Xcode 27 Mac, for while the self-hosted one is
+  # away: on only when the repository variable IOS_RUNNER is `hosted`. The
+  # machine is 3 cores and 7 GB, so the UI tests run on one simulator, and
+  # it starts empty, so the iOS 26.5 runtime the snapshots pin is fetched
+  # each run (about 2.5 minutes). Same trigger rules as the self-hosted job.
+  native-ios-hosted:
+    name: "Native iOS: hosted gate"
+    runs-on: xcode-27
+    timeout-minutes: 75
+    needs: changes
+    if: >-
+      needs.changes.outputs.native == 'true'
+      && vars.IOS_RUNNER == 'hosted'
+      && (github.event_name == 'push'
+      || (github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository))
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.SELFHOSTED_XCODE }}
+      - name: Fetch the iOS 26.5 runtime the snapshots pin
+        run: |
+          if ! xcrun simctl list runtimes | grep -q "iOS 26.5 "; then
+            xcodebuild -downloadPlatform iOS -buildVersion 26.5
+          fi
+      - name: Assert the pinned toolchain
+        run: |
+          have="$(xcodebuild -version | head -1)"
+          if [ "$have" != "Xcode $SELFHOSTED_XCODE" ]; then
+            echo "runner is on $have, this gate expects Xcode $SELFHOSTED_XCODE (#1637)" >&2
+            exit 1
+          fi
+          if ! xcrun simctl list runtimes | grep -q "iOS 26.5 "; then
+            echo "the iOS 26.5 simulator runtime the snapshot references pin is missing" >&2
+            exit 1
+          fi
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "native-ios-hosted"
+          cache-on-failure: true
+      # dtolnay/rust-toolchain skips adding ~/.cargo/bin to PATH on the macOS
+      # image; without this `cargo` resolves to Apple's stub.
+      - name: Ensure cargo is on PATH and pin the Rust toolchain
+        run: |
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          echo "RUSTUP_TOOLCHAIN=${{ env.RUST_VERSION }}" >> "$GITHUB_ENV"
+      - uses: taiki-e/install-action@v2.87.28
+        with:
+          tool: just
+      - name: Cache cargo-swift
+        id: cargo-swift-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/cargo-swift
+          key: cargo-swift-0.9.0-${{ runner.os }}-${{ runner.arch }}
+      # The same pins as release-testflight.yml, which the version guard reads.
+      - name: Install cargo-swift
+        if: steps.cargo-swift-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-swift --version "=0.9.0" --locked
+      - name: Cache xcodegen
+        id: xcodegen-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            /usr/local/bin/xcodegen
+            /usr/local/share/xcodegen
+          key: xcodegen-2.46.0-${{ runner.os }}-${{ runner.arch }}
+      - name: Install xcodegen
+        if: steps.xcodegen-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          unzip -q /tmp/xcodegen.zip -d /tmp
+          /tmp/xcodegen/install.sh
+      - name: swift format check
+        run: just ios-fmt-check
+      - name: Clippy (iOS device target)
+        run: cargo clippy -p intrada-ffi --target aarch64-apple-ios --features store -- -D warnings
+      - name: Regenerate Swift bindings (facet typegen + cargo-swift)
+        run: just ios-gen
+      - name: Build for testing (just _ios-build-for-testing)
+        run: just _ios-build-for-testing
+      - name: Test (unit + snapshot)
+        run: just _ios-test-without-building -only-testing:IntradaTests 0
+      # One simulator: at 7 GB a second one's test runner fails preflight
+      # checks as "Busy" (#1824).
+      - name: Test (UI)
+        run: just _ios-test-without-building -skip-testing:IntradaTests 1 0
+      - name: Upload snapshot failures
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snapshot-failures
+          path: ios/IntradaTests/__Snapshots__/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Upload test result bundle
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-ios-hosted-xcresult
+          path: ios/build/dd/Logs/Test/*.xcresult
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Build Release (just ios-build-release)
+        if: github.event_name == 'push'
+        run: just ios-build-release
+      - name: Launch on simulator + screenshot
+        if: github.event_name == 'push'
+        run: REUSE_BUILD=1 bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
+      - name: Upload screenshot
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-ios-screenshot
+          path: ios-screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
+
   # Branch protection's required status check is this job's `name:`, so the
   # gate itself can move machines without a required-checks change on GitHub
-  # (#1207, #1577). Fork pull requests are not supported (#1962): the
-  # self-hosted job skips them, so they fail here rather than pass unchecked.
+  # (#1207, #1577). Fork pull requests are not supported (#1962): both gate
+  # jobs skip them, so they fail here rather than pass unchecked.
   native-ios:
     name: Native iOS (build + test)
     runs-on: ubuntu-latest
-    needs: [changes, native-ios-selfhosted]
+    needs: [changes, native-ios-selfhosted, native-ios-hosted]
     if: always() && needs.changes.outputs.native == 'true'
     steps:
-      - name: Check the self-hosted gate
+      - name: Check the gate that ran
+        env:
+          SELF: ${{ needs.native-ios-selfhosted.result }}
+          HOSTED: ${{ needs.native-ios-hosted.result }}
         run: |
-          self="${{ needs.native-ios-selfhosted.result }}"
-          if [ "$self" != "success" ]; then
-            echo "✗ the self-hosted iOS gate did not succeed (result: $self); it never runs for a fork pull request (#1962)" >&2
+          if [ "$SELF" != "success" ] && [ "$HOSTED" != "success" ]; then
+            echo "✗ no iOS gate succeeded (self-hosted: $SELF, hosted: $HOSTED); neither runs for a fork pull request (#1962)" >&2
             exit 1
           fi
 
