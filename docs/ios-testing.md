@@ -137,9 +137,15 @@ silently ignores it.
 sleep off. No background load (video wallpaper, Spotlight, #1648) and no local
 iOS work on it, which would share its `intrada` simulator.
 
-**Offline means queued** for up to 24 hours, with no fallback: check the runner
-first. After a reboot someone must log in (FileVault, launchd user agent):
+**Offline means queued** for up to 24 hours: check the runner first. After a
+reboot someone must log in (FileVault, launchd user agent):
 `sudo fdesetup authrestart` over SSH, then Screen Sharing.
+
+**Away for longer**, move the gate to GitHub's Xcode 27 Mac: set the repository
+variable `IOS_RUNNER` to `hosted` (`gh variable set IOS_RUNNER --body hosted`),
+and delete it to come back (`gh variable delete IOS_RUNNER`). A run there takes
+longer: the machine starts empty, fetches the iOS 26.5 runtime and runs the UI
+tests on one simulator.
 
 ```bash
 cd ~/actions-runner && ./svc.sh status    # or stop / start
