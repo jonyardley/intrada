@@ -1,0 +1,5 @@
+# GitHub's Xcode 27 image is a hosted label newer than actionlint's list, so
+# it is named here or the hosted iOS gate fails the lint.
+self-hosted-runner:
+  labels:
+    - xcode-27
