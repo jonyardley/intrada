@@ -1341,6 +1341,31 @@ fn an_aim_the_builder_would_refuse_is_not_offered() {
     }
 }
 
+/// An aim set for a piece that was then skipped was never practised, so it
+/// is not last time's (#2397).
+#[test]
+fn an_aim_from_a_piece_left_unplayed_is_not_offered() {
+    let stray_tap = Play {
+        seconds: 2,
+        score: None,
+        rep_count: None,
+        ..Play::fixture()
+    };
+    assert!(stray_tap.is_incidental());
+    for plays in [vec![], vec![stray_tap]] {
+        let mut m = model();
+        let mut saved = saved_with_focus(PlayWay::default(), tempo_focus("s-a", 84));
+        saved.entries[0].plays = plays;
+        saved.entries[0].status = EntryStatus::Skipped;
+        m.sessions = vec![saved].into();
+        let id = building_p(&mut m);
+
+        assert!(building_view(&m).last_times.is_empty());
+        send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+        assert_eq!(entries(&m)[0].plan.focus, None);
+    }
+}
+
 #[test]
 fn an_aim_alone_on_the_whole_piece_is_still_offered() {
     let mut m = model();

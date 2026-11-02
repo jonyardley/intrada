@@ -414,8 +414,9 @@ pub(crate) fn last_plan(model: &Model, item_id: &str) -> Option<(PlayWay, Option
     (way.is_some() || focus.is_some()).then(|| (way.unwrap_or_default(), focus))
 }
 
-/// Offered only when the builder would accept it today, so a section since
-/// deleted or a tempo the click cannot play is left behind.
+/// Taken only from an entry that was played, and offered only when the
+/// builder would accept it today, so a section since deleted or a tempo the
+/// click cannot play is left behind.
 fn last_focus(model: &Model, item_id: &str) -> Option<IntentionFocus> {
     let focus = model
         .sessions
@@ -426,6 +427,7 @@ fn last_focus(model: &Model, item_id: &str) -> Option<IntentionFocus> {
         .iter()
         .rev()
         .filter(|e| e.plan.item_id == item_id)
+        .filter(|e| e.plays.iter().any(|p| !p.is_incidental()))
         .find_map(|e| e.plan.focus.clone())?;
     validate_focus(&focus, &live_section_ids(model, item_id))
         .is_ok()
