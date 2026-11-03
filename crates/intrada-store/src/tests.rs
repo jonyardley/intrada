@@ -667,11 +667,7 @@ fn rows(conn: &Connection, table: &str) -> Vec<Row> {
     let mut statement = conn
         .prepare(&format!("SELECT * FROM {table} ORDER BY rowid"))
         .expect("prepares");
-    let names: Vec<String> = statement
-        .column_names()
-        .iter()
-        .map(|n| n.to_string())
-        .collect();
+    let names: Vec<String> = statement.column_names().map(|n| n.to_string()).collect();
     statement
         .query_map([], |row| {
             names
