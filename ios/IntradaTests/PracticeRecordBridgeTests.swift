@@ -242,6 +242,11 @@ final class PracticeRecordBridgeTests: XCTestCase {
     _ = try bridge.update(.startApp)
     _ = try bridge.update(.session(.recoverSession(session: blob, now: at(0))))
     XCTAssertNil(try bridge.rendered().error)
+    // The core reads the aim itself, so a swap of the two text fields in
+    // the Swift encoder and decoder alike shows here, not in the copy back.
+    XCTAssertEqual(
+      try bridge.rendered().activeSession?.currentItemIntention, "A at 84",
+      "the core reads the aim, not the group id (#2582)")
     let requests = try bridge.update(.session(.wentAway(at: at(700))))
     let saved = try XCTUnwrap(
       requests.lazy.compactMap { request -> ActiveSession? in
