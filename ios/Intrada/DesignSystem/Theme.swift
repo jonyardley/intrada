@@ -207,6 +207,8 @@ enum IntradaFont {
 /// Genuine one-offs (a fixed component height, a 2pt baseline nudge) stay
 /// literal; don't tokenise those.
 enum IntradaSpacing {
+  /// Between the segments of a strip, and the strip and its labels.
+  static let segmentGap: CGFloat = 5
   static let controlGap: CGFloat = 8
   static let cardCompact: CGFloat = 12
   static let card: CGFloat = 16

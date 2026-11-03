@@ -39,6 +39,8 @@ struct SegmentClockRow: View {
       .accessibilityElement(children: .combine)
       .accessibilityIdentifier("player.segment")
 
+      sectionStrip
+
       if offers, let moveLabel = segment.moveLabel {
         BrandBarButton(action: onMove) {
           Text(moveLabel)
@@ -66,5 +68,34 @@ struct SegmentClockRow: View {
       }
     }
     .onChange(of: offers, initial: true) { _, next in offering = next }
+  }
+
+  /// Every section of the item, filled once done, with what Stay took (#2394).
+  private var sectionStrip: some View {
+    VStack(spacing: IntradaSpacing.segmentGap) {
+      SegmentedProgress(
+        count: segment.bars.count,
+        filled: segment.bars.filter { $0.progress == .done }.count,
+        label: segment.positionLabel)
+      HStack(alignment: .top, spacing: IntradaSpacing.segmentGap) {
+        ForEach(Array(segment.bars.enumerated()), id: \.offset) { _, bar in
+          VStack(spacing: 0) {
+            Text(bar.label)
+              .lineLimit(1)
+              .font(bar.progress == .running ? IntradaFont.smallMedium : IntradaFont.small)
+              .foregroundStyle(
+                bar.progress == .running ? IntradaColor.ink : IntradaColor.inkSecondary)
+            if let caption = bar.caption {
+              Text(caption)
+                .lineLimit(1)
+                .font(IntradaFont.small)
+                .foregroundStyle(IntradaColor.inkSecondary)
+            }
+          }
+          .frame(maxWidth: .infinity)
+        }
+      }
+      .accessibilityHidden(true)
+    }
   }
 }

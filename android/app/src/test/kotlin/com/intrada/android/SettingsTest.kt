@@ -61,6 +61,13 @@ class SettingsTest {
         assertNotNull(store.viewModel.value?.activeSession)
     }
 
+    // The core owns the version, and the key a saved set of defaults lives under stays the same
+    // (#2216).
+    @Test
+    fun thePracticeDefaultsKeyIsUnchanged() {
+        assertEquals("intrada.practice-defaults.v2", Settings(prefs, practice).practiceDefaults.key)
+    }
+
     @Test
     fun aPracticeAnOlderBuildSavedIsClearedAtLaunch() = runTest {
         val settings = Settings(prefs, practice)

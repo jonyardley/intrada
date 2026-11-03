@@ -248,7 +248,7 @@ private fun SectionsCard(
             FieldLabel("Sections", Modifier.weight(1f))
             if (segments.isNotEmpty()) {
                 TextAction(
-                    "Whole piece",
+                    "Clear sections",
                     "entrySettings.wholePiece",
                     { send(SessionEvent.SetSegments(entry.id, emptyList())) },
                 )
@@ -282,6 +282,14 @@ private fun SectionsCard(
                     { send(SessionEvent.AddSegment(entry.id, section.id)) },
                 )
             }
+        } else if (unplanned.isNotEmpty()) {
+            entry.record.addSectionCaption?.let {
+                BasicText(
+                    it,
+                    Modifier.padding(vertical = IntradaSpacing.controlGap),
+                    style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
+                )
+            }
         }
     }
 }
@@ -298,7 +306,7 @@ private fun DrillGroup(
             .background(IntradaColor.paperTop, RoundedCornerShape(IntradaRadius.control))
     ) {
         FieldLabel(
-            "Drills for $sectionLabel",
+            "Exercises for $sectionLabel",
             Modifier.padding(horizontal = IntradaSpacing.card)
                 .padding(top = IntradaSpacing.cardCompact)
                 .semantics { heading() },

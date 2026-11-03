@@ -11,6 +11,7 @@ struct EntrySegmentsCard: View {
   let drills: [DrillOfferView]
   let hasPlannedTime: Bool
   let canAddSection: Bool
+  let addSectionCaption: String?
   let wholePiece: () -> Void
   let add: (_ sectionId: String) -> Void
   let remove: (_ sectionId: String) -> Void
@@ -26,13 +27,15 @@ struct EntrySegmentsCard: View {
 
   private var offersAdd: Bool { canAddSection && !unplanned.isEmpty }
 
+  private var noRoomCaption: String? { unplanned.isEmpty ? nil : addSectionCaption }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack {
         FieldLabel("Sections")
         Spacer()
         if !segments.isEmpty {
-          Button("Whole piece") { wholePiece() }
+          Button("Clear sections") { wholePiece() }
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(minHeight: 44)
@@ -56,7 +59,7 @@ struct EntrySegmentsCard: View {
         if !offers.isEmpty {
           drillGroup(segment.label, offers)
         }
-        if index < segments.count - 1 || offersAdd {
+        if index < segments.count - 1 || offersAdd || noRoomCaption != nil {
           HairlineDivider()
         }
       }
@@ -75,6 +78,10 @@ struct EntrySegmentsCard: View {
             .contentShape(Rectangle())
         }
         .accessibilityIdentifier("entrySettings.addSection")
+      } else if let noRoomCaption {
+        Text(noRoomCaption)
+          .font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
+          .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
       }
     }
     .fieldCardSurface()
@@ -123,7 +130,7 @@ struct EntrySegmentsCard: View {
 
   private func drillGroup(_ sectionLabel: String, _ offers: [DrillOfferView]) -> some View {
     VStack(alignment: .leading, spacing: 0) {
-      FieldLabel("Drills for \(sectionLabel)")
+      FieldLabel("Exercises for \(sectionLabel)")
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.cardCompact)
         .accessibilityAddTraits(.isHeader)
@@ -133,7 +140,7 @@ struct EntrySegmentsCard: View {
         ) {
           tickDrill(offer)
         }
-        .accessibilityValue("drill for \(sectionLabel)")
+        .accessibilityValue("exercise for \(sectionLabel)")
       }
     }
     .background(IntradaColor.paperTop)

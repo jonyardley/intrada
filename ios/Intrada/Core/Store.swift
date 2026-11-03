@@ -41,8 +41,8 @@ final class Store {
   /// named by the core's `Profile::BLOB_VERSION` so the bump never lives here (#2026).
   static let profileDefaultsKey = "intrada.profile.v\(profileBlobVersion())"
   /// Its own blob, never fields on `Profile`, so no profile is lost to a
-  /// failed decode (#1915; pinned by `practice_defaults_blob_wire_is_pinned`).
-  static let practiceDefaultsKey = "intrada.practice-defaults.v2"  // gitleaks:allow
+  /// failed decode (#1915), named by the core's `PracticeDefaults::BLOB_VERSION` (#2216).
+  static let practiceDefaultsKey = "intrada.practice-defaults.v\(practiceDefaultsBlobVersion())"
   static let firstRunKey = "intrada.first-run.v\(firstRunBlobVersion())"
   private let bridge: CoreBridge
   private let store: (any ItemStore)?

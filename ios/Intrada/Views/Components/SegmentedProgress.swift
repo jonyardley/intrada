@@ -28,7 +28,7 @@ struct SegmentedProgress: View {
   }
 
   var body: some View {
-    HStack(spacing: 5) {
+    HStack(spacing: IntradaSpacing.segmentGap) {
       ForEach(Array(fills.enumerated()), id: \.offset) { index, fill in
         Capsule()
           .fill(index < filled ? fill : IntradaColor.divider)

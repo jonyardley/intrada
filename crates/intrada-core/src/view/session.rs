@@ -16,8 +16,9 @@ use crate::model::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
     FeltChoiceView, FinishRowView, FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView,
     LastTimeView, NotePointView, ObstacleChoiceView, PickerVariationView, PlayView,
-    PracticeSessionView, ReflectionTempoView, ReflectionView, SectionView, SegmentClockView,
-    SegmentView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
+    PracticeSessionView, ReflectionTempoView, ReflectionView, SectionView, SegmentBarView,
+    SegmentClockView, SegmentProgress, SegmentView, SetlistBlockView, SetlistEntryView,
+    SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -236,7 +237,11 @@ pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> P
 
 fn play_meta_parts(play: &Play) -> Vec<String> {
     let mut parts = vec![format_duration_display(play.seconds)];
-    if let Some(tempo) = play.achieved_tempo {
+    if let Some(crotchets) = play.achieved_tempo {
+        let tempo = play
+            .click_pattern
+            .as_ref()
+            .map_or(crotchets, |click| click.metre.displayed_bpm(crotchets));
         parts.push(format!("{tempo} bpm"));
     }
     if let Some(target) = play.rep_target {
@@ -321,6 +326,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
 /// A section's minutes show only when the time is split between several.
 pub(crate) fn plan_tags(
     segments: &[SegmentView],
+    key: Option<String>,
     variations: impl Iterator<Item = String>,
     focus: Option<&FocusView>,
 ) -> Vec<String> {
@@ -334,6 +340,7 @@ pub(crate) fn plan_tags(
                 s.label.clone()
             }
         })
+        .chain(key)
         .chain(variations)
         .chain(focus.map(|f| format!("Focus: {}", f.label)))
         .collect()
@@ -348,7 +355,18 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
         .and_then(|text| session::suggest_focus(text, labels.named_sections(&entry.plan.item_id)))
         .filter(|suggested| entry.plan.focus.as_ref() != Some(suggested))
         .map(|suggested| labels.focus(&suggested));
+    let can_add_section = session::can_add_segment(&entry.plan.segments, entry.plan.duration_secs);
     EntryRecordView {
+        add_section_caption: entry
+            .plan
+            .duration_secs
+            .filter(|_| !can_add_section)
+            .map(|secs| {
+                format!(
+                    "No more sections fit in {}",
+                    format_planned_duration(u64::from(secs))
+                )
+            }),
         segments: entry
             .plan
             .segments
@@ -363,7 +381,7 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
                 can_take_minute: session::can_step_segment(&entry.plan.segments, index, -1),
             })
             .collect(),
-        can_add_section: session::can_add_segment(&entry.plan.segments, entry.plan.duration_secs),
+        can_add_section,
         focus: entry.plan.focus.as_ref().map(|f| labels.focus(f)),
         suggested_focus,
         intention_met: entry.intention_met.or(read),
@@ -378,10 +396,20 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
     }
 }
 
-pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -> LastTimeView {
+pub fn last_time_view(
+    entry: &SetlistEntry,
+    way: PlayWay,
+    focus: Option<&IntentionFocus>,
+    labels: &PlayLabels,
+) -> LastTimeView {
+    let parts: Vec<String> = labels
+        .way(&way)
+        .into_iter()
+        .chain(focus.map(|f| labels.focus(f).label))
+        .collect();
     LastTimeView {
         entry_id: entry.id.clone(),
-        label: format!("Last time: {}", labels.way(&way).unwrap_or_default()),
+        label: format!("Last time: {}", parts.join(" · ")),
         section_id: way.section_id,
         variation_ids: way.variation_ids,
         key: way.key,
@@ -585,7 +613,41 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
                     session::STAY_SECS / 60
                 )
             });
+        let running = clock.index as usize;
+        let taken_spoken = next
+            .as_ref()
+            .filter(|_| clock.taken_from_next_secs > 0)
+            .map(|next| {
+                format!(
+                    ", {} taken from {next}",
+                    format_planned_duration(u64::from(clock.taken_from_next_secs))
+                )
+            })
+            .unwrap_or_default();
+        let bars = current
+            .plan
+            .segments
+            .iter()
+            .enumerate()
+            .map(|(i, s)| SegmentBarView {
+                label: labels.section(&s.section_id).unwrap_or_default(),
+                progress: match i.cmp(&running) {
+                    std::cmp::Ordering::Less => SegmentProgress::Done,
+                    std::cmp::Ordering::Equal => SegmentProgress::Running,
+                    std::cmp::Ordering::Greater => SegmentProgress::ToCome,
+                },
+                caption: (i == running + 1 && clock.taken_from_next_secs > 0).then(|| {
+                    format!(
+                        "{label} took {}",
+                        format_planned_duration(u64::from(clock.taken_from_next_secs))
+                    )
+                }),
+            })
+            .collect();
         Some(SegmentClockView {
+            position_label: format!("Section {} of {}", running + 1, current.plan.segments.len())
+                + &taken_spoken,
+            bars,
             move_label: next.as_ref().map(|next| format!("On to {next}")),
             stay_label,
             ends_at: ends_at.to_rfc3339(),
@@ -1367,6 +1429,7 @@ mod tests {
         for (name, segments, variations, focus, expected) in cases {
             let tags = plan_tags(
                 &segments,
+                None,
                 variations.into_iter().map(str::to_string),
                 focus.as_ref(),
             );
@@ -2686,6 +2749,70 @@ mod tests {
 
         assert_eq!(view.achieved_tempo, Some(84));
         assert_eq!(view.tempo_display, Some(168));
+    }
+
+    /// The iPhone row once drew tags by their text and dropped a repeat (#2404).
+    #[test]
+    fn a_variation_named_like_a_section_keeps_both_tags() {
+        let segment = SegmentView {
+            section_id: "s1".to_string(),
+            label: "Dotted".to_string(),
+            planned_secs: 0,
+            planned_display: String::new(),
+            can_add_minute: false,
+            can_take_minute: false,
+        };
+        let tags = plan_tags(
+            &[segment],
+            None,
+            std::iter::once("Dotted".to_string()),
+            None,
+        );
+        assert_eq!(tags, vec!["Dotted", "Dotted"]);
+    }
+
+    /// A planned key reads after the sections, decided 2026-10-22 on #2392.
+    #[test]
+    fn a_planned_key_is_a_tag_after_the_sections() {
+        let segment = |id: &str, label: &str| SegmentView {
+            section_id: id.to_string(),
+            label: label.to_string(),
+            planned_secs: 360,
+            planned_display: "6 min".to_string(),
+            can_add_minute: false,
+            can_take_minute: false,
+        };
+        let tags = plan_tags(
+            &[segment("s1", "A1"), segment("s2", "B")],
+            Some("D major".to_string()),
+            std::iter::once("Dotted".to_string()),
+            None,
+        );
+        assert_eq!(tags, vec!["A1 6 min", "B 6 min", "D major", "Dotted"]);
+    }
+
+    /// The history reads the beat the musician counted (#2543).
+    #[test]
+    fn a_plays_facts_read_its_tempo_in_the_metronomes_unit() {
+        let six_eight = ClickState {
+            metre: crate::domain::Metre {
+                beats: 6,
+                unit: 8,
+                groups: None,
+            },
+            sounding: 0b001001,
+        };
+        let entry = SetlistEntry::fixture();
+        for (click, expected) in [(Some(six_eight), "176 bpm"), (None, "88 bpm")] {
+            let play = Play {
+                seconds: 240,
+                achieved_tempo: Some(88),
+                click_pattern: click,
+                ..Play::fixture()
+            };
+            let view = play_to_view(&play, &entry, &PlayLabels::new());
+            assert_eq!(view.meta_parts, vec!["4m 0s", expected]);
+        }
     }
 
     #[test]

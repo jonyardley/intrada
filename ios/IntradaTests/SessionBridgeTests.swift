@@ -979,7 +979,9 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(play.repTarget, 3)
     XCTAssertEqual(play.repCount, 3, "missed then three got-its: 0, 1, 2, 3")
     XCTAssertEqual(play.repTargetReached, true)
-    XCTAssertEqual(play.metaParts, [play.durationDisplay, "88 bpm", "3 of 3 reps"])
+    XCTAssertEqual(
+      play.metaParts, [play.durationDisplay, "176 bpm", "3 of 3 reps"],
+      "read in the quavers the metronome counted (#2543)")
     let history = try XCTUnwrap(play.repHistory)
     XCTAssertEqual(history.map(\.action), [.missed, .success, .success, .success])
     XCTAssertEqual(play.achievedTempo, 88, "176 quavers halves to 88 crotchets")
