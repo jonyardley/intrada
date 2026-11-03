@@ -354,7 +354,7 @@ pub(crate) fn away_to_offer(play: &Play) -> Option<(&Away, i64)> {
 /// the whole piece), never stored: met when a play of that part reached the
 /// target with the click sounding. `None` means the finish sheet asks.
 pub(crate) fn intention_met_read(entry: &SetlistEntry) -> Option<IntentionMet> {
-    let focus = entry.focus.as_ref()?;
+    let focus = entry.plan.focus.as_ref()?;
     let target = focus.target?;
     if focus.kind != FocusKind::Tempo {
         return None;
@@ -382,8 +382,9 @@ fn reached_with_click(play: &Play, target: u16) -> bool {
 }
 
 pub(crate) fn intended(entry: &SetlistEntry) -> bool {
-    entry.focus.is_some()
+    entry.plan.focus.is_some()
         || entry
+            .plan
             .intention
             .as_deref()
             .is_some_and(|t| !t.trim().is_empty())

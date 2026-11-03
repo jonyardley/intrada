@@ -11,7 +11,6 @@ ChordChart
 ChordQuality
 ClickStart
 DraftSource
-EntryStatus
 EntryVariationsView
 FormErrorField
 FormErrorTarget

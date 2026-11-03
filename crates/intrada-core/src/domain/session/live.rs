@@ -87,7 +87,7 @@ pub(super) fn move_to_next_segment(
         return crux_core::render::render();
     };
     let next_index = clock.index as usize + 1;
-    let Some(next) = entry.segments.get(next_index).cloned() else {
+    let Some(next) = entry.plan.segments.get(next_index).cloned() else {
         return crux_core::render::render();
     };
     if let Err(e) = validation::validate_play_capacity(entry) {
@@ -104,7 +104,7 @@ pub(super) fn move_to_next_segment(
     };
     entry
         .plays
-        .push(Play::opened(way, entry.planned_rep_target, now));
+        .push(Play::opened(way, entry.plan.rep_target, now));
     active.segment = Some(SegmentClock {
         index: next_index as u32,
         started_at: now,
@@ -125,6 +125,7 @@ pub(super) fn move_to_next_segment(
 /// minute of its own.
 pub(crate) fn can_stay(entry: &SetlistEntry, clock: &SegmentClock) -> bool {
     entry
+        .plan
         .segments
         .get(clock.index as usize + 1)
         .is_some_and(|next| {

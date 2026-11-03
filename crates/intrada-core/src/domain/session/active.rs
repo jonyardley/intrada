@@ -159,7 +159,7 @@ pub(super) fn switch_play(
         return crux_core::render::render();
     };
 
-    way.key = written_key_as_none(model, &entry.item_id, way.key);
+    way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
 
     // Switching to the way already open writes nothing, so a stray tap
     // cannot clear the dots (#1739 decision 6). Checked before capacity,
@@ -193,7 +193,7 @@ pub(super) fn switch_play(
             .left_out_secs
             .saturating_add(u32::try_from(gap).unwrap_or(u32::MAX));
     }
-    let rep_target = entry.planned_rep_target;
+    let rep_target = entry.plan.rep_target;
     entry.plays.push(Play::opened(way, rep_target, now));
 
     model.last_error = None;
@@ -296,12 +296,12 @@ pub(super) fn update_reflection_draft(
         return crux_core::render::render();
     };
     let entry = active.current_entry();
-    let sections = super::finish::named_sections(model, &entry.item_id);
+    let sections = super::finish::named_sections(model, &entry.plan.item_id);
     answers.marks.retain(|mark| mark.score != 0);
     tidy_answers_note(&mut answers);
     keep_offered_points(&mut answers, &sections);
     for way in &mut answers.ways {
-        way.key = written_key_as_none(model, &entry.item_id, way.key);
+        way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     }
     if active.reflection.is_none()
         || !draft_answers_valid(entry, &answers)

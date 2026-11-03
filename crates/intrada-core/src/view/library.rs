@@ -219,7 +219,7 @@ pub(crate) fn build_practice_summaries(
         let session_date = session.started_at.to_rfc3339();
         for entry in &session.entries {
             let record = acc
-                .entry(entry.item_id.clone())
+                .entry(entry.plan.item_id.clone())
                 .or_insert_with(|| (0, 0, Vec::new(), Vec::new(), None));
             record.0 += 1;
             record.1 += entry.duration_secs;
@@ -323,20 +323,21 @@ pub(crate) fn build_exercise_usage(
     for session in &model.sessions {
         let date = session.started_at.to_rfc3339();
         for entry in &session.entries {
-            if entry.item_type != ItemKind::Exercise {
+            if entry.plan.item_type != ItemKind::Exercise {
                 continue;
             }
             // Context = the piece sharing this entry's block in the same
             // session; ungrouped or piece-less blocks fall to the None bucket.
-            let piece = entry.group_id.as_deref().and_then(|g| {
-                session
-                    .entries
-                    .iter()
-                    .find(|e| e.item_type == ItemKind::Piece && e.group_id.as_deref() == Some(g))
+            let piece = entry.plan.group_id.as_deref().and_then(|g| {
+                session.entries.iter().find(|e| {
+                    e.plan.item_type == ItemKind::Piece && e.plan.group_id.as_deref() == Some(g)
+                })
             });
-            let piece_id = piece.map(|p| p.item_id.clone());
+            let piece_id = piece.map(|p| p.plan.item_id.clone());
 
-            let record = acc.entry((entry.item_id.clone(), piece_id)).or_default();
+            let record = acc
+                .entry((entry.plan.item_id.clone(), piece_id))
+                .or_default();
             if let Some(p) = piece {
                 record.piece_title = Some(p.item_title.clone());
             }
@@ -447,7 +448,7 @@ pub(crate) fn build_scored_plays(
         for entry in &session.entries {
             for play in entry.plays.iter().filter(|p| p.score.is_some()) {
                 index
-                    .entry(entry.item_id.as_str())
+                    .entry(entry.plan.item_id.as_str())
                     .or_default()
                     .push(ScoredPlay { session, play });
             }
@@ -917,10 +918,15 @@ mod tests {
 
     #[test]
     fn latest_score_is_the_last_mark_in_a_session_that_scored_the_item_twice() {
-        use crate::domain::session::{CompletionStatus, Play, PracticeSession, SetlistEntry};
+        use crate::domain::session::{
+            CompletionStatus, PlannedItem, Play, PracticeSession, SetlistEntry,
+        };
         let entry = |id: &str, position: usize, score: u8| SetlistEntry {
             id: id.to_string(),
-            item_id: "p1".to_string(),
+            plan: PlannedItem {
+                item_id: "p1".to_string(),
+                ..SetlistEntry::fixture().plan
+            },
             position,
             plays: vec![Play {
                 score: Some(score),

@@ -455,7 +455,7 @@ mod tests {
     use crate::domain::key::Key;
     use crate::domain::session::Play;
     use crate::domain::session::{
-        CompletionStatus, EntryStatus, PracticeSession, SessionStatus, SetlistEntry,
+        CompletionStatus, EntryStatus, PlannedItem, PracticeSession, SessionStatus, SetlistEntry,
     };
     use crate::domain::types::{SortDirection, SortField};
     use crate::model::{ItemPracticeSummary, LibraryItemView};
@@ -624,7 +624,7 @@ mod tests {
         assert!(model.sessions.iter().all(|s| s
             .entries
             .iter()
-            .all(|e| item_ids.contains(e.item_id.as_str()))));
+            .all(|e| item_ids.contains(e.plan.item_id.as_str()))));
         // Both completion states are represented so the card can show each.
         assert!(model
             .sessions
@@ -1426,9 +1426,12 @@ mod tests {
                     };
                     SetlistEntry {
                         id: format!("se{s:04}_{e}"),
-                        item_id,
+                        plan: PlannedItem {
+                            item_id,
+                            item_type,
+                            ..SetlistEntry::fixture().plan
+                        },
                         item_title,
-                        item_type,
                         position: e,
                         duration_secs: 300,
                         status: EntryStatus::Completed,
@@ -1640,7 +1643,7 @@ mod tests {
 
         // Create a completed session with two entries
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+            CompletionStatus, EntryStatus, PlannedItem, PracticeSession, SetlistEntry,
         };
         let sess1_started = now - chrono::Duration::minutes(60);
         model.sessions.push(PracticeSession {
@@ -1654,59 +1657,63 @@ mod tests {
             entries: vec![
                 SetlistEntry {
                     id: "e1".to_string(),
-                    item_id: "p1".to_string(),
+                    plan: PlannedItem {
+                        item_id: "p1".to_string(),
+                        item_type: ItemKind::Piece,
+                        intention: None,
+                        focus: None,
+                        duration_secs: None,
+                        group_id: None,
+                        variation_ids: vec![],
+                        rep_target: None,
+                        segments: Vec::new(),
+                        key: None,
+                    },
                     item_title: "Sonata".to_string(),
-                    item_type: ItemKind::Piece,
                     position: 0,
                     duration_secs: 1800, // 30 min
                     status: EntryStatus::Completed,
                     notes: None,
-                    intention: None,
-                    planned_duration_secs: None,
-                    group_id: None,
-                    segments: Vec::new(),
-                    focus: None,
                     intention_met: None,
                     felt: None,
                     got_in_the_way: Vec::new(),
                     note_points: Vec::new(),
-                    planned_variation_ids: vec![],
-                    planned_rep_target: None,
                     plays: vec![Play {
                         seconds: 1800,
                         achieved_tempo: None,
                         score: None,
                         ..Play::fixture()
                     }],
-                    planned_key: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
-                    item_id: "p1".to_string(),
+                    plan: PlannedItem {
+                        item_id: "p1".to_string(),
+                        item_type: ItemKind::Piece,
+                        intention: None,
+                        focus: None,
+                        duration_secs: None,
+                        group_id: None,
+                        variation_ids: vec![],
+                        rep_target: None,
+                        segments: Vec::new(),
+                        key: None,
+                    },
                     item_title: "Sonata".to_string(),
-                    item_type: ItemKind::Piece,
                     position: 1,
                     duration_secs: 900, // 15 min
                     status: EntryStatus::Completed,
                     notes: None,
-                    intention: None,
-                    planned_duration_secs: None,
-                    group_id: None,
-                    segments: Vec::new(),
-                    focus: None,
                     intention_met: None,
                     felt: None,
                     got_in_the_way: Vec::new(),
                     note_points: Vec::new(),
-                    planned_variation_ids: vec![],
-                    planned_rep_target: None,
                     plays: vec![Play {
                         seconds: 900,
                         achieved_tempo: None,
                         score: None,
                         ..Play::fixture()
                     }],
-                    planned_key: None,
                 },
             ],
             capture_version: None,
@@ -1760,7 +1767,7 @@ mod tests {
         });
 
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+            CompletionStatus, EntryStatus, PlannedItem, PracticeSession, SetlistEntry,
         };
 
         // Session 1: older, score 3
@@ -1774,31 +1781,33 @@ mod tests {
             session_score: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
-                item_id: "p1".to_string(),
+                plan: PlannedItem {
+                    item_id: "p1".to_string(),
+                    item_type: ItemKind::Piece,
+                    intention: None,
+                    focus: None,
+                    duration_secs: None,
+                    group_id: None,
+                    variation_ids: vec![],
+                    rep_target: None,
+                    segments: Vec::new(),
+                    key: None,
+                },
                 item_title: "Sonata".to_string(),
-                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 1800,
                 status: EntryStatus::Completed,
                 notes: None,
-                intention: None,
-                planned_duration_secs: None,
-                group_id: None,
-                segments: Vec::new(),
-                focus: None,
                 intention_met: None,
                 felt: None,
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
-                planned_variation_ids: vec![],
-                planned_rep_target: None,
                 plays: vec![Play {
                     seconds: 1800,
                     achieved_tempo: None,
                     score: Some(3),
                     ..Play::fixture()
                 }],
-                planned_key: None,
             }],
             capture_version: None,
         });
@@ -1814,31 +1823,33 @@ mod tests {
             session_score: None,
             entries: vec![SetlistEntry {
                 id: "e2".to_string(),
-                item_id: "p1".to_string(),
+                plan: PlannedItem {
+                    item_id: "p1".to_string(),
+                    item_type: ItemKind::Piece,
+                    intention: None,
+                    focus: None,
+                    duration_secs: None,
+                    group_id: None,
+                    variation_ids: vec![],
+                    rep_target: None,
+                    segments: Vec::new(),
+                    key: None,
+                },
                 item_title: "Sonata".to_string(),
-                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 900,
                 status: EntryStatus::Completed,
                 notes: None,
-                intention: None,
-                planned_duration_secs: None,
-                group_id: None,
-                segments: Vec::new(),
-                focus: None,
                 intention_met: None,
                 felt: None,
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
-                planned_variation_ids: vec![],
-                planned_rep_target: None,
                 plays: vec![Play {
                     seconds: 900,
                     achieved_tempo: None,
                     score: Some(5),
                     ..Play::fixture()
                 }],
-                planned_key: None,
             }],
             capture_version: None,
         });
@@ -1891,7 +1902,7 @@ mod tests {
         });
 
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+            CompletionStatus, EntryStatus, PlannedItem, PracticeSession, SetlistEntry,
         };
 
         // Session with no score
@@ -1905,31 +1916,33 @@ mod tests {
             session_score: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
-                item_id: "p1".to_string(),
+                plan: PlannedItem {
+                    item_id: "p1".to_string(),
+                    item_type: ItemKind::Piece,
+                    intention: None,
+                    focus: None,
+                    duration_secs: None,
+                    group_id: None,
+                    variation_ids: vec![],
+                    rep_target: None,
+                    segments: Vec::new(),
+                    key: None,
+                },
                 item_title: "Sonata".to_string(),
-                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 1800,
                 status: EntryStatus::Completed,
                 notes: None,
-                intention: None,
-                planned_duration_secs: None,
-                group_id: None,
-                segments: Vec::new(),
-                focus: None,
                 intention_met: None,
                 felt: None,
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
-                planned_variation_ids: vec![],
-                planned_rep_target: None,
                 plays: vec![Play {
                     seconds: 1800,
                     achieved_tempo: None,
                     score: None,
                     ..Play::fixture()
                 }],
-                planned_key: None,
             }],
             capture_version: None,
         });
@@ -1971,7 +1984,7 @@ mod tests {
         });
 
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+            CompletionStatus, EntryStatus, PlannedItem, PracticeSession, SetlistEntry,
         };
 
         // Single session with the same item twice (different scores)
@@ -1986,59 +1999,63 @@ mod tests {
             entries: vec![
                 SetlistEntry {
                     id: "e1".to_string(),
-                    item_id: "p1".to_string(),
+                    plan: PlannedItem {
+                        item_id: "p1".to_string(),
+                        item_type: ItemKind::Piece,
+                        intention: None,
+                        focus: None,
+                        duration_secs: None,
+                        group_id: None,
+                        variation_ids: vec![],
+                        rep_target: None,
+                        segments: Vec::new(),
+                        key: None,
+                    },
                     item_title: "Sonata".to_string(),
-                    item_type: ItemKind::Piece,
                     position: 0,
                     duration_secs: 1800,
                     status: EntryStatus::Completed,
                     notes: None,
-                    intention: None,
-                    planned_duration_secs: None,
-                    group_id: None,
-                    segments: Vec::new(),
-                    focus: None,
                     intention_met: None,
                     felt: None,
                     got_in_the_way: Vec::new(),
                     note_points: Vec::new(),
-                    planned_variation_ids: vec![],
-                    planned_rep_target: None,
                     plays: vec![Play {
                         seconds: 1800,
                         achieved_tempo: None,
                         score: Some(2),
                         ..Play::fixture()
                     }],
-                    planned_key: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
-                    item_id: "p1".to_string(),
+                    plan: PlannedItem {
+                        item_id: "p1".to_string(),
+                        item_type: ItemKind::Piece,
+                        intention: None,
+                        focus: None,
+                        duration_secs: None,
+                        group_id: None,
+                        variation_ids: vec![],
+                        rep_target: None,
+                        segments: Vec::new(),
+                        key: None,
+                    },
                     item_title: "Sonata".to_string(),
-                    item_type: ItemKind::Piece,
                     position: 1,
                     duration_secs: 1800,
                     status: EntryStatus::Completed,
                     notes: None,
-                    intention: None,
-                    planned_duration_secs: None,
-                    group_id: None,
-                    segments: Vec::new(),
-                    focus: None,
                     intention_met: None,
                     felt: None,
                     got_in_the_way: Vec::new(),
                     note_points: Vec::new(),
-                    planned_variation_ids: vec![],
-                    planned_rep_target: None,
                     plays: vec![Play {
                         seconds: 1800,
                         achieved_tempo: None,
                         score: Some(4),
                         ..Play::fixture()
                     }],
-                    planned_key: None,
                 },
             ],
             capture_version: None,
@@ -2086,7 +2103,7 @@ mod tests {
         });
 
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+            CompletionStatus, EntryStatus, PlannedItem, PracticeSession, SetlistEntry,
         };
 
         // A skipped entry won't have a score (scores only set on completed entries)
@@ -2100,27 +2117,29 @@ mod tests {
             session_score: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
-                item_id: "p1".to_string(),
+                plan: PlannedItem {
+                    item_id: "p1".to_string(),
+                    item_type: ItemKind::Piece,
+                    intention: None,
+                    focus: None,
+                    duration_secs: None,
+                    group_id: None,
+                    variation_ids: vec![],
+                    rep_target: None,
+                    segments: Vec::new(),
+                    key: None,
+                },
                 item_title: "Sonata".to_string(),
-                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 600,
                 status: EntryStatus::Skipped,
                 notes: None,
-                intention: None,
-                planned_duration_secs: None,
-                group_id: None,
-                segments: Vec::new(),
-                focus: None,
                 intention_met: None,
                 felt: None,
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
-                planned_variation_ids: vec![],
-                planned_rep_target: None,
                 // A skipped entry records no play, so it never carries a mark.
                 plays: Vec::new(),
-                planned_key: None,
             }],
             capture_version: None,
         });
@@ -2178,31 +2197,33 @@ mod tests {
             session_score: None,
             entries: vec![SetlistEntry {
                 id: format!("{id}-e1"),
-                item_id: item_id.to_string(),
+                plan: PlannedItem {
+                    item_id: item_id.to_string(),
+                    item_type: ItemKind::Piece,
+                    intention: None,
+                    focus: None,
+                    duration_secs: None,
+                    group_id: None,
+                    variation_ids: vec![],
+                    rep_target: None,
+                    segments: Vec::new(),
+                    key: None,
+                },
                 item_title: "Sonata".to_string(),
-                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 300,
                 status: EntryStatus::Completed,
                 notes: None,
-                intention: None,
-                planned_duration_secs: None,
-                group_id: None,
-                segments: Vec::new(),
-                focus: None,
                 intention_met: None,
                 felt: None,
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
-                planned_variation_ids: vec![],
-                planned_rep_target: None,
                 plays: vec![Play {
                     seconds: 300,
                     achieved_tempo: tempo,
                     score,
                     ..Play::fixture()
                 }],
-                planned_key: None,
             }],
             capture_version: None,
         }
@@ -2331,31 +2352,33 @@ mod tests {
             session_score: None,
             entries: vec![SetlistEntry {
                 id: format!("{id}-e"),
-                item_id: "item-1".to_string(),
+                plan: PlannedItem {
+                    item_id: "item-1".to_string(),
+                    item_type: ItemKind::Piece,
+                    intention: None,
+                    focus: None,
+                    duration_secs: None,
+                    group_id: None,
+                    variation_ids: vec![],
+                    rep_target: None,
+                    segments: Vec::new(),
+                    key: None,
+                },
                 item_title: "Sonata".to_string(),
-                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 60,
                 status: EntryStatus::Completed,
                 notes: None,
-                intention: None,
-                planned_duration_secs: None,
-                group_id: None,
-                segments: Vec::new(),
-                focus: None,
                 intention_met: None,
                 felt: None,
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
-                planned_variation_ids: vec![],
-                planned_rep_target: None,
                 plays: vec![Play {
                     seconds: 60,
                     achieved_tempo: None,
                     score: None,
                     ..Play::fixture()
                 }],
-                planned_key: None,
             }],
             capture_version: None,
         };
@@ -3758,9 +3781,12 @@ mod tests {
     fn building_entry(id: &str, planned_duration_secs: Option<u32>) -> SetlistEntry {
         SetlistEntry {
             id: id.to_string(),
-            item_id: format!("item-{id}"),
+            plan: PlannedItem {
+                item_id: format!("item-{id}"),
+                duration_secs: planned_duration_secs,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: "Etude".to_string(),
-            planned_duration_secs,
             ..SetlistEntry::fixture()
         }
     }
@@ -3930,8 +3956,11 @@ mod tests {
 
     fn grouped(id: &str, kind: ItemKind, group: &str, secs: Option<u32>) -> SetlistEntry {
         SetlistEntry {
-            item_type: kind,
-            group_id: Some(group.to_string()),
+            plan: PlannedItem {
+                item_type: kind,
+                group_id: Some(group.to_string()),
+                ..building_entry(id, secs).plan
+            },
             ..building_entry(id, secs)
         }
     }
@@ -4748,31 +4777,33 @@ mod tests {
     ) -> SetlistEntry {
         SetlistEntry {
             id: format!("{item_id}-{}", group.unwrap_or("solo")),
-            item_id: item_id.to_string(),
+            plan: PlannedItem {
+                item_id: item_id.to_string(),
+                item_type: kind,
+                intention: None,
+                focus: None,
+                duration_secs: None,
+                group_id: group.map(String::from),
+                variation_ids: vec![],
+                rep_target: None,
+                segments: Vec::new(),
+                key: None,
+            },
             item_title: title.to_string(),
-            item_type: kind,
             position: 0,
             duration_secs: 300,
             status: EntryStatus::Completed,
             notes: None,
-            intention: None,
-            planned_duration_secs: None,
-            group_id: group.map(String::from),
-            segments: Vec::new(),
-            focus: None,
             intention_met: None,
             felt: None,
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
-            planned_variation_ids: vec![],
-            planned_rep_target: None,
             plays: vec![Play {
                 seconds: 300,
                 achieved_tempo: None,
                 score,
                 ..Play::fixture()
             }],
-            planned_key: None,
         }
     }
 
@@ -4873,7 +4904,7 @@ mod tests {
 
     fn variant_entry(item_id: &str, variant_id: &str, score: Option<u8>) -> SetlistEntry {
         let mut e = ctx_entry(item_id, "Scales", ItemKind::Exercise, score, None);
-        e.planned_variation_ids = vec![variant_id.to_string()];
+        e.plan.variation_ids = vec![variant_id.to_string()];
         e.plays[0].variation_ids = vec![variant_id.to_string()];
         e
     }
@@ -5380,17 +5411,23 @@ mod tests {
             session_score: None,
             entries: vec![SetlistEntry {
                 id: format!("{id}-e1"),
-                item_id: item_id.to_string(),
+                plan: PlannedItem {
+                    item_id: item_id.to_string(),
+                    item_type: ItemKind::Exercise,
+                    intention: None,
+                    focus: None,
+                    duration_secs: None,
+                    group_id: None,
+                    variation_ids: vec![],
+                    rep_target: None,
+                    segments: Vec::new(),
+                    key: None,
+                },
                 item_title: "Shells".to_string(),
-                item_type: ItemKind::Exercise,
                 position: 0,
                 duration_secs: 300,
                 status: EntryStatus::Completed,
                 notes: None,
-                intention: None,
-                planned_duration_secs: None,
-                group_id: None,
-                planned_rep_target: None,
                 plays: vec![Play {
                     id: format!("{id}-e1-play"),
                     variation_ids: variant_id.map(str::to_string).into_iter().collect(),
@@ -5398,14 +5435,10 @@ mod tests {
                     score,
                     ..Play::fixture()
                 }],
-                segments: Vec::new(),
-                focus: None,
                 intention_met: None,
                 felt: None,
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
-                planned_variation_ids: vec![],
-                planned_key: None,
             }],
             capture_version: None,
         }

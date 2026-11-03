@@ -369,23 +369,30 @@ mod tests {
         // PracticeSession crosses the bridge as a SaveSession persistence Effect;
         // its optional-heavy SetlistEntry + rep_history is exactly the #846 risk.
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, Play, PracticeSession, RepAction, RepEvent, SetlistEntry,
+            CompletionStatus, EntryStatus, PlannedItem, Play, PracticeSession, RepAction, RepEvent,
+            SetlistEntry,
         };
         use crate::persistence::PersistenceOperation;
         let now = chrono::Utc::now();
         let entry = SetlistEntry {
             id: "e1".to_string(),
-            item_id: "p1".to_string(),
+            plan: PlannedItem {
+                item_id: "p1".to_string(),
+                item_type: ItemKind::Piece,
+                intention: Some("evenness".to_string()),
+                focus: None,
+                duration_secs: Some(300),
+                group_id: None,
+                variation_ids: vec![],
+                rep_target: Some(5),
+                segments: Vec::new(),
+                key: crate::domain::key::Key::parse("E flat major"),
+            },
             item_title: "Clair de Lune".to_string(),
-            item_type: ItemKind::Piece,
             position: 0,
             duration_secs: 300,
             status: EntryStatus::Completed,
             notes: Some("phrasing".to_string()),
-            intention: Some("evenness".to_string()),
-            planned_duration_secs: Some(300),
-            group_id: None,
-            planned_rep_target: Some(5),
             plays: vec![Play {
                 id: "play-1".to_string(),
                 section_id: None,
@@ -415,14 +422,10 @@ mod tests {
                 score: Some(4),
                 away: Vec::new(),
             }],
-            segments: Vec::new(),
-            focus: None,
             intention_met: None,
             felt: None,
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
-            planned_variation_ids: vec![],
-            planned_key: crate::domain::key::Key::parse("E flat major"),
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -576,29 +579,31 @@ mod tests {
 
     #[test]
     fn setlist_entry_group_id_round_trips_on_ffi_bincode_wire() {
-        use crate::domain::session::{EntryStatus, SetlistEntry};
+        use crate::domain::session::{EntryStatus, PlannedItem, SetlistEntry};
         assert_round_trips(SetlistEntry {
             id: "e1".to_string(),
-            item_id: "ex1".to_string(),
+            plan: PlannedItem {
+                item_id: "ex1".to_string(),
+                item_type: ItemKind::Exercise,
+                intention: None,
+                focus: None,
+                duration_secs: None,
+                group_id: Some("block-1".to_string()),
+                variation_ids: vec![],
+                rep_target: None,
+                segments: Vec::new(),
+                key: None,
+            },
             item_title: "Scales".to_string(),
-            item_type: ItemKind::Exercise,
             position: 0,
             duration_secs: 0,
             status: EntryStatus::NotAttempted,
             notes: None,
-            intention: None,
-            planned_duration_secs: None,
-            group_id: Some("block-1".to_string()),
-            planned_rep_target: None,
             plays: Vec::new(),
-            segments: Vec::new(),
-            focus: None,
             intention_met: None,
             felt: None,
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
-            planned_variation_ids: vec![],
-            planned_key: None,
         });
     }
 

@@ -72,16 +72,16 @@ fn a_legacy_entry_folds_into_one_play_carrying_everything() {
         play.variation_ids.is_empty(),
         "a step is retired, not moved (#2246)"
     );
-    assert_eq!(entry.group_id.as_deref(), Some("g1"));
-    assert_eq!(entry.intention.as_deref(), Some("even tone"));
+    assert_eq!(entry.plan.group_id.as_deref(), Some("g1"));
+    assert_eq!(entry.plan.intention.as_deref(), Some("even tone"));
     assert_eq!(
-        entry.planned_rep_target,
+        entry.plan.rep_target,
         Some(10),
         "the old target plans the entry"
     );
-    assert!(entry.planned_variation_ids.is_empty());
+    assert!(entry.plan.variation_ids.is_empty());
     assert_eq!(
-        entry.planned_key, None,
+        entry.plan.key, None,
         "a row from before #2249 plans the written key"
     );
 }
@@ -187,7 +187,7 @@ fn unknown_values_fall_back_conservatively_and_are_listed() {
     let first = &session.entries[0];
     assert_eq!(first.status, EntryStatus::NotAttempted, "never completed");
     assert!(first.plays.is_empty(), "an unknown status invents no play");
-    assert_eq!(first.item_type, ItemKind::Piece);
+    assert_eq!(first.plan.item_type, ItemKind::Piece);
     let taps = session.entries[1].plays[0]
         .rep_history
         .clone()
@@ -314,17 +314,20 @@ fn current_session() -> PracticeSession {
         away: Vec::new(),
     };
     let entry = SetlistEntry {
-        item_type: ItemKind::Exercise,
+        plan: PlannedItem {
+            item_type: ItemKind::Exercise,
+            variation_ids: vec!["v-dotted".to_string()],
+            rep_target: Some(5),
+            segments: vec![Segment {
+                section_id: "sec-b".to_string(),
+                planned_secs: 240,
+            }],
+            key: crate::domain::key::Key::parse("A flat major"),
+            ..SetlistEntry::fixture().plan
+        },
         status: EntryStatus::Completed,
         duration_secs: 240,
         notes: Some("lighter thumb".to_string()),
-        segments: vec![Segment {
-            section_id: "sec-b".to_string(),
-            planned_secs: 240,
-        }],
-        planned_variation_ids: vec!["v-dotted".to_string()],
-        planned_rep_target: Some(5),
-        planned_key: crate::domain::key::Key::parse("A flat major"),
         plays: vec![play, Play::fixture()],
         ..SetlistEntry::fixture()
     };
@@ -464,7 +467,7 @@ fn a_v016_planned_section_reads_as_one_segment_of_the_planned_time() {
 
     let entry = &read.session.entries[0];
     assert_eq!(
-        entry.segments,
+        entry.plan.segments,
         [Segment {
             section_id: "sec-b".to_string(),
             planned_secs: 900,
@@ -476,6 +479,65 @@ fn a_v016_planned_section_reads_as_one_segment_of_the_planned_time() {
         !rewritten.entries.contains("plannedSectionIds"),
         "the old field is read, never written"
     );
+}
+
+/// The flat row every build writes, with every plan field set.
+const FULL_PLAN_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v-dotted"],"plannedRepTarget":5,"plays":[],"segments":[{"sectionId":"sec-a","plannedSecs":420},{"sectionId":"sec-b","plannedSecs":180}],"focus":{"kind":"tempo","sectionId":"sec-a","target":84},"gotInTheWay":[],"notePoints":[],"plannedKey":{"key":"Ab","modality":"major"}}]"#;
+
+fn full_plan() -> PlannedItem {
+    PlannedItem {
+        item_id: "i1".to_string(),
+        item_type: ItemKind::Exercise,
+        intention: Some("even semiquavers".to_string()),
+        focus: Some(IntentionFocus {
+            kind: FocusKind::Tempo,
+            section_id: Some("sec-a".to_string()),
+            target: Some(84),
+        }),
+        duration_secs: Some(600),
+        group_id: Some("g1".to_string()),
+        variation_ids: vec!["v-dotted".to_string()],
+        rep_target: Some(5),
+        segments: vec![
+            Segment {
+                section_id: "sec-a".to_string(),
+                planned_secs: 420,
+            },
+            Segment {
+                section_id: "sec-b".to_string(),
+                planned_secs: 180,
+            },
+        ],
+        key: Key::parse("A flat major"),
+    }
+}
+
+#[test]
+fn a_saved_row_reads_back_to_the_same_plan_field_by_field() {
+    let plan = only_entry(FULL_PLAN_ENTRY).plan;
+    let expected = full_plan();
+
+    assert_eq!(plan.item_id, expected.item_id);
+    assert_eq!(plan.item_type, expected.item_type);
+    assert_eq!(plan.intention, expected.intention);
+    assert_eq!(plan.focus, expected.focus);
+    assert_eq!(plan.duration_secs, expected.duration_secs);
+    assert_eq!(plan.group_id, expected.group_id);
+    assert_eq!(plan.variation_ids, expected.variation_ids);
+    assert_eq!(plan.rep_target, expected.rep_target);
+    assert_eq!(plan.segments, expected.segments);
+    assert_eq!(plan.key, expected.key);
+    assert_eq!(plan, expected, "a new plan field is read too");
+}
+
+#[test]
+fn a_plan_writes_the_same_flat_row() {
+    let mut session = read(FULL_PLAN_ENTRY).session;
+    session.entries[0].plan = full_plan();
+    let written = session_to_stored(&session).expect("writes");
+    let written: serde_json::Value = serde_json::from_str(&written.entries).expect("json");
+    let shipped: serde_json::Value = serde_json::from_str(FULL_PLAN_ENTRY).expect("json");
+    assert_eq!(written, shipped);
 }
 
 #[test]

@@ -14,7 +14,7 @@ fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
     let mut closed: std::collections::HashSet<&str> = std::collections::HashSet::new();
     let mut current: Option<&str> = None;
     for entry in entries {
-        let g = entry.group_id.as_deref();
+        let g = entry.plan.group_id.as_deref();
         if g != current {
             if let Some(prev) = current {
                 closed.insert(prev);
@@ -179,7 +179,7 @@ fn first_play_id(model: &Model, entry_id: &str) -> String {
 fn ids(model: &Model) -> Vec<String> {
     building_entries(model)
         .iter()
-        .map(|e| e.item_id.clone())
+        .map(|e| e.plan.item_id.clone())
         .collect()
 }
 
@@ -195,8 +195,8 @@ fn add(model: &mut Model, item_id: &str) {
 fn group_of(model: &Model, item_id: &str) -> Option<String> {
     building_entries(model)
         .iter()
-        .find(|e| e.item_id == item_id)
-        .and_then(|e| e.group_id.clone())
+        .find(|e| e.plan.item_id == item_id)
+        .and_then(|e| e.plan.group_id.clone())
 }
 
 #[test]
@@ -210,8 +210,8 @@ fn start_building_with_seeds_exercise_from_idle() {
     );
     let e = building_entries(&m);
     assert_eq!(e.len(), 1);
-    assert_eq!(e[0].item_id, "ex-C");
-    assert_eq!(e[0].group_id, None);
+    assert_eq!(e[0].plan.item_id, "ex-C");
+    assert_eq!(e[0].plan.group_id, None);
     assert_eq!(m.last_error, None);
 }
 
@@ -229,7 +229,7 @@ fn start_building_with_piece_forms_block() {
     let block = group_of(&m, "piece-P").expect("the piece anchors a block");
     assert!(e
         .iter()
-        .all(|x| x.group_id.as_deref() == Some(block.as_str())));
+        .all(|x| x.plan.group_id.as_deref() == Some(block.as_str())));
 }
 
 #[test]
@@ -297,7 +297,7 @@ fn start_building_from_suggestion_seeds_the_derived_block() {
     let block = group_of(&m, "piece-P").expect("the piece anchors the seeded block");
     assert!(
         e.iter()
-            .all(|x| x.group_id.as_deref() == Some(block.as_str())),
+            .all(|x| x.plan.group_id.as_deref() == Some(block.as_str())),
         "one block, not three standalone entries"
     );
     assert_eq!(m.last_error, None);
@@ -404,14 +404,14 @@ fn start_from_suggestion_plays_the_plan_in_one_step() {
 
     let played: Vec<&str> = session_entries(&m)
         .iter()
-        .map(|e| e.item_id.as_str())
+        .map(|e| e.plan.item_id.as_str())
         .collect();
     assert_eq!(played, ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
     let group = |id: &str| {
         session_entries(&m)
             .iter()
-            .find(|e| e.item_id == id)
-            .and_then(|e| e.group_id.clone())
+            .find(|e| e.plan.item_id == id)
+            .and_then(|e| e.plan.group_id.clone())
     };
     assert_eq!(group("ex-A"), group("piece-P"));
     assert_ne!(group("piece-P"), group("piece-R"));
@@ -530,7 +530,7 @@ fn start_building_with_priorities_brings_a_starred_pieces_block() {
     let block = group_of(&m, "piece-P").expect("the seeded piece keeps its block");
     assert!(e
         .iter()
-        .all(|x| x.group_id.as_deref() == Some(block.as_str())));
+        .all(|x| x.plan.group_id.as_deref() == Some(block.as_str())));
 }
 
 #[test]
@@ -641,10 +641,10 @@ fn add_piece_pulls_related_into_a_block_related_first() {
     add(&mut m, "piece-P");
     let e = building_entries(&m);
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-    let g = e[0].group_id.clone();
+    let g = e[0].plan.group_id.clone();
     assert!(g.is_some(), "block has a group_id");
     assert!(
-        e.iter().all(|x| x.group_id == g),
+        e.iter().all(|x| x.plan.group_id == g),
         "all three share the group"
     );
     assert_eq!((e[0].position, e[1].position, e[2].position), (0, 1, 2));
@@ -657,7 +657,7 @@ fn add_piece_without_related_is_standalone() {
     add(&mut m, "piece-Q");
     let e = building_entries(&m);
     assert_eq!(e.len(), 1);
-    assert_eq!(e[0].group_id, None);
+    assert_eq!(e[0].plan.group_id, None);
 }
 
 #[test]
@@ -667,7 +667,7 @@ fn add_exercise_directly_is_standalone() {
     add(&mut m, "ex-C");
     let e = building_entries(&m);
     assert_eq!(e.len(), 1);
-    assert_eq!(e[0].group_id, None);
+    assert_eq!(e[0].plan.group_id, None);
 }
 
 #[test]
@@ -678,18 +678,18 @@ fn add_piece_skips_already_present_related() {
     add(&mut m, "piece-P");
     let e = building_entries(&m);
     assert_eq!(
-        e.iter().filter(|x| x.item_id == "ex-A").count(),
+        e.iter().filter(|x| x.plan.item_id == "ex-A").count(),
         1,
         "ex-A not duplicated"
     );
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
     assert_eq!(
-        e[0].group_id, None,
+        e[0].plan.group_id, None,
         "the pre-existing ex-A stays standalone"
     );
     let block = group_of(&m, "piece-P").expect("the piece anchors a block");
     assert_eq!(
-        e[1].group_id.as_deref(),
+        e[1].plan.group_id.as_deref(),
         Some(block.as_str()),
         "ex-B + piece form the block"
     );
@@ -799,7 +799,7 @@ fn keep_only_piece_drops_related_and_destandalones() {
     );
     let e = building_entries(&m);
     assert_eq!(ids(&m), ["piece-P"]);
-    assert_eq!(e[0].group_id, None, "lone piece is no longer a block");
+    assert_eq!(e[0].plan.group_id, None, "lone piece is no longer a block");
 }
 
 #[test]
@@ -814,7 +814,7 @@ fn ungroup_block_keeps_items_in_place() {
     );
     let e = building_entries(&m);
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-    assert!(e.iter().all(|x| x.group_id.is_none()));
+    assert!(e.iter().all(|x| x.plan.group_id.is_none()));
 }
 
 #[test]
@@ -824,7 +824,9 @@ fn ungroup_all_clears_every_group() {
     add(&mut m, "piece-P");
     add(&mut m, "ex-C");
     update(&mut m, Event::Session(SessionEvent::UngroupAllBlocks));
-    assert!(building_entries(&m).iter().all(|x| x.group_id.is_none()));
+    assert!(building_entries(&m)
+        .iter()
+        .all(|x| x.plan.group_id.is_none()));
 }
 
 #[test]
@@ -909,7 +911,7 @@ fn four_unit_model() -> Model {
 fn entry_id_of(model: &Model, item_id: &str) -> String {
     building_entries(model)
         .iter()
-        .find(|e| e.item_id == item_id)
+        .find(|e| e.plan.item_id == item_id)
         .map_or_else(|| format!("no-entry-{item_id}"), |e| e.id.clone())
 }
 
@@ -992,7 +994,7 @@ fn move_unit_moves_the_unit_holding_the_entry() {
         let mut m = four_unit_model();
         let groups_before: Vec<_> = building_entries(&m)
             .iter()
-            .map(|e| (e.item_id.clone(), e.group_id.clone()))
+            .map(|e| (e.plan.item_id.clone(), e.plan.group_id.clone()))
             .collect();
         move_unit(&mut m, "ex-nowhere", 0);
         assert_eq!(
@@ -1010,7 +1012,7 @@ fn move_unit_moves_the_unit_holding_the_entry() {
         assert!(groups_contiguous(building_entries(&m)));
         let mut groups_after: Vec<_> = building_entries(&m)
             .iter()
-            .map(|e| (e.item_id.clone(), e.group_id.clone()))
+            .map(|e| (e.plan.item_id.clone(), e.plan.group_id.clone()))
             .collect();
         let mut groups_before = groups_before.clone();
         groups_before.sort();
@@ -1067,7 +1069,7 @@ fn move_related_moves_an_exercise_within_its_block() {
         assert!(group.is_some());
         assert!(building_entries(&m)[..3]
             .iter()
-            .all(|e| e.group_id == group));
+            .all(|e| e.plan.group_id == group));
     }
 }
 
@@ -1416,7 +1418,7 @@ fn removing_the_piece_dissolves_the_block_to_standalone() {
     add(&mut m, "piece-P"); // ex-A, ex-B, piece-P (group)
     let piece = building_entries(&m)
         .iter()
-        .find(|e| e.item_id == "piece-P")
+        .find(|e| e.plan.item_id == "piece-P")
         .unwrap()
         .id
         .clone();
@@ -1427,7 +1429,9 @@ fn removing_the_piece_dissolves_the_block_to_standalone() {
     assert!(m.last_error.is_none());
     assert_eq!(ids(&m), ["ex-A", "ex-B"]);
     assert!(
-        building_entries(&m).iter().all(|x| x.group_id.is_none()),
+        building_entries(&m)
+            .iter()
+            .all(|x| x.plan.group_id.is_none()),
         "related become standalone when their piece is removed"
     );
     let b = Intrada.view(&m).building_setlist.unwrap();
@@ -1453,7 +1457,7 @@ fn removing_a_related_keeps_the_block() {
     let e = building_entries(&m);
     let block = group_of(&m, "piece-P").expect("the piece still anchors a block");
     assert_eq!(
-        e[0].group_id.as_deref(),
+        e[0].plan.group_id.as_deref(),
         Some(block.as_str()),
         "the piece + remaining related stay one block"
     );
@@ -1497,7 +1501,7 @@ fn test_add_to_setlist() {
     if let SessionStatus::Building(ref b) = model.session_status {
         assert_eq!(b.entries.len(), 1);
         assert_eq!(b.entries[0].item_title, "Moonlight Sonata");
-        assert_eq!(b.entries[0].item_type, ItemKind::Piece);
+        assert_eq!(b.entries[0].plan.item_type, ItemKind::Piece);
         assert_eq!(b.entries[0].position, 0);
     } else {
         panic!("Expected Building state");
@@ -1631,7 +1635,7 @@ fn test_start_session_opens_the_first_play_plain_whatever_the_plan() {
     let play = play_of(entry);
     assert!(play.is_plain_run_through());
     assert_eq!(play.key, None);
-    assert_eq!(entry.planned_variation_ids, vec!["v-f".to_string()]);
+    assert_eq!(entry.plan.variation_ids, vec!["v-f".to_string()]);
 }
 
 #[test]
@@ -3480,10 +3484,7 @@ fn set_plan(model: &mut Model, entry_id: &str, sections: &[&str], variations: &[
 
 fn planned(model: &Model) -> (Vec<String>, Vec<String>) {
     let entry = &session_entries(model)[0];
-    (
-        entry.planned_section_ids(),
-        entry.planned_variation_ids.clone(),
-    )
+    (entry.plan.section_ids(), entry.plan.variation_ids.clone())
 }
 
 #[test]
@@ -3620,7 +3621,7 @@ fn a_skipped_entry_keeps_its_plan() {
         panic!("Expected Summary state");
     };
     assert_eq!(s.entries[0].status, EntryStatus::Skipped);
-    assert_eq!(s.entries[0].planned_variation_ids, vec!["v-c".to_string()]);
+    assert_eq!(s.entries[0].plan.variation_ids, vec!["v-c".to_string()]);
     assert!(s.entries[0].plays.is_empty());
 }
 
@@ -3658,8 +3659,8 @@ fn the_plan_and_what_was_played_both_reach_the_saved_session() {
     assert_eq!(model.sessions.len(), 1);
     assert_eq!(model.sessions[0].capture_version, Some(CAPTURE_VERSION));
     let saved = &model.sessions[0].entries[0];
-    assert_eq!(saved.planned_section_ids(), vec!["s-coda".to_string()]);
-    assert_eq!(saved.planned_variation_ids, vec!["v-c".to_string()]);
+    assert_eq!(saved.plan.section_ids(), vec!["s-coda".to_string()]);
+    assert_eq!(saved.plan.variation_ids, vec!["v-c".to_string()]);
     assert_eq!(
         play_of(saved).section_id.as_deref(),
         Some("s-coda"),
@@ -4733,7 +4734,7 @@ fn test_set_entry_intention() {
     assert!(model.last_error.is_none());
     if let SessionStatus::Building(ref b) = model.session_status {
         assert_eq!(
-            b.entries[0].intention,
+            b.entries[0].plan.intention,
             Some("Work on left hand".to_string())
         );
     } else {
@@ -4785,7 +4786,7 @@ fn an_aim_is_kept_trimmed_and_a_blank_one_is_none() {
         let SessionStatus::Building(ref b) = model.session_status else {
             panic!("Expected Building state");
         };
-        assert_eq!(b.entries[0].intention.as_deref(), kept, "{typed:?}");
+        assert_eq!(b.entries[0].plan.intention.as_deref(), kept, "{typed:?}");
     }
 }
 
@@ -4818,7 +4819,7 @@ fn an_aim_at_the_limit_with_padding_is_accepted() {
     let SessionStatus::Building(ref b) = model.session_status else {
         panic!("Expected Building state");
     };
-    assert_eq!(b.entries[0].intention.as_deref(), Some(full.as_str()));
+    assert_eq!(b.entries[0].plan.intention.as_deref(), Some(full.as_str()));
 }
 
 /// The tags read the picker's own list, so a variation deleted or taken off
@@ -4954,7 +4955,7 @@ fn model_with_active_session_and_rep(target: u8) -> (Model, DateTime<Utc>) {
 
     // Set rep target on first entry during building
     if let SessionStatus::Building(ref mut b) = model.session_status {
-        b.entries[0].planned_rep_target = Some(target);
+        b.entries[0].plan.rep_target = Some(target);
     } else {
         panic!("Expected Building state");
     }
@@ -5229,7 +5230,7 @@ fn test_rep_state_frozen_on_skip_item() {
         assert_eq!(a.entries[0].plays.len(), 1);
         assert_eq!(a.entries[0].plays[0].rep_count, Some(1));
         assert_eq!(a.entries[0].plays[0].rep_target, Some(5));
-        assert_eq!(a.entries[0].planned_rep_target, Some(5));
+        assert_eq!(a.entries[0].plan.rep_target, Some(5));
     } else {
         panic!("Expected Active state");
     }
@@ -5509,7 +5510,7 @@ fn test_set_rep_target_in_building() {
 
     assert!(model.last_error.is_none());
     if let SessionStatus::Building(ref b) = model.session_status {
-        assert_eq!(b.entries[0].planned_rep_target, Some(7));
+        assert_eq!(b.entries[0].plan.rep_target, Some(7));
         assert!(
             b.entries[0].plays.is_empty(),
             "a target is a plan: it banks no progress"
@@ -5556,7 +5557,7 @@ fn test_set_rep_target_clear() {
 
     assert!(model.last_error.is_none());
     if let SessionStatus::Building(ref b) = model.session_status {
-        assert_eq!(b.entries[0].planned_rep_target, None);
+        assert_eq!(b.entries[0].plan.rep_target, None);
     } else {
         panic!("Expected Building state");
     }
@@ -5593,7 +5594,7 @@ fn test_set_rep_target_invalid_value() {
         Some("Rep target must be between 3 and 10")
     );
     if let SessionStatus::Building(ref b) = model.session_status {
-        assert_eq!(b.entries[0].planned_rep_target, None); // unchanged
+        assert_eq!(b.entries[0].plan.rep_target, None); // unchanged
     } else {
         panic!("Expected Building state");
     }
@@ -5677,18 +5678,15 @@ fn set_duration(model: &mut Model, entry_id: &str, duration_secs: Option<u32>) {
 #[test]
 fn set_entry_duration_lands_at_either_bound() {
     let (mut model, entry_id) = building_with_one_entry();
-    assert_eq!(building_entries(&model)[0].planned_duration_secs, None);
+    assert_eq!(building_entries(&model)[0].plan.duration_secs, None);
 
     set_duration(&mut model, &entry_id, Some(60));
     assert!(model.last_error.is_none());
-    assert_eq!(building_entries(&model)[0].planned_duration_secs, Some(60));
+    assert_eq!(building_entries(&model)[0].plan.duration_secs, Some(60));
 
     set_duration(&mut model, &entry_id, Some(3600));
     assert!(model.last_error.is_none());
-    assert_eq!(
-        building_entries(&model)[0].planned_duration_secs,
-        Some(3600)
-    );
+    assert_eq!(building_entries(&model)[0].plan.duration_secs, Some(3600));
 }
 
 #[test]
@@ -5704,7 +5702,7 @@ fn set_entry_duration_outside_the_range_is_refused_and_keeps_the_plan() {
             Some("Planned duration must be between 60 and 3600 seconds"),
             "{out_of_range} was accepted"
         );
-        assert_eq!(building_entries(&model)[0].planned_duration_secs, Some(600));
+        assert_eq!(building_entries(&model)[0].plan.duration_secs, Some(600));
     }
 }
 
@@ -5712,12 +5710,12 @@ fn set_entry_duration_outside_the_range_is_refused_and_keeps_the_plan() {
 fn set_entry_duration_none_clears_the_plan() {
     let (mut model, entry_id) = building_with_one_entry();
     set_duration(&mut model, &entry_id, Some(600));
-    assert_eq!(building_entries(&model)[0].planned_duration_secs, Some(600));
+    assert_eq!(building_entries(&model)[0].plan.duration_secs, Some(600));
 
     set_duration(&mut model, &entry_id, None);
 
     assert!(model.last_error.is_none());
-    assert_eq!(building_entries(&model)[0].planned_duration_secs, None);
+    assert_eq!(building_entries(&model)[0].plan.duration_secs, None);
 }
 
 // --- Rep History Tests (US1) ---
@@ -5869,17 +5867,26 @@ fn test_rep_history_persisted_through_save() {
 fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
     crate::domain::types::assert_round_trips(SetlistEntry {
         id: "e1".to_string(),
-        item_id: "ex-1".to_string(),
+        plan: PlannedItem {
+            item_id: "ex-1".to_string(),
+            item_type: ItemKind::Exercise,
+            intention: Some("even tone".to_string()),
+            focus: None,
+            duration_secs: Some(300),
+            group_id: Some("g1".to_string()),
+            variation_ids: vec!["v-2".to_string()],
+            rep_target: Some(5),
+            segments: vec![Segment {
+                section_id: "s-1".to_string(),
+                planned_secs: 300,
+            }],
+            key: None,
+        },
         item_title: "Scales".to_string(),
-        item_type: ItemKind::Exercise,
         position: 0,
         duration_secs: 300,
         status: EntryStatus::Completed,
         notes: Some("warm up".to_string()),
-        intention: Some("even tone".to_string()),
-        planned_duration_secs: Some(300),
-        group_id: Some("g1".to_string()),
-        planned_rep_target: Some(5),
         plays: vec![Play {
             id: "e1-play".to_string(),
             section_id: Some("s-1".to_string()),
@@ -5919,17 +5926,10 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
             score: Some(6),
             away: Vec::new(),
         }],
-        segments: vec![Segment {
-            section_id: "s-1".to_string(),
-            planned_secs: 300,
-        }],
-        focus: None,
         intention_met: None,
         felt: None,
         got_in_the_way: Vec::new(),
         note_points: Vec::new(),
-        planned_variation_ids: vec!["v-2".to_string()],
-        planned_key: None,
     });
 }
 
@@ -5940,10 +5940,10 @@ fn pinned_active_session() -> ActiveSession {
     touched.status = EntryStatus::Completed;
     touched.duration_secs = 300;
     touched.notes = Some("phrasing".to_string());
-    touched.intention = Some("evenness".to_string());
-    touched.planned_duration_secs = Some(300);
-    touched.group_id = Some("g1".to_string());
-    touched.segments = vec![
+    touched.plan.intention = Some("evenness".to_string());
+    touched.plan.duration_secs = Some(300);
+    touched.plan.group_id = Some("g1".to_string());
+    touched.plan.segments = vec![
         Segment {
             section_id: "s-1".to_string(),
             planned_secs: 180,
@@ -5953,7 +5953,7 @@ fn pinned_active_session() -> ActiveSession {
             planned_secs: 120,
         },
     ];
-    touched.focus = Some(IntentionFocus {
+    touched.plan.focus = Some(IntentionFocus {
         kind: FocusKind::Tempo,
         section_id: Some("s-1".to_string()),
         target: Some(84),
@@ -5969,9 +5969,9 @@ fn pinned_active_session() -> ActiveSession {
         section_id: Some("s-1".to_string()),
         span: NoteSpan { start: 0, end: 12 },
     }];
-    touched.planned_variation_ids = vec!["v-1".to_string()];
-    touched.planned_rep_target = Some(10);
-    touched.planned_key = crate::domain::key::Key::parse("G major");
+    touched.plan.variation_ids = vec!["v-1".to_string()];
+    touched.plan.rep_target = Some(10);
+    touched.plan.key = crate::domain::key::Key::parse("G major");
     touched.plays = vec![Play {
         id: "e1-play".to_string(),
         section_id: Some("s-1".to_string()),
@@ -6071,26 +6071,26 @@ fn pinned_active_session() -> ActiveSession {
 }
 
 const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
-    "02000000000000007331020000000000000002000000000000006531020000000000000070310d",
-    "00000000000000436c616972206465204c756e650000000000000000000000002c010000000000",
-    "00000000000108000000000000007068726173696e670108000000000000006576656e6e657373",
-    "012c010000010200000000000000673101000000000000000300000000000000762d31010a0100",
-    "000000000000070000000000000065312d706c6179010300000000000000732d31010000000001",
-    "000000010100000002000000000000000300000000000000762d310300000000000000762d3214",
-    "00000000000000323032362d30392d30335430393a30303a30305a2c01000000000000010a0101",
-    "010300000000000000010000001400000000000000323032362d30392d30335430393a30303a30",
-    "305a0178000101000000001400000000000000323032362d30392d30335430393a30303a34305a",
-    "0178000100020000001400000000000000323032362d30392d30335430393a30303a34315a0000",
-    "01000000000000001400000000000000323032362d30392d30335430393a30303a32305a780001",
-    "017800010708010300000000000000030202290001040200000000000000140000000000000032",
-    "3032362d30392d30335430393a30313a30305a011400000000000000323032362d30392d303354",
-    "30393a30373a30305a011400000000000000323032362d30392d30335430393a30383a32305a00",
-    "0002000000000000000300000000000000732d31b40000000300000000000000732d3278000000",
-    "0100000000010300000000000000732d3101540001010000000102000000020000000000000002",
-    "000000030000000100000000000000000000000c000e00010300000000000000732d3100000000",
-    "0c0000000104000000000000000100000000020000000000000065320200000000000000783106",
-    "000000000000005363616c65730100000001000000000000000000000000000000020000000000",
-    "000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "020000000000000073310200000000000000020000000000000065310200000000000000703100",
+    "0000000108000000000000006576656e6e6573730100000000010300000000000000732d310154",
+    "00012c010000010200000000000000673101000000000000000300000000000000762d31010a02",
+    "000000000000000300000000000000732d31b40000000300000000000000732d32780000000104",
+    "0000000000000001000000000d00000000000000436c616972206465204c756e65000000000000",
+    "00002c01000000000000000000000108000000000000007068726173696e670100000000000000",
+    "070000000000000065312d706c6179010300000000000000732d31010000000001000000010100",
+    "000002000000000000000300000000000000762d310300000000000000762d3214000000000000",
+    "00323032362d30392d30335430393a30303a30305a2c01000000000000010a0101010300000000",
+    "000000010000001400000000000000323032362d30392d30335430393a30303a30305a01780001",
+    "01000000001400000000000000323032362d30392d30335430393a30303a34305a017800010002",
+    "0000001400000000000000323032362d30392d30335430393a30303a34315a0000010000000000",
+    "00001400000000000000323032362d30392d30335430393a30303a32305a780001017800010708",
+    "0103000000000000000302022900010402000000000000001400000000000000323032362d3039",
+    "2d30335430393a30313a30305a011400000000000000323032362d30392d30335430393a30373a",
+    "30305a011400000000000000323032362d30392d30335430393a30383a32305a00000101000000",
+    "0102000000020000000000000002000000030000000100000000000000000000000c000e000103",
+    "00000000000000732d31000000000c000000020000000000000065320200000000000000783101",
+    "0000000000000000000000000000000000000000000000000006000000000000005363616c6573",
+    "010000000000000000000000000000000200000000000000000000000000000000000000000000",
     "000000000000000001000000000000001400000000000000323032362d30392d30335430393a30",
     "303a30305a1400000000000000323032362d30392d30335430383a34373a30305a011400000000",
     "000000323032362d30392d30335430393a30303a30305aa8000101070801030000000000000003",
@@ -6102,7 +6102,7 @@ const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "30335430393a30303a30305af0000000780000003c000000",
 );
 
-const PINNED_BLOB_VERSION: u32 = 8;
+const PINNED_BLOB_VERSION: u32 = 9;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump
@@ -6252,7 +6252,7 @@ fn a_piece_records_exactly_one_unattributed_play() {
     let (model, _) = model_with_active_session(1);
 
     let entry = only_entry(&model);
-    assert_eq!(entry.item_type, ItemKind::Piece);
+    assert_eq!(entry.plan.item_type, ItemKind::Piece);
     assert_eq!(entry.plays.len(), 1);
     assert!(play_of(entry).is_plain_run_through());
 }
@@ -8531,4 +8531,29 @@ fn a_retired_practice_is_named_as_a_notice_not_an_error() {
     );
     assert!(model.last_error.is_none());
     assert!(matches!(model.session_status, SessionStatus::Idle));
+}
+
+/// Loading a routine or the week into a session is a copy (#2582): the plan
+/// comes across whole and nothing about how it went does.
+#[test]
+fn an_entry_from_a_plan_carries_the_plan_and_nothing_played() {
+    let plan = pinned_active_session().entries[0].plan.clone();
+    let entry = SetlistEntry::from_plan("e9".to_string(), 3, "Clair de Lune", plan.clone());
+    assert_eq!(
+        entry,
+        SetlistEntry {
+            id: "e9".to_string(),
+            plan,
+            item_title: "Clair de Lune".to_string(),
+            position: 3,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            plays: Vec::new(),
+            intention_met: None,
+            felt: None,
+            got_in_the_way: Vec::new(),
+            note_points: Vec::new(),
+        }
+    );
 }

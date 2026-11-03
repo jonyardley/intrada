@@ -11,8 +11,8 @@ use crate::domain::metre::Metre;
 use crate::domain::section::BarRange;
 use crate::domain::session::{
     split_evenly, Away, ClickState, CompletionStatus, EntryStatus, Felt, FocusKind, IntentionFocus,
-    IntentionMet, NotePoint, NotePointKind, NoteSpan, Obstacle, Play, PracticeSession, RepAction,
-    RepEvent, Segment, SetlistEntry, TempoChange,
+    IntentionMet, NotePoint, NotePointKind, NoteSpan, Obstacle, PlannedItem, Play, PracticeSession,
+    RepAction, RepEvent, Segment, SetlistEntry, TempoChange,
 };
 
 /// The `session` table's columns, as the shell reads and writes them.
@@ -584,26 +584,28 @@ impl Reader {
         let planned_key = e.planned_key.as_ref().and_then(|k| self.key(k));
         SetlistEntry {
             id: e.id.clone(),
-            item_id: e.item_id.clone(),
+            plan: PlannedItem {
+                item_id: e.item_id.clone(),
+                item_type: self.known("ItemKind", &e.item_type, item_kind, ItemKind::Piece),
+                intention: e.intention.clone(),
+                focus,
+                duration_secs: e.planned_duration_secs,
+                group_id: e.group_id.clone(),
+                variation_ids: e.planned_variation_ids.clone().unwrap_or_default(),
+                rep_target: e.planned_rep_target.or(e.rep_target),
+                segments,
+                key: planned_key,
+            },
             item_title: e.item_title.clone(),
-            item_type: self.known("ItemKind", &e.item_type, item_kind, ItemKind::Piece),
             position: usize::try_from(e.position).unwrap_or(usize::MAX),
             duration_secs: e.duration_secs,
             status,
             notes: e.notes.clone(),
-            intention: e.intention.clone(),
-            planned_duration_secs: e.planned_duration_secs,
-            group_id: e.group_id.clone(),
-            planned_variation_ids: e.planned_variation_ids.clone().unwrap_or_default(),
-            planned_rep_target: e.planned_rep_target.or(e.rep_target),
             plays,
-            segments,
-            focus,
             intention_met,
             felt,
             got_in_the_way,
             note_points,
-            planned_key,
         }
     }
 
@@ -752,21 +754,22 @@ fn click_state(stored: &StoredClickState) -> ClickState {
 fn stored_entry(e: &SetlistEntry) -> StoredEntry {
     StoredEntry {
         id: e.id.clone(),
-        item_id: e.item_id.clone(),
+        item_id: e.plan.item_id.clone(),
         item_title: e.item_title.clone(),
-        item_type: item_kind_text(&e.item_type).to_string(),
+        item_type: item_kind_text(&e.plan.item_type).to_string(),
         position: e.position as u64,
         duration_secs: e.duration_secs,
         status: entry_status_text(&e.status).to_string(),
         notes: e.notes.clone(),
-        intention: e.intention.clone(),
-        planned_duration_secs: e.planned_duration_secs,
-        group_id: e.group_id.clone(),
-        planned_variation_ids: Some(e.planned_variation_ids.clone()),
-        planned_rep_target: e.planned_rep_target,
+        intention: e.plan.intention.clone(),
+        planned_duration_secs: e.plan.duration_secs,
+        group_id: e.plan.group_id.clone(),
+        planned_variation_ids: Some(e.plan.variation_ids.clone()),
+        planned_rep_target: e.plan.rep_target,
         plays: Some(e.plays.iter().map(stored_play).collect()),
         segments: Some(
-            e.segments
+            e.plan
+                .segments
                 .iter()
                 .map(|s| StoredSegment {
                     section_id: s.section_id.clone(),
@@ -774,7 +777,7 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
                 })
                 .collect(),
         ),
-        focus: e.focus.as_ref().map(|f| StoredFocus {
+        focus: e.plan.focus.as_ref().map(|f| StoredFocus {
             kind: focus_kind_text(f.kind).to_string(),
             section_id: f.section_id.clone(),
             target: f.target,
@@ -788,7 +791,7 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
                 .collect(),
         ),
         note_points: Some(e.note_points.iter().map(stored_note_point).collect()),
-        planned_key: e.planned_key.as_ref().map(stored_key),
+        planned_key: e.plan.key.as_ref().map(stored_key),
         planned_section_ids: None,
         score: None,
         rep_target: None,

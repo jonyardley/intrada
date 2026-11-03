@@ -52,7 +52,7 @@ pub(super) fn update_play_way(
     if entry.status != EntryStatus::Completed {
         return crux_core::render::render();
     }
-    way.key = written_key_as_none(model, &entry.item_id, way.key);
+    way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     let check = validation::validate_play_belongs(&entry, &play_id)
         .and_then(|()| validation::validate_play_way(&entry, &way, entry.play(&play_id), model));
     if let Err(e) = check {
@@ -142,7 +142,7 @@ pub(super) fn update_entry_notes(
         return crux_core::render::render();
     }
 
-    let item_id = entry_for_plan(model, &entry_id).map(|e| e.item_id.clone());
+    let item_id = entry_for_plan(model, &entry_id).map(|e| e.plan.item_id.clone());
     let offered = note_offers(
         notes.as_deref().unwrap_or_default(),
         &super::finish::named_sections(model, item_id.as_deref().unwrap_or_default()),

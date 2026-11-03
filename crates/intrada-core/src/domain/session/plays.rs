@@ -13,18 +13,19 @@ use crux_core::Command;
 pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
     if entry.plays.is_empty() {
         let section_id = entry
+            .plan
             .segments
             .first()
             .map(|s| s.section_id.clone())
-            .or_else(|| entry.focus.as_ref().and_then(|f| f.section_id.clone()));
+            .or_else(|| entry.plan.focus.as_ref().and_then(|f| f.section_id.clone()));
         let way = PlayWay {
             section_id,
-            key: entry.planned_key,
+            key: entry.plan.key,
             ..PlayWay::default()
         };
         entry
             .plays
-            .push(Play::opened(way, entry.planned_rep_target, now));
+            .push(Play::opened(way, entry.plan.rep_target, now));
     }
 }
 
@@ -32,8 +33,8 @@ pub(super) fn first_segment_clock(
     entry: &SetlistEntry,
     now: DateTime<Utc>,
 ) -> Option<SegmentClock> {
-    let first = entry.segments.first()?;
-    (entry.segments.len() > 1 && first.planned_secs > 0).then_some(SegmentClock {
+    let first = entry.plan.segments.first()?;
+    (entry.plan.segments.len() > 1 && first.planned_secs > 0).then_some(SegmentClock {
         index: 0,
         started_at: now,
         allowance_secs: first.planned_secs,

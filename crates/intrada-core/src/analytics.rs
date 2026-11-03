@@ -480,13 +480,13 @@ pub fn compute_weekly_summary(sessions: &[PracticeSession], clock: LocalClock) -
             total_secs += session.total_duration_secs;
             session_count += 1;
             for entry in &session.entries {
-                current_item_ids.insert(entry.item_id.clone());
+                current_item_ids.insert(entry.plan.item_id.clone());
             }
         } else if session_week == prev_iso_week {
             prev_secs += session.total_duration_secs;
             prev_session_count += 1;
             for entry in &session.entries {
-                prev_item_ids.insert(entry.item_id.clone());
+                prev_item_ids.insert(entry.plan.item_id.clone());
             }
         }
     }
@@ -545,10 +545,10 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
 
     for session in sessions {
         for entry in &session.entries {
-            let record = items.entry(entry.item_id.clone()).or_insert_with(|| {
+            let record = items.entry(entry.plan.item_id.clone()).or_insert_with(|| {
                 (
                     entry.item_title.clone(),
-                    entry.item_type.clone(),
+                    entry.plan.item_type.clone(),
                     0,
                     HashSet::new(),
                 )
@@ -629,17 +629,17 @@ pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) ->
         for entry in &session.entries {
             if let Some(score) = entry.score_summary() {
                 if session_date.iso_week() == today_iso_week {
-                    let existing = this_week.get(&entry.item_id);
+                    let existing = this_week.get(&entry.plan.item_id);
                     if !matches!(existing, Some(e) if session_date < e.1) {
                         this_week.insert(
-                            entry.item_id.clone(),
+                            entry.plan.item_id.clone(),
                             (score, session_date, entry.item_title.clone()),
                         );
                     }
                 } else {
-                    let existing = prev.get(&entry.item_id);
+                    let existing = prev.get(&entry.plan.item_id);
                     if !matches!(existing, Some(e) if session_date < e.1) {
-                        prev.insert(entry.item_id.clone(), (score, session_date));
+                        prev.insert(entry.plan.item_id.clone(), (score, session_date));
                     }
                 }
             }
@@ -770,7 +770,7 @@ fn relative_day(day: NaiveDate, today: NaiveDate) -> (String, String) {
 mod tests {
     use super::*;
     use crate::domain::session::{
-        CompletionStatus, EntryStatus, Play, PracticeSession, SetlistEntry,
+        CompletionStatus, EntryStatus, PlannedItem, Play, PracticeSession, SetlistEntry,
     };
     use chrono::{NaiveDate, TimeZone, Utc};
 
@@ -827,9 +827,12 @@ mod tests {
                 ..Play::fixture()
             }],
             id,
-            item_id: item_id.to_string(),
+            plan: PlannedItem {
+                item_id: item_id.to_string(),
+                item_type,
+                ..SetlistEntry::fixture().plan
+            },
             item_title: title.to_string(),
-            item_type,
             position: 0,
             duration_secs,
             status: EntryStatus::Completed,

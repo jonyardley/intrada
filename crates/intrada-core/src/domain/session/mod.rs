@@ -162,49 +162,91 @@ impl Play {
     }
 }
 
-/// An individual item within a session's setlist.
+/// What is planned for one item: enough to start practising it, and nothing
+/// about how it went (#2582).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct SetlistEntry {
-    pub id: String,
+pub struct PlannedItem {
     pub item_id: String,
-    pub item_title: String,
     pub item_type: ItemKind,
-    pub position: usize,
-    pub duration_secs: u64,
-    pub status: EntryStatus,
-    pub notes: Option<String>,
     pub intention: Option<String>,
-    pub planned_duration_secs: Option<u32>,
+    pub focus: Option<IntentionFocus>,
+    pub duration_secs: Option<u32>,
     /// Block grouping (building phase): entries pulled in alongside a piece via
     /// its related exercises share one `group_id`. A block is the contiguous run
     /// of entries with the same id; `None` = standalone.
     pub group_id: Option<String>,
-    pub planned_variation_ids: Vec<String>,
-    /// The repetition target set in the builder. Every play the entry opens
-    /// starts from it, so a switch redraws the same number of slots.
-    pub planned_rep_target: Option<u8>,
+    pub variation_ids: Vec<String>,
+    /// Every play the entry opens starts from it, so a switch redraws the same
+    /// number of slots.
+    pub rep_target: Option<u8>,
+    /// The sections, in order, with their time (#2315). Planned against played
+    /// is the clearest sign of avoiding a hard part.
+    pub segments: Vec<Segment>,
+    /// `None` is the written key. The first play opens in it.
+    pub key: Option<Key>,
+}
+
+impl PlannedItem {
+    pub fn new(item_id: &str, item_type: ItemKind) -> Self {
+        Self {
+            item_id: item_id.to_string(),
+            item_type,
+            intention: None,
+            focus: None,
+            duration_secs: None,
+            group_id: None,
+            variation_ids: Vec::new(),
+            rep_target: None,
+            segments: Vec::new(),
+            key: None,
+        }
+    }
+
+    pub fn section_ids(&self) -> Vec<String> {
+        self.segments.iter().map(|s| s.section_id.clone()).collect()
+    }
+}
+
+/// An individual item within a session's setlist: its plan beside what
+/// happened.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SetlistEntry {
+    pub id: String,
+    pub plan: PlannedItem,
+    pub item_title: String,
+    pub position: usize,
+    pub duration_secs: u64,
+    pub status: EntryStatus,
+    pub notes: Option<String>,
     /// What was actually practised, in order. Empty for an entry never
     /// attempted; every practised entry has at least one, a piece included
     /// (#1739 decision 3).
     pub plays: Vec<Play>,
-    /// The sections the builder planned, in order, with their time (#2315).
-    /// The plan, not the record: planned against played is the clearest sign
-    /// of avoiding a hard part.
-    pub segments: Vec<Segment>,
-    pub focus: Option<IntentionFocus>,
     /// The musician's answer, only when the sheet asked and they gave one.
     pub intention_met: Option<IntentionMet>,
     pub felt: Option<Felt>,
     pub got_in_the_way: Vec<Obstacle>,
     pub note_points: Vec<NotePoint>,
-    /// `None` is the written key. The first play opens in it.
-    pub planned_key: Option<Key>,
 }
 
 impl SetlistEntry {
-    pub fn planned_section_ids(&self) -> Vec<String> {
-        self.segments.iter().map(|s| s.section_id.clone()).collect()
+    pub fn from_plan(id: String, position: usize, item_title: &str, plan: PlannedItem) -> Self {
+        Self {
+            id,
+            plan,
+            item_title: item_title.to_string(),
+            position,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            plays: Vec::new(),
+            intention_met: None,
+            felt: None,
+            got_in_the_way: Vec::new(),
+            note_points: Vec::new(),
+        }
     }
 
     pub fn play(&self, id: &str) -> Option<&Play> {
@@ -282,29 +324,12 @@ impl Play {
 #[cfg(test)]
 impl SetlistEntry {
     pub(crate) fn fixture() -> Self {
-        Self {
-            id: "entry-1".to_string(),
-            item_id: "item-1".to_string(),
-            item_title: "Item".to_string(),
-            item_type: ItemKind::Piece,
-            position: 0,
-            duration_secs: 0,
-            status: EntryStatus::NotAttempted,
-            notes: None,
-            intention: None,
-            planned_duration_secs: None,
-            group_id: None,
-            planned_variation_ids: Vec::new(),
-            planned_rep_target: None,
-            plays: Vec::new(),
-            segments: Vec::new(),
-            focus: None,
-            intention_met: None,
-            felt: None,
-            got_in_the_way: Vec::new(),
-            note_points: Vec::new(),
-            planned_key: None,
-        }
+        Self::from_plan(
+            "entry-1".to_string(),
+            0,
+            "Item",
+            PlannedItem::new("item-1", ItemKind::Piece),
+        )
     }
 }
 
@@ -456,15 +481,15 @@ pub struct ActiveSession {
     pub segment: Option<SegmentClock>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 7;
+const RETIRED_BLOB_VERSION_MAX: u32 = 8;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 7 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 8;
+    /// 8 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 9;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
