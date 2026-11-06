@@ -29,7 +29,7 @@ permissions:
   security-events: write
 
 env:
-  RUST_VERSION: "1.97.1"
+  RUST_VERSION: "1.99.1"
   SENTRY_ORG: jon-yardley
   # Asserted by the self-hosted gate, which runs on a machine that updates
   # itself (#1637).
