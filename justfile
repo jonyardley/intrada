@@ -59,9 +59,11 @@ coverage:
 # gate with 127, which reads as broken rather than as a tool that is not
 # installed. The link check is diff-scoped, so it reads committed content only.
 # The checks below are independent (each self-test sandboxes its own mktemp -d), so they run concurrently.
+# The scripts/tests/ self-tests run only when the branch touches scripts/, the
+# justfile or .github/ (scripts/lib/diff-scope.sh, #2734); CI runs its own list directly.
 # A check whose tool is absent prints a line starting "skipped:" and passes;
 # those lines are echoed on a green run so a skip never reads as a pass.
-[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests and the release-name, app-version, faint-ink, theme-value, design-token, haptics and bridge-test checks")]
+[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests when tooling changed, and the release-name, app-version, faint-ink, theme-value, design-token, haptics and bridge-test checks")]
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -103,6 +105,10 @@ hygiene:
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
         "sync-if-changed-test:bash scripts/tests/sync-if-changed-test.sh"
     )
+    source scripts/lib/diff-scope.sh
+    selected=()
+    while IFS= read -r entry; do selected+=("$entry"); done < <(diff_scope_select_checks "${checks[@]}")
+    [ "${#selected[@]}" -eq 0 ] || checks=("${selected[@]}")
     tmpdir=$(mktemp -d) || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
     names=()
@@ -701,6 +707,8 @@ _ios-inputs-fingerprint:
 # No `--use-cache` here: the cache key is project.yml, which a new Swift file
 # doesn't change, so a newly added test file silently never joins the target
 # and the suite goes green without ever running it (#1456).
+# `scripts/ios-run-sim.sh` builds with the same package folder and index
+# setting, so the two share Swift (#2733).
 [private]
 _ios-build-for-testing:
     #!/usr/bin/env bash
