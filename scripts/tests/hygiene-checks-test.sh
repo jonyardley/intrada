@@ -1009,15 +1009,16 @@ expect 0 "the version this repo actually ships" bash scripts/check-app-version.s
 
 # ── The self-test scope (#2734) ─────────────────────────────────────────────
 
-unset DIFF_SCOPE_BASE
 sandbox="$work/scope"
-mkdir -p "$sandbox/scripts/tests" "$sandbox/crates"
+mkdir -p "$sandbox/scripts/tests" "$sandbox/crates" "$sandbox/.github/workflows"
 cd "$sandbox"
 git init -q -b main .
 git config user.email "test@example.com"
 git config user.name "Hygiene self-test"
 git config commit.gpgsign false
+git config core.quotePath true
 printf 'echo ok\n' >scripts/tests/demo-test.sh
+printf 'on: push\n' >.github/workflows/ci.yml
 printf 'fn main() {}\n' >crates/lib.rs
 printf 'hygiene:\n' >justfile
 git add -A
@@ -1060,6 +1061,28 @@ printf 'echo new\n' >scripts/new-tool.sh
 expect 0 "a new untracked script runs the self-tests" self_tests_run
 rm scripts/new-tool.sh
 
+printf 'echo new\n' >"scripts/tëst.sh"
+expect 0 "a new untracked script with a non-ASCII name runs the self-tests" self_tests_run
+git add "scripts/tëst.sh"
+expect 0 "a staged script with a non-ASCII name runs the self-tests" self_tests_run
+git rm -q --cached "scripts/tëst.sh"
+rm "scripts/tëst.sh"
+
+printf 'on: pull_request\n' >>.github/workflows/ci.yml
+expect 0 "a workflow edit runs the self-tests" self_tests_run
+git checkout -q -- .github
+
+git mv scripts/tests/demo-test.sh crates/demo-test.sh
+expect 0 "a script moved out of scripts/ runs the self-tests" self_tests_run
+git mv crates/demo-test.sh scripts/tests/demo-test.sh
+
+printf '// edit again\n' >>crates/lib.rs
+expect 0 "a selection of only self-tests keeps them all, with no skipped line" \
+  bash -c 'out=$(source "$1"; diff_scope_select_checks "demo-test:bash scripts/tests/demo-test.sh" 2>&1)
+    [ "$out" = "demo-test:bash scripts/tests/demo-test.sh" ]' _ "$repo_root/scripts/lib/diff-scope.sh"
+git checkout -q -- crates
+printf '// edit\n' >>crates/lib.rs
+
 git commit -qam "rust only"
 expect 0 "a committed Rust-only change still skips" self_tests_skipped
 
@@ -1077,7 +1100,7 @@ git update-ref -d refs/remotes/origin/main
 expect 0 "no origin/main runs the self-tests" self_tests_run
 
 cd "$repo_root"
-expect 0 "the hygiene recipe passes its checks through the scope" \
+expect 0 "the hygiene recipe text names the scope helper on its checks (a text check)" \
   grep -q 'diff_scope_select_checks "${checks\[@\]}"' justfile
 
 # ── Result ──────────────────────────────────────────────────────────────────
