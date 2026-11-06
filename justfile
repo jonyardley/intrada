@@ -101,6 +101,7 @@ hygiene:
         "ios-ui-shards-test:bash scripts/tests/ios-ui-shards-test.sh"
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
+        "sync-if-changed-test:bash scripts/tests/sync-if-changed-test.sh"
     )
     tmpdir=$(mktemp -d) || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
@@ -977,10 +978,13 @@ ios-test-sim-clean:
 [doc("Generate the Swift types into ios/generated/SharedTypes with facet")]
 [group('iOS')]
 ios-typegen:
-    # Pre-clean so a renamed/removed core type can't leave an orphan Swift file
-    # (crux's swift typegen overwrites but never deletes) — keeps typegen in sync.
-    rm -rf ios/generated/SharedTypes
-    RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir ios/generated
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Staged so unchanged Swift keeps its date and a removed type leaves no orphan (#2732).
+    staging=$(mktemp -d)
+    trap 'rm -rf "$staging"' EXIT
+    RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir "$staging"
+    bash scripts/sync-if-changed.sh "$staging/SharedTypes" ios/generated/SharedTypes
 
 [doc("Build the Rust core into ios/generated/IntradaCoreFFI with cargo-swift")]
 [group('iOS')]
@@ -996,17 +1000,16 @@ ios-package profile="debug" slices="all":
         all) where="--platforms ios" ;;
         *) echo "✗ slices must be sim or all, not '{{slices}}'" >&2; exit 1 ;;
     esac
+    # cargo-swift's output is the staging folder; only changed files reach ios/generated (#2732).
+    rm -rf IntradaCoreFFI
     cargo swift package --name IntradaCoreFFI $where --lib-type static --features uniffi,store $rel --accept-all
-    rm -rf ../../ios/generated/IntradaCoreFFI
-    mkdir -p ../../ios/generated
-    mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
     # Requires cargo-swift 0.9.0 (`cargo install cargo-swift --version =0.9.0`):
     # its bundled uniffi-bindgen matches our uniffi=0.29.4 crate's runtime
     # contract; newer cargo-swift crashes the app with a contract mismatch.
     # cargo-swift nests the modulemap+header one level too deep; the
     # xcframework Info.plist declares HeadersPath=Headers, so canImport fails
     # and the FFI types vanish. Move them up (crux counter example's 0.9 fix).
-    xcf=../../ios/generated/IntradaCoreFFI/RustFramework.xcframework
+    xcf=IntradaCoreFFI/RustFramework.xcframework
     moved=0
     for slice in "$xcf"/*/; do
         hd="$slice/headers"
@@ -1015,6 +1018,8 @@ ios-package profile="debug" slices="all":
         fi
     done
     [ "$moved" = 1 ] || echo "⚠️  cargo-swift header layout changed — verify canImport(intrada_ffiFFI)"
+    bash ../../scripts/sync-if-changed.sh IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
+    rm -rf IntradaCoreFFI
     echo "✓ ios/generated/IntradaCoreFFI"
 
 # Regenerate bindings only if intrada-core / intrada-ffi changed since last gen,
