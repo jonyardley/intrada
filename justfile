@@ -59,6 +59,8 @@ coverage:
 # gate with 127, which reads as broken rather than as a tool that is not
 # installed. The link check is diff-scoped, so it reads committed content only.
 # The checks below are independent (each self-test sandboxes its own mktemp -d), so they run concurrently.
+# The scripts/tests/ self-tests run only when the branch touches scripts/, the
+# justfile or .github/ (scripts/lib/diff-scope.sh, #2734); CI runs them all.
 # A check whose tool is absent prints a line starting "skipped:" and passes;
 # those lines are echoed on a green run so a skip never reads as a pass.
 [doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests and the release-name, app-version, faint-ink, theme-value, design-token, haptics and bridge-test checks")]
@@ -102,6 +104,10 @@ hygiene:
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
     )
+    source scripts/lib/diff-scope.sh
+    selected=()
+    while IFS= read -r entry; do selected+=("$entry"); done < <(diff_scope_select_checks "${checks[@]}")
+    [ "${#selected[@]}" -eq 0 ] || checks=("${selected[@]}")
     tmpdir=$(mktemp -d) || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
     names=()

@@ -1007,6 +1007,79 @@ expect 1 "a version that is not X.Y.Z" version_check
 cd "$repo_root"
 expect 0 "the version this repo actually ships" bash scripts/check-app-version.sh
 
+# ── The self-test scope (#2734) ─────────────────────────────────────────────
+
+unset DIFF_SCOPE_BASE
+sandbox="$work/scope"
+mkdir -p "$sandbox/scripts/tests" "$sandbox/crates"
+cd "$sandbox"
+git init -q -b main .
+git config user.email "test@example.com"
+git config user.name "Hygiene self-test"
+git config commit.gpgsign false
+printf 'echo ok\n' >scripts/tests/demo-test.sh
+printf 'fn main() {}\n' >crates/lib.rs
+printf 'hygiene:\n' >justfile
+git add -A
+git commit -qm "base"
+git update-ref refs/remotes/origin/main main
+git checkout -qb branch
+
+scope_entries=("typos:typos" "demo-test:bash scripts/tests/demo-test.sh")
+
+# Exit 0 when the self-test entry is kept, with no "skipped:" line.
+self_tests_run() {
+  local out
+  out=$(bash -c 'source "$1"; shift; diff_scope_select_checks "$@"' _ \
+    "$repo_root/scripts/lib/diff-scope.sh" "${scope_entries[@]}" 2>&1)
+  grep -qx 'demo-test:bash scripts/tests/demo-test.sh' <<<"$out" &&
+    grep -qx 'typos:typos' <<<"$out" && ! grep -q '^skipped:' <<<"$out"
+}
+
+# Exit 0 when only the self-test is dropped, named on one "skipped:" line.
+self_tests_skipped() {
+  local out
+  out=$(bash -c 'source "$1"; shift; diff_scope_select_checks "$@"' _ \
+    "$repo_root/scripts/lib/diff-scope.sh" "${scope_entries[@]}" 2>&1)
+  ! grep -q 'scripts/tests/' <<<"$out" && grep -qx 'typos:typos' <<<"$out" &&
+    [ "$(grep -c '^skipped:.*demo-test' <<<"$out")" = 1 ]
+}
+
+printf '// edit\n' >>crates/lib.rs
+expect 0 "a Rust-only edit skips the self-tests" self_tests_skipped
+
+printf '# edit\n' >>scripts/tests/demo-test.sh
+expect 0 "a script edit runs the self-tests" self_tests_run
+git checkout -q -- scripts
+
+printf 'check:\n' >>justfile
+expect 0 "a justfile edit runs the self-tests" self_tests_run
+git checkout -q -- justfile
+
+printf 'echo new\n' >scripts/new-tool.sh
+expect 0 "a new untracked script runs the self-tests" self_tests_run
+rm scripts/new-tool.sh
+
+git commit -qam "rust only"
+expect 0 "a committed Rust-only change still skips" self_tests_skipped
+
+git checkout -q --detach
+expect 0 "a detached head runs the self-tests" self_tests_run
+git checkout -q branch
+
+git checkout -q main
+printf '// on main\n' >>crates/lib.rs
+expect 0 "on main the self-tests run" self_tests_run
+git checkout -q -- crates
+git checkout -q branch
+
+git update-ref -d refs/remotes/origin/main
+expect 0 "no origin/main runs the self-tests" self_tests_run
+
+cd "$repo_root"
+expect 0 "the hygiene recipe passes its checks through the scope" \
+  grep -q 'diff_scope_select_checks "${checks\[@\]}"' justfile
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then
