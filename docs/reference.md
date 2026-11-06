@@ -17,6 +17,9 @@ Recipes regenerate the Swift bindings only when `intrada-core` or
 and the slices built: simulator recipes build one slice (#2181), `just ios` and
 `ios-build-release` need all three, and `just ios-gen` forces them. A stale
 stamp is the tell when iOS tests misbehave after a core type change.
+Each regeneration writes to a staging folder and `scripts/sync-if-changed.sh`
+copies only the files whose bytes changed, so a logic-only core edit leaves
+the Swift bindings' dates alone and Xcode recompiles no Swift (#2732).
 
 ### Swift formatting
 

@@ -996,6 +996,10 @@ jobs:
         run: bash scripts/tests/epic-add-test.sh
       - name: The handover opener still carries its facts
         run: bash scripts/tests/handover-test.sh
+      # A regenerated file with the same bytes must keep its date, or Xcode
+      # recompiles all the Swift after a logic-only core change (#2732).
+      - name: The bindings sync still writes only changed files
+        run: bash scripts/tests/sync-if-changed-test.sh
       # ── cargo-deny ─────────────────────────────────────────────────────
       # Replaces cargo-audit. Checks advisories (same RustSec DB), license
       # compliance, crate bans, and source restrictions in one pass.
