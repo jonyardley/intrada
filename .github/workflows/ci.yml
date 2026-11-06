@@ -255,7 +255,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Read the floor from Cargo.toml rather than pinning it again here: the
-      # toolchain we build with is seven minors above it, so nothing else fails.
+      # toolchain we build with is well above it, so nothing else fails.
       - id: floor
         run: |
           version=$(grep -oE 'package.rust-version = "[^"]+"' Cargo.toml | cut -d'"' -f2)
@@ -402,6 +402,10 @@ jobs:
       # `env:`, where it resolves to empty instead of failing.
       - name: Pin the Rust toolchain for this job
         run: echo "RUSTUP_TOOLCHAIN=${{ env.RUST_VERSION }}" >> "$GITHUB_ENV"
+      # rustup installs a new toolchain on demand but not its iOS targets, so a
+      # Rust bump would fail here first; this is a no-op once they are present.
+      - name: Add the iOS Rust targets
+        run: rustup target add --toolchain "$RUST_VERSION" aarch64-apple-ios aarch64-apple-ios-sim
       - name: swift format check
         run: just ios-fmt-check
       - name: Clippy (iOS device target)
