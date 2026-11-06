@@ -40,8 +40,8 @@ if [ -z "$UDID" ]; then
 fi
 
 # REUSE_BUILD=1 reuses an existing build/dd .app (e.g. CI, right after the
-# snapshot-test step already built it) — avoids a second xcodebuild. Local
-# `just ios-run` leaves it unset and always builds fresh.
+# snapshot-test step already built it), so it skips a second xcodebuild. Local
+# `just ios-run` leaves it unset and always runs xcodebuild.
 if [ -z "${REUSE_BUILD:-}" ]; then
     echo "building…"
     # Same package folder and index setting as `_ios-build-for-testing` in the
