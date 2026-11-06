@@ -1,8 +1,8 @@
 # The Up next card
 
 > Tier 3 spec. Issue [#1082]. The suggestion is the Practice hero
-> (design-principles T15). Design:
-> [`up-next-card/design/up-next-card.dc.html`](up-next-card/design/up-next-card.dc.html).
+> (design-principles T15). Design: the Practice screen in
+> [`intrada-design-system.dc.html`](../design/intrada-design-system.dc.html).
 
 [#1082]: https://github.com/jonyardley/intrada/issues/1082
 
