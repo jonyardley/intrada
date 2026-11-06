@@ -700,6 +700,7 @@ _ios-inputs-fingerprint:
 # No `--use-cache` here: the cache key is project.yml, which a new Swift file
 # doesn't change, so a newly added test file silently never joins the target
 # and the suite goes green without ever running it (#1456).
+# `scripts/ios-run-sim.sh` builds with the same flags, so the two share Swift.
 [private]
 _ios-build-for-testing:
     #!/usr/bin/env bash

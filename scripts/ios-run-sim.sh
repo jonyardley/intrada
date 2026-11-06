@@ -44,9 +44,13 @@ fi
 # `just ios-run` leaves it unset and always builds fresh.
 if [ -z "${REUSE_BUILD:-}" ]; then
     echo "building…"
+    # Same package folder and index setting as `_ios-build-for-testing` in the
+    # justfile, so a run after a test build reuses its Swift instead of
+    # recompiling it (#2733).
     xcodebuild -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$UDID" -derivedDataPath "$DD" -configuration Debug \
-        build CODE_SIGNING_ALLOWED=NO >/tmp/ios-build.log 2>&1 || {
+        -clonedSourcePackagesDirPath build/spm \
+        build COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO >/tmp/ios-build.log 2>&1 || {
         echo "✗ build failed:" >&2
         grep -E "error:" /tmp/ios-build.log | tail -20 >&2
         exit 1
