@@ -3,8 +3,8 @@
 Specs for work not yet built, and shipped ones kept until the issue that cites
 them closes. A spec rides with its first pull request and is otherwise deleted
 once the screens ship; settled decisions move to
-[`docs/decisions.md`](../docs/decisions.md). A `<spec>/design/` folder travels
-with its parent. Direction is in [`docs/roadmap.md`](../docs/roadmap.md).
+[`docs/decisions.md`](../docs/decisions.md). A `<spec>/design/` folder goes
+once the snapshots on both apps cover its screens, even while its spec stays. Direction is in [`docs/roadmap.md`](../docs/roadmap.md).
 
 The specs that remain:
 
