@@ -88,8 +88,9 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   refactors, docs.
 - **Tier 2, plan comment** (the default for feature work): a component or
   screen on existing patterns, an endpoint on established conventions, a field
-  on a model. UI work does Claude Design (project "Intrada") first, and a new
-  screen starts by reading an existing one, which loads the UI rules.
+  on a model. A new screen gets a mockup and Jon's word on it first
+  (`docs/design-workflow.md`), and starts by reading an existing screen, which
+  loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features,
   Crux core or non-additive bridge changes, auth or schema changes. The plan
   comment, then one `specs/<feature>.md` of 100 to 200 lines riding as the

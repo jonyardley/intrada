@@ -121,6 +121,7 @@ choice he has not made. The build and the reviewer read it.
 **Decisions taken**: each choice, with the option rejected and why.
 **Files**: the files and lines it touches, core, `ios/` and `android/`.
 **Tests**: what proves it on each shell, and the line a deletion should break.
+**Mockup**: for a new screen, the Design canvas link and Jon's word on it, or why none is needed.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.
 **Routing**: the epic from `just claim`, sensitive surfaces or not, where it

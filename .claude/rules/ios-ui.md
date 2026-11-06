@@ -8,8 +8,8 @@ paths:
 Off-white paper, near-neutral ink, one highlighter as the only bright colour,
 the musician's choice of eight through `@Environment(\.marker)` (#1677);
 Hanken Grotesk for words, DM Mono for figures only. Every token lives in
-`ios/Intrada/DesignSystem/Theme.swift`; the shareable export,
-`design/intrada-design-system.dc.html`, is derived from it.
+`ios/Intrada/DesignSystem/Theme.swift`; the published design system is
+derived from it.
 
 Read `docs/design-principles.md` before a new surface, layout, flow or
 interaction, and append a decision there rather than settling a tension
@@ -71,7 +71,6 @@ emerges from behind is also opaque and sits on top (`.zIndex(1)`).
   `scripts/check-haptics.sh` enforces it (#2013).
 - iPad list-to-detail screens use `ListDetailSplit`, built with the view.
 
-Design happens in Claude Design (`docs/design-workflow.md`). Mock against the
-existing kit first; for something new, update `Theme.swift` and the design
-reference (with its `support.js`) together, and re-export
-`design/intrada-design-system.html`.
+A new screen follows the route in `docs/design-workflow.md`: a mockup on a
+Design canvas, Jon's word on it, then the build against the copy saved in its
+spec folder. A new token goes into `Theme.swift` and `Theme.kt` first.
