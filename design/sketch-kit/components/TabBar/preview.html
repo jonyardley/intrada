@@ -1,0 +1,21 @@
+<!-- @dsCard group="Navigation" height=260 -->
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: var(--spacing-card); background: var(--paperTop); color: var(--ink); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var h = React.createElement, I = window.Intrada;
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    h("div", { style: { display: "grid", gap: "var(--spacing-section)", maxWidth: "412px" } },
+    h(I.TabBar, { device: "ios", selected: "library" }),
+    h(I.TabBar, { device: "android", selected: "practice" }))
+  );
+</script>
+</body>
+</html>
