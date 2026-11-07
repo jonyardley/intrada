@@ -494,6 +494,7 @@ ios-gen slices="all":
         cat "$typegen_log" >&2
         echo "✗ Swift type generation failed (exit $typegen_status)" >&2
     else
+        cat "$typegen_log"
         echo "✓ ios/generated/SharedTypes"
     fi
     [ "$package_status" = 0 ] || echo "✗ Rust library build failed (exit $package_status)" >&2
