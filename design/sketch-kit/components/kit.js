@@ -34,14 +34,10 @@ function Card(props) {
 
 // MarkerButton: ios/Intrada/DesignSystem/MarkerButton.swift; android ui/FirstRunScreen.kt
 function MarkerButton(props) {
-  var glyph = props.glyph === "play" ? h(Icon, { name: "play" }) : null;
-  var arrow = props.glyph === "arrow" ? h(Icon, { name: "arrow_right" }) : null;
   return h(
     "button",
     { type: "button", className: type("button", "ik-marker-button"), style: { background: markerVar(props.marker) } },
-    glyph,
-    h("span", null, props.label),
-    arrow
+    props.label
   );
 }
 
@@ -62,7 +58,7 @@ function ScoreMark(props) {
 }
 
 function Chip(props) {
-  return h("span", { className: type("secondary", "ik-chip") }, props.children);
+  return h("span", { className: type("secondary", "ik-chip") }, props.lead || null, props.children);
 }
 
 // LibraryItemCard: ios/Intrada/Views/Components/LibraryItemCard.swift; android ui/LibraryScreen.kt
@@ -79,7 +75,7 @@ function LibraryItemCard(props) {
           { className: "ik-item__extras" },
           props.priority ? h(Icon, { name: "star", size: "caption" }) : null,
           linked > 0 ? h(Chip, null, String(linked)) : null,
-          props.keys > 1 ? h(Chip, null, props.keys + " keys") : null,
+          props.keys > 1 ? h(Chip, { lead: "\u266f" }, props.keys + " keys") : null,
           props.variations > 1 ? h(Chip, null, props.variations + " variations") : null,
           tags.map(function (tag) {
             return h(Chip, { key: tag }, tag);
@@ -163,7 +159,11 @@ function ScreenScaffold(props) {
           { className: type("pageTitle", "ik-ink ik-scaffold__title") },
           h("span", { className: swipe ? "ik-swipe" : null, style: { "--ik-marker": markerVar(props.marker) } }, props.title)
         ),
-        props.subtitle ? h("div", { className: type("secondary", "ik-ink-secondary") }, props.subtitle) : null
+        props.subtitle
+          ? h("div", { className: type("secondary", "ik-ink-secondary") }, props.subtitle)
+          : props.reserveSubtitle
+            ? h("div", { className: type("secondary", "ik-hidden"), "aria-hidden": "true" }, "\u00a0")
+            : null
       ),
       props.actions || null,
       add

@@ -473,9 +473,10 @@ The kit is the tokens and icons, made from `Theme.swift` and the Android
 drawables by `just sketch-kit`, phone frames at the snapshot devices' sizes,
 and web copies of five components: `ScreenScaffold`, `Card`,
 `LibraryItemCard`, `MarkerButton` and `TabBar`. Each copy names the files it
-copies, uses only the tokens, and changes in the same PR as its component. A
-built screen passes `scripts/check-theme-values.sh`, so what was sketched on
-the tokens is built on them. The kit draws cards with the lift (T24) and the
+copies, takes every colour and type style from the tokens, and changes in the
+same PR as its component. A built screen passes
+`scripts/check-theme-values.sh`, so what was sketched on the tokens is built
+on them. The kit draws cards with the lift (T24) and the
 tab bar as it looks on a phone. Rejected: a full web kit of every component,
 checked against the code (too much to keep true for one person), and Figma (a
 second source and a cost).

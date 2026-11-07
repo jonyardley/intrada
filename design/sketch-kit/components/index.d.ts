@@ -15,6 +15,8 @@ export interface ScreenScaffoldProps {
   actions?: ReactNode;
   marker?: Marker;
   noSwipe?: boolean;
+  /** Keeps an empty subtitle line so the header rule stays level, as `reservingSubtitleLine` does on iPhone. */
+  reserveSubtitle?: boolean;
   children?: ReactNode;
 }
 
@@ -46,7 +48,6 @@ export interface LibraryItemCardProps {
 export interface MarkerButtonProps {
   label: string;
   marker?: Marker;
-  glyph?: "play" | "arrow";
 }
 
 /** The four tabs along the bottom of the app, drawn as the system bar looks on the phone. */

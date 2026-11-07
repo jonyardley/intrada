@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Builds the sketch kit's generated files from the code, so no token or icon in
-# the Claude Design system is ever typed by hand (#2700):
+# Builds the sketch kit's generated files, so the Claude Design system's tokens
+# and icons are made from the code (#2700):
 #
 #   design/sketch-kit/tokens.json            from Theme.swift, with the usage notes
 #                                            in design/sketch-kit/token-notes.json
@@ -34,19 +34,23 @@ class KitError(Exception):
     pass
 
 
+def braced(text, start, name):
+    """The text from just after an opening brace to its matching close."""
+    depth, i = 1, start
+    while depth:
+        if i >= len(text):
+            raise KitError(f"unclosed block {name}")
+        depth += {"{": 1, "}": -1}.get(text[i], 0)
+        i += 1
+    return text[start : i - 1]
+
+
 def blocks(text, header):
     """The body of each `enum|struct NAME {` block, matched by braces."""
     out = {}
     for m in re.finditer(r"^(?:enum|struct) (\w+)\b[^{\n]*\{", text, re.M):
-        if m.group(1) not in header:
-            continue
-        depth, i = 1, m.end()
-        while depth:
-            if i >= len(text):
-                raise KitError(f"unclosed block {m.group(1)}")
-            depth += {"{": 1, "}": -1}.get(text[i], 0)
-            i += 1
-        out[m.group(1)] = text[m.end() : i - 1]
+        if m.group(1) in header:
+            out[m.group(1)] = braced(text, m.end(), m.group(1))
     missing = [h for h in header if h not in out]
     if missing:
         raise KitError("Theme.swift has no " + ", ".join(missing))
@@ -121,7 +125,9 @@ def parse_colours(body):
             val = value(m.group(2), name)
             hexes[name] = val
             tokens.append((name, val))
-        elif line in ("switch colour {", "}", "}}") or line.startswith("switch "):
+        elif line in ("}", "}}"):
+            current_func = None
+        elif line.startswith("switch "):
             continue
         else:
             raise KitError(f"IntradaColor: cannot read `{line}`")
@@ -175,10 +181,18 @@ def parse_fonts(body):
 
 
 def parse_icon_sizes(body):
-    m = re.search(r"var points: CGFloat \{(.*?)\n  \}", body, re.S)
+    m = re.search(r"var points: CGFloat \{", body)
     if not m:
         raise KitError("IntradaIconSize has no points")
-    return re.findall(r"case \.(\w+): ([\d.]+)", m.group(1))
+    out = []
+    for line in statements(braced(body, m.end(), "IntradaIconSize.points")):
+        if line in ("switch self {", "}"):
+            continue
+        if c := re.fullmatch(r"case \.(\w+): ([\d.]+)", line):
+            out.append(c.groups())
+        else:
+            raise KitError(f"IntradaIconSize: cannot read `{line}`")
+    return out
 
 
 def parse_shadows(body, resolve, opacities):
@@ -413,7 +427,7 @@ def lint(kit_dir, tokens):
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__)
+    p = argparse.ArgumentParser(description="Build the sketch kit's tokens, icons and bundle from the code (#2700).")
     p.add_argument("--check", action="store_true", help="fail when the committed kit is stale")
     p.add_argument("--theme", default=os.path.join(ROOT, "ios/Intrada/DesignSystem/Theme.swift"))
     p.add_argument("--drawables", default=os.path.join(ROOT, "android/app/src/main/res/drawable"))
@@ -424,8 +438,13 @@ def main():
 
     try:
         if not args.check:
-            shutil.rmtree(os.path.join(args.kit, "icons"), ignore_errors=True)
-            tokens = build(args.kit, args.theme, notes, args.drawables, kit_js)
+            # Built aside and swapped in, so a failed run never leaves icons/ half written.
+            with tempfile.TemporaryDirectory() as tmp:
+                tokens = build(tmp, args.theme, notes, args.drawables, kit_js)
+                for rel in ("tokens.json", "components/bundle.js"):
+                    shutil.copyfile(os.path.join(tmp, rel), os.path.join(args.kit, rel))
+                shutil.rmtree(os.path.join(args.kit, "icons"), ignore_errors=True)
+                shutil.move(os.path.join(tmp, "icons"), os.path.join(args.kit, "icons"))
             problems = lint(args.kit, tokens)
             if problems:
                 raise KitError("the kit strays from tokens.json:\n  " + "\n  ".join(problems))

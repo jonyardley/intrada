@@ -15,7 +15,7 @@ so `scripts/check-design-tokens.sh` can read it. Nothing else here uses it.
 |-------|----------|-----------|
 | **Tokens** | `ios/Intrada/DesignSystem/Theme.swift`, with Android's `Theme.kt` checked against it | One source both apps and the design system read (#2603). |
 | **Components** | `design/components/<Name>/README.md`, with snapshots from both apps | `just check` fails when a page and the code disagree (T37, #2620). |
-| **The sketch kit** | `design/sketch-kit/`: tokens, icons, phone frames and web copies of five components | Mockups draw on the real look; `just sketch-kit` makes the tokens and icons from the code, so nothing is typed by hand (T38). |
+| **The sketch kit** | `design/sketch-kit/`: tokens, icons, phone frames and web copies of five components | Mockups draw on the real look; the tokens and icons are made from the code by `just sketch-kit` (T38). |
 | **A screen being designed** | Its Design canvas, copied into `specs/<feature>/design/` | A build session finds it from the issue without asking. |
 | **A screen that has shipped** | The apps and their snapshot tests | A mockup goes stale the day the build merges. |
 | **The design system** | The [Design System artifact](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs) | A view to draw from, republished after merge and never edited there, so it cannot drift from the repo. |
@@ -56,9 +56,9 @@ Run this after any merge that changes a component page, `Theme.swift`, the
 Android icons or the sketch kit. The design system is published from `main`
 and never edited in Claude Design.
 
-1. **Regenerate.** On an up to date `main` checkout, run `just sketch-kit`. It
-   should change nothing, because `just check` fails a branch whose kit is
-   stale; if it does change files, ship them in a PR first.
+1. **Use the committed kit.** The refresh publishes the `design/sketch-kit/`
+   files as committed on `main`; nothing is regenerated. `just check` already
+   fails a branch whose kit is stale, so those files match the code.
 2. **Read the live copy.** Use the Artifact tool's `read` on the
    [design system](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs), then
    `read` `project/design-system.json` and each file you will replace. A
@@ -77,9 +77,6 @@ and never edited in Claude Design.
    who, when and the `main` commit.
 5. **Check it.** Open the design system and look at each changed page and
    preview.
-
-The kit's five previews replace the snapshot pictures those five pages show
-today; the snapshots stay in the Snapshots asset group.
 
 ## Changing a component
 

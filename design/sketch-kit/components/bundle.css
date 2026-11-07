@@ -20,10 +20,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-controlGap);
   width: 100%;
   min-height: 48px;
-  padding: var(--spacing-card);
+  padding: var(--spacing-card) 0;
   border: 0;
   border-radius: var(--radius-card);
   color: var(--onMarker);
@@ -45,6 +44,9 @@
 .ik-item__text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .ik-item__extras { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 5px; color: var(--accent); }
 .ik-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 3px 7px;
   border-radius: 999px;
   background: var(--exerciseBadgeBg);
@@ -76,6 +78,7 @@
 }
 .ik-scaffold__titles { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .ik-scaffold__title { margin: 0; }
+.ik-hidden { visibility: hidden; }
 .ik-swipe {
   border-radius: var(--radius-card);
   background-image: linear-gradient(
@@ -99,6 +102,7 @@
   background: var(--accent);
   color: var(--onAccent);
 }
+.ik-add__disc .ik-icon path { stroke-width: 3; }
 .ik-scaffold__rule { height: 1px; margin-top: var(--spacing-cardCompact); background: var(--divider); }
 .ik-scaffold__content { flex: 1; min-height: 0; overflow: hidden; }
 
@@ -122,7 +126,7 @@
   color: var(--ink);
 }
 .ik-device--ios { width: 390px; height: 844px; border-radius: 47px; }
-.ik-device--android { width: 412px; height: 915px; border-radius: 24px; }
+.ik-device--android { width: 411px; height: 914px; border-radius: 24px; }
 .ik-status { display: flex; align-items: center; justify-content: space-between; flex: none; color: var(--ink); }
 .ik-status--ios { height: 47px; padding: 0 32px 0 48px; }
 .ik-status--android { height: 24px; padding: 0 var(--spacing-card); }

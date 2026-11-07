@@ -41,15 +41,15 @@ stands for.
 
 Android paths are under `android/app/src/main/kotlin/com/intrada/android/`.
 
-Two looks follow decisions rather than today's code (Jon, 15 October 2026):
+Two looks follow decisions rather than the code (Jon, 15 October 2026):
 
-- **Cards have the lift**, as T24 decided. Neither app draws it yet; #2638
+- **Cards have the lift**, as T24 decided. Neither app draws it until #2638
   restores it.
 - **The tab bar is drawn as it looks on a real iPhone**, an opaque bar in
   `tabBarFill`. The white bar in the iPhone snapshot is a test artefact (#2607).
 
 The library row draws the whole iPhone row on both platforms. Android shows
-less today (#2606, #2679).
+less until #2606 and #2679 land.
 
 ## Phone frames
 
@@ -59,7 +59,7 @@ sizes are the devices the snapshot tests use.
 
 | | iPhone 13 | Pixel 7 |
 |---|---|---|
-| Screen | 390 by 844 points | 412 by 915 dp |
+| Screen | 390 by 844 points | 411 by 914 dp |
 | Status bar | 47 | 24 |
 | Navigation bar | 44 on a pushed screen, none at a tab's root | none |
 | Tab bar | 49, then 34 for the home indicator | 56 per tab plus a 1 dp rule, then 24 for gesture navigation |
@@ -75,7 +75,7 @@ const { ScreenScaffold, LibraryItemCard, MarkerButton } = window.Intrada;
 ## Icons
 
 The kit's icons are Android's drawables, which draw the same job as each SF
-Symbol. A symbol mapped to `null` in `icons.json` has no Android drawable yet:
+Symbol. A symbol mapped to `null` in `icons.json` has no Android drawable:
 a sketch names it in words. SF Symbols themselves cannot be shipped as files.
 The icons in `icons/` are drawn in `ink`; inside the components they take the
 text colour.
