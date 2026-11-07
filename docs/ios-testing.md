@@ -161,7 +161,8 @@ cd ~/actions-runner && ./svc.sh stop && ./svc.sh start
 
 **The toolchain is local and asserted**: XcodeGen 2.46.0 in `~/.local/bin`
 (found through the runner's `.path` file), `cargo-swift` 0.9.0, Rust through
-`RUSTUP_TOOLCHAIN`. The gate fails when `xcodebuild -version` differs from
+`RUSTUP_TOOLCHAIN`, with the two iOS targets added each run so a Rust bump
+needs nothing done on the Mac. The gate fails when `xcodebuild -version` differs from
 `SELFHOSTED_XCODE` in `ci.yml` or the iOS 26.5 runtime is missing (#1905).
 
 **The workspace stays warm**, so each run: `git clean -ffd` without `-x` (a
