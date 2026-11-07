@@ -406,7 +406,7 @@ def lint(kit_dir, tokens):
                     continue
                 if var not in names and not var.startswith("ik-"):
                     problems.append(f"{rel}:{n}: --{var} is not in tokens.json")
-            for cls in re.findall(r'\btype\("(\w+)"\)', line):
+            for cls in re.findall(r'\btype\("(\w+)"', line):
                 if cls not in styles:
                     problems.append(f"{rel}:{n}: no type style {cls}")
     return problems
