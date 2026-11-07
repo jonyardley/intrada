@@ -475,10 +475,32 @@ ios-logs:
 
 [doc("Force a full regenerate of both Swift packages and refresh the change stamp")]
 [group('iOS')]
-ios-gen slices="all": ios-typegen (ios-package "debug" slices)
-    @mkdir -p ios/generated
-    @echo "$(just _ios-src-hash) {{slices}}" > ios/generated/.gen-stamp
-    @echo "✓ bindings regenerated"
+ios-gen slices="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Side by side, type generation in its own Rust build folder so neither
+    # waits on the other's lock: about 4 s against 6 s after a core edit (#2742).
+    typegen_log=$(mktemp)
+    typegen_pid=""
+    trap '[ -n "$typegen_pid" ] && kill "$typegen_pid" 2>/dev/null; rm -f "$typegen_log"' EXIT
+    CARGO_TARGET_DIR="{{justfile_directory()}}/target/codegen" just ios-typegen > "$typegen_log" 2>&1 &
+    typegen_pid=$!
+    package_status=0
+    just ios-package debug {{slices}} || package_status=$?
+    typegen_status=0
+    wait "$typegen_pid" || typegen_status=$?
+    typegen_pid=""
+    if [ "$typegen_status" != 0 ]; then
+        cat "$typegen_log" >&2
+        echo "✗ Swift type generation failed (exit $typegen_status)" >&2
+    else
+        echo "✓ ios/generated/SharedTypes"
+    fi
+    [ "$package_status" = 0 ] || echo "✗ Rust library build failed (exit $package_status)" >&2
+    [ "$typegen_status" = 0 ] && [ "$package_status" = 0 ] || exit 1
+    mkdir -p ios/generated
+    echo "$(just _ios-src-hash) {{slices}}" > ios/generated/.gen-stamp
+    echo "✓ bindings regenerated"
 
 # Build a signed Release .ipa and upload it to TestFlight (internal testing).
 # Mirrors the release-testflight.yml CI lane for local debugging. Needs Ruby >=3
@@ -1048,7 +1070,7 @@ _ios-sync slices="sim":
 
 [private]
 _ios-src-hash:
-    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-store/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml crates/intrada-store/Cargo.toml Cargo.lock -type f -exec shasum {} \; | shasum | cut -d' ' -f1
+    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-store/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml crates/intrada-store/Cargo.toml Cargo.lock -type f -exec shasum {} + | shasum | cut -d' ' -f1
 
 # ── Android ──
 

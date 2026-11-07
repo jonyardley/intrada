@@ -20,6 +20,10 @@ with another worktree's. Worktrunk's machine-local config
   checkout's working tree, so a change to it takes effect once that checkout
   is updated. A stale `ios/generated/` is harmless:
   `_ios-sync` regenerates when its stamp does not match the core.
+- **A second Rust build folder.** `just ios-gen` builds the Swift types in
+  `target/codegen`, beside the Rust library, so the two run at once (#2742). A
+  new worktree pays about 13 s once to fill it, and it takes about 0.9 GB more
+  disk.
 - **A cmux workspace.** The same hook opens one at the new tree; `pre-switch`
   reopens a missing one and `pre-remove` closes it.
 
