@@ -479,7 +479,7 @@ ios-gen slices="all":
     #!/usr/bin/env bash
     set -euo pipefail
     # Side by side, type generation in its own Rust build folder so neither
-    # waits on the other's lock: about 4 s against 6 s after a core edit (#2742).
+    # waits on the other's lock: about 3 s against 6 s after a core edit (#2742).
     typegen_log=$(mktemp)
     typegen_pid=""
     trap '[ -n "$typegen_pid" ] && kill "$typegen_pid" 2>/dev/null; rm -f "$typegen_log"' EXIT
