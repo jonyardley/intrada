@@ -945,6 +945,10 @@ jobs:
       # it, so a colour the page lacks is drift nothing else sees (#2603).
       - name: Every Theme.swift colour is on the design system page
         run: bash scripts/check-design-tokens.sh
+      # Sketches draw from the kit, so tokens or icons left behind a theme
+      # change put the old look in every new mockup (#2700).
+      - name: The sketch kit matches the theme and icons
+        run: python3 scripts/sketch-kit.py --check
       # The catalogue is what agents read before building a screen, so a page
       # naming a file, symbol or picture that is gone misleads them (#2620).
       - name: Every component has a page and pictures on both apps
@@ -960,6 +964,8 @@ jobs:
       # ── the gates above, proven against broken input ────────────────────
       - name: Hygiene checks still bite
         run: bash scripts/tests/hygiene-checks-test.sh
+      - name: Sketch kit check still bites
+        run: bash scripts/tests/sketch-kit-test.sh
       # ── pr-visuals ───────────────────────────────────────────────────────
       # Proves scripts/pr-visuals.sh still classifies a modified, an added and
       # a deleted snapshot reference correctly (#1631).
