@@ -602,6 +602,25 @@ ios-test-ui-class class: _ios-sync
     just _ios-build-for-testing
     just _ios-test-without-building "-only-testing:IntradaUITests/{{class}}" 0
 
+# Rebuild and run one IntradaTests class or Swift Testing suite, for checking a
+# Swift change against the tests it touches in seconds rather than the whole
+# fast tier (#2739); `ios-test` stays the check before pushing. A name that
+# matches nothing fails: the counts check refuses a run with zero passed.
+[doc("Rebuild and run one unit or snapshot test class or suite")]
+[group('iOS')]
+ios-test-class class: _ios-sync
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/ios-sim-lock.sh
+    ios_sim_lock_acquire_for_run
+    _ios_test_class_cleanup() {
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
+    }
+    trap _ios_test_class_cleanup EXIT
+    just _ios-test-guard
+    just _ios-build-for-testing
+    just _ios-test-without-building "-only-testing:IntradaTests/{{class}}" 0
+
 # Compile-only Release build (no signing, no tests) — catches `#if DEBUG`-only
 # code referenced from a file that itself compiles in Release, which passes
 # every Debug-only PR gate and then fails `just testflight` / the release lane
