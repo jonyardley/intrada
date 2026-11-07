@@ -726,6 +726,13 @@ _ios-build-for-testing:
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+    # Swift Testing runs the unit tests in parallel inside one process, still on
+    # one simulator (#2741). Set here because XcodeGen writes only on or off for
+    # a target, and on would also clone simulators for the XCTest classes.
+    run=(build/dd/Build/Products/*.xctestrun)
+    # Read first, so a renamed key fails here instead of going quietly serial.
+    plutil -extract IntradaTests.InProcessParallelizationEnabled raw "${run[0]}" >/dev/null
+    plutil -replace IntradaTests.InProcessParallelizationEnabled -bool true "${run[0]}"
     # Written last, so it only exists for a build that actually succeeded (#1530).
     just _ios-inputs-fingerprint > build/dd/Build/Products/ios-inputs.sha256
 
@@ -738,7 +745,7 @@ _ios-build-for-testing:
 # `retry` is "1" to rerun up to three failed tests once (#1203, #2269), else "0";
 # `parallel` is "1" to deal test classes across six booted simulators and run
 # them concurrently, else "0". Shared by `_ios-test-run` (local, everything in one call),
-# `ios-test-ui-class` and `ios-snapshots-record`, and CI's self-hosted gate,
+# `ios-test-class`, `ios-test-ui-class` and `ios-snapshots-record`, and CI's self-hosted gate,
 # which runs the unit and UI tiers as separate steps (#1207).
 [private]
 _ios-test-without-building filters retry parallel="0":
@@ -777,10 +784,19 @@ _ios-test-without-building filters retry parallel="0":
         echo "  Running them anyway lets a deliberately broken line pass, which is how a good test gets deleted (#1530)." >&2
         exit 1
     fi
-    flags=(-parallel-testing-enabled NO)
+    # The flag overrides the run file, so a run of IntradaTests alone drops it to
+    # keep the in-process parallel the build set (#2741); anything reaching the
+    # UI tests keeps it, one test at a time.
+    flags=()
+    unit_only=0
     if [ -n "{{filters}}" ]; then
-        for f in {{filters}}; do flags+=("$f"); done
+        unit_only=1
+        for f in {{filters}}; do
+            flags+=("$f")
+            case "$f" in -only-testing:IntradaTests | -only-testing:IntradaTests/*) ;; *) unit_only=0 ;; esac
+        done
     fi
+    [ "$unit_only" = "1" ] || flags=(-parallel-testing-enabled NO ${flags[@]+"${flags[@]}"})
     # Parallel is opt-in per caller, defaulting off: a second simulator's test
     # runner hits "Application failed preflight checks (Busy)" under memory
     # pressure, which reds the gate for no test reason. Six measured on the
