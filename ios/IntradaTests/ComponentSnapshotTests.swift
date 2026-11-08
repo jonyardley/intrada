@@ -287,6 +287,41 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(labels), as: config)
   }
 
+  func testFormField() {
+    let fields = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        VStack(spacing: 0) {
+          FormField(label: "Title", text: .constant("Clair de Lune"), placeholder: "Required")
+          HairlineDivider()
+          FormField(label: "Tempo marking", text: .constant(""), placeholder: "e.g. Allegro")
+          HairlineDivider()
+          FormField(
+            label: "Bars", text: .constant(""), placeholder: "1 to 16",
+            note: "Optional. Bar 12, or 12 to 14")
+        }
+        .cardSurface()
+        FormField(label: "Title", text: .constant(""), placeholder: "Required", faulted: true)
+          .cardSurface()
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(fields), as: config)
+  }
+
+  func testProfileBadge() {
+    let badges = ZStack {
+      PaperBackground()
+      HStack(spacing: IntradaSpacing.card) {
+        ProfileBadge(icon: .cello, size: IntradaGlyph.bar)
+        ProfileBadge(icon: .cello).marker(.mint)
+        ProfileBadge(icon: .other, size: IntradaGlyph.hero).marker(.lavender)
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(badges), as: config)
+  }
+
   func testPrimaryButtons() {
     let buttons = ZStack {
       PaperBackground()

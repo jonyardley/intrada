@@ -1,0 +1,23 @@
+<!-- @dsCard group="Layout" height=900 -->
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: var(--spacing-card); background: var(--paperTop); color: var(--ink); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var h = React.createElement, I = window.Intrada;
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    h("div", { style: { display: "flex", gap: "var(--spacing-section)", flexWrap: "wrap" } },
+    h(I.ScreenScaffold, { device: "ios", tab: "library", title: "Library", subtitle: "8 pieces · 4 exercises", addLabel: "Add item" },
+      h("div", { style: { padding: "var(--spacing-card)" } }, h(I.LibraryItemCard, { title: "Clair de lune", subtitle: "Debussy", kind: "piece", score: 7 }))),
+    h(I.ScreenScaffold, { device: "android", tab: "library", title: "Library", subtitle: "8 pieces · 4 exercises" },
+      h("div", { style: { padding: "var(--spacing-card)" } }, h(I.LibraryItemCard, { title: "Clair de lune", subtitle: "Debussy", kind: "piece", score: 7 }))))
+  );
+</script>
+</body>
+</html>
