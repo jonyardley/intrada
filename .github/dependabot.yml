@@ -36,6 +36,10 @@ updates:
         exclude-patterns:
           - "net.java.dev.jna:*"
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # "/" covers the workflows only; the local composite actions pin actions
+    # too, and the install-tools cache key turns over when that pin moves.
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: "weekly"

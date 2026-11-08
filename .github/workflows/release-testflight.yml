@@ -67,6 +67,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "release-testflight"
+          # Tools come from the install-tools cache instead (#2778).
+          cache-bin: false
           cache-on-failure: true
       # dtolnay/rust-toolchain skips adding ~/.cargo/bin to PATH on the macOS
       # image; without this `cargo` resolves to Apple's stub.
@@ -74,9 +76,9 @@ jobs:
         run: |
           echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
           cargo --version
-      - uses: taiki-e/install-action@v2.90.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: just
+          tools: just@1.59.0
       - name: Cache cargo-swift
         id: cargo-swift-cache
         uses: actions/cache@v6

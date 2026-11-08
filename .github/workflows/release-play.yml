@@ -94,10 +94,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "release-play"
+          # Tools come from the install-tools cache instead (#2778).
+          cache-bin: false
           cache-on-failure: true
-      - uses: taiki-e/install-action@v2.90.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: just,cargo-ndk@4.1.2
+          tools: just@1.59.0,cargo-ndk@4.1.2
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
