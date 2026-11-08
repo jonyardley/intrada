@@ -17,7 +17,7 @@ A short label in a small rounded pill: a tag on an item, or a word that marks a 
 ## When to use
 
 - A musician's own tags: on a library card, the piece header, a planned item in the builder.
-- A short fact about a row that is not a control: "Tricky spot" and "Weakest" on a section.
+- A short fact about a row that is not a control: the plan tags on a builder row.
 - The tags field on the add and edit forms, where each chip removes itself when tapped.
 
 ## When not to use

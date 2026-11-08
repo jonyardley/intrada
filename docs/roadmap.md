@@ -13,8 +13,8 @@ intrada is a practice notebook. **The musician decides what matters; the app
 decides where today starts, keeps the record honest and can always be
 overruled** ([`VISION.md`](../VISION.md), 2026-09-30).
 
-Capturing material is done, and v0.16.0 to v0.18.0 put pieces in sections and
-variations and showed their marks back (#50). **The goal from 2026-10-13 is
+Capturing material is done, and v0.16.0 to v0.18.0 put variations on pieces
+and showed their marks back (#50); sections went again in v0.19.0 (#2767). **The goal from 2026-10-13 is
 1.0: intrada public on the App Store and Google Play, used daily by musicians
 who have never met its maker.** The order: make the data model sound, give both
 apps one look, build Progress, Plan and reflection, get every tab to where it
@@ -36,20 +36,21 @@ Each release's write-up is its
 [GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
 on.
 
-- **Main green first**: the failing CI run on main (#2597).
-- **The review** (#2577,
-  [review page](https://claude.ai/artifact/9D4tbou13mtMcvY1Jj27tn)): a saved
-  session that can be deleted and carries its change time (#2581), one
-  migration clearing the leftovers (#2317), the time zone a session was played
-  in (#1379), and one planned-item shape for sessions, plans and the week
-  (#2582).
-- **What is left of #50**: adding a section and a key while building a session
-  (#2392), every section on the practice screen (#2394), last time's aim as a
-  one-tap start (#2397) and the builder rules the core still has to take over
-  (#2404, #2405, #2406).
-- **Loose ends**: values an older build does not recognise (#2437), the
-  practice defaults version (#2216), the shipped migrations test (#2600), and
-  tempo in compound time shown by the piece's beat (#1510, #2543).
+- **Sections and trouble spots removed** (#2767): ruled on 2026-11-08 to
+  simplify the app while the basics are worked on. Both apps, the core and the
+  database lose them, with their saved data, in one store step. A way back is
+  parked in #2768.
+- **Loose ends**: tempo in compound time shown by the piece's beat (#1510, in
+  PR #2771), and the shipped migrations test once v0.18.1 is out (#2600).
+- **Done**: main green (#2597), the review (#2577,
+  [review page](https://claude.ai/artifact/9D4tbou13mtMcvY1Jj27tn)) with its
+  deletable sessions (#2581), leftover tables (#2317) and one planned-item
+  shape (#2582), what was left of #50 (#2397, #2404, #2405), and the loose
+  ends #2437, #2216 and #2543. Adding a section while building (#2392) and
+  the section focus target (#2406) closed with the removal.
+- **One database change per release**: v0.18.1 carries the coach tables
+  removal, v0.19.0 this one, and the time zone a session was played in (#1379)
+  moves to v0.20.0.
 
 ### Next, in order
 
@@ -57,6 +58,8 @@ on.
    (#2599), one component catalogue for both apps (#2620), its fixes (#2607,
    #2608, #2610, #2611, #2201), the design tool (#2603), and the Android polish
    that makes the second app feel native (#2605, #2606, #2613 to #2619, #2547).
+   It also carries the time zone a session was played in (#1379), its one
+   database change.
 2. **v0.21.0 Progress, redesigned**: the four-week look back decided on
    2026-10-04 (#1787), core first (#2375), then the screen (#2376), with
    variation coverage on the exercise (#2377), per-variation trends (#1793,

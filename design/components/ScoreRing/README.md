@@ -16,7 +16,7 @@ A mark from 1 to 10 as a ring that fills clockwise, with the number in the middl
 
 ## When to use
 
-- The latest mark on anything the musician has played: a library card, a section, a key, a related exercise, a past session.
+- The latest mark on anything the musician has played: a library card, a key, a related exercise, a past session.
 - The large overall mark at the top of an exercise's page.
 
 ## When not to use

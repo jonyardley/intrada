@@ -3,8 +3,8 @@ name: SegmentedProgress
 status: stable
 ios_symbol: SegmentedProgress
 ios_file: ios/Intrada/Views/Components/SegmentedProgress.swift
-ios_snapshots: ComponentSnapshotTests/testSegmentedProgress.1.png, FocusPlayerSnapshotTests/testOrientationBandLongSession.1.png, FocusPlayerSnapshotTests/testFocusPlayerSectionTimeUp.1.png
-not_on_android: #2636 builds the shared Compose version; until then the player, its section strip and Progress each draw their own strip by hand (see Behaviour).
+ios_snapshots: ComponentSnapshotTests/testSegmentedProgress.1.png, FocusPlayerSnapshotTests/testOrientationBandLongSession.1.png
+not_on_android: #2636 builds the shared Compose version; until then the player and Progress each draw their own strip by hand (see Behaviour).
 decisions: T24
 ---
 
@@ -16,7 +16,6 @@ A row of equal segments, some filled: which item of a session you are on, or how
 
 - Where the musician is in a session: one segment per item, filled up to the one playing (the Focus player).
 - How many of a fixed set are solid: one segment per variation or item, filled for each solid one (Progress).
-- Where the musician is in an item split into sections: one segment per section, filled once done, with the section names and the core's caption beneath (#2394).
 
 ## When not to use
 
@@ -47,7 +46,6 @@ No motion and no haptic. The strip is not a control.
 
 - On iPhone the strip is one element. The player strip says "Item 2 of 5", from the shell; a solid count says the label it is given, and `SolidCountRow` replaces that with the core's spoken row.
 - On Android the player strip reports its range as progress to TalkBack, and the Progress row reads the core's spoken row.
-- The section strip is one element on both apps and says the core's position label ("Section 2 of 3, 2 min taken from A2").
 - The segments do not scale with text size.
 
 ## Do and don't

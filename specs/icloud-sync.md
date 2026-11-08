@@ -17,17 +17,17 @@ One record per thing the store already writes as one unit:
 
 | Kind | Body | Change time |
 | --- | --- | --- |
-| Piece or exercise | `Item`, sections and exercise links inside | later of `updated_at` and `deleted_at` |
+| Piece or exercise | `Item`, exercise links inside | later of `updated_at` and `deleted_at` |
 | Variation | `Variation` | later of `updated_at` and `deleted_at` |
 | Saved session | `PracticeSession`, entries, plays and taps inside | `completed_at` |
 
 Variations are their own record because one shared variation is named by many
 pieces (#2246).
 
-A whole piece wins or loses together: a section edit on the iPad and a title
-edit on the iPhone, both offline, keep whichever was later. A section or
-exercise link only the losing device has is soft deleted, stamped with the
-winner's change time.
+A whole piece wins or loses together: a key edit on the iPad and a title
+edit on the iPhone, both offline, keep whichever was later. An exercise link
+only the losing device has is soft deleted, stamped with the winner's change
+time.
 
 Not synced here: settings (#2357) and photo bytes (#2358).
 
@@ -92,7 +92,7 @@ New persistence operations, run by `intrada-store`, so neither shell changes:
 
 - `LoadRecords(Vec<RecordKey>)`: the stored copies, tombstones included, and
   in `StoredRecords::unreadable` the named rows this app cannot read (a piece
-  counts when one of its sections or links will not read).
+  counts when one of its links will not read).
 - `LoadAllRecords`: every item, variation and session, tombstones included.
 - `ApplyMerged(StoredRecords)`: the winners, in one transaction, writing
   `deleted_at` exactly as given.

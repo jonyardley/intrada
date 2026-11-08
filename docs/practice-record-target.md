@@ -1,5 +1,9 @@
 # Practice record: target state
 
+> Sections and trouble spots were removed in v0.19.0 with their saved data
+> (#2767). What this page says about sections, segments and spots no longer
+> applies; #2768 holds the way back.
+
 What intrada keeps about each practice once sections, variations and the capture rules are in, agreed on 2026-10-03 and recorded on epic #50; #2353 builds on it. The visual version is the [practice record target](https://claude.ai/artifact/D8eT5UVKMnKZ99hxNjkhZ3). Delete when #50 and #2353 close.
 
 **The one rule under all of it:** store events and the musician's own answers, never a verdict the app works out. A tap at 84 with the click on is stored, and so is "partly" when you answer it. "A1 is secure" is worked out each time it is read, so a better reading later can change its mind about old practice.

@@ -1,7 +1,7 @@
 # Practice variations, and the record of what you played
 
 > Tier 3 spec, issue [#1739], kept until #1970 closes. It holds the settled
-> shape of a play, a variation, a key, a section and an exercise link. Code
+> shape of a play, a variation, a key and an exercise link. Code
 > cites "#1739 decision N" and "#1761 rule N" by the numbers below. Earlier
 > decisions that still hold are in [`decisions.md`](../docs/decisions.md).
 >
@@ -13,16 +13,16 @@
 ## Shape
 
 An entry holds an ordered list of **plays**. Each play says how the item was
-played (section, key, variations) and carries the time, repetitions, tempo and
+played (key, variations) and carries the time, repetitions, tempo and
 mark. Switching mid item closes the open play and opens another.
 
 ```text
 Variation { id, label, updated_at, deleted_at }    // shared across the library (#2246)
-Item { …, key, keys: Vec<Key>, variation_ids, sections: Vec<ItemSection>,
+Item { …, key, keys: Vec<Key>, variation_ids,
        exercise_links: Vec<ExerciseLink> }
 SetlistEntry { …, planned_key, planned_variation_ids, planned_rep_target,
                plays: Vec<Play> }
-Play { id, section_id, key, variation_ids, started_at, seconds, rep_target,
+Play { id, key, variation_ids, started_at, seconds, rep_target,
        rep_count, rep_history, tempo_changes, achieved_tempo, click_pattern, score,
        away: Vec<Away> }
 ```
@@ -59,7 +59,7 @@ Play { id, section_id, key, variation_ids, started_at, seconds, rep_target,
 
 ## Validation
 
-- A play's variations and section must be live on the entry's item.
+- A play's variations must be live on the entry's item.
 - At most `MAX_PLAYS_PER_ENTRY` (24) plays per entry, bounding the blob.
 - `play_id` must belong to the named entry.
 - Every terminal transition drops a play with no score, no repetitions and
@@ -98,41 +98,25 @@ A key is one typed value everywhere and keeps its spelling: `Key` in
 guessing major (#2106, #2246). An item has its written `key` and the `keys`
 chosen for practice; a play's `None` is the written key. Church modes are #830.
 
-## Sections (#2245)
+## Sections
 
-A section is a part of a piece or exercise, or a trouble spot: `ItemSection
-{ id, name, bars: Option<BarRange>, kind: Form | TroubleSpot, target_bpm,
-position, updated_at, deleted_at }`. How a section is going is worked out from
-plays when read, never stored on it.
-
-- **A section needs a name or bars, or both.** A nameless spot is labelled
-  "Bars 12 to 14"; the label is derived, so editing the bars keeps it true.
-- **Duplicate names are allowed.** Rows reconcile by id only.
-- **The target tempo is stored as given.** `None` means the piece's tempo.
-- **Removal always tombstones**, so old plays stay resolvable.
-
-`ItemEvent::ChangeSection` changes one section at a time with
-`SectionChange::Save`, `Remove` or `Arrange` (#2447); a change that leaves the
-list as it was writes nothing. `parse_bar_range` reads what a musician types
-("1-16", "bars 5 to 12", "bb. 5-12", any dash) and refuses a reversed range,
-bar 0, a half range, two ranges or words around it.
+Sections and trouble spots were removed in v0.19.0 with their saved data
+(#2767); a way back is parked in #2768. A piece is one whole thing.
 
 ## Exercise links (#2248)
 
-`ExerciseLink { id, exercise_id, section_id, position, updated_at, deleted_at }`
-lives on the piece; `section_id: None` is the whole piece.
+`ExerciseLink { id, exercise_id, position, updated_at, deleted_at }` lives on
+the piece and links the exercise to the whole piece.
 
-- **A link is one row per exercise and target**, reconciled on (exercise,
-  section), so relinking revives the old row and keeps its id.
-- **Whole piece and sections together are allowed**, with no rule between them.
+- **A link is one row per exercise and piece**, reconciled on the exercise, so
+  relinking revives the old row and keeps its id.
 - **The host is a piece.** Unlinking tombstones.
 
 The piece's card changes one exercise at a time with `ChangePieceLink` and
 `LinkChange::Set`, `Move` or `Unlink` (#2447); the pickers send
 `ChoosePieceExercises` and `ChooseExercisePieces` (#2379), and
 `SetExerciseLinks` writes an exercise's whole set in one batch. An identical
-set writes nothing, and removing a section tombstones every live link naming it
-in the same save.
+set writes nothing.
 
 ## Open questions
 
@@ -140,4 +124,5 @@ in the same save.
 - Whether a play should carry its own note. Not in v1.
 
 Mockups: [`exercise-variations/design/`](exercise-variations/design/), with
-sections and keys in [`design/sections/`](exercise-variations/design/sections/).
+keys in [`design/sections/`](exercise-variations/design/sections/), beside the
+section mockups kept as a record.
