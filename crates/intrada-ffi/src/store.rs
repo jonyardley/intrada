@@ -107,7 +107,6 @@ mod tests {
             chord_chart: None,
             photo_id: None,
             metre: None,
-            sections: vec![],
             variation_ids: vec![],
             keys: vec![],
             exercise_links: vec![],
@@ -144,12 +143,9 @@ mod tests {
     fn a_failed_operation_answers_failed_with_the_reason() {
         let store = StoreFFI::in_memory().expect("opens");
         let mut broken = piece();
-        broken.sections = vec![intrada_core::domain::section::ItemSection {
-            id: "s1".into(),
-            name: "A".into(),
-            bars: None,
-            kind: intrada_core::domain::section::SectionKind::Form,
-            target_bpm: None,
+        broken.exercise_links = vec![intrada_core::domain::link::ExerciseLink {
+            id: "l1".into(),
+            exercise_id: "e1".into(),
             position: usize::MAX,
             updated_at: broken.updated_at,
             deleted_at: None,

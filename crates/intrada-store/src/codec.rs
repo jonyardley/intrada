@@ -5,7 +5,6 @@ use intrada_core::domain::chart::{
     Bar, ChartChord, ChartSection, ChordChart, ChordQuality, ChordSymbol,
 };
 use intrada_core::domain::key::{key_from_stored, key_to_stored};
-use intrada_core::domain::section::SectionKind;
 use intrada_core::domain::Metre;
 use intrada_core::{ItemKind, Key, Modality};
 use serde::de::DeserializeOwned;
@@ -84,37 +83,6 @@ pub(crate) fn item_kind_to_write(kind: &ItemKind, stored: Option<String>) -> Str
     match stored {
         Some(text) if known_item_kind(&text).is_none() && *kind == UNKNOWN_ITEM_KIND => text,
         _ => item_kind_text(kind).to_string(),
-    }
-}
-
-pub(crate) fn section_kind_text(kind: SectionKind) -> &'static str {
-    match kind {
-        SectionKind::Form => "form",
-        SectionKind::TroubleSpot => "trouble_spot",
-    }
-}
-
-fn known_section_kind(raw: &str) -> Option<SectionKind> {
-    match raw {
-        "form" => Some(SectionKind::Form),
-        "trouble_spot" => Some(SectionKind::TroubleSpot),
-        _ => None,
-    }
-}
-
-const UNKNOWN_SECTION_KIND: SectionKind = SectionKind::Form;
-
-pub(crate) fn section_kind(raw: &str, unreadable: &mut Unreadable) -> SectionKind {
-    known_section_kind(raw).unwrap_or_else(|| {
-        unknown("SectionKind", raw, unreadable);
-        UNKNOWN_SECTION_KIND
-    })
-}
-
-pub(crate) fn section_kind_to_write(kind: SectionKind, stored: Option<String>) -> String {
-    match stored {
-        Some(text) if known_section_kind(&text).is_none() && kind == UNKNOWN_SECTION_KIND => text,
-        _ => section_kind_text(kind).to_string(),
     }
 }
 

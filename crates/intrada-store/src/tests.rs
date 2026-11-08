@@ -8,7 +8,6 @@ use intrada_core::domain::chart::{
     parse_chart, Bar, ChartChord, ChartSection, ChordChart, ChordQuality, ChordSymbol,
 };
 use intrada_core::domain::link::ExerciseLink;
-use intrada_core::domain::section::{BarRange, ItemSection, SectionKind};
 use intrada_core::domain::session::{Play, RepAction, RepEvent};
 use intrada_core::domain::{Metre, Variation};
 use intrada_core::persistence::{StoredItem, StoredPracticeSession, StoredRecords};
@@ -151,31 +150,6 @@ fn fixture() -> Item {
             unit: 8,
             groups: Some(vec![2, 2, 3]),
         }),
-        sections: vec![
-            ItemSection {
-                id: "s1".into(),
-                name: "A".into(),
-                bars: Some(BarRange { first: 1, last: 8 }),
-                kind: SectionKind::Form,
-                target_bpm: None,
-                position: 0,
-                updated_at: at("2026-09-02T11:30:00Z"),
-                deleted_at: None,
-            },
-            ItemSection {
-                id: "s2".into(),
-                name: String::new(),
-                bars: Some(BarRange {
-                    first: 12,
-                    last: 14,
-                }),
-                kind: SectionKind::TroubleSpot,
-                target_bpm: Some(52),
-                position: 1,
-                updated_at: at("2026-09-02T11:30:00Z"),
-                deleted_at: Some(at("2026-09-03T09:00:00Z")),
-            },
-        ],
         variation_ids: vec!["00000000000000000000000001".into()],
         keys: vec![
             key(Letter::C, Accidental::Sharp, Some(Modality::Minor)),
@@ -184,7 +158,6 @@ fn fixture() -> Item {
         exercise_links: vec![ExerciseLink {
             id: "l1".into(),
             exercise_id: "e1".into(),
-            section_id: Some("s2".into()),
             position: 0,
             updated_at: at("2026-09-02T11:30:00Z"),
             deleted_at: None,
@@ -208,7 +181,6 @@ fn bare(id: &str, kind: ItemKind) -> Item {
         chord_chart: None,
         photo_id: None,
         metre: None,
-        sections: vec![],
         variation_ids: vec![],
         keys: vec![],
         exercise_links: vec![],
@@ -262,7 +234,6 @@ fn entry(id: &str) -> SetlistEntry {
             group_id: None,
             variation_ids: vec![],
             rep_target: Some(5),
-            segments: vec![],
             key: None,
         },
         item_title: "Etude".into(),
@@ -272,7 +243,6 @@ fn entry(id: &str) -> SetlistEntry {
         notes: Some("good".into()),
         plays: vec![Play {
             id: format!("{id}-p1"),
-            section_id: None,
             key: None,
             variation_ids: vec![],
             started_at: at(EARLY),
@@ -609,7 +579,6 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
     let link = |piece: &str, exercise: &str, position: usize| ExerciseLink {
         id: format!("link|{piece}|{exercise}"),
         exercise_id: exercise.into(),
-        section_id: None,
         position,
         updated_at: at("2026-01-02T00:00:00Z"),
         deleted_at: None,
@@ -744,7 +713,7 @@ fn v21_drops_the_unread_tables_and_columns_and_leaves_every_kept_value_alone() {
         .collect();
     assert!(before.iter().all(|r| r.len() == 1), "{kept:?}");
 
-    let mut store = Store::new(conn, migrations::latest()).expect("finishes");
+    let mut store = Store::new(conn, "v21_drop_unread_tables_and_columns").expect("finishes");
 
     assert_eq!(tables(&store.conn), kept);
     let after: Vec<Vec<Row>> = kept.iter().map(|t| rows(&store.conn, t)).collect();
@@ -753,6 +722,132 @@ fn v21_drops_the_unread_tables_and_columns_and_leaves_every_kept_value_alone() {
         store.item("p1").key,
         Some(key(Letter::G, Accidental::Natural, Some(Modality::Minor)))
     );
+}
+
+#[test]
+fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
+    let entries = r#"[{"id":"en1","itemId":"p1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","segments":[{"sectionId":"a1","plannedSecs":300}],"plannedSectionIds":["a1"],"focus":{"kind":"tempo","sectionId":"a1","target":84},"plays":[{"id":"pl1","sectionId":"a1","variationIds":["d"],"startedAt":"2026-01-01T00:00:00Z","seconds":300,"score":7},{"id":"pl2","startedAt":"2026-01-01T00:05:00Z","seconds":300}],"notePoints":[{"kind":"tempo","bpm":80,"sectionId":"a1","start":14,"end":16}]}]"#;
+    let seed = format!(
+        "INSERT INTO item (id, title, kind, tags, created_at, updated_at) VALUES
+           ('p1', 'Waltz', 'piece', '[]', '{EARLY}', '{EARLY}'),
+           ('p2', 'Nocturne', 'piece', '[]', '{EARLY}', '{EARLY}'),
+           ('e1', 'Scales', 'exercise', '[]', '{EARLY}', '{EARLY}'),
+           ('e2', 'Arpeggios', 'exercise', '[]', '{EARLY}', '{EARLY}'),
+           ('e3', 'Octaves', 'exercise', '[]', '{EARLY}', '{EARLY}');
+         INSERT INTO section (id, item_id, name, kind, position, updated_at, deleted_at) VALUES
+           ('a1', 'p1', 'A1', 'form', 0, '{EARLY}', NULL),
+           ('b', 'p1', '', 'trouble_spot', 1, '{EARLY}', '{EARLY}');
+         INSERT INTO exercise_link
+             (id, piece_id, exercise_id, section_id, position, updated_at, deleted_at) VALUES
+           ('l1', 'p1', 'e1', NULL, 3, '{EARLY}', NULL),
+           ('l2', 'p1', 'e1', 'a1', 0, '{EARLY}', NULL),
+           ('l3', 'p1', 'e2', 'a1', 1, '{EARLY}', NULL),
+           ('l4', 'p1', 'e2', 'a1', 2, '{EARLY}', NULL),
+           ('l5', 'p1', 'e3', 'b', 4, '{EARLY}', NULL),
+           ('l6', 'p2', 'e1', NULL, 0, '{EARLY}', '{EARLY}');
+         INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+             completion_status, entries, updated_at)
+           VALUES ('s1', '{EARLY}', '{EARLY}', 600, 'completed', '{entries}', '{EARLY}');"
+    );
+    let mut store = upgraded("v21_drop_unread_tables_and_columns", &seed);
+
+    assert!(!tables(&store.conn).contains(&"section".to_string()));
+    let link_columns: Vec<String> = rows(&store.conn, "exercise_link")[0]
+        .iter()
+        .map(|(c, _)| c.clone())
+        .collect();
+    assert!(!link_columns.contains(&"section_id".to_string()));
+
+    let live = |store: &Store, id: &str| {
+        store.raw(&format!(
+            "SELECT (SELECT CAST(position AS TEXT) FROM exercise_link
+               WHERE id = '{id}' AND deleted_at IS NULL)"
+        ))
+    };
+    assert_eq!(
+        live(&store, "l1"),
+        Some("0".into()),
+        "takes the pair's first place"
+    );
+    assert_eq!(live(&store, "l2"), None, "the pair keeps one link");
+    assert_eq!(
+        live(&store, "l3"),
+        Some("1".into()),
+        "a section link becomes the piece's"
+    );
+    assert_eq!(live(&store, "l4"), None);
+    assert_eq!(
+        live(&store, "l5"),
+        None,
+        "a removed section took its links with it"
+    );
+    assert_eq!(
+        store.raw("SELECT deleted_at FROM exercise_link WHERE id = 'l6'"),
+        Some(EARLY.into()),
+        "a tombstone is left alone"
+    );
+    assert_eq!(
+        store.raw("SELECT updated_at FROM exercise_link WHERE id = 'l3'"),
+        Some(EARLY.into())
+    );
+    assert_ne!(
+        store.raw("SELECT updated_at FROM exercise_link WHERE id = 'l2'"),
+        Some(EARLY.into()),
+        "a tombstone moves the change time"
+    );
+
+    let piece = store.item("p1");
+    let linked: Vec<&str> = piece
+        .exercise_links
+        .iter()
+        .filter(|l| l.deleted_at.is_none())
+        .map(|l| l.exercise_id.as_str())
+        .collect();
+    assert_eq!(linked, ["e1", "e2"]);
+
+    let stored: serde_json::Value = serde_json::from_str(
+        &store
+            .raw("SELECT entries FROM session WHERE id = 's1'")
+            .expect("a row"),
+    )
+    .expect("json");
+    let expected: serde_json::Value = serde_json::from_str(
+        r#"[{"id":"en1","itemId":"p1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","focus":{"kind":"tempo","target":84},"plays":[{"id":"pl1","variationIds":["d"],"startedAt":"2026-01-01T00:00:00Z","seconds":300,"score":7},{"id":"pl2","startedAt":"2026-01-01T00:05:00Z","seconds":300}],"notePoints":[{"kind":"tempo","bpm":80,"start":14,"end":16}]}]"#,
+    )
+    .expect("json");
+    assert_eq!(stored, expected);
+    let session = &store.sessions()[0];
+    assert_eq!(session.entries[0].plays[0].score, Some(7));
+    assert_eq!(
+        session.entries[0]
+            .plan
+            .focus
+            .as_ref()
+            .and_then(|f| f.target),
+        Some(84)
+    );
+}
+
+#[test]
+fn v22_names_a_session_whose_entries_will_not_read_and_leaves_it() {
+    let seed = format!(
+        "INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+             completion_status, entries, updated_at)
+           VALUES ('s1', '{EARLY}', '{EARLY}', 0, 'completed', 'not json', '{EARLY}');"
+    );
+    let mut conn = Connection::open_in_memory().expect("opens");
+    migrations::migrate(&mut conn, "v21_drop_unread_tables_and_columns", &mut vec![])
+        .expect("migrates");
+    conn.execute_batch(&seed).expect("seeds");
+    let mut unreadable = Vec::new();
+    migrations::migrate(&mut conn, migrations::latest(), &mut unreadable).expect("migrates");
+    assert_eq!(unreadable, ["v22_remove_sections skipped row s1"]);
+    let entries: String = conn
+        .query_row("SELECT entries FROM session WHERE id = 's1'", [], |r| {
+            r.get(0)
+        })
+        .expect("a row");
+    assert_eq!(entries, "not json");
 }
 
 // ── Round trips ──
@@ -820,9 +915,9 @@ fn a_batch_lands_whole() {
 fn a_batch_that_fails_part_way_lands_nothing() {
     let mut store = Store::in_memory().expect("opens");
     let mut broken = bare("b", ItemKind::Piece);
-    broken.sections = vec![ItemSection {
+    broken.exercise_links = vec![ExerciseLink {
         position: usize::MAX,
-        ..fixture().sections[0].clone()
+        ..fixture().exercise_links[0].clone()
     }];
     let answer = store.handle(&PersistenceOperation::SaveItems(vec![
         bare("a", ItemKind::Exercise),
@@ -1007,9 +1102,7 @@ fn an_unknown_stored_value_falls_back_and_is_named() {
         migrations::latest(),
         &format!(
             "INSERT INTO item (id, title, kind, tags, created_at, updated_at, chord_chart)
-             VALUES ('p1', 'Tune', 'etude', '[]', '{EARLY}', '{EARLY}', '{chart}');
-             INSERT INTO section (id, item_id, name, kind, position, updated_at)
-             VALUES ('s1', 'p1', 'A', 'coda', 0, '{EARLY}');"
+             VALUES ('p1', 'Tune', 'etude', '[]', '{EARLY}', '{EARLY}', '{chart}');"
         ),
     );
     let answer = store.handle(&PersistenceOperation::LoadItems);
@@ -1018,12 +1111,10 @@ fn an_unknown_stored_value_falls_back_and_is_named() {
     };
     let item = &items[0];
     assert_eq!(item.kind, ItemKind::Piece);
-    assert_eq!(item.sections[0].kind, SectionKind::Form);
     let quality = item.chord_chart.as_ref().map(|c| c.changes()[0].quality);
     assert_eq!(quality, Some(ChordQuality::Other));
     for named in [
         "unknown ItemKind on decode: \"etude\"",
-        "unknown SectionKind on decode: \"coda\"",
         "unknown ChordQuality on decode: \"lydian\"",
     ] {
         assert!(
@@ -1059,35 +1150,6 @@ fn an_unknown_kind_survives_a_save_that_leaves_it_alone() {
     assert_eq!(
         store.raw("SELECT kind FROM item WHERE id = 'p1'"),
         Some("exercise".into()),
-        "a real choice replaces it"
-    );
-}
-
-#[test]
-fn an_unknown_section_kind_survives_a_save_that_leaves_it_alone() {
-    let mut store = upgraded(
-        migrations::latest(),
-        &format!(
-            "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
-             VALUES ('p1', 'Tune', 'piece', '[]', '{EARLY}', '{EARLY}');
-             INSERT INTO section (id, item_id, name, kind, position, updated_at)
-             VALUES ('s1', 'p1', 'A', 'coda', 0, '{EARLY}');"
-        ),
-    );
-    let mut item = store.item("p1");
-    assert_eq!(item.sections[0].kind, SectionKind::Form);
-    item.sections[0].name = "Coda".into();
-    store.save(&item);
-    assert_eq!(
-        store.raw("SELECT kind FROM section WHERE id = 's1'"),
-        Some("coda".into())
-    );
-
-    item.sections[0].kind = SectionKind::TroubleSpot;
-    store.save(&item);
-    assert_eq!(
-        store.raw("SELECT kind FROM section WHERE id = 's1'"),
-        Some("trouble_spot".into()),
         "a real choice replaces it"
     );
 }
@@ -1128,20 +1190,15 @@ fn a_known_value_is_never_kept_over_the_fallback() {
         migrations::latest(),
         &format!(
             "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
-             VALUES ('p1', 'Scales', 'exercise', '[]', '{EARLY}', '{EARLY}');
-             INSERT INTO section (id, item_id, name, kind, position, updated_at)
-             VALUES ('s1', 'p1', 'A', 'trouble_spot', 0, '{EARLY}');"
+             VALUES ('p1', 'Scales', 'exercise', '[]', '{EARLY}', '{EARLY}');"
         ),
     );
     let mut item = store.item("p1");
     item.kind = ItemKind::Piece;
-    item.sections[0].kind = SectionKind::Form;
     store.save(&item);
     assert_eq!(
-        store.raw(
-            "SELECT item.kind || ' ' || section.kind FROM item JOIN section ON item_id = item.id"
-        ),
-        Some("piece form".into())
+        store.raw("SELECT kind FROM item WHERE id = 'p1'"),
+        Some("piece".into())
     );
 }
 
@@ -1291,9 +1348,23 @@ fn a_database_the_iphone_wrote_opens_with_every_row_intact() {
     exercise.title = "Scales in thirds".into();
     exercise.created_at = at("2026-08-01T09:00:00Z");
     exercise.updated_at = at("2026-08-01T09:00:00Z");
+    let PersistenceOutput::Items(mut items) = first.output else {
+        panic!("items")
+    };
+    let link = items[0].exercise_links.pop().expect("a link");
+    assert!(
+        link.deleted_at.is_some(),
+        "linked to a removed section, so it went with it"
+    );
     assert_eq!(
-        first.output,
-        PersistenceOutput::Items(vec![fixture(), exercise]),
+        items,
+        vec![
+            Item {
+                exercise_links: vec![],
+                ..fixture()
+            },
+            exercise
+        ],
         "the deleted piece stays hidden"
     );
     assert_eq!(
@@ -1332,14 +1403,8 @@ fn a_database_the_iphone_wrote_opens_with_every_row_intact() {
     );
     let play = &session.entries[0].plays[0];
     assert_eq!(
+        (play.key, play.score, play.achieved_tempo),
         (
-            play.section_id.as_deref(),
-            play.key,
-            play.score,
-            play.achieved_tempo
-        ),
-        (
-            Some("s1"),
             Some(key(Letter::E, Accidental::Flat, Some(Modality::Major))),
             Some(8),
             Some(60)
@@ -1439,7 +1504,7 @@ fn an_item_from_each_older_schema_loads_whole() {
 }
 
 #[test]
-fn an_item_written_at_v17_loads_whole_with_no_sections() {
+fn an_item_written_at_v17_loads_whole() {
     let mut store = upgraded(
         "v17_item_metre",
         "INSERT INTO item
@@ -1454,21 +1519,6 @@ fn an_item_written_at_v17_loads_whole_with_no_sections() {
          INSERT INTO variant (id, item_id, label, position, updated_at, deleted_at)
          VALUES ('v1', 'e1', 'C', 0, '2026-01-01T00:00:00Z', NULL)",
     );
-    let section = store.columns("section");
-    for expected in [
-        "id",
-        "item_id",
-        "name",
-        "bar_first",
-        "bar_last",
-        "kind",
-        "target_bpm",
-        "position",
-        "updated_at",
-        "deleted_at",
-    ] {
-        assert!(section.contains(&expected.to_string()), "{section:?}");
-    }
     assert_eq!(
         store.item("p1"),
         Item {
@@ -1483,7 +1533,6 @@ fn an_item_written_at_v17_loads_whole_with_no_sections() {
             exercise_links: vec![ExerciseLink {
                 id: "link|p1|e1".into(),
                 exercise_id: "e1".into(),
-                section_id: None,
                 position: 0,
                 updated_at: at("2026-01-02T00:00:00Z"),
                 deleted_at: None,
@@ -1498,11 +1547,7 @@ fn an_item_written_at_v17_loads_whole_with_no_sections() {
             ..record("p1", "Waltz")
         }
     );
-    let exercise = store.item("e1");
-    assert_eq!(
-        (exercise.variation_ids, exercise.sections),
-        (vec![], vec![])
-    );
+    assert_eq!(store.item("e1").variation_ids, Vec::<String>::new());
 }
 
 #[test]
@@ -1662,51 +1707,6 @@ fn sessions_load_newest_first() {
 }
 
 #[test]
-fn sections_and_a_tombstone_update_by_id_on_a_second_save() {
-    let mut store = Store::in_memory().expect("opens");
-    let section = |id: &str, name: &str, bars: Option<(u16, u16)>, position: usize| ItemSection {
-        id: id.into(),
-        name: name.into(),
-        bars: bars.map(|(first, last)| BarRange { first, last }),
-        kind: SectionKind::Form,
-        target_bpm: None,
-        position,
-        updated_at: at("2026-10-03T09:00:00Z"),
-        deleted_at: None,
-    };
-    let mut item = Item {
-        sections: vec![
-            section("s1", "A1", Some((1, 16)), 0),
-            ItemSection {
-                updated_at: at("2026-10-03T09:05:00Z"),
-                deleted_at: Some(at("2026-10-03T09:05:00Z")),
-                ..section("s2", "Gone", None, 1)
-            },
-            ItemSection {
-                kind: SectionKind::TroubleSpot,
-                target_bpm: Some(72),
-                ..section("s3", "", Some((12, 14)), 2)
-            },
-        ],
-        ..record("p1", "Rondo")
-    };
-    store.save(&item);
-    assert_eq!(store.item("p1").sections, item.sections);
-
-    item.sections[0].name = "A".into();
-    item.sections[2].bars = Some(BarRange {
-        first: 12,
-        last: 13,
-    });
-    store.save(&item);
-    assert_eq!(store.item("p1").sections, item.sections);
-    assert_eq!(
-        store.raw("SELECT CAST(count(*) AS TEXT) FROM section"),
-        Some("3".into())
-    );
-}
-
-#[test]
 fn links_and_a_tombstone_update_by_id_and_load_by_position() {
     let mut store = Store::in_memory().expect("opens");
     let mut item = Item {
@@ -1714,7 +1714,6 @@ fn links_and_a_tombstone_update_by_id_and_load_by_position() {
             ExerciseLink {
                 id: "l1".into(),
                 exercise_id: "e1".into(),
-                section_id: None,
                 position: 0,
                 updated_at: at("2026-10-04T09:00:00Z"),
                 deleted_at: None,
@@ -1722,7 +1721,6 @@ fn links_and_a_tombstone_update_by_id_and_load_by_position() {
             ExerciseLink {
                 id: "l2".into(),
                 exercise_id: "e2".into(),
-                section_id: Some("s2".into()),
                 position: 1,
                 updated_at: at("2026-10-04T09:05:00Z"),
                 deleted_at: Some(at("2026-10-04T09:05:00Z")),
@@ -1734,7 +1732,6 @@ fn links_and_a_tombstone_update_by_id_and_load_by_position() {
     assert_eq!(store.item("p1").exercise_links, item.exercise_links);
 
     item.exercise_links[0].position = 2;
-    item.exercise_links[0].section_id = Some("s1".into());
     item.exercise_links[0].updated_at = at("2026-10-04T10:00:00Z");
     item.exercise_links[1].exercise_id = "e3".into();
     item.exercise_links[1].deleted_at = None;
@@ -1767,7 +1764,6 @@ fn unreadable_tags_survive_until_the_tags_change() {
     loaded.exercise_links = vec![ExerciseLink {
         id: "l1".into(),
         exercise_id: "e1".into(),
-        section_id: None,
         position: 0,
         updated_at: at("2026-10-04T09:00:00Z"),
         deleted_at: None,
@@ -2236,32 +2232,18 @@ fn a_session_with_an_unreadable_change_time_is_named_for_the_merge() {
     assert_eq!(records.unreadable, vec![session_key("s")]);
 }
 
-fn section_row(id: &str, deleted_at: Option<&str>) -> ItemSection {
-    ItemSection {
+fn link_row(id: &str, deleted_at: Option<&str>) -> ExerciseLink {
+    ExerciseLink {
         id: id.into(),
-        name: id.into(),
-        bars: None,
-        kind: SectionKind::Form,
-        target_bpm: None,
+        exercise_id: id.into(),
         position: 0,
         updated_at: at(EARLY),
         deleted_at: deleted_at.map(at),
     }
 }
 
-fn link_row(id: &str) -> ExerciseLink {
-    ExerciseLink {
-        id: id.into(),
-        exercise_id: "e1".into(),
-        section_id: None,
-        position: 0,
-        updated_at: at(EARLY),
-        deleted_at: None,
-    }
-}
-
 #[test]
-fn a_winning_piece_deletes_the_sections_and_links_only_this_device_added() {
+fn a_winning_piece_deletes_the_links_only_this_device_added() {
     let earlier = "2026-01-15T00:00:00Z";
     let won = "2026-03-01T00:00:00Z";
     let deleted = "2026-04-01T00:00:00Z";
@@ -2271,18 +2253,16 @@ fn a_winning_piece_deletes_the_sections_and_links_only_this_device_added() {
     ] {
         let mut store = Store::in_memory().expect("opens");
         store.save(&Item {
-            sections: vec![
-                section_row("both", None),
-                section_row("added here", None),
-                section_row("gone here", Some(earlier)),
+            exercise_links: vec![
+                link_row("both", None),
+                link_row("added here", None),
+                link_row("gone here", Some(earlier)),
             ],
-            exercise_links: vec![link_row("both"), link_row("added here")],
             ..record("piece", "Ours")
         });
         let winner = Item {
             updated_at: at(won),
-            sections: vec![section_row("both", None)],
-            exercise_links: vec![link_row("both")],
+            exercise_links: vec![link_row("both", None)],
             ..record("piece", "Theirs")
         };
         store.ok(&PersistenceOperation::ApplyMerged(StoredRecords {
@@ -2294,30 +2274,17 @@ fn a_winning_piece_deletes_the_sections_and_links_only_this_device_added() {
         }));
 
         let stored = stored_records(&mut store, None).items.remove(0).item;
-        let sections: Vec<(String, Option<DateTime<Utc>>)> = stored
-            .sections
-            .into_iter()
-            .map(|s| (s.id, s.deleted_at))
-            .collect();
         let links: Vec<(String, Option<DateTime<Utc>>)> = stored
             .exercise_links
             .into_iter()
             .map(|l| (l.id, l.deleted_at))
             .collect();
         assert_eq!(
-            sections,
-            vec![
-                ("added here".to_string(), Some(at(expected))),
-                ("both".to_string(), None),
-                ("gone here".to_string(), Some(at(earlier))),
-            ],
-            "{case}"
-        );
-        assert_eq!(
             links,
             vec![
                 ("added here".to_string(), Some(at(expected))),
                 ("both".to_string(), None),
+                ("gone here".to_string(), Some(at(earlier))),
             ],
             "{case}"
         );
@@ -2337,8 +2304,8 @@ fn a_merge_load_names_the_rows_it_could_not_read() {
              VALUES ('good', 'Good', 'piece', '[]', '{EARLY}', '{EARLY}');
              INSERT INTO item (id, title, kind, tags, created_at, updated_at)
              VALUES ('partial', 'Partial', 'piece', '[]', '{EARLY}', '{EARLY}');
-             INSERT INTO section (id, item_id, name, kind, position, updated_at)
-             VALUES ('s', 'partial', 'A', 'form', 0, 'never');
+             INSERT INTO exercise_link (id, piece_id, exercise_id, position, updated_at)
+             VALUES ('pl', 'partial', 'e1', 0, 'never');
              INSERT INTO item (id, title, kind, tags, created_at, updated_at)
              VALUES ('linked', 'Linked', 'piece', '[]', '{EARLY}', '{EARLY}');
              INSERT INTO exercise_link (id, piece_id, exercise_id, position, updated_at)
