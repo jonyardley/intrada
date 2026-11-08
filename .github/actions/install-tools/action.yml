@@ -1,0 +1,91 @@
+name: Install tools
+description: >-
+  Restore pinned cargo tools from the Actions cache, and download them with
+  taiki-e/install-action only on a miss, so an outage of GitHub's release
+  downloads cannot fail a job whose tools are already cached (#2778).
+
+# Every tool goes in with an exact or minor version, so the key names what is
+# in the cache. The key also hashes this file, so a change to the list here or
+# to the install-action pin below (Dependabot's bump included) starts a fresh
+# entry instead of serving binaries the new version never installed.
+#
+# Each tool is a Rust crate whose binary has the crate's name, and with cargo
+# on PATH install-action puts it in $CARGO_HOME/bin (cargo-binstall does too,
+# for the ones install-action has no manifest for). Only those named binaries
+# are cached, never the whole directory, which also holds rustup's proxies.
+# Jobs that use this action set rust-cache's `cache-bin: false`, so the two
+# caches never store the same file or restore over each other.
+
+inputs:
+  tools:
+    description: Comma separated tools with versions, as install-action takes them
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Plan the tool cache
+      id: plan
+      shell: bash
+      env:
+        TOOLS: ${{ inputs.tools }}
+      run: |
+        set -euo pipefail
+        bin="${CARGO_HOME:-$HOME/.cargo}/bin"
+        # On a hit nothing else puts the directory on PATH on the macOS image.
+        echo "$bin" >> "$GITHUB_PATH"
+        IFS=', ' read -r -a specs <<< "$TOOLS"
+        names=()
+        paths=()
+        for spec in "${specs[@]}"; do
+          [ -n "$spec" ] || continue
+          names+=("${spec%%@*}")
+          paths+=("$bin/${spec%%@*}")
+        done
+        # A cache key cannot hold a comma.
+        list=$(printf '%s_' "${specs[@]}")
+        {
+          echo "bin=$bin"
+          echo "names=${names[*]}"
+          echo "list=${list%_}"
+          echo "paths<<EOF"
+          printf '%s\n' "${paths[@]}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+    # No restore-keys: a partial match would skip the install with binaries
+    # of other versions.
+    - name: Restore the tools
+      id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ steps.plan.outputs.paths }}
+        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.plan.outputs.list }}-${{ hashFiles('.github/actions/install-tools/action.yml') }}
+    - name: Download the tools (cache miss)
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: taiki-e/install-action@v2.88.1
+      with:
+        tool: ${{ inputs.tools }}
+    - name: Check every tool landed where the cache looks
+      if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        BIN: ${{ steps.plan.outputs.bin }}
+        NAMES: ${{ steps.plan.outputs.names }}
+      run: |
+        set -euo pipefail
+        missing=0
+        for name in $NAMES; do
+          if [ ! -x "$BIN/$name" ]; then
+            echo "::error::$name is not in $BIN, so the tool cache cannot hold it"
+            missing=1
+          fi
+        done
+        exit "$missing"
+    # Saved here rather than in a post step, so a job that fails later still
+    # fills the cache from the one run where the download worked.
+    - name: Save the tools
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ steps.plan.outputs.paths }}
+        key: ${{ steps.restore.outputs.cache-primary-key }}
