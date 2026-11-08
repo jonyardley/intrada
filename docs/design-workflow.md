@@ -54,7 +54,7 @@ so `scripts/check-design-tokens.sh` can read it. Nothing else here uses it.
 
 Run this after any merge that changes a component page, `Theme.swift`, the
 Android icons or the sketch kit. The design system is published from `main`
-and never edited in Claude Design.
+and never edited by hand in Claude Design outside a refresh.
 
 1. **Use the committed kit.** The refresh publishes the `design/sketch-kit/`
    files as committed on `main`; nothing is regenerated. `just check` already
@@ -64,14 +64,31 @@ and never edited in Claude Design.
    `read` `project/design-system.json` and each file you will replace. A
    publish to an artifact this session has not read is refused.
 3. **Copy into one folder** in your scratchpad, at the design system's paths:
-   - `design/components/<Name>/README.md` to `project/components/<Name>/README.md`;
+   - `design/components/<Name>/README.md` to `project/components/<Name>/README.md`,
+     reshaped: drop the front matter, turn relative links into GitHub links on
+     `main`, and add an "In the repo" section in its place. The published
+     page has no repo around it, so relative links break;
    - `design/sketch-kit/tokens.json` to `project/tokens.json`;
-   - `design/sketch-kit/components/` (`bundle.js`, `bundle.css`, `index.d.ts`,
-     and each `<Name>/preview.html`) to `project/components/`;
+   - `design/sketch-kit/components/` (`bundle.js`, `bundle.css`, `tokens.css`,
+     `index.d.ts`, and each `<Name>/preview.html`) to `project/components/`.
+     Without `tokens.css` a canvas gets unstyled components;
+   - never the kit's `icons/` folder: `bundle.js` carries the icons;
+   - the fonts live in the design system at `project/fonts/`, copied from
+     `ios/Intrada/Resources/Fonts/` and republished only when the font files
+     change. `tokens.css` points its font faces there;
    - each new or changed snapshot, uploaded as an asset first, with its
      record added under `assetGroups.Snapshots` in the index.
+
+   A new component page needs a `preview.html` with a `@dsCard` group, or the
+   gallery shows no card for it, and a row in the design system's
+   `project/README.md` and `project/assets/Snapshots/README.md`. None of these
+   has a source in the repo, so write them in the copy you read in step 2. The
+   kit's five components are the exception: their `preview.html` lives in
+   `design/sketch-kit/components/<Name>/`. Every other page's preview lives
+   only in the design system.
 4. **Publish once** with `url` set to the design system, `root` set to that
-   folder, and `files` naming only the paths you changed. Send
+   folder, and `files` naming only the paths you changed. Send `index.d.ts`
+   with `contentType` `text/plain`: a `.ts` file is refused. Send
    `project/design-system.json` last and only when its own keys change: the
    `libraries` (React 18 for the kit), an asset record, and `lastChange` with
    who, when and the `main` commit.
