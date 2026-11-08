@@ -386,7 +386,8 @@ fn rescale_entry_scores(tx: &Transaction, unreadable: &mut Unreadable) -> rusqli
 }
 
 /// JSON surgery in SQL, never through the session codec (#1947): only the
-/// section keys leave a row, every other value stays as written.
+/// section keys leave a row, and the mark on a play that was a section, which
+/// would otherwise count as a run through of the whole piece (#2767).
 fn remove_sections(tx: &Transaction, unreadable: &mut Unreadable) -> rusqlite::Result<()> {
     tx.execute_batch(
         "CREATE TEMP TABLE now_text AS SELECT strftime('%Y-%m-%dT%H:%M:%SZ', 'now') AS at;
@@ -444,7 +445,10 @@ fn remove_sections(tx: &Transaction, unreadable: &mut Unreadable) -> rusqlite::R
         }
         let paths: Vec<String> = tx
             .prepare(
-                "SELECT fullkey FROM json_tree(?1)
+                "SELECT path || '.score' FROM json_tree(?1)
+                 WHERE key = 'sectionId' AND path LIKE '%.plays[%]'
+                 UNION ALL
+                 SELECT fullkey FROM json_tree(?1)
                  WHERE key IN ('segments', 'plannedSectionIds', 'sectionId')",
             )?
             .query_map([&entries], |row| row.get(0))?

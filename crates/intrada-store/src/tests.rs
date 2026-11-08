@@ -729,7 +729,7 @@ fn v21_drops_the_unread_tables_and_columns_and_leaves_every_kept_value_alone() {
 
 #[test]
 fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
-    let entries = r#"[{"id":"en1","itemId":"p1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","segments":[{"sectionId":"a1","plannedSecs":300}],"plannedSectionIds":["a1"],"focus":{"kind":"tempo","sectionId":"a1","target":84},"plays":[{"id":"pl1","sectionId":"a1","variationIds":["d"],"startedAt":"2026-01-01T00:00:00Z","seconds":300,"score":7},{"id":"pl2","startedAt":"2026-01-01T00:05:00Z","seconds":300}],"notePoints":[{"kind":"tempo","bpm":80,"sectionId":"a1","start":14,"end":16}]}]"#;
+    let entries = r#"[{"id":"en1","itemId":"p1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","segments":[{"sectionId":"a1","plannedSecs":300}],"plannedSectionIds":["a1"],"focus":{"kind":"tempo","sectionId":"a1","target":84},"plays":[{"id":"pl1","sectionId":"a1","variationIds":["d"],"startedAt":"2026-01-01T00:00:00Z","seconds":300,"score":7},{"id":"pl2","startedAt":"2026-01-01T00:05:00Z","seconds":300,"score":6}],"notePoints":[{"kind":"tempo","bpm":80,"sectionId":"a1","start":14,"end":16}]}]"#;
     let seed = format!(
         "INSERT INTO item (id, title, kind, tags, created_at, updated_at) VALUES
            ('p1', 'Waltz', 'piece', '[]', '{EARLY}', '{EARLY}'),
@@ -839,12 +839,18 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
     )
     .expect("json");
     let expected: serde_json::Value = serde_json::from_str(
-        r#"[{"id":"en1","itemId":"p1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","focus":{"kind":"tempo","target":84},"plays":[{"id":"pl1","variationIds":["d"],"startedAt":"2026-01-01T00:00:00Z","seconds":300,"score":7},{"id":"pl2","startedAt":"2026-01-01T00:05:00Z","seconds":300}],"notePoints":[{"kind":"tempo","bpm":80,"start":14,"end":16}]}]"#,
+        r#"[{"id":"en1","itemId":"p1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","focus":{"kind":"tempo","target":84},"plays":[{"id":"pl1","variationIds":["d"],"startedAt":"2026-01-01T00:00:00Z","seconds":300},{"id":"pl2","startedAt":"2026-01-01T00:05:00Z","seconds":300,"score":6}],"notePoints":[{"kind":"tempo","bpm":80,"start":14,"end":16}]}]"#,
     )
     .expect("json");
     assert_eq!(stored, expected);
     let session = &store.sessions()[0];
-    assert_eq!(session.entries[0].plays[0].score, Some(7));
+    let plays = &session.entries[0].plays;
+    assert_eq!(
+        (plays[0].score, plays[0].seconds),
+        (None, 300),
+        "a play that was a section keeps its time, not its mark"
+    );
+    assert_eq!(plays[1].score, Some(6), "a plain play keeps its mark");
     assert_eq!(
         session.entries[0]
             .plan
@@ -1443,9 +1449,10 @@ fn a_database_the_iphone_wrote_opens_with_every_row_intact() {
         (play.key, play.score, play.achieved_tempo),
         (
             Some(key(Letter::E, Accidental::Flat, Some(Modality::Major))),
-            Some(8),
+            None,
             Some(60)
-        )
+        ),
+        "the play was on a section, so its mark went with it"
     );
 
     let mut renamed = fixture();
