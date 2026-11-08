@@ -13,8 +13,9 @@ intrada is a practice notebook. **The musician decides what matters; the app
 decides where today starts, keeps the record honest and can always be
 overruled** ([`VISION.md`](../VISION.md), 2026-09-30).
 
-Capturing material is done, and v0.16.0 to v0.18.0 put variations on pieces
-and showed their marks back (#50); sections went again in v0.19.0 (#2767). **The goal from 2026-10-13 is
+Capturing material is done, and v0.16.0 to v0.18.0 put pieces in sections and
+variations and showed their marks back (#50); sections were removed again in
+v0.19.0 (#2767). **The goal from 2026-10-13 is
 1.0: intrada public on the App Store and Google Play, used daily by musicians
 who have never met its maker.** The order: make the data model sound, give both
 apps one look, build Progress, Plan and reflection, get every tab to where it
