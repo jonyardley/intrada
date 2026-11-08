@@ -38,6 +38,8 @@ None. Motion belongs to what the card holds. A card that slides or fades in keep
 
 No card on either app is drawn with the lift yet; restoring it everywhere is part of the refinement pass, #2638.
 
+Sketches draw the lift on purpose until #2638 lands: the sketch kit's `Card` shows the look T24 decided, not what the apps draw today.
+
 ## Content
 
 - The fill is `cardFill`, white, with a one point `hairline` edge, the `IntradaRadius.card` corner (3 points) and the `IntradaShadow.card` lift through `cardShadow()`.
