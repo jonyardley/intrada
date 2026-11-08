@@ -883,6 +883,9 @@ jobs:
     # too, deliberately unnamed.
     name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear)
     runs-on: ubuntu-latest
+    env:
+      # In lockstep with mise.toml; the actionlint cache key reads it too.
+      ACTIONLINT_VERSION: "1.7.12"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -895,18 +898,16 @@ jobs:
       # actionlint is a Go binary, not a crate: install-action carries no entry
       # for it and its cargo-binstall fallback reports "actionlint is not
       # found". Fetch the pinned release directly; keep the version in lockstep
-      # with mise.toml and the cache key below. Cached like install-tools, so a
+      # with mise.toml through the job's env. Cached like install-tools, so a
       # release download outage only bites when the version changes (#2778).
       - name: Restore actionlint
         id: actionlint-cache
         uses: actions/cache/restore@v6
         with:
           path: ~/.local/bin/actionlint
-          key: actionlint-1.7.12-${{ runner.os }}-${{ runner.arch }}
+          key: actionlint-${{ env.ACTIONLINT_VERSION }}-${{ runner.os }}-${{ runner.arch }}
       - name: Install actionlint
         if: steps.actionlint-cache.outputs.cache-hit != 'true'
-        env:
-          ACTIONLINT_VERSION: "1.7.12"
         run: |
           mkdir -p "$HOME/.local/bin"
           curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \

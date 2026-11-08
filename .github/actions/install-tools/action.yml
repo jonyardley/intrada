@@ -4,17 +4,9 @@ description: >-
   taiki-e/install-action only on a miss, so an outage of GitHub's release
   downloads cannot fail a job whose tools are already cached (#2778).
 
-# Every tool goes in with an exact or minor version, so the key names what is
-# in the cache. The key also hashes this file, so a change to the list here or
-# to the install-action pin below (Dependabot's bump included) starts a fresh
-# entry instead of serving binaries the new version never installed.
-#
-# Each tool is a Rust crate whose binary has the crate's name, and with cargo
-# on PATH install-action puts it in $CARGO_HOME/bin (cargo-binstall does too,
-# for the ones install-action has no manifest for). Only those named binaries
-# are cached, never the whole directory, which also holds rustup's proxies.
-# Jobs that use this action set rust-cache's `cache-bin: false`, so the two
-# caches never store the same file or restore over each other.
+# The key hashes this file, so a change to a version or to the install-action
+# pin below starts a fresh entry. Only the named binaries in $CARGO_HOME/bin
+# are cached, never the directory, which also holds rustup's proxies (#2778).
 
 inputs:
   tools:
@@ -32,13 +24,21 @@ runs:
       run: |
         set -euo pipefail
         bin="${CARGO_HOME:-$HOME/.cargo}/bin"
-        # On a hit nothing else puts the directory on PATH on the macOS image.
+        # Callers on the macOS image add this themselves; a future one may not.
         echo "$bin" >> "$GITHUB_PATH"
         IFS=', ' read -r -a specs <<< "$TOOLS"
+        if [ "${#specs[@]}" -eq 0 ]; then
+          echo "::error::install-tools needs at least one tool"
+          exit 1
+        fi
         names=()
         paths=()
         for spec in "${specs[@]}"; do
           [ -n "$spec" ] || continue
+          if [ "${spec#*@}" = "$spec" ]; then
+            echo "::error::$spec has no version, so the cache key would not name it"
+            exit 1
+          fi
           names+=("${spec%%@*}")
           paths+=("$bin/${spec%%@*}")
         done
