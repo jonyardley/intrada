@@ -56,15 +56,16 @@ changed colour is changed by hand there too, or `just check` fails.
 
 Run this after any merge that changes a component page, `Theme.swift`, the
 Android icons or the sketch kit. The design system is published from `main`
-and never edited by hand in Claude Design outside a refresh. Before merge
-there is nothing to publish: a rehearsal stops at step 5.
+and never edited by hand in Claude Design outside a refresh. A rehearsal
+before merge reads the branch in place of `main`: use `HEAD` where step 3 says
+`origin/main`, and stop before step 5.
 
 1. **Use the committed kit.** The refresh publishes the `design/sketch-kit/`
    files as committed on `main`; nothing is regenerated. `just check` already
    fails a branch whose kit is stale, so those files match the code.
 2. **Read the live copy.** Use the Artifact tool's `read` on the
    [design system](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs), list
-   its files (`scope` `files`), then `read` `project/design-system.json`. A publish to an artifact this session
+   its files (with `scope` set to `files`), then `read` `project/design-system.json`. A publish to an artifact this session
    has not read is refused.
 3. **Find what changed.** Run `git fetch origin`, then `git diff --stat
    <commit>..origin/main -- design/ ios/Intrada/Resources/Fonts/
@@ -72,8 +73,9 @@ there is nothing to publish: a rehearsal stops at step 5.
    `<commit>` is the hash written after `main@` in `lastChange.via` in
    `project/design-system.json`. With no hash there, refresh every file
    below. `design/intrada-design-system.dc.html`, `design/explorations/` and
-   the kit's readme, `icons/` and `token-notes.json` show up in the diff but
-   are never published. Step 4 copies only the changed files; `read` the live copy of each
+   every other file under `design/` that step 4 does not name, such as
+   `design/sketch-kit/README.md`, `icons/` and `token-notes.json`, are never
+   published. Step 4 copies only the changed files; `read` the live copy of each
    one you will replace.
 4. **Copy into one folder** in your scratchpad, at the design system's paths:
    - `design/components/<Name>/README.md` to `project/components/<Name>/README.md`,
@@ -151,14 +153,18 @@ and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
    `tokens.css`.
 3. **The old page.** A colour also changes by hand in
    `design/intrada-design-system.dc.html`, until #2637: its hex and every
-   `rgba()` made from it.
+   `rgba()` made from it. The standalone `design/intrada-design-system.html`
+   is left alone; nothing reads it.
 4. **Snapshots.** Even a small shift fails every snapshot that shows the
-   colour: a slightly deeper `danger` failed 6 on iPhone and 17 on Android.
+   colour: a slightly deeper `danger` failed 6 on iPhone and 17 on Android
+   (#2772).
    Run `just ios-test` and `just android-test`, re-record each failing iPhone
    class with `just ios-snapshots-record <Class>` and Android's with
    `source android/env.sh && android/gradlew -q -p android :app:recordRoborazziDebug`,
    then look at each new picture.
-5. **`just check`**, then the refresh after merge. A change to one of the kit's five components
+5. **`just check`**, then the refresh after merge.
+
+A change to one of the kit's five components
 changes its web copy in `design/sketch-kit/components/` in the same PR.
 
 ## Explorations
