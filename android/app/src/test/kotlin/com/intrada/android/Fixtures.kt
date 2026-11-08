@@ -36,7 +36,6 @@ object Fixtures {
             createdAt = "2026-09-01T09:00:00Z",
             updatedAt = "2026-09-01T09:00:00Z",
             priority = priority,
-            sections = emptyList(),
             variationIds = emptyList(),
             keys = emptyList(),
             exerciseLinks = exerciseLinks,

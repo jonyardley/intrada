@@ -19,8 +19,7 @@ class SuggestionRestoreRoundTripTest {
         val hanon = "01J0000000000000000000HANO"
         val piece =
             Fixtures.item(
-                exerciseLinks =
-                    listOf(ExerciseLink("l1", hanon, null, 0uL, "2026-10-04T09:00:00Z", null))
+                exerciseLinks = listOf(ExerciseLink("l1", hanon, 0uL, "2026-10-04T09:00:00Z", null))
             )
         val bridge = LiveBridge()
         val load =
