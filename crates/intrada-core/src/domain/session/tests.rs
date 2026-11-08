@@ -6102,7 +6102,7 @@ const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "30335430393a30303a30305af0000000780000003c000000",
 );
 
-const PINNED_BLOB_VERSION: u32 = 9;
+const PINNED_BLOB_VERSION: u32 = 10;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump

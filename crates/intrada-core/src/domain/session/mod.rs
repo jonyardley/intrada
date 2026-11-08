@@ -481,15 +481,15 @@ pub struct ActiveSession {
     pub segment: Option<SegmentClock>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 8;
+const RETIRED_BLOB_VERSION_MAX: u32 = 9;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 8 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 9;
+    /// 9 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 10;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
