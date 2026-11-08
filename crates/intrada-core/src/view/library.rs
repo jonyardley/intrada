@@ -46,8 +46,9 @@ pub(super) fn build_library_item_views(
                                 })
                                 .and_then(|r| r.latest_score)
                         });
-                    let (tempo_line, tempo_line_spoken) =
-                        TempoWords::split(tempo_words::tempo_line(ex.tempo.as_ref()));
+                    let (tempo_line, tempo_line_spoken) = TempoWords::split(
+                        tempo_words::tempo_line(ex.tempo.as_ref(), ex.metre.as_ref()),
+                    );
                     Some(LinkedExerciseView {
                         id: ex.id.clone(),
                         title: ex.title.clone(),
@@ -117,8 +118,10 @@ pub(super) fn build_library_item_views(
 
         let variations = build_variation_views(item, &model.variations, plays);
         let keys = build_key_views(item, plays);
-        let (tempo_line, tempo_line_spoken) =
-            TempoWords::split(tempo_words::tempo_line(item.tempo.as_ref()));
+        let (tempo_line, tempo_line_spoken) = TempoWords::split(tempo_words::tempo_line(
+            item.tempo.as_ref(),
+            item.metre.as_ref(),
+        ));
         items.push(LibraryItemView {
             id: item.id.clone(),
             item_type: item.kind.clone(),
@@ -760,6 +763,43 @@ pub fn sort_and_filter_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::item::Item;
+    use crate::model::Model;
+
+    #[test]
+    fn each_rows_tempo_line_reads_in_its_own_items_metre() {
+        let six_eight = Some(crate::domain::metre::Metre {
+            beats: 6,
+            unit: 8,
+            groups: None,
+        });
+        let tempo = Some(crate::domain::types::Tempo {
+            marking: None,
+            bpm: Some(176),
+        });
+        let exercise = Item {
+            kind: ItemKind::Exercise,
+            tempo: tempo.clone(),
+            metre: six_eight.clone(),
+            ..Item::fixture("ex-1")
+        };
+        let piece = Item {
+            tempo,
+            exercise_links: crate::domain::link::links_to(&["ex-1"], exercise.created_at),
+            ..Item::fixture("p1")
+        };
+        let model = Model {
+            items: vec![piece, exercise].into(),
+            ..Default::default()
+        };
+        let vm = crate::view::rendered(&model);
+        let piece_view = vm.items.iter().find(|i| i.id == "p1").expect("the piece");
+        assert_eq!(piece_view.tempo_line.as_deref(), Some("♩ = 176"));
+        assert_eq!(
+            piece_view.linked_exercises[0].tempo_line.as_deref(),
+            Some("♪ = 176")
+        );
+    }
 
     // ── Count line (#2454) ──
 

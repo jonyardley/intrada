@@ -1,3 +1,4 @@
+use super::metre::Metre;
 use super::types::Tempo;
 
 const MINIM: u8 = 2;
@@ -32,9 +33,10 @@ pub fn click_readout(bpm: u16, unit: u8) -> TempoWords {
     }
 }
 
-/// An item's declared tempo: "Allegro · ♩ = 132". `None` when it has neither.
+/// An item's declared tempo in its metre's beat, crotchets with no metre:
+/// "Allegro · ♪ = 132" in 6/8. `None` when it has neither.
 #[must_use]
-pub fn tempo_line(tempo: Option<&Tempo>) -> Option<TempoWords> {
+pub fn tempo_line(tempo: Option<&Tempo>, metre: Option<&Metre>) -> Option<TempoWords> {
     let tempo = tempo?;
     let marking = tempo.marking.as_deref().filter(|m| !m.is_empty());
     let join = |bpm_part: Option<String>, separator: &str| {
@@ -45,20 +47,18 @@ pub fn tempo_line(tempo: Option<&Tempo>) -> Option<TempoWords> {
             .collect();
         (!parts.is_empty()).then(|| parts.join(separator))
     };
-    let bpm = tempo.bpm.map(declared_bpm);
+    let bpm = tempo.bpm.map(|bpm| declared_bpm(bpm, metre));
     Some(TempoWords {
         text: join(bpm.as_ref().map(|w| w.text.clone()), " · ")?,
         spoken: join(bpm.map(|w| w.spoken), ", ")?,
     })
 }
 
-/// A bpm worded without its marking: "♩ = 66".
+/// A declared bpm worded without its marking: "♩ = 66" in 4/4. The number
+/// counts the metre's beat, not crotchets (#1510).
 #[must_use]
-pub fn declared_bpm(bpm: u16) -> TempoWords {
-    TempoWords {
-        text: format!("♩ = {bpm}"),
-        spoken: format!("{bpm} beats per minute"),
-    }
+pub fn declared_bpm(bpm: u16, metre: Option<&Metre>) -> TempoWords {
+    click_readout(bpm, metre.map_or(Metre::default().unit, |m| m.unit))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -161,19 +161,56 @@ mod tests {
             (tempo(Some(""), Some(80)), "♩ = 80", "80 beats per minute"),
         ];
         for (tempo, text, spoken) in cases {
-            let words = tempo_line(Some(&tempo));
+            let words = tempo_line(Some(&tempo), None);
             assert_eq!(words.as_ref().map(|w| w.text.as_str()), Some(text));
             assert_eq!(words.as_ref().map(|w| w.spoken.as_str()), Some(spoken));
         }
     }
 
+    /// The declared number is in the piece's own beat, so its line names that
+    /// beat as the click does (#1510).
+    #[test]
+    fn a_declared_tempo_names_the_beat_its_metre_counts_in() {
+        let metre = |beats, unit| Metre {
+            beats,
+            unit,
+            groups: None,
+        };
+        let cases = [
+            (
+                Some(metre(6, 8)),
+                176,
+                "♪ = 176",
+                "176 quaver beats per minute",
+            ),
+            (Some(metre(4, 4)), 132, "♩ = 132", "132 beats per minute"),
+            (
+                Some(metre(2, 2)),
+                60,
+                "minim = 60",
+                "60 minim beats per minute",
+            ),
+            (None, 96, "♩ = 96", "96 beats per minute"),
+        ];
+        for (metre, bpm, text, spoken) in cases {
+            let tempo = Tempo {
+                marking: None,
+                bpm: Some(bpm),
+            };
+            let words = tempo_line(Some(&tempo), metre.as_ref());
+            assert_eq!(words.as_ref().map(|w| w.text.as_str()), Some(text));
+            assert_eq!(words.as_ref().map(|w| w.spoken.as_str()), Some(spoken));
+            assert_eq!(declared_bpm(bpm, metre.as_ref()).text, text);
+        }
+    }
+
     #[test]
     fn no_tempo_or_an_empty_one_has_no_line() {
-        assert_eq!(tempo_line(None), None);
+        assert_eq!(tempo_line(None, None), None);
         let empty = Tempo {
             marking: Some(String::new()),
             bpm: None,
         };
-        assert_eq!(tempo_line(Some(&empty)), None);
+        assert_eq!(tempo_line(Some(&empty), None), None);
     }
 }

@@ -670,13 +670,13 @@ pub fn build_active_session_view(
     let current_item_tempo = item_index
         .get(current.plan.item_id.as_str())
         .and_then(|i| i.tempo.as_ref());
-    let (current_item_tempo_line, current_item_tempo_line_spoken) =
-        TempoWords::split(tempo_words::tempo_line(current_item_tempo));
-
-    let click_seed_metre = item_index
+    let item_metre = item_index
         .get(current.plan.item_id.as_str())
-        .and_then(|i| i.metre.clone())
-        .unwrap_or_default();
+        .and_then(|i| i.metre.as_ref());
+    let (current_item_tempo_line, current_item_tempo_line_spoken) =
+        TempoWords::split(tempo_words::tempo_line(current_item_tempo, item_metre));
+
+    let click_seed_metre = item_metre.cloned().unwrap_or_default();
     let (click_seed_bpm, click_seed_sounds_target) =
         click_seed_metre.click_seed(current_item_tempo.and_then(|t| t.bpm));
     ActiveSessionView {
@@ -1757,6 +1757,33 @@ mod tests {
             view.current_item_tempo_line_spoken.as_deref(),
             Some("Allegro, 132 beats per minute")
         );
+    }
+
+    /// The player's target line names the item's beat, as the click does (#1510).
+    #[test]
+    fn the_players_target_line_reads_a_quaver_metre_item_in_quavers() {
+        let active = session_on(vec![]);
+        let item = Item {
+            tempo: Some(crate::domain::types::Tempo {
+                marking: None,
+                bpm: Some(176),
+            }),
+            metre: Some(crate::domain::Metre {
+                beats: 6,
+                unit: 8,
+                groups: None,
+            }),
+            ..Item::fixture("i1")
+        };
+        let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
+        let view = build_active_session_view(
+            &active,
+            &item_index,
+            &PlayLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
+        assert_eq!(view.current_item_tempo_line.as_deref(), Some("♪ = 176"));
     }
 
     #[test]
