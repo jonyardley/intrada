@@ -52,7 +52,8 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     let sheet = ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
-        itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: 96,
+        itemTitle: "Scales · D♭", elapsedDisplay: "7:00",
+        tempoTarget: declaredTempoWords(bpm: 96).text,
         tempoRows: [.preview("p1")],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,

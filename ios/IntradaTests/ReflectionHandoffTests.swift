@@ -204,6 +204,7 @@ struct ReflectionHandoffTests {
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
     _ = try bridge.update(.session(.startSession(now: "2026-10-03T10:00:00Z")))
     let seed = try #require(try bridge.rendered().activeSession)
+    #expect(seed.currentItemTempoLine == "♪ = 240", "the declared tempo counts the metre's beat")
     let untouched = TempoReading(bpm: seed.clickSeedBpm, clickSounding: false, click: nil)
     _ = try bridge.update(
       .session(.prepareReflection(now: "2026-10-03T10:05:00Z", reading: untouched)))

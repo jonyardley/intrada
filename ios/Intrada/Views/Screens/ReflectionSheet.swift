@@ -77,8 +77,8 @@ struct ReflectionSheet: View {
 
   let itemTitle: String
   let elapsedDisplay: String?
-  /// The item's own declared tempo marking (the practice target), if any.
-  let tempoTarget: UInt16?
+  /// The item's declared tempo in the core's words, in its metre's beat (#1510).
+  let tempoTarget: String?
   /// The core's row per markable play: its opening number, bar and band (#2230).
   let tempoRows: [ReflectionTempoView]
   /// What was played, in order. One row is the sheet that shipped before
@@ -115,7 +115,7 @@ struct ReflectionSheet: View {
   @State private var changingPlayId: String?
 
   init(
-    itemTitle: String, elapsedDisplay: String?, tempoTarget: UInt16?,
+    itemTitle: String, elapsedDisplay: String?, tempoTarget: String?,
     tempoRows: [ReflectionTempoView] = [],
     plays: [ReflectionPlay],
     limits: LimitsView,
@@ -411,8 +411,7 @@ struct ReflectionSheet: View {
   }
 
   private var singlePlayTempoHeading: String {
-    tempoTarget.map { declaredTempoWords(bpm: $0).text }
-      .map { "Tempo reached · target \($0)" } ?? "Tempo reached"
+    tempoTarget.map { "Tempo reached · target \($0)" } ?? "Tempo reached"
   }
 
   private func mark(for playId: String) -> Int { marks[playId] ?? 0 }
@@ -447,7 +446,8 @@ struct ReflectionSheet: View {
     IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
-          itemTitle: "Clair de Lune", elapsedDisplay: "7:00", tempoTarget: 66,
+          itemTitle: "Clair de Lune", elapsedDisplay: "7:00",
+          tempoTarget: declaredTempoWords(bpm: 66).text,
           tempoRows: [.preview("p1")],
           plays: [ReflectionPlay.preview("p1", nil, "7:00", nil, nil)], limits: .preview,
           onSave: { _ in }, onSkip: {}
