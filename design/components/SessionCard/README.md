@@ -16,7 +16,7 @@ One past practice session as a row: when it was, how long, how many items and wh
 
 ## When to use
 
-- A session in the list under the week strip on the Practice home, one card per session on the chosen day.
+- A session in the list under the week strip on the Practice home, one card per session on the chosen day. Cards sit `IntradaSpacing.cardCompact` (12) apart, never as rows inside one card.
 
 ## When not to use
 
@@ -37,7 +37,7 @@ None. The lines below appear only when the core gives them content.
 ## Content
 
 - The card is `cardFill` with a one point `hairline` edge and the `IntradaRadius.card` corner, padded `IntradaSpacing.card` (16) on every side. Sessions mix item types, so there is no type bar on the left.
-- The day line in `cardTitle`, `ink`.
+- The day line in `cardTitle`, `ink`: "Today", "Yesterday", otherwise the short date, such as "Sat 30 May". The day heading above the list is "Today" or "Yesterday", otherwise the full date, such as "Saturday 30 May".
 - The total time and the item count, joined by a middle dot, in `secondary`, `inkSecondary`.
 - When the session has one, what was played in `body`, `ink`. It wraps rather than clipping: the core keeps it short, but a long one still shows in full.
 - A session that ended early adds "Ended early" in `small`, `inkSecondary`.

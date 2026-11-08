@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Self-test for scripts/sketch-kit.py (#2700): each Theme.swift construct it
 # reads lands in tokens.json with the right value, a line it cannot read fails
-# rather than dropping a token, a stale kit fails --check, and a typed colour,
-# font size, type style or token the kit does not have fails.
+# rather than dropping a token, tokens.css defines what the kit reads (#2772),
+# a stale kit fails --check, and a typed colour, font size, type style or token
+# the kit does not have fails.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -157,12 +158,43 @@ print(" ".join(":".join(str(s[k]) for k in ("name", "fontSize", "fontWeight", "f
 expect "icons, launcher skipped" "plus.svg star.svg" "$(ls "$tmp/kit/icons" | tr '\n' ' ' | sed 's/ $//')"
 expect "icon in ink" 1 "$(grep -c 'stroke="#2a2725"' "$tmp/kit/icons/plus.svg")"
 expect "bundle icon follows the text colour" 1 "$(grep -c 'stroke=\\"currentColor' "$tmp/kit/components/bundle.js")"
+css="$tmp/kit/components/tokens.css"
+expect "css alias reads the token" 1 "$(grep -cx '  --accent: var(--ink);' "$css")"
+expect "css marker case alias" 1 "$(grep -cx '  --marker-butter: var(--marker);' "$css")"
+expect "css plain value" 1 "$(grep -cx '  --spacing-card: 16px;' "$css")"
+expect "css shadow" 1 "$(grep -cx '  --shadow-card: 0 1px 1px rgba(42, 39, 37, 0.05);' "$css")"
+expect "css sans family" 1 "$(grep -cx '  --font-sans: "Hanken Grotesk", system-ui, sans-serif;' "$css")"
+expect "css type class" 1 "$(grep -cx '.pageTitle { font-family: var(--font-sans); font-size: 30px; font-weight: 600; }' "$css")"
+expect "css mono type class" 1 "$(grep -cx '.figure { font-family: var(--font-mono); font-size: 15px; font-weight: 400; }' "$css")"
+expect "css font face per face" 3 "$(grep -c '^@font-face' "$css")"
+expect "css font from the published fonts folder" 1 "$(grep -c 'url("../fonts/DMMono-Regular.ttf")' "$css")"
 expect "fresh kit passes --check" 0 "$(run --check)"
+expect "alias left inside a css value fails" \
+  'tokens.css: cannot turn `{ink} 50%` for glow into CSS' \
+  "$(python3 -c 'import importlib.util, sys
+spec = importlib.util.spec_from_file_location("kit", sys.argv[1])
+kit = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(kit)
+try:
+    kit.tokens_css({"type": {"fonts": [], "families": {}, "groups": []},
+                    "color": {"tokens": [{"name": "glow", "value": "{ink} 50%"}]}})
+    print("no error")
+except kit.KitError as e:
+    print(e)' "$script")"
+
+cp "$css" "$tmp/css.good"
+echo '.extra { color: inherit; }' >>"$css"
+expect "hand-edited tokens.css fails --check" 1 "$(run --check)"
+expect "names the stale tokens.css" 1 "$(grep -c 'stale, run `just sketch-kit`: components/tokens.css$' "$tmp/err")"
+rm "$css"
+expect "missing tokens.css fails --check" 1 "$(run --check)"
+expect "names the missing tokens.css" 1 "$(grep -c 'stale, run `just sketch-kit`: components/tokens.css$' "$tmp/err")"
+cp "$tmp/css.good" "$css"
 
 cp "$theme" "$tmp/Theme.good"
 sed -i.bak 's/0xF7F4EF/0xF7F4F0/' "$theme"
 expect "changed Theme.swift fails --check" 1 "$(run --check)"
-expect "names the stale file" 1 "$(grep -c 'stale, run `just sketch-kit`: tokens.json' "$tmp/err")"
+expect "names the stale files" 1 "$(grep -c 'stale, run `just sketch-kit`: tokens.json, components/tokens.css$' "$tmp/err")"
 cp "$tmp/Theme.good" "$theme"
 
 sed -i.bak 's/static let ink = Color(hex: 0x2A2725)/static let ink = Color(hex: 0x2A2725)\n  static let glow = ink.mix(paperTop)/' "$theme"

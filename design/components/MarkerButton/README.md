@@ -27,7 +27,9 @@ The one call to action on a screen, filled with the musician's chosen highlighte
 
 ## Variants
 
-One: full width, with or without a glyph. Use a leading play glyph to start, a trailing arrow to move on.
+One: full width, with a text label only. Neither app's `MarkerButton` takes a glyph.
+
+iPhone's `BrandBarButton` is the version with a glyph: a leading play, timer or plus, or a trailing arrow to move on. It also draws a drop shadow and has no press spring.
 
 One button on both apps, named `MarkerButton`. iPhone folds `BrandBarButton` into it in #2684. Android shares its first run version and replaces the black `InkButton` with it in #2605. Whether it has a lift and a bounce is settled in the refinement pass, #2638.
 
@@ -40,12 +42,12 @@ One button on both apps, named `MarkerButton`. iPhone folds `BrandBarButton` int
 
 - A verb first, two or three words: "Start session", "Save session". A count or time can follow after a middle dot: "Start session · 10 min".
 - The fill is the musician's highlighter, from `\.marker` on iPhone or passed in on Android; butter by default.
-- The label is `IntradaFont.button` in `onMarker` ink; a glyph is the same ink. The corner is `IntradaRadius.card`, 3 points.
+- The label is `IntradaFont.button` in `onMarker` ink. The corner is `IntradaRadius.card`, 3 points; `BrandBarButton` takes `IntradaRadius.control`. On `BrandBarButton` a glyph is the same ink.
 - No disabled state: leave the button out, or say on the screen what is missing.
 
 ## Accessibility
 
-- The label is the spoken name; a glyph adds nothing to it.
+- The label is the spoken name; a `BrandBarButton` glyph adds nothing to it.
 - At least 44 points (iPhone) or 48dp (Android) tall: the padding gives this on iPhone, `heightIn(min = 48.dp)` on Android.
 - Ink on butter is 11.3:1 (T24 in [the design principles](../../../docs/design-principles.md)). No test yet checks ink on the other seven highlighters; one should land before this page moves to stable.
 
