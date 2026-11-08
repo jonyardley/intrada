@@ -178,15 +178,15 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       ReflectionSheet(
         itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
         tempoRows: [.preview("p1"), .preview("p2")],
-        plays: [.preview("p1", "A1", "4:10"), .preview("p2", "B", "4:00")],
-        limits: .preview, finish: .preview(asksIntention: false, read: .yes), aim: "A1 at 84",
-        seed: ReflectionAnswers.preview(note: "A1: left hand rushed in bar 12, got it at 84"),
+        plays: [.preview("p1", "No variation", "4:10"), .preview("p2", "Dotted rhythms", "4:00")],
+        limits: .preview, finish: .preview(asksIntention: false, read: .yes), aim: "At 84",
+        seed: ReflectionAnswers.preview(note: "Left hand rushed in bar 12, got it at 84"),
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
   }
 
-  // A1's row open, its key changed from D major to G major (#2249).
+  // The first row open, its key changed from D major to G major (#2249).
   func testReflectionSheetChangingWhatWasPlayed() {
     assertSnapshot(of: host(wayChangeSheet), as: config)
   }
@@ -219,9 +219,9 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
         tempoRows: [.preview("p1")],
         plays: [.preview("p1", nil, "12:00")],
-        limits: .preview, finish: .preview(asksIntention: true), aim: "A1 from memory",
+        limits: .preview, finish: .preview(asksIntention: true), aim: "From memory",
         seed: ReflectionAnswers.preview(
-          note: "A1: left hand rushed in bar 12, got it at 84", felt: .strained,
+          note: "Left hand rushed in bar 12, got it at 84", felt: .strained,
           gotInTheWay: [.rhythm, .tension], notePoints: [NoteSpan(start: 38, end: 40)],
           intentionMet: .partly),
         onSave: { _ in }, onSkip: {})

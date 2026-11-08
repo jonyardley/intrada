@@ -44,7 +44,7 @@ struct OfferChip: View {
   #Preview("Offer chip") {
     VStack(alignment: .leading, spacing: 16) {
       OfferChip("Last time: B · Dotted rhythms") {}
-      OfferChip("Focus: A1 at 84", systemImage: "plus") {}
+      OfferChip("Focus: At 84", systemImage: "plus") {}
     }
     .padding()
     .background(IntradaColor.paperTop)
