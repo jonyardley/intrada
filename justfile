@@ -745,7 +745,7 @@ _ios-build-for-testing:
 # `retry` is "1" to rerun up to three failed tests once (#1203, #2269), else "0";
 # `parallel` is "1" to deal test classes across six booted simulators and run
 # them concurrently, else "0". Shared by `_ios-test-run` (local, everything in one call),
-# `ios-test-class`, `ios-test-ui-class` and `ios-snapshots-record`, and CI's self-hosted gate,
+# `ios-test-ui-class` and `ios-snapshots-record`, and CI's self-hosted gate,
 # which runs the unit and UI tiers as separate steps (#1207).
 [private]
 _ios-test-without-building filters retry parallel="0":

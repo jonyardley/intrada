@@ -26,8 +26,8 @@ enum PageReader {
 
     // Decoding a 2048px JPEG and running Vision over it both block for long
     // enough to drop frames, so the whole job runs off the main actor and only
-    // the plain values come back. A queue, not a detached task: Vision waits on
-    // work that needs the Swift task pool, so parallel reads deadlocked it (#2741).
+    // the plain values come back. Its own queue, because Vision blocks its thread
+    // on work that needs the Swift task pool; detached reads hung the pool (#2741).
     guard
       let lines = await withCheckedContinuation({ continuation in
         recognitionQueue.async { continuation.resume(returning: read(from: source)) }
