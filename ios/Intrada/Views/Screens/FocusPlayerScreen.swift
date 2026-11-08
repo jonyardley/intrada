@@ -49,7 +49,7 @@ struct FocusPlayerScreen: View {
       if let limits = store.viewModel?.limits {
         ReflectionSheet(
           itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
-          tempoTarget: target.tempoTargetBpm, tempoRows: target.tempos, plays: target.plays,
+          tempoTarget: target.tempoTarget, tempoRows: target.tempos, plays: target.plays,
           limits: limits, finish: target.finish,
           variations: target.variations, plannedLabel: target.plannedLabel,
           aim: target.aim, refusal: reflectionRefusal, seed: target.seed,
@@ -523,7 +523,7 @@ struct FocusPlayerScreen: View {
     let id: String  // the current entry's ulid
     let title: String
     let elapsedDisplay: String
-    let tempoTargetBpm: UInt16?
+    let tempoTarget: String?
     /// The click at the stamp, kept in the draft; Skip sends it again with `NextItem` (#2137).
     let reading: TempoReading
     let tempos: [ReflectionTempoView]
@@ -547,7 +547,7 @@ struct FocusPlayerScreen: View {
     return ReflectionTarget(
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(Int(clamping: draft.elapsedSecs)),
-      tempoTargetBpm: active.currentItemTempoBpm, reading: draft.reading,
+      tempoTarget: ReflectionSheet.tempoTarget(for: active), reading: draft.reading,
       tempos: draft.tempos, plays: ReflectionPlay.rows(entry.plays), seed: draft.answers,
       finish: active.record.finish,
       aim: entry.record.focus?.label ?? active.currentItemIntention,

@@ -7,7 +7,9 @@ design system live in Claude artifacts; the repo stays the source of truth.
 
 Until #2637 lands (due before 14 December 2026, when standalone
 claude.ai/design closes), the old design system page stays in `design/` only
-so `scripts/check-design-tokens.sh` can read it. Nothing else here uses it.
+so `scripts/check-design-tokens.sh` can read it. Nothing else here uses it,
+but that check compares each colour in `Theme.swift` with the page, so a
+changed colour is changed by hand there too, or `just check` fails.
 
 ## Who owns what
 
@@ -54,21 +56,26 @@ so `scripts/check-design-tokens.sh` can read it. Nothing else here uses it.
 
 Run this after any merge that changes a component page, `Theme.swift`, the
 Android icons or the sketch kit. The design system is published from `main`
-and never edited by hand in Claude Design outside a refresh.
+and never edited by hand in Claude Design outside a refresh. A rehearsal
+before merge reads the branch in place of `main`: use `HEAD` where step 3 says
+`origin/main`, and stop before step 5.
 
 1. **Use the committed kit.** The refresh publishes the `design/sketch-kit/`
    files as committed on `main`; nothing is regenerated. `just check` already
    fails a branch whose kit is stale, so those files match the code.
 2. **Read the live copy.** Use the Artifact tool's `read` on the
-   [design system](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs), then
-   `read` `project/design-system.json`. A publish to an artifact this session
+   [design system](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs), list
+   its files (with `scope` set to `files`), then `read` `project/design-system.json`. A publish to an artifact this session
    has not read is refused.
 3. **Find what changed.** Run `git fetch origin`, then `git diff --stat
    <commit>..origin/main -- design/ ios/Intrada/Resources/Fonts/
    ios/IntradaTests/__Snapshots__/ android/app/src/test/snapshots/`, where
-   `<commit>` is the commit after `main@` in `lastChange.via` in
-   `project/design-system.json`. With no commit there, refresh every file
-   below. Step 4 copies only the changed files; `read` the live copy of each
+   `<commit>` is the hash written after `main@` in `lastChange.via` in
+   `project/design-system.json`. With no hash there, refresh every file
+   below. `design/intrada-design-system.dc.html`, `design/explorations/` and
+   every other file under `design/` that step 4 does not name, such as
+   `design/sketch-kit/README.md`, `icons/` and `token-notes.json`, are never
+   published. Step 4 copies only the changed files; `read` the live copy of each
    one you will replace.
 4. **Copy into one folder** in your scratchpad, at the design system's paths:
    - `design/components/<Name>/README.md` to `project/components/<Name>/README.md`,
@@ -111,13 +118,15 @@ and never edited by hand in Claude Design outside a refresh.
    one of the changed files under that folder, `root` set to that folder, and `files` naming
    only the paths you changed; the tool needs `file_path` as well as `files`.
    Send `index.d.ts` with `contentType` `text/plain`: a `.ts` file is
-   refused. Put `project/design-system.json` last in `files`, every time, with
+   refused. Read `project/design-system.json` again just before, then put it
+   last in `files`, every time, with
    `lastChange` set to who, when, a one line note and a `via` naming
    `main@<short commit>`, which the next refresh diffs from; add
    an asset record or change `libraries` (React 18 for the kit) only when
    those change.
 6. **Check it.** Open the design system and look at each changed page and
-   preview.
+   preview. After a token change, look at the token's swatch and at the
+   previews that use it, such as the banners for `danger`.
 
 ## Changing a component
 
@@ -136,7 +145,26 @@ order, in one PR:
 
 A new token goes into `Theme.swift` and `Theme.kt` in the same PR, before any
 screen uses it, with its usage note in `design/sketch-kit/token-notes.json`
-and a run of `just sketch-kit`. A change to one of the kit's five components
+and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
+
+1. **Both themes.** Change the value in `Theme.swift` and `Theme.kt`, and its
+   note in `token-notes.json` if the note is no longer true.
+2. **The kit.** Run `just sketch-kit`, which rewrites `tokens.json` and
+   `tokens.css`.
+3. **The old page.** A colour also changes by hand in
+   `design/intrada-design-system.dc.html`, until #2637: its hex and every
+   `rgba()` made from it. The standalone `design/intrada-design-system.html`
+   is left alone; nothing reads it.
+4. **Snapshots.** Even a small shift fails every snapshot that shows the
+   colour: a slightly deeper `danger` failed 6 on iPhone and 17 on Android
+   (#2772).
+   Run `just ios-test` and `just android-test`, re-record each failing iPhone
+   class with `just ios-snapshots-record <Class>` and Android's with
+   `source android/env.sh && android/gradlew -q -p android :app:recordRoborazziDebug`,
+   then look at each new picture.
+5. **`just check`**, then the refresh after merge.
+
+A change to one of the kit's five components
 changes its web copy in `design/sketch-kit/components/` in the same PR.
 
 ## Explorations
