@@ -1,0 +1,22 @@
+<!-- @dsCard group="Lists" height=360 -->
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: var(--spacing-card); background: var(--paperTop); color: var(--ink); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var h = React.createElement, I = window.Intrada;
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    h("div", { style: { display: "grid", gap: "var(--spacing-controlGap)" } },
+    h(I.LibraryItemCard, { title: "Clair de lune", subtitle: "Debussy", keyName: "D flat major", tempo: "66 bpm", kind: "piece", priority: true, linkedExercises: 2, tags: ["Recital"], score: 7 }),
+    h(I.LibraryItemCard, { title: "Scales in thirds", kind: "exercise", keys: 12, score: null }),
+    h(I.LibraryItemCard, { title: "Arpeggios", subtitle: "Hanon", kind: "exercise", variations: 4, score: 4 }))
+  );
+</script>
+</body>
+</html>
