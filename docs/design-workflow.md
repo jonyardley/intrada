@@ -61,17 +61,38 @@ and never edited by hand in Claude Design outside a refresh.
    fails a branch whose kit is stale, so those files match the code.
 2. **Read the live copy.** Use the Artifact tool's `read` on the
    [design system](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs), then
-   `read` `project/design-system.json` and each file you will replace. A
-   publish to an artifact this session has not read is refused.
-3. **Copy into one folder** in your scratchpad, at the design system's paths:
+   `read` `project/design-system.json`. A publish to an artifact this session
+   has not read is refused.
+3. **Find what changed.** Run `git fetch origin`, then `git diff --stat
+   <commit>..origin/main -- design/ ios/Intrada/Resources/Fonts/
+   ios/IntradaTests/__Snapshots__/ android/app/src/test/snapshots/`, where
+   `<commit>` is the commit after `main@` in `lastChange.via` in
+   `project/design-system.json`. With no commit there, refresh every file
+   below. Step 4 copies only the changed files; `read` the live copy of each
+   one you will replace.
+4. **Copy into one folder** in your scratchpad, at the design system's paths:
    - `design/components/<Name>/README.md` to `project/components/<Name>/README.md`,
-     reshaped: drop the front matter, turn relative links into GitHub links on
-     `main`, and add an "In the repo" section in its place. The published
-     page has no repo around it, so relative links break;
+     reshaped. Drop the front matter. Turn each relative link into a GitHub
+     link, `https://github.com/jonyardley/intrada/blob/main/<path>`: the
+     published page has no repo around it, so relative links break. End the
+     page with an `## In the repo` heading, then one line in this form, with
+     the page's own path and commit, then each front matter field as a
+     bullet, such as `- **status:** stable`:
+
+     ```markdown
+     Published from [`design/components/Card/README.md`](https://github.com/jonyardley/intrada/blob/main/design/components/Card/README.md) at main@35370b0b; edit it there, never here.
+     ```
+
+   - `design/sketch-kit/design-system.md` to `project/README.md`, the design
+     system's own readme, with the same link change and an "In the repo"
+     section holding only the "Published from" line;
    - `design/sketch-kit/tokens.json` to `project/tokens.json`;
    - `design/sketch-kit/components/` (`bundle.js`, `bundle.css`, `tokens.css`,
      `index.d.ts`, and each `<Name>/preview.html`) to `project/components/`.
-     Without `tokens.css` a canvas gets unstyled components;
+     Without `tokens.css` a canvas gets unstyled components. This
+     `project/components/tokens.css` is the kit's; it is not the
+     `project/tokens.css` the Design System type makes from `tokens.json`,
+     which the type says never to write;
    - never the kit's `icons/` folder: `bundle.js` carries the icons;
    - the fonts live in the design system at `project/fonts/`, copied from
      `ios/Intrada/Resources/Fonts/` and republished only when the font files
@@ -81,18 +102,21 @@ and never edited by hand in Claude Design outside a refresh.
 
    A new component page needs a `preview.html` with a `@dsCard` group, or the
    gallery shows no card for it, and a row in the design system's
-   `project/README.md` and `project/assets/Snapshots/README.md`. None of these
-   has a source in the repo, so write them in the copy you read in step 2. The
-   kit's five components are the exception: their `preview.html` lives in
-   `design/sketch-kit/components/<Name>/`. Every other page's preview lives
-   only in the design system.
-4. **Publish once** with `url` set to the design system, `root` set to that
-   folder, and `files` naming only the paths you changed. Send `index.d.ts`
-   with `contentType` `text/plain`: a `.ts` file is refused. Send
-   `project/design-system.json` last and only when its own keys change: the
-   `libraries` (React 18 for the kit), an asset record, and `lastChange` with
-   who, when and the `main` commit.
-5. **Check it.** Open the design system and look at each changed page and
+   `project/assets/Snapshots/README.md`; its row in the readme's component
+   table comes from the repo. The Snapshots readme and every
+   preview but the kit's five have no source in the repo, so write them in
+   the copy you read in step 2. The kit's five previews live in
+   `design/sketch-kit/components/<Name>/`.
+5. **Publish once** with `url` set to the design system, `file_path` set to
+   one of the changed files under that folder, `root` set to that folder, and `files` naming
+   only the paths you changed; the tool needs `file_path` as well as `files`.
+   Send `index.d.ts` with `contentType` `text/plain`: a `.ts` file is
+   refused. Put `project/design-system.json` last in `files`, every time, with
+   `lastChange` set to who, when, a one line note and a `via` naming
+   `main@<short commit>`, which the next refresh diffs from; add
+   an asset record or change `libraries` (React 18 for the kit) only when
+   those change.
+6. **Check it.** Open the design system and look at each changed page and
    preview.
 
 ## Changing a component
@@ -102,8 +126,9 @@ component looks and behaves on both apps (#2620, T37). A change runs in this
 order, in one PR:
 
 1. **The page.** Change `design/components/<Name>/README.md`: an agent drafts,
-   Jon approves the words. A new component starts from `_template.md` and a
-   row in the index.
+   Jon approves the words. A new component starts from `_template.md`, a
+   row in the index and a row in the component table in
+   `design/sketch-kit/design-system.md`, the design system's readme.
 2. **SwiftUI, then Compose.** Change the iPhone component, then the Android one.
 3. **Snapshots on both.** Record the pictures the page names, and look at them.
 4. **`just check`.** `scripts/check-components.sh` fails when a page and the
