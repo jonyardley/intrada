@@ -59,6 +59,17 @@ through `--seed-sample-data`: the **Intrada (Seeded)** scheme, or `just ios-run`
 by default (`SEED=0` for real data). Seed mode (`Event::LoadSampleData`) skips
 store hydration, so never use it to test persistence.
 
+### CI tools
+
+A CI job installs cargo tools through `.github/actions/install-tools`, never
+`taiki-e/install-action` directly: the tools come from the Actions cache and
+download from GitHub release pages only on a miss, so a release outage cannot
+fail a job whose tools are already cached (#2778). Every tool takes a version, which the cache key names; a
+version change or an install-action bump downloads once and caches again.
+actionlint follows the same pattern in the Security job. Nothing bumps the pins
+automatically; `just`, `cargo-nextest`, typos and cargo-shear also appear in
+`mise.toml`.
+
 ## Knowledge graph (graphify)
 
 The graph lives in the main checkout at `graphify-out/` (gitignored); from a

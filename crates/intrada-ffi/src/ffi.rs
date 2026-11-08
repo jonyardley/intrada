@@ -455,11 +455,10 @@ pub fn click_tempo_words(bpm: u16, unit: u8) -> TempoWords {
     }
 }
 
-/// A bpm worded without its marking, "♩ = 66": the reflection's target
-/// heading and a staged exercise's typed tempo.
+/// A staged exercise's typed tempo, "♩ = 66": a draft has no metre yet.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 pub fn declared_tempo_words(bpm: u16) -> TempoWords {
-    let words = intrada_core::domain::tempo_words::declared_bpm(bpm);
+    let words = intrada_core::domain::tempo_words::declared_bpm(bpm, None);
     TempoWords {
         text: words.text,
         spoken: words.spoken,
