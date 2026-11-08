@@ -462,3 +462,21 @@ reason. The Claude Design system shows the same pages, published from the
 repo and never edited there. Rejected: the Claude Design system as the source
 (two places that each look like the truth) and a hosted docs platform (no
 check against native code, and a cost).
+
+### T38: New screens are sketched on a small kit copied from the code
+
+**DECIDED 2026-10-15 (#2698, #2700).**
+
+The code stays the kit the apps are built from, and the Claude Design system
+carries a small sketch kit so a new screen can be explored on the real look.
+The kit is the tokens and icons, made from `Theme.swift` and the Android
+drawables by `just sketch-kit`, phone frames at the snapshot devices' sizes,
+and web copies of five components: `ScreenScaffold`, `Card`,
+`LibraryItemCard`, `MarkerButton` and `TabBar`. Each copy names the files it
+copies, takes every colour and type style from the tokens, and changes in the
+same PR as its component. A built screen passes
+`scripts/check-theme-values.sh`, so what was sketched on the tokens is built
+on them. The kit draws cards with the lift (T24) and the
+tab bar as it looks on a phone. Rejected: a full web kit of every component,
+checked against the code (too much to keep true for one person), and Figma (a
+second source and a cost).
