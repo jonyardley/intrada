@@ -14,14 +14,12 @@ import com.intrada.shared.FocusChoiceView
 import com.intrada.shared.FocusTargetView
 import com.intrada.shared.FocusView
 import com.intrada.shared.IntentionFocus
-import com.intrada.shared.SectionView
 
-/** What the aim checks, where, and against which number (#2303); the core validates the target. */
+/** What the aim checks and against which number (#2303); the core validates the target. */
 @Composable
 internal fun EntryFocusCard(
     current: FocusView?,
     choices: List<FocusChoiceView>,
-    sections: List<SectionView>,
     send: (IntentionFocus?) -> Unit,
 ) {
     val focus = current?.focus
@@ -40,12 +38,10 @@ internal fun EntryFocusCard(
             chosen = { it.kind == focus?.kind },
             label = { it.label },
             tag = { "entrySettings.focusKind" },
-            onTap = { choice ->
-                if (choice.kind != focus?.kind) send(IntentionFocus(choice.kind, focus?.sectionId))
-            },
+            onTap = { choice -> if (choice.kind != focus?.kind) send(IntentionFocus(choice.kind)) },
         )
         if (focus != null) {
-            FocusDetail(focus, current.targetCaption, choices, sections, send)
+            FocusDetail(focus, current.targetCaption, choices, send)
         }
     }
 }
@@ -55,21 +51,8 @@ private fun FocusDetail(
     focus: IntentionFocus,
     caption: String?,
     choices: List<FocusChoiceView>,
-    sections: List<SectionView>,
     send: (IntentionFocus?) -> Unit,
 ) {
-    if (sections.isNotEmpty()) {
-        FieldLabel("Where")
-        ChoicePills(
-            listOf<SectionView?>(null) + sections,
-            chosen = { it?.id == focus.sectionId },
-            label = { it?.label ?: "Whole piece" },
-            tag = { "entrySettings.focusWhere" },
-            onTap = { section ->
-                if (section?.id != focus.sectionId) send(focus.copy(sectionId = section?.id))
-            },
-        )
-    }
     choices
         .firstOrNull { it.kind == focus.kind }
         ?.target

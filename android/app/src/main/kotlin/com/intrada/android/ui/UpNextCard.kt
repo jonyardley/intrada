@@ -161,8 +161,7 @@ private val ItemKind.onHeroDot: Color
 @Composable
 private fun ItemRow(item: SuggestedItem) {
     val spokenRow =
-        listOfNotNull(item.itemTitle, item.itemType.label, spoken(item.reason), item.weakestSection)
-            .joinToString(", ")
+        listOf(item.itemTitle, item.itemType.label, spoken(item.reason)).joinToString(", ")
     Row(
         Modifier.fillMaxWidth()
             .padding(vertical = IntradaSpacing.cardCompact)
@@ -181,9 +180,6 @@ private fun ItemRow(item: SuggestedItem) {
                 style = IntradaFont.bodyMedium.copy(color = IntradaColor.paperTop),
             )
             BasicText(item.reason, style = IntradaFont.secondary.copy(color = onHeroSecondary))
-            item.weakestSection?.let {
-                BasicText(it, style = IntradaFont.secondary.copy(color = onHeroSecondary))
-            }
         }
     }
 }

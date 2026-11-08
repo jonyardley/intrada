@@ -1,7 +1,6 @@
 package com.intrada.android
 
 import com.intrada.android.core.LiveBridge
-import com.intrada.shared.BarsInput
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
@@ -10,10 +9,6 @@ import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.PersistenceOperation
-import com.intrada.shared.SectionChange
-import com.intrada.shared.SectionEdit
-import com.intrada.shared.SectionKind
-import com.intrada.shared.Segment
 import com.intrada.shared.SessionEvent
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -29,35 +24,20 @@ class BuilderViewRoundTripTest {
         bridge.update(
             Event.Item(ItemEvent.UpdateItemVariations(nocturne.id, emptyList(), listOf("Dotted")))
         )
-        val sections =
-            listOf("A", "B").map { name ->
-                val edit = SectionEdit(null, name, BarsInput.Blank, SectionKind.FORM, "")
-                savedItem(
-                    bridge,
-                    Event.Item(ItemEvent.ChangeSection(nocturne.id, SectionChange.Save(edit))),
-                )
-            }
-        val sectionIds = sections.last().sections.map { it.id }
         val dotted = bridge.view().variations.single { it.label == "Dotted" }.id
         bridge.update(Event.Session(SessionEvent.StartBuilding))
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne.id)))
         val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
         bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 600u)))
-        bridge.update(
-            Event.Session(SessionEvent.SetSegments(entryId, sectionIds.map { Segment(it, 0u) }))
-        )
-        bridge.update(Event.Session(SessionEvent.StepSegment(entryId, sectionIds.first(), 1)))
         bridge.update(Event.Session(SessionEvent.SetEntryVariations(entryId, listOf(dotted))))
         bridge.update(
-            Event.Session(
-                SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.FROMMEMORY, null, null))
-            )
+            Event.Session(SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.FROMMEMORY)))
         )
         bridge.update(Event.Session(SessionEvent.SetEntryIntention(entryId, "  Even quavers \n")))
 
         val building = bridge.view().buildingSetlist
         val entry = building?.entries?.firstOrNull()
-        assertEquals(listOf("A 6 min", "B 4 min", "Dotted", "Focus: From memory"), entry?.planTags)
+        assertEquals(listOf("Dotted", "Focus: From memory"), entry?.planTags)
         assertEquals("Even quavers", entry?.intention)
         val block = building?.blocks?.firstOrNull()
         assertEquals("Piece · 10 min", block?.caption)
@@ -79,39 +59,6 @@ class BuilderViewRoundTripTest {
 
         bridge.update(Event.Session(SessionEvent.SetEntryIntention(entryId, "   ")))
         assertEquals(null, bridge.view().buildingSetlist?.entries?.firstOrNull()?.intention)
-    }
-
-    // A two minute item split 1, 1 says why no third section is offered (#2405).
-    @Test
-    fun aFullSplitSaysWhyNoMoreSectionsFit() {
-        val bridge = LiveBridge()
-        bridge.update(Event.StartApp)
-        val nocturne = savedItem(bridge, Event.Item(ItemEvent.Add(piece)))
-        val sectionIds =
-            listOf("A", "B", "C")
-                .map { name ->
-                    val edit = SectionEdit(null, name, BarsInput.Blank, SectionKind.FORM, "")
-                    savedItem(
-                        bridge,
-                        Event.Item(ItemEvent.ChangeSection(nocturne.id, SectionChange.Save(edit))),
-                    )
-                }
-                .last()
-                .sections
-                .map { it.id }
-        bridge.update(Event.Session(SessionEvent.StartBuilding))
-        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne.id)))
-        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
-        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 120u)))
-        bridge.update(
-            Event.Session(
-                SessionEvent.SetSegments(entryId, sectionIds.take(2).map { Segment(it, 0u) })
-            )
-        )
-
-        val record = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record
-        assertEquals(false, record?.canAddSection)
-        assertEquals("No more sections fit in 2 min", record?.addSectionCaption)
     }
 
     private val piece =

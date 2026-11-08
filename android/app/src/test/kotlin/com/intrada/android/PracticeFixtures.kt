@@ -64,14 +64,11 @@ object PracticeFixtures {
             status = status,
             notes = notes,
             removable = true,
-            plannedSectionIds = emptyList(),
             plannedVariationIds = emptyList(),
             plays = plays,
             scoreSummary = score,
             record =
                 EntryRecordView(
-                    segments = emptyList(),
-                    canAddSection = false,
                     intentionMetRead = false,
                     gotInTheWay = emptyList(),
                     notePoints = emptyList(),
@@ -249,7 +246,6 @@ object PracticeFixtures {
                                     itemType = ItemKind.PIECE,
                                     latestScore = 3u,
                                     reason = "Last marked 3",
-                                    weakestSection = "Weakest section · Bars 15 to 18",
                                 ),
                             ),
                         estimatedMinutes = 15u,

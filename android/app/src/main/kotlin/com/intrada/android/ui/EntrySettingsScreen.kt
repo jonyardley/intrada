@@ -1,15 +1,12 @@
 package com.intrada.android.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -18,24 +15,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
-import com.intrada.android.R
 import com.intrada.android.core.Store
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.shared.BuildingSetlistView
-import com.intrada.shared.DrillOfferView
 import com.intrada.shared.EntryKeysView
 import com.intrada.shared.Event
 import com.intrada.shared.LimitsView
 import com.intrada.shared.PickerVariationView
-import com.intrada.shared.SectionView
-import com.intrada.shared.SegmentView
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.SetlistEntryView
 
@@ -102,7 +91,6 @@ private fun ColumnScope.EntrySettingsBody(
         EntryFocusCard(
             entry.record.focus,
             setlist.focusChoices,
-            plannable?.sections.orEmpty(),
             send = { send(SessionEvent.SetFocus(entry.id, it)) },
         )
         setlist.lastTimes
@@ -116,15 +104,6 @@ private fun ColumnScope.EntrySettingsBody(
                     Modifier.cardSurface(),
                 )
             }
-        val sections = plannable?.sections.orEmpty()
-        if (sections.isNotEmpty()) {
-            SectionsCard(
-                entry,
-                sections,
-                setlist.drillOffers.filter { it.entryId == entry.id },
-                send,
-            )
-        }
         setlist.entryKeys.firstOrNull { it.entryId == entry.id }?.let { KeyCard(it, send) }
         val variations = plannable?.variations.orEmpty()
         if (variations.isNotEmpty()) VariationCard(entry, variations, send)
@@ -226,146 +205,6 @@ private fun KeyCard(keys: EntryKeysView, send: (SessionEvent) -> Boolean) {
             "The keys you keep for this piece. Add more on the piece's page.",
             Modifier.padding(horizontal = IntradaSpacing.controlGap),
             style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
-        )
-    }
-}
-
-@Composable
-private fun SectionsCard(
-    entry: SetlistEntryView,
-    sections: List<SectionView>,
-    drills: List<DrillOfferView>,
-    send: (SessionEvent) -> Boolean,
-) {
-    val segments = entry.record.segments
-    val unplanned = sections.filter { section -> segments.none { it.sectionId == section.id } }
-    Column(
-        Modifier.fillMaxWidth()
-            .cardSurface()
-            .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.controlGap)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            FieldLabel("Sections", Modifier.weight(1f))
-            if (segments.isNotEmpty()) {
-                TextAction(
-                    "Clear sections",
-                    "entrySettings.wholePiece",
-                    { send(SessionEvent.SetSegments(entry.id, emptyList())) },
-                )
-            }
-        }
-        if (segments.isEmpty()) {
-            BasicText(
-                "Whole piece",
-                Modifier.padding(vertical = IntradaSpacing.controlGap),
-                style = IntradaFont.body.copy(color = IntradaColor.ink),
-            )
-        }
-        segments.forEach { segment ->
-            PlannedSectionRow(
-                entry,
-                segment,
-                sections,
-                timed = entry.plannedDurationSecs != null && segments.size > 1,
-                send,
-            )
-            val offers = drills.filter { it.sectionId == segment.sectionId }
-            if (offers.isNotEmpty()) DrillGroup(segment.label, offers, send)
-            HairlineDivider()
-        }
-        if (entry.record.canAddSection) {
-            unplanned.forEach { section ->
-                AddRow(
-                    if (section.isWeakest) "${section.label} · Weakest" else section.label,
-                    "Add ${section.label}",
-                    "entrySettings.addSection",
-                    { send(SessionEvent.AddSegment(entry.id, section.id)) },
-                )
-            }
-        } else if (unplanned.isNotEmpty()) {
-            entry.record.addSectionCaption?.let {
-                BasicText(
-                    it,
-                    Modifier.padding(vertical = IntradaSpacing.controlGap),
-                    style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DrillGroup(
-    sectionLabel: String,
-    offers: List<DrillOfferView>,
-    send: (SessionEvent) -> Boolean,
-) {
-    Column(
-        Modifier.fillMaxWidth()
-            .padding(bottom = IntradaSpacing.controlGap)
-            .background(IntradaColor.paperTop, RoundedCornerShape(IntradaRadius.control))
-    ) {
-        FieldLabel(
-            "Exercises for $sectionLabel",
-            Modifier.padding(horizontal = IntradaSpacing.card)
-                .padding(top = IntradaSpacing.cardCompact)
-                .semantics { heading() },
-        )
-        offers.forEach { offer ->
-            TickRow(
-                offer.title,
-                null,
-                offer.addedEntryId != null,
-                "entrySettings.drill",
-                {
-                    send(
-                        offer.addedEntryId?.let { SessionEvent.RemoveFromSetlist(it) }
-                            ?: SessionEvent.AddDrill(offer.entryId, offer.exerciseId)
-                    )
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlannedSectionRow(
-    entry: SetlistEntryView,
-    segment: SegmentView,
-    sections: List<SectionView>,
-    timed: Boolean,
-    send: (SessionEvent) -> Boolean,
-) {
-    val section = sections.firstOrNull { it.id == segment.sectionId }
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = IntradaSpacing.controlGap),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            BasicText(segment.label, style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
-            section?.barsCaption?.let {
-                BasicText(it, style = IntradaFont.small.copy(color = IntradaColor.inkSecondary))
-            }
-        }
-        if (timed) {
-            StepperRow(
-                segment.plannedDisplay,
-                "time on ${segment.label}",
-                "entrySettings.segmentMinutes",
-                onStep = {
-                    send(SessionEvent.StepSegment(entry.id, segment.sectionId, it.toByte()))
-                },
-                modifier = Modifier.weight(1f),
-                canDecrease = segment.canTakeMinute,
-                canIncrease = segment.canAddMinute,
-            )
-        }
-        IconAction(
-            R.drawable.ic_close,
-            "Remove ${segment.label}",
-            { send(SessionEvent.RemoveSegment(entry.id, segment.sectionId)) },
-            tint = IntradaColor.inkFaintIcon,
         )
     }
 }
