@@ -42,16 +42,17 @@ on.
   database lose them, with their saved data, in one store step. A way back is
   parked in #2768.
 - **Loose ends**: tempo in compound time shown by the piece's beat (#1510, in
-  PR #2771), and the shipped migrations test once v0.18.1 is out (#2600).
+  merged), and the shipped migrations test once a tester build carries the
+  coach tables removal (#2600).
 - **Done**: main green (#2597), the review (#2577,
   [review page](https://claude.ai/artifact/9D4tbou13mtMcvY1Jj27tn)) with its
   deletable sessions (#2581), leftover tables (#2317) and one planned-item
   shape (#2582), what was left of #50 (#2397, #2404, #2405), and the loose
   ends #2437, #2216 and #2543. Adding a section while building (#2392) and
   the section focus target (#2406) closed with the removal.
-- **One database change per release**: v0.18.1 carries the coach tables
-  removal, v0.19.0 this one, and the time zone a session was played in (#1379)
-  moves to v0.20.0.
+- **One database change per release**: an untagged 0.18.1 tester build of
+  main carries the coach tables removal, v0.19.0 this one, and the time zone a
+  session was played in (#1379) moves to v0.20.0.
 
 ### Next, in order
 
