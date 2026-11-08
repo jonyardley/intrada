@@ -40,7 +40,6 @@ import com.intrada.shared.DraftWay
 import com.intrada.shared.FinishRowView
 import com.intrada.shared.NotePointView
 import com.intrada.shared.NoteSpan
-import com.intrada.shared.SectionView
 
 // ── Change what a row says was played (#2249) ──
 
@@ -69,24 +68,13 @@ internal fun PlayWayEditor(
     choices: PlayWayChoices,
     onChange: (DraftWay) -> Unit,
 ) {
-    val way = DraftWay(row.playId, row.sectionId, row.key, row.variationIds)
+    val way = DraftWay(row.playId, row.key, row.variationIds)
     Column(
         Modifier.fillMaxWidth()
             .cardSurface(IntradaRadius.control)
             .padding(IntradaSpacing.cardCompact),
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
     ) {
-        if (choices.sections.isNotEmpty()) {
-            WayGroup("Section") {
-                ChoicePills(
-                    listOf<SectionView?>(null) + choices.sections,
-                    chosen = { it?.id == row.sectionId },
-                    label = { it?.label ?: "Whole piece" },
-                    tag = { "reflection.waySection.${it?.id ?: "whole"}" },
-                    onTap = { onChange(way.copy(sectionId = it?.id)) },
-                )
-            }
-        }
         if (choices.keys.isNotEmpty()) {
             WayGroup("Key") {
                 ChoicePills(
@@ -182,8 +170,7 @@ private fun NoteOfferChip(offer: NotePointView, onTap: () -> Unit) {
             .border(1.dp, if (kept) IntradaColor.ink else IntradaColor.inkSecondary, CircleShape)
             .clickable(role = Role.Button, onClick = onTap)
             .clearAndSetSemantics {
-                contentDescription =
-                    listOfNotNull(offer.label, offer.sectionLabel).joinToString(", ")
+                contentDescription = offer.label
                 stateDescription = if (kept) "kept" else "not kept"
                 selected = kept
                 role = Role.Button
@@ -204,14 +191,5 @@ private fun NoteOfferChip(offer: NotePointView, onTap: () -> Unit) {
             colorFilter = ColorFilter.tint(IntradaColor.ink),
         )
         BasicText(offer.label, style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
-        offer.sectionLabel?.let {
-            BasicText(
-                it,
-                style =
-                    IntradaFont.small.copy(
-                        color = if (kept) IntradaColor.ink else IntradaColor.inkSecondary
-                    ),
-            )
-        }
     }
 }

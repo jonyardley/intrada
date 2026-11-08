@@ -31,7 +31,6 @@ import com.intrada.android.ui.ReflectionState
 import com.intrada.android.ui.SheetPage
 import com.intrada.android.ui.SummaryModel
 import com.intrada.android.ui.SummaryScreen
-import com.intrada.android.ui.TroubleSpotContent
 import com.intrada.android.ui.VariationChoice
 import com.intrada.android.ui.VariationPickerContent
 import com.intrada.shared.ClickPreset
@@ -39,9 +38,6 @@ import com.intrada.shared.Event
 import com.intrada.shared.LastTimeView
 import com.intrada.shared.Metre
 import com.intrada.shared.ReflectionAnswers
-import com.intrada.shared.SegmentBarView
-import com.intrada.shared.SegmentClockView
-import com.intrada.shared.SegmentProgress
 import com.intrada.shared.SessionEvent
 import java.time.Instant
 import java.time.ZoneOffset
@@ -199,27 +195,12 @@ class PlayerSnapshotTest {
         val active = store.active()
         val record =
             active.record.copy(
-                segment =
-                    SegmentClockView(
-                        "A1",
-                        "2026-10-07T09:03:00Z",
-                        "Move on to Run",
-                        "Stay on A1",
-                        listOf(
-                            SegmentBarView("Intro", SegmentProgress.DONE, null),
-                            SegmentBarView("A1", SegmentProgress.RUNNING, null),
-                            SegmentBarView("Run", SegmentProgress.TOCOME, "A1 took 2 min"),
-                        ),
-                        "Section 2 of 3, 2 min taken from Run",
-                    ),
                 lastTime =
                     LastTimeView(
                         active.entries.first().id,
-                        null,
                         listOf(active.currentVariations.last().id),
                         "Last time: Swung",
-                        null,
-                    ),
+                    )
             )
         val click = ClickController {
             error("a snapshot never sounds")
@@ -252,11 +233,6 @@ class PlayerSnapshotTest {
                 }
             }
         }
-        captureRoboImage("src/test/snapshots/player-trouble-spot.png") {
-            SheetPage("Trouble spot", {}, "troubleSpot.cancel") {
-                TroubleSpotContent("Clair de Lune · in A1", null) { _, _ -> }
-            }
-        }
     }
 
     @Test
@@ -277,7 +253,6 @@ class PlayerSnapshotTest {
                 view.limits,
                 finish?.let {
                     PlayWayChoices(
-                        it.sections,
                         it.keys,
                         active.currentVariations,
                         entry.plannedLabel,
@@ -343,7 +318,6 @@ private suspend fun TestScope.scalesReflection(): Store {
         Event.Session(
             SessionEvent.SwitchPlay(
                 started.entries.first().id,
-                null,
                 null,
                 listOf(started.currentVariations.first().id),
                 "2026-10-07T09:02:00Z",

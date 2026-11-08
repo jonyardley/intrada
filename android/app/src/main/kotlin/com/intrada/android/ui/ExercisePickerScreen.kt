@@ -119,3 +119,12 @@ fun ExercisePickerScreen(
         }
     }
 }
+
+class ExercisePickerState(val linked: Set<String>) {
+    var chosen by mutableStateOf(linked)
+    var formError by mutableStateOf<String?>(null)
+
+    fun toggle(id: String) {
+        chosen = if (id in chosen) chosen - id else chosen + id
+    }
+}

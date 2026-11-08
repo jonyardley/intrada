@@ -6,7 +6,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
@@ -16,23 +15,17 @@ import com.intrada.android.ui.PlayerScreen
 import com.intrada.android.ui.ScreenAlerts
 import com.intrada.android.ui.SummaryModel
 import com.intrada.android.ui.SummaryScreen
-import com.intrada.android.ui.offersMoveOn
-import com.intrada.android.ui.secondsLeft
 import com.intrada.android.ui.sendAccepted
 import com.intrada.shared.ActiveSessionView
-import com.intrada.shared.BarRange
 import com.intrada.shared.EntryStatus
 import com.intrada.shared.Event
 import com.intrada.shared.LastTimeView
 import com.intrada.shared.ReflectionAnswers
-import com.intrada.shared.SegmentClockView
 import com.intrada.shared.SessionEvent
 import java.time.Instant
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -80,47 +73,11 @@ class PlayerRecordFlowTest {
     }
 
     @Test
-    fun theSectionClockRoundsUpAndOffersOnlyOncePastItsEnd() {
-        val end = Instant.parse("2026-10-07T09:05:00Z")
-        val segment =
-            SegmentClockView("A1", end.toString(), "Move on to Run", "Stay on A1", emptyList(), "")
-
-        assertEquals(1, secondsLeft(end, end.minusMillis(400)))
-        assertEquals(0, secondsLeft(end, end))
-        assertFalse(offersMoveOn(segment, end.minusMillis(400)))
-        assertTrue(offersMoveOn(segment, end))
-        assertFalse(offersMoveOn(segment.copy(moveLabel = null), end.plusSeconds(60)))
-    }
-
-    @Test
-    fun aSectionPastItsTimeOffersToMoveOnOrStay() = runTest {
-        val store = openedStore()
-        store.startTwoItems()
-        val ended =
-            SegmentClockView(
-                "A1",
-                "2026-10-07T09:03:00Z",
-                "Move on to Run",
-                "Stay on A1",
-                emptyList(),
-                "",
-            )
-        showPlayer(store) { it.copy(record = it.record.copy(segment = ended)) }
-
-        compose.onAllNodesWithTag("player.troubleSpot").assertCountEquals(0)
-        compose.onNodeWithTag("player.moveOn").performScrollTo().performClick()
-        compose.onNodeWithTag("player.stay").performScrollTo().performClick()
-
-        assertEquals(1, sentOf<SessionEvent.MoveToNextSegment>().size)
-        assertEquals(1, sent.count { it == SessionEvent.StayOnSegment })
-    }
-
-    @Test
     fun theLastTimeOfferPlaysItThatWay() = runTest {
         val store = scalesSession()
         val entry = store.active().entries.first()
         val variation = store.active().currentVariations.last().id
-        val offer = LastTimeView(entry.id, null, listOf(variation), "Last time: Swung", null)
+        val offer = LastTimeView(entry.id, listOf(variation), "Last time: Swung")
         showPlayer(store) { it.copy(record = it.record.copy(lastTime = offer)) }
 
         compose.onNodeWithTag("player.lastTime").performScrollTo().performClick()
@@ -143,41 +100,6 @@ class PlayerRecordFlowTest {
         assertEquals(listOf(swung), sentOf<SessionEvent.SwitchPlay>().single().variationIds)
         assertEquals(listOf(swung), store.active().currentVariationIds)
         compose.onAllNodesWithTag("variationPicker.row").assertCountEquals(0)
-    }
-
-    @Test
-    fun aTroubleSpotTakesTheBarsTyped() = runTest {
-        val store = openedStore()
-        store.startTwoItems()
-        showPlayer(store)
-
-        compose.onNodeWithTag("player.troubleSpot").performScrollTo().performClick()
-        compose.onNodeWithTag("troubleSpot.first").performTextReplacement("12")
-        compose.onNodeWithTag("troubleSpot.last").performTextReplacement("16")
-        compose.onNodeWithTag("troubleSpot.add").performClick()
-
-        val spot = sentOf<SessionEvent.AddTroubleSpot>().single()
-        assertEquals(store.active().entries.first().itemId, spot.itemId)
-        assertEquals(BarRange(12u, 16u), spot.bars)
-        compose.onAllNodesWithTag("troubleSpot.add").assertCountEquals(0)
-    }
-
-    @Test
-    fun aRefusedSpotKeepsThePageOpenWithTheReason() = runTest {
-        val store = openedStore()
-        store.startTwoItems()
-        showPlayer(store)
-
-        compose.onNodeWithTag("player.troubleSpot").performScrollTo().performClick()
-        compose.onNodeWithTag("troubleSpot.first").performTextReplacement("16")
-        compose.onNodeWithTag("troubleSpot.last").performTextReplacement("12")
-        compose.onNodeWithTag("troubleSpot.add").performClick()
-
-        compose.onNodeWithTag("troubleSpot.add").assertExists()
-        compose
-            .onNodeWithText("Bars run from the lower bar to the higher", useUnmergedTree = true)
-            .assertExists()
-        assertEquals(null, store.viewModel.value?.error)
     }
 
     @Test
@@ -221,7 +143,6 @@ class PlayerRecordFlowTest {
             Event.Session(
                 SessionEvent.SwitchPlay(
                     active.entries.first().id,
-                    null,
                     null,
                     listOf(slow),
                     "2026-10-07T09:02:00Z",

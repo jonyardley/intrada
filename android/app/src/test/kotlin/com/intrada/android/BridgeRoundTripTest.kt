@@ -5,8 +5,6 @@ import com.intrada.android.core.withIds
 import com.intrada.ffi.clickTempoWords
 import com.intrada.shared.Accidental
 import com.intrada.shared.AppEffect
-import com.intrada.shared.BarRange
-import com.intrada.shared.BarsInput
 import com.intrada.shared.ClickBarOption
 import com.intrada.shared.ClickPreset
 import com.intrada.shared.ClickPresetOption
@@ -18,24 +16,16 @@ import com.intrada.shared.Felt
 import com.intrada.shared.FocusKind
 import com.intrada.shared.FocusTargetView
 import com.intrada.shared.IntentionFocus
-import com.intrada.shared.Item
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
-import com.intrada.shared.ItemSection
 import com.intrada.shared.Key
 import com.intrada.shared.Letter
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.LinkChange
-import com.intrada.shared.LinkTarget
-import com.intrada.shared.LinkedSectionView
 import com.intrada.shared.Modality
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
-import com.intrada.shared.SectionChange
-import com.intrada.shared.SectionEdit
-import com.intrada.shared.SectionKind
-import com.intrada.shared.Segment
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
@@ -116,63 +106,6 @@ class BridgeRoundTripTest {
 
         assertEquals("Lento", saved.tempo?.marking)
         assertEquals(60.toUShort(), saved.tempo?.bpm)
-    }
-
-    // Sections cross on a second decoder: a skewed BarsInput or SectionView shows only here (#846,
-    // #2245).
-    @Test
-    fun sectionsCrossTheBridgeTypedAndPicked() {
-        val bridge = LiveBridge()
-        val added =
-            bridge.update(
-                Event.Item(
-                    ItemEvent.Add(
-                        CreateItem(
-                            title = "Rondo",
-                            kind = ItemKind.PIECE,
-                            tags = emptyList(),
-                            variationLabels = emptyList(),
-                        )
-                    )
-                )
-            )
-        val id =
-            added
-                .mapNotNull {
-                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
-                        ?.value
-                }
-                .single()
-                .id
-
-        val saved =
-            addSections(
-                bridge,
-                id,
-                listOf(
-                    SectionEdit(
-                        null,
-                        "A1",
-                        BarsInput.Typed("1-16"),
-                        SectionKind.FORM,
-                        "",
-                    ),
-                    SectionEdit(
-                        null,
-                        "",
-                        BarsInput.Picked(12.toUShort(), 14.toUShort()),
-                        SectionKind.TROUBLESPOT,
-                        "72",
-                    ),
-                ),
-            )
-
-        val sections: List<ItemSection> = saved.sections
-        assertEquals(
-            listOf(BarRange(1.toUShort(), 16.toUShort()), BarRange(12.toUShort(), 14.toUShort())),
-            sections.map { it.bars },
-        )
-        assertEquals(72.toUShort(), sections.last().targetBpm)
     }
 
     @Test
@@ -288,7 +221,6 @@ class BridgeRoundTripTest {
             Event.Session(
                 SessionEvent.SwitchPlay(
                     entryId,
-                    null,
                     eFlat,
                     item.variationIds.reversed(),
                     "2026-10-03T09:01:00Z",
@@ -329,59 +261,41 @@ class BridgeRoundTripTest {
         assertEquals(saved.map { it.label }, bridge.view().variations.map { it.label })
     }
 
-    // Section links cross on a second decoder: a skewed LinkTarget, LinkChange.Set or link view
-    // shows only here (#846, #2248).
+    // Links cross on a second decoder: a skewed ExerciseLink or link view shows only here (#846,
+    // #2248).
     @Test
-    fun anExerciseLinkedToSectionsOfTwoPiecesDecodes() {
+    fun anExerciseLinkedToTwoPiecesDecodes() {
         val bridge = LiveBridge()
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
         val etude = addItem(bridge, "Étude", ItemKind.PIECE)
         val thirds = addItem(bridge, "Thirds", ItemKind.EXERCISE)
-        val a2 = addSection(bridge, nocturne, "A2")
-        val coda = addSection(bridge, etude, "Coda")
 
         val written: List<ExerciseLink> =
             bridge
-                .update(
-                    Event.Item(
-                        ItemEvent.SetExerciseLinks(
-                            thirds,
-                            listOf(LinkTarget(nocturne, a2), LinkTarget(etude, coda)),
-                        )
-                    )
-                )
+                .update(Event.Item(ItemEvent.ChooseExercisePieces(thirds, listOf(nocturne, etude))))
                 .mapNotNull {
                     ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItems)
                         ?.value
                 }
                 .single()
                 .flatMap { it.exerciseLinks }
-
-        assertEquals(setOf(a2, coda), written.map { it.sectionId }.toSet())
         assertEquals(listOf(thirds, thirds), written.map { it.exerciseId })
 
         val rows =
             libraryChanged(
                 bridge.update(
-                    Event.Item(
-                        ItemEvent.ChangePieceLink(
-                            nocturne,
-                            LinkChange.Set(thirds, true, listOf(a2)),
-                        )
-                    )
+                    Event.Item(ItemEvent.ChangePieceLink(nocturne, LinkChange.Unlink(thirds)))
                 )
             )
-        val card = rows.single { it.id == nocturne }.linkedExercises.single()
-        val sections: List<LinkedSectionView> = card.sections
-        assertTrue(card.wholePiece)
-        assertEquals(listOf("A2"), sections.map { it.label })
-        val usedIn = rows.single { it.id == thirds }.usedIn
+        assertTrue(rows.single { it.id == nocturne }.linkedExercises.isEmpty())
         assertEquals(
-            setOf("A2", "Coda"),
-            usedIn.flatMap { row -> row.sections.map { it.label } }.toSet(),
+            listOf(thirds),
+            rows.single { it.id == etude }.linkedExercises.map { it.id },
         )
-        assertEquals(listOf("A2"), sections.map { it.labelInText })
-        assertEquals("For the whole piece and A2", card.linkCaption)
+        assertEquals(
+            listOf("Étude"),
+            rows.single { it.id == thirds }.usedIn.filter { it.linked }.map { it.piece?.title },
+        )
     }
 
     // Links loaded from the store cross into the core on Kotlin's encoder, a tombstone among them
@@ -405,93 +319,34 @@ class BridgeRoundTripTest {
             )
 
         val card = rows.single { it.id == piece.id }.linkedExercises.single()
-        assertEquals(hanon, card.id)
-        assertTrue(card.wholePiece)
-        assertEquals("the tombstone stays hidden", listOf("s-spot"), card.sections.map { it.id })
-        assertEquals(listOf("Bars 19 to 20"), card.sections.map { it.label })
-        assertEquals(listOf("bars 19 to 20"), card.sections.map { it.labelInText })
-        assertEquals("For the whole piece and bars 19 to 20", card.linkCaption)
-        assertEquals(
-            listOf("", "19 to 20"),
-            rows.single { it.id == piece.id }.sections.map { it.barsFieldText },
-        )
+        assertEquals("the tombstone stays hidden", hanon, card.id)
         val usedIn = rows.single { it.id == hanon }.usedIn.single()
         assertTrue(usedIn.linked)
-        assertEquals("For the whole piece and bars 19 to 20", usedIn.linkCaption)
     }
 
-    // A live whole-piece link, a tombstoned one to A1 and a live one to a bars-only spot.
+    // A live link and a tombstoned one to the same exercise.
     private fun pieceWithLoadedLinks(hanon: String) =
         Fixtures.item(
-                exerciseLinks =
-                    listOf(
-                        ExerciseLink("l1", hanon, null, 0uL, "2026-10-04T09:00:00Z", null),
-                        ExerciseLink(
-                            "l2",
-                            hanon,
-                            "s-a1",
-                            1uL,
-                            "2026-10-04T09:05:00Z",
-                            "2026-10-04T09:05:00Z",
-                        ),
-                        ExerciseLink("l3", hanon, "s-spot", 2uL, "2026-10-04T09:05:00Z", null),
-                    )
-            )
-            .copy(
-                sections =
-                    listOf(
-                        ItemSection(
-                            "s-a1",
-                            "A1",
-                            null,
-                            SectionKind.FORM,
-                            null,
-                            0uL,
-                            "2026-10-04T09:00:00Z",
-                            null,
-                        ),
-                        ItemSection(
-                            "s-spot",
-                            "",
-                            BarRange(19.toUShort(), 20.toUShort()),
-                            SectionKind.TROUBLESPOT,
-                            null,
-                            1uL,
-                            "2026-10-04T09:00:00Z",
-                            null,
-                        ),
-                    )
-            )
+            exerciseLinks =
+                listOf(
+                    ExerciseLink("l1", hanon, 0uL, "2026-10-04T09:00:00Z", null),
+                    ExerciseLink("l2", hanon, 1uL, "2026-10-04T09:05:00Z", "2026-10-04T09:05:00Z"),
+                )
+        )
 
-    // Segments, a focus and time away cross on Kotlin's encoder and come back on its decoder
-    // (#846, #2249).
+    // A focus and time away cross on Kotlin's encoder and come back on its decoder (#846, #2249).
     @Test
-    fun segmentsAndTimeAwayRunThroughThePracticeScreen() {
+    fun aFocusAndTimeAwayRunThroughThePracticeScreen() {
         val bridge = LiveBridge()
         bridge.update(Event.StartApp)
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
-        val sections =
-            addSections(
-                    bridge,
-                    nocturne,
-                    listOf("A", "B").map {
-                        SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
-                    },
-                )
-                .sections
-                .map { it.id }
         bridge.update(Event.Session(SessionEvent.StartBuilding))
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
         val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
-        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 1200u)))
-        bridge.update(
-            Event.Session(SessionEvent.SetSegments(entryId, sections.map { Segment(it, 0u) }))
-        )
-        val focus = IntentionFocus(FocusKind.TEMPO, sections.first(), 84.toUShort())
+        val focus = IntentionFocus(FocusKind.TEMPO, 84.toUShort())
         bridge.update(Event.Session(SessionEvent.SetFocus(entryId, focus)))
         val record = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record
-        assertEquals(listOf(600u, 600u), record?.segments?.map { it.plannedSecs })
-        assertEquals("A at 84", record?.focus?.label)
+        assertEquals("At 84", record?.focus?.label)
 
         bridge.update(Event.Session(SessionEvent.StartSession("2026-10-04T09:00:00Z")))
         bridge.update(Event.Session(SessionEvent.WentAway("2026-10-04T09:01:00Z")))
@@ -500,22 +355,19 @@ class BridgeRoundTripTest {
         bridge.update(Event.Session(SessionEvent.LeaveAwayOut))
         bridge.update(
             Event.Session(
-                SessionEvent.MoveToNextSegment(
+                SessionEvent.PrepareReflection(
                     "2026-10-04T09:16:40Z",
                     TempoReading(bpm = 84.toUShort(), clickSounding = false),
                 )
             )
         )
 
-        val active = bridge.view().activeSession
-        assertEquals(sections.last(), active?.currentSectionId)
-        assertEquals("B", active?.record?.segment?.label)
-        assertEquals(640uL, active?.entries?.firstOrNull()?.plays?.firstOrNull()?.seconds)
+        assertEquals(640uL, bridge.view().activeSession?.reflection?.elapsedSecs)
     }
 
     // The builder rules the core owns cross both ways on Kotlin's codec (#2393).
     @Test
-    fun minuteStepsVariationsAndFocusTargetsCrossTheBridge() {
+    fun variationsAndFocusTargetsCrossTheBridge() {
         val bridge = LiveBridge()
         bridge.update(Event.StartApp)
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
@@ -523,79 +375,22 @@ class BridgeRoundTripTest {
             Event.Item(ItemEvent.UpdateItemVariations(nocturne, emptyList(), listOf("Dotted")))
         )
         val dotted = bridge.view().variations.single { it.label == "Dotted" }.id
-        val sections =
-            addSections(
-                    bridge,
-                    nocturne,
-                    listOf("A", "B").map {
-                        SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
-                    },
-                )
-                .sections
-                .map { it.id }
         bridge.update(Event.Session(SessionEvent.StartBuilding))
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
         val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
-        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 600u)))
-        bridge.update(
-            Event.Session(SessionEvent.SetSegments(entryId, sections.map { Segment(it, 0u) }))
-        )
-
-        bridge.update(Event.Session(SessionEvent.StepSegment(entryId, sections.first(), 1)))
         bridge.update(Event.Session(SessionEvent.SetEntryVariations(entryId, listOf(dotted))))
         bridge.update(
-            Event.Session(
-                SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.CLEANREPS, null, null))
-            )
+            Event.Session(SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.CLEANREPS)))
         )
 
         val building = bridge.view().buildingSetlist
         val record = building?.entries?.firstOrNull()?.record
         assertEquals(listOf(dotted), building?.entries?.firstOrNull()?.plannedVariationIds)
-        assertEquals(listOf(360u, 240u), record?.segments?.map { it.plannedSecs })
-        assertEquals(listOf(true, true), record?.segments?.map { it.canAddMinute })
         assertEquals("1 clean in a row", record?.focus?.targetCaption)
         assertEquals(
             listOf(FocusTargetView(40u, 208u, 2u), FocusTargetView(1u, 100u, 1u), null, null),
             building?.focusChoices?.map { it.target },
         )
-    }
-
-    // Adding and removing a section keep the tuned minutes (#2398).
-    @Test
-    fun addingAndRemovingASectionCrossTheBridge() {
-        val bridge = LiveBridge()
-        bridge.update(Event.StartApp)
-        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
-        val sections =
-            addSections(
-                    bridge,
-                    nocturne,
-                    listOf("A", "B", "C").map {
-                        SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
-                    },
-                )
-                .sections
-                .map { it.id }
-        bridge.update(Event.Session(SessionEvent.StartBuilding))
-        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
-        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
-        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 720u)))
-        val tuned = listOf(Segment(sections[0], 420u), Segment(sections[1], 300u))
-        bridge.update(Event.Session(SessionEvent.SetSegments(entryId, tuned)))
-
-        bridge.update(Event.Session(SessionEvent.AddSegment(entryId, sections[2])))
-        val added = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record?.segments
-        assertEquals(listOf(180u, 300u, 240u), added?.map { it.plannedSecs })
-        assertEquals(
-            true,
-            bridge.view().buildingSetlist?.entries?.firstOrNull()?.record?.canAddSection,
-        )
-
-        bridge.update(Event.Session(SessionEvent.RemoveSegment(entryId, sections[1])))
-        val removed = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record?.segments
-        assertEquals(listOf(sections[0], sections[2]), removed?.map { it.sectionId })
-        assertEquals(listOf(180u, 540u), removed?.map { it.plannedSecs })
     }
 
     @Test
@@ -657,32 +452,6 @@ class BridgeRoundTripTest {
             }
             .single()
             .id
-
-    private fun addSection(bridge: LiveBridge, piece: String, name: String): String =
-        addSections(
-                bridge,
-                piece,
-                listOf(SectionEdit(null, name, BarsInput.Blank, SectionKind.FORM, "")),
-            )
-            .sections
-            .single()
-            .id
-
-    // Each edit saved as a new section, one change at a time (#2447); the last save holds them
-    // all.
-    private fun addSections(bridge: LiveBridge, piece: String, edits: List<SectionEdit>): Item =
-        edits
-            .map { edit ->
-                bridge
-                    .update(Event.Item(ItemEvent.ChangeSection(piece, SectionChange.Save(edit))))
-                    .mapNotNull {
-                        ((it.effect as? Effect.Persistence)?.value
-                                as? PersistenceOperation.SaveItem)
-                            ?.value
-                    }
-                    .single()
-            }
-            .last()
 
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =
         requests
