@@ -33,7 +33,7 @@ env:
   SENTRY_ORG: jon-yardley
   # Asserted by the self-hosted gate, which runs on a machine that updates
   # itself (#1637).
-  SELFHOSTED_XCODE: "27.0"
+  SELFHOSTED_XCODE: "27.2"
 
 jobs:
   # Detects which paths changed: against the base branch on a PR, against the
@@ -402,10 +402,13 @@ jobs:
       # `env:`, where it resolves to empty instead of failing.
       - name: Pin the Rust toolchain for this job
         run: echo "RUSTUP_TOOLCHAIN=${{ env.RUST_VERSION }}" >> "$GITHUB_ENV"
-      # rustup installs a new toolchain on demand but not its iOS targets, so a
-      # Rust bump would fail here first; this is a no-op once they are present.
-      - name: Add the iOS Rust targets
-        run: rustup target add --toolchain "$RUST_VERSION" aarch64-apple-ios aarch64-apple-ios-sim
+      # rustup installs a new toolchain on demand but not its iOS targets or
+      # clippy, so a Rust bump would fail at the first step needing them; both
+      # are no-ops once present.
+      - name: Add the iOS Rust targets and clippy
+        run: |
+          rustup target add --toolchain "$RUST_VERSION" aarch64-apple-ios aarch64-apple-ios-sim
+          rustup component add --toolchain "$RUST_VERSION" clippy
       - name: swift format check
         run: just ios-fmt-check
       - name: Clippy (iOS device target)
@@ -945,6 +948,10 @@ jobs:
       # it, so a colour the page lacks is drift nothing else sees (#2603).
       - name: Every Theme.swift colour is on the design system page
         run: bash scripts/check-design-tokens.sh
+      # Sketches draw from the kit, so tokens or icons left behind a theme
+      # change put the old look in every new mockup (#2700).
+      - name: The sketch kit matches the theme and icons
+        run: python3 scripts/sketch-kit.py --check
       # The catalogue is what agents read before building a screen, so a page
       # naming a file, symbol or picture that is gone misleads them (#2620).
       - name: Every component has a page and pictures on both apps
@@ -960,6 +967,8 @@ jobs:
       # ── the gates above, proven against broken input ────────────────────
       - name: Hygiene checks still bite
         run: bash scripts/tests/hygiene-checks-test.sh
+      - name: Sketch kit check still bites
+        run: bash scripts/tests/sketch-kit-test.sh
       # ── pr-visuals ───────────────────────────────────────────────────────
       # Proves scripts/pr-visuals.sh still classifies a modified, an added and
       # a deleted snapshot reference correctly (#1631).

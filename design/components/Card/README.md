@@ -22,7 +22,7 @@ The white surface every grouped block of content sits on, lifted faintly off the
 ## When not to use
 
 - A single line of text or a section title: use `SectionTitle` on the paper.
-- Rows inside a card: separate them with `HairlineDivider`, not a card each.
+- Parts of one thing, such as a form's fields: one card, with `HairlineDivider` between them, not a card each.
 - A form field: use `FieldCard`, which is a card with the label inside.
 
 ## Variants
@@ -38,6 +38,8 @@ None. Motion belongs to what the card holds. A card that slides or fades in keep
 
 No card on either app is drawn with the lift yet; restoring it everywhere is part of the refinement pass, #2638.
 
+Sketches draw the lift on purpose: the sketch kit's `Card` shows the look T24 decided.
+
 ## Content
 
 - The fill is `cardFill`, white, with a one point `hairline` edge, the `IntradaRadius.card` corner (3 points) and the `IntradaShadow.card` lift through `cardShadow()`.
@@ -51,7 +53,9 @@ A card adds nothing to VoiceOver or TalkBack. When a whole card is one action, c
 
 ## Do and don't
 
-- **Do** put a group of rows in one card, separated by hairlines.
+- **Do** put the parts of one thing in one card, separated by hairlines.
+- **Do** give each entry in a screen's top-level list a card of its own, `IntradaSpacing.cardCompact` (12) apart, as the Library's items and the Practice home's sessions do.
+- **Do** draw a list inside a detail card, such as a piece's linked exercises (`RelatedExercisesCard.swift`), sections, variations or the items in a session being built, as rows in that card with hairlines between them.
 - **Don't** stack equal cards with no lead line.
 - **Don't** draw a card by hand with a background, a clip and a stroke: that is the copy that drifts.
 

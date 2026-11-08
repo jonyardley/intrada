@@ -22,6 +22,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.core.Store
 import com.intrada.android.ui.BannerAction
 import com.intrada.android.ui.BannerTone
+import com.intrada.android.ui.ConsistencyBars
+import com.intrada.android.ui.FormField
 import com.intrada.android.ui.GlobalBanner
 import com.intrada.android.ui.HeaderAction
 import com.intrada.android.ui.IntradaColor
@@ -29,12 +31,18 @@ import com.intrada.android.ui.IntradaFont
 import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
 import com.intrada.android.ui.MasteryDeltaToast
+import com.intrada.android.ui.MasteryDial
+import com.intrada.android.ui.RepActions
+import com.intrada.android.ui.RepCounter
+import com.intrada.android.ui.RepState
 import com.intrada.android.ui.ScoreRing
 import com.intrada.android.ui.ScoreSelector
 import com.intrada.android.ui.ScreenScaffold
 import com.intrada.android.ui.SectionHeader
 import com.intrada.android.ui.SegmentedPills
+import com.intrada.android.ui.SessionCard
 import com.intrada.android.ui.TextAction
+import com.intrada.android.ui.WeekStrip
 import com.intrada.android.ui.components.FieldCard
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
@@ -273,6 +281,134 @@ class ComponentsSnapshotTest {
         }
     }
 
+    @Test
+    fun sessionCards() {
+        captureRoboImage("src/test/snapshots/session-card.png") {
+            Paper {
+                Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact)) {
+                    SessionCard(PracticeFixtures.completed, onOpen = {})
+                    SessionCard(PracticeFixtures.withVariations, onOpen = {})
+                }
+            }
+        }
+    }
+
+    @Test
+    fun weekStrip() {
+        val week = PracticeFixtures.week
+        captureRoboImage("src/test/snapshots/week-strip.png") {
+            Paper { WeekStrip(week.days, week.days[week.openingDay.toInt()].date, {}) }
+        }
+    }
+
+    @Test
+    fun masteryDial() {
+        captureRoboImage("src/test/snapshots/mastery-dial.png") {
+            Paper { MasteryDial(MASTERY, topMark = TOP_MARK) }
+        }
+    }
+
+    @Test
+    fun consistencyBars() {
+        captureRoboImage("src/test/snapshots/consistency-bars.png") {
+            Paper { ConsistencyBars(ProgressFixtures.analytics.consistencyWeeks) }
+        }
+    }
+
+    @Test
+    fun repCounters() {
+        captureRoboImage("src/test/snapshots/rep-counter.png") { RepCounters() }
+    }
+
+    @Test
+    fun formFields() {
+        captureRoboImage("src/test/snapshots/form-field.png") { FormFields() }
+    }
+
+    @Composable
+    private fun RepCounters() {
+        val actions = RepActions(onGotIt = {}, onNotQuite = {}, onUndo = {})
+        Paper {
+            Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section)) {
+                RepCounter(
+                    RepState(
+                        count = 0,
+                        slots = 10,
+                        touched = false,
+                        reached = false,
+                        extra = 0,
+                        canUndo = false,
+                    ),
+                    actions,
+                )
+                RepCounter(
+                    RepState(
+                        count = 7,
+                        slots = 10,
+                        touched = true,
+                        reached = false,
+                        extra = 0,
+                        canUndo = true,
+                    ),
+                    actions,
+                )
+                RepCounter(
+                    RepState(
+                        count = 10,
+                        slots = 10,
+                        touched = true,
+                        reached = true,
+                        extra = 0,
+                        canUndo = true,
+                    ),
+                    actions,
+                )
+                RepCounter(
+                    RepState(
+                        count = 12,
+                        slots = 10,
+                        touched = true,
+                        reached = true,
+                        extra = 2,
+                        canUndo = true,
+                    ),
+                    actions,
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun FormFields() {
+        Paper {
+            Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact)) {
+                Column(Modifier.cardSurface()) {
+                    FormField("Title", "Clair de Lune", {}, "form.title", placeholder = "Required")
+                    HairlineDivider()
+                    FormField("Tempo marking", "", {}, "form.marking", placeholder = "e.g. Allegro")
+                    HairlineDivider()
+                    FormField(
+                        "Bars",
+                        "",
+                        {},
+                        "form.bars",
+                        placeholder = "1 to 16",
+                        note = "Optional. Bar 12, or 12 to 14",
+                    )
+                }
+                FormField(
+                    "Title",
+                    "",
+                    {},
+                    "form.faulted",
+                    Modifier.cardSurface(),
+                    placeholder = "Required",
+                    faulted = true,
+                )
+            }
+        }
+    }
+
     @Composable
     private fun FieldCards() {
         Paper {
@@ -335,5 +471,7 @@ class ComponentsSnapshotTest {
 
     private companion object {
         const val GLYPHS_PER_ROW = 7
+        const val MASTERY = 3.4
+        const val TOP_MARK = 10
     }
 }
