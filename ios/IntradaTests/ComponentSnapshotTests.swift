@@ -101,10 +101,10 @@ final class ComponentSnapshotTests: SnapshotTestCase {
 
   private var bottomSheet: some View {
     BottomSheet(
-      title: "Trouble spot", confirmationLabel: "Add spot",
+      title: "Keys", confirmationLabel: "Save",
       leadingAction: { Button("Cancel") {} },
       content: {
-        Text("Bars 12 to 16")
+        Text("C major, G major, D major")
           .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
           .frame(maxWidth: .infinity, alignment: .leading)
