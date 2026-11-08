@@ -1,4 +1,3 @@
-import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -548,10 +547,7 @@ struct FocusPlayerScreen: View {
     return ReflectionTarget(
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(Int(clamping: draft.elapsedSecs)),
-      tempoTarget: active.currentItemTempoBpm.map {
-        clickTempoWords(bpm: $0, unit: active.clickSeedMetre.unit).text
-      },
-      reading: draft.reading,
+      tempoTarget: ReflectionSheet.tempoTarget(for: active), reading: draft.reading,
       tempos: draft.tempos, plays: ReflectionPlay.rows(entry.plays), seed: draft.answers,
       finish: active.record.finish,
       aim: entry.record.focus?.label ?? active.currentItemIntention,

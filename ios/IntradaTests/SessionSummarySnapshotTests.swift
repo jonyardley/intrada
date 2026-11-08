@@ -53,7 +53,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00",
-        tempoTarget: declaredTempoWords(bpm: 96).text,
+        tempoTarget: clickTempoWords(bpm: 96, unit: 4).text,
         tempoRows: [.preview("p1")],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,
