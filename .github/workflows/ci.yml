@@ -403,7 +403,8 @@ jobs:
       - name: Pin the Rust toolchain for this job
         run: echo "RUSTUP_TOOLCHAIN=${{ env.RUST_VERSION }}" >> "$GITHUB_ENV"
       # rustup installs a new toolchain on demand but not its iOS targets or
-      # clippy, so a Rust bump would fail here first; both are no-ops once present.
+      # clippy, so a Rust bump would fail at the first step needing them; both
+      # are no-ops once present.
       - name: Add the iOS Rust targets and clippy
         run: |
           rustup target add --toolchain "$RUST_VERSION" aarch64-apple-ios aarch64-apple-ios-sim
