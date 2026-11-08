@@ -54,7 +54,7 @@ pub(super) fn update_play_way(
     }
     way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     let check = validation::validate_play_belongs(&entry, &play_id)
-        .and_then(|()| validation::validate_play_way(&entry, &way, entry.play(&play_id), model));
+        .and_then(|()| validation::validate_play_way(&way, entry.play(&play_id), model));
     if let Err(e) = check {
         model.raise_error(e.to_string());
         return crux_core::render::render();
@@ -69,7 +69,6 @@ pub(super) fn update_play_way(
         model.last_error = None;
         return crux_core::render::render();
     }
-    play.section_id = way.section_id;
     play.key = way.key;
     play.variation_ids = way.variation_ids;
     model.last_error = None;
@@ -142,11 +141,7 @@ pub(super) fn update_entry_notes(
         return crux_core::render::render();
     }
 
-    let item_id = entry_for_plan(model, &entry_id).map(|e| e.plan.item_id.clone());
-    let offered = note_offers(
-        notes.as_deref().unwrap_or_default(),
-        &super::finish::named_sections(model, item_id.as_deref().unwrap_or_default()),
-    );
+    let offered = note_offers(notes.as_deref().unwrap_or_default());
     let Some(entry) = entry_for_update_mut(model, &entry_id) else {
         model.raise_error(format!("Entry '{entry_id}' not found"));
         return crux_core::render::render();

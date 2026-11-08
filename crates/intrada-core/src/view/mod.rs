@@ -4,8 +4,8 @@ use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
-    BuildingSetlistView, DrillOfferView, EntryVariationsView, FocusChoiceView, FocusTargetView,
-    LimitsView, Model, PhotoRecognitionView, SetlistBlockView, ViewModel,
+    BuildingSetlistView, EntryVariationsView, FocusChoiceView, FocusTargetView, LimitsView, Model,
+    PhotoRecognitionView, SetlistBlockView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::{library_count_line, matches_query};
@@ -61,7 +61,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         .count();
     let visible_ids = visible.iter().map(|i| i.id.clone()).collect();
 
-    let labels = crate::view::session::play_labels(&model.items, &model.variations);
+    let labels = crate::view::session::play_labels(&model.variations);
 
     let (active_session, building_setlist, summary) = match &model.session_status {
         SessionStatus::Idle => (None, None, None),
@@ -72,7 +72,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .map(|e| {
                     let mut view = entry_to_view(e, &labels);
                     view.plan_tags = plan_tags(
-                        &view.record.segments,
                         e.plan.key.map(|k| k.label()),
                         live_variation_labels(&cached.library, e).into_iter(),
                         view.record.focus.as_ref(),
@@ -105,12 +104,9 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .iter()
                 .filter_map(|entry| {
                     let item = cached.library.iter().find(|i| i.id == entry.plan.item_id)?;
-                    (!item.variations.is_empty() || !item.sections.is_empty()).then(|| {
-                        EntryVariationsView {
-                            entry_id: entry.id.clone(),
-                            variations: picker_variations(entry, &item.variations),
-                            sections: item.sections.clone(),
-                        }
+                    (!item.variations.is_empty()).then(|| EntryVariationsView {
+                        entry_id: entry.id.clone(),
+                        variations: picker_variations(entry, &item.variations),
                     })
                 })
                 .collect();
@@ -119,8 +115,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .iter()
                 // Decided 2026-10-04 (#2249, spec): an offer only while nothing is planned.
                 .filter(|entry| {
-                    entry.plan.segments.is_empty()
-                        && entry.plan.focus.is_none()
+                    entry.plan.focus.is_none()
                         && entry.plan.variation_ids.is_empty()
                         && entry.plan.key.is_none()
                 })
@@ -143,7 +138,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     crate::view::session::entry_keys_view(entry, item)
                 })
                 .collect();
-            let drill_offers = drill_offers(model, &building.entries);
             let summary = builder_summary(total_duration_summary.as_deref(), &blocks, item_count);
             let start_title = match &total_duration_summary {
                 Some(total) => format!("Start session \u{b7} {total}"),
@@ -179,7 +173,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                         })
                         .collect(),
                     entry_keys,
-                    drill_offers,
                     summary,
                     start_title,
                 }),
@@ -205,12 +198,12 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 &model.practice_defaults,
             );
             // Offered only before the musician has chosen a way (#2249).
-            let on_the_whole_piece_plain = current_entry
+            let played_plain = current_entry
                 .open_play()
                 .is_some_and(|p| p.is_played(&crate::domain::session::PlayWay::default()));
             view.record.last_time =
                 crate::domain::session::last_time(model, &current_entry.plan.item_id)
-                    .filter(|_| on_the_whole_piece_plain && active.reflection.is_none())
+                    .filter(|_| played_plain && active.reflection.is_none())
                     .map(|way| {
                         crate::view::session::last_time_view(current_entry, way, None, &labels)
                     });
@@ -227,12 +220,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     current_entry,
                     draft,
                     item,
-                    cached
-                        .library
-                        .iter()
-                        .find(|i| i.id == item.id)
-                        .map(|i| i.sections.clone())
-                        .unwrap_or_default(),
                     !current_variations.is_empty(),
                     &labels,
                 );
@@ -400,39 +387,6 @@ fn builder_summary(total: Option<&str>, blocks: &[SetlistBlockView], items: usiz
         .chain([plural(items, "item")])
         .collect::<Vec<_>>()
         .join(" \u{b7} ")
-}
-
-fn drill_offers(
-    model: &Model,
-    entries: &[crate::domain::session::SetlistEntry],
-) -> Vec<DrillOfferView> {
-    let mut offers = Vec::new();
-    for entry in entries {
-        let Some(piece) = model.items.iter().find(|i| i.id == entry.plan.item_id) else {
-            continue;
-        };
-        for segment in &entry.plan.segments {
-            for link in piece.live_links() {
-                if link.section_id.as_deref() != Some(segment.section_id.as_str()) {
-                    continue;
-                }
-                let Some(exercise) = model.items.iter().find(|i| i.id == link.exercise_id) else {
-                    continue;
-                };
-                offers.push(DrillOfferView {
-                    entry_id: entry.id.clone(),
-                    section_id: segment.section_id.clone(),
-                    exercise_id: exercise.id.clone(),
-                    title: exercise.title.clone(),
-                    added_entry_id: entries
-                        .iter()
-                        .find(|e| e.plan.item_id == exercise.id)
-                        .map(|e| e.id.clone()),
-                });
-            }
-        }
-    }
-    offers
 }
 
 #[cfg(test)]

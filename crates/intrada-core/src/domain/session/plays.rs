@@ -5,21 +5,13 @@ use crate::validation;
 use chrono::{DateTime, Utc};
 use crux_core::Command;
 
-/// An entry that has just become current opens its first play on its first
-/// segment, else the focus's section, else the whole item, in the planned key
-/// (#2249). Planned variations stay a plan, so the play starts plain (#2246).
-/// Last time is an offer, never a start. Idempotent: a recovered session
-/// already carries its plays.
+/// An entry that has just become current opens its first play in the planned
+/// key (#2249). Planned variations stay a plan, so the play starts plain
+/// (#2246). Last time is an offer, never a start. Idempotent: a recovered
+/// session already carries its plays.
 pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
     if entry.plays.is_empty() {
-        let section_id = entry
-            .plan
-            .segments
-            .first()
-            .map(|s| s.section_id.clone())
-            .or_else(|| entry.plan.focus.as_ref().and_then(|f| f.section_id.clone()));
         let way = PlayWay {
-            section_id,
             key: entry.plan.key,
             ..PlayWay::default()
         };
@@ -27,20 +19,6 @@ pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
             .plays
             .push(Play::opened(way, entry.plan.rep_target, now));
     }
-}
-
-pub(super) fn first_segment_clock(
-    entry: &SetlistEntry,
-    now: DateTime<Utc>,
-) -> Option<SegmentClock> {
-    let first = entry.plan.segments.first()?;
-    (entry.plan.segments.len() > 1 && first.planned_secs > 0).then_some(SegmentClock {
-        index: 0,
-        started_at: now,
-        allowance_secs: first.planned_secs,
-        taken_from_next_secs: 0,
-        left_out_secs: 0,
-    })
 }
 
 /// Stamp the open play's seconds from its own start, so a switch mid item
@@ -320,18 +298,6 @@ pub(super) fn entry_for_plan<'a>(model: &'a Model, entry_id: &str) -> Option<&'a
         SessionStatus::Building(building) => building.entries.iter().find(|e| e.id == entry_id),
         SessionStatus::Active(active) => active.entries.iter().find(|e| e.id == entry_id),
         SessionStatus::Summary(summary) => summary.entries.iter().find(|e| e.id == entry_id),
-        SessionStatus::Idle => None,
-    }
-}
-
-pub(super) fn entry_for_plan_mut<'a>(
-    model: &'a mut Model,
-    entry_id: &str,
-) -> Option<&'a mut SetlistEntry> {
-    match &mut model.session_status {
-        SessionStatus::Building(building) => building.entries.iter_mut().find(|e| e.id == entry_id),
-        SessionStatus::Active(active) => active.entries.iter_mut().find(|e| e.id == entry_id),
-        SessionStatus::Summary(summary) => summary.entries.iter_mut().find(|e| e.id == entry_id),
         SessionStatus::Idle => None,
     }
 }

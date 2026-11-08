@@ -169,7 +169,7 @@ pub(super) fn switch_play(
         return crux_core::render::render();
     }
 
-    if let Err(e) = validation::validate_play_way(entry, &way, None, model) {
+    if let Err(e) = validation::validate_play_way(&way, None, model) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
@@ -187,12 +187,6 @@ pub(super) fn switch_play(
     };
 
     let stamp = close_open_play(entry, now, Some(&reading));
-    if let (Some(clock), Some(closed)) = (active.segment.as_mut(), entry.open_play()) {
-        let gap = left_out_secs(&closed.away, closed.started_at.max(clock.started_at), now);
-        clock.left_out_secs = clock
-            .left_out_secs
-            .saturating_add(u32::try_from(gap).unwrap_or(u32::MAX));
-    }
     let rep_target = entry.plan.rep_target;
     entry.plays.push(Play::opened(way, rep_target, now));
 
@@ -254,12 +248,7 @@ pub(super) fn recover_session(
     // The open play's clock is the same clock one level down: left
     // alone, its close would record the gap as practice (#1795).
     if let Some(play) = entry.and_then(SetlistEntry::open_play_mut) {
-        let anchor = recorded(play.seconds);
-        if let Some(clock) = session.segment.as_mut() {
-            let into = (play.started_at - clock.started_at).max(chrono::Duration::zero());
-            clock.started_at = anchor.checked_sub_signed(into).unwrap_or(anchor);
-        }
-        play.started_at = anchor;
+        play.started_at = recorded(play.seconds);
         // The blob was last saved as they left, so that is when it closes.
         if let Some(away) = play.away.last_mut().filter(|a| a.back_at.is_none()) {
             away.back_at = Some(away.left_at);
@@ -274,10 +263,8 @@ fn advance(active: &mut ActiveSession, started_at: DateTime<Utc>) {
     active.current_index += 1;
     active.current_item_started_at = started_at;
     active.reflection = None;
-    active.segment = None;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         open_first_play(entry, started_at);
-        active.segment = first_segment_clock(entry, started_at);
     }
 }
 
@@ -296,10 +283,9 @@ pub(super) fn update_reflection_draft(
         return crux_core::render::render();
     };
     let entry = active.current_entry();
-    let sections = super::finish::named_sections(model, &entry.plan.item_id);
     answers.marks.retain(|mark| mark.score != 0);
     tidy_answers_note(&mut answers);
-    keep_offered_points(&mut answers, &sections);
+    keep_offered_points(&mut answers);
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     }
@@ -313,7 +299,6 @@ pub(super) fn update_reflection_draft(
     answers.ways.retain(|row| {
         !entry.play(&row.play_id).is_some_and(|play| {
             play.is_played(&PlayWay {
-                section_id: row.section_id.clone(),
                 key: row.key,
                 variation_ids: row.variation_ids.clone(),
             })
@@ -396,7 +381,6 @@ pub(super) fn submit_reflection(
     }
     for way in answers.ways {
         let play_way = PlayWay {
-            section_id: way.section_id,
             key: way.key,
             variation_ids: way.variation_ids,
         };
@@ -456,8 +440,8 @@ fn tidy_answers_note(answers: &mut ReflectionAnswers) {
 
 /// A note edit moves its points: a span no longer offered is dropped, since
 /// refusing would leave the crash-recovery copy stale (#2137).
-fn keep_offered_points(answers: &mut ReflectionAnswers, sections: &[(&str, &str)]) {
-    let offered: Vec<NoteSpan> = note_offers(&answers.note, sections)
+fn keep_offered_points(answers: &mut ReflectionAnswers) {
+    let offered: Vec<NoteSpan> = note_offers(&answers.note)
         .into_iter()
         .map(|p| p.span)
         .collect();
@@ -481,13 +465,12 @@ fn draft_ways_valid(entry: &SetlistEntry, ways: &[DraftWay], model: &Model) -> b
     let mut seen = std::collections::HashSet::new();
     ways.iter().all(|row| {
         let way = PlayWay {
-            section_id: row.section_id.clone(),
             key: row.key,
             variation_ids: row.variation_ids.clone(),
         };
         seen.insert(row.play_id.as_str())
             && validation::validate_play_belongs(entry, &row.play_id).is_ok()
-            && validation::validate_play_way(entry, &way, entry.play(&row.play_id), model).is_ok()
+            && validation::validate_play_way(&way, entry.play(&row.play_id), model).is_ok()
     })
 }
 

@@ -50,7 +50,6 @@ fn model_with_library() -> Model {
                 chord_chart: None,
                 variation_ids: vec![],
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -70,7 +69,6 @@ fn model_with_library() -> Model {
                 chord_chart: None,
                 variation_ids: vec![],
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -90,7 +88,6 @@ fn model_with_library() -> Model {
                 chord_chart: None,
                 variation_ids: vec![],
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -118,14 +115,13 @@ fn linked_model() -> Model {
         tempo: None,
         notes: None,
         tags: vec![],
-        exercise_links: crate::domain::link::whole_piece_links(linked, now),
+        exercise_links: crate::domain::link::links_to(linked, now),
         created_at: now,
         updated_at: now,
         priority: false,
         chord_chart: None,
         variation_ids: vec![],
         keys: vec![],
-        sections: vec![],
         photo_id: None,
         metre: None,
     };
@@ -308,7 +304,7 @@ fn start_building_from_suggestion_caps_the_block_at_three_items() {
     let mut m = suggestion_model();
     for item in m.items.iter_mut() {
         if item.id == "piece-P" {
-            item.exercise_links = crate::domain::link::whole_piece_links(
+            item.exercise_links = crate::domain::link::links_to(
                 &["ex-A", "ex-B", "ex-C", "ex-D"],
                 chrono::Utc::now(),
             );
@@ -625,7 +621,7 @@ fn re_adding_present_piece_is_a_full_no_op_even_with_new_relateds() {
     let Some(piece) = m.items.iter_mut().find(|i| i.id == "piece-Q") else {
         panic!("the fixture has piece-Q");
     };
-    piece.exercise_links = crate::domain::link::whole_piece_links(&["ex-C"], chrono::Utc::now());
+    piece.exercise_links = crate::domain::link::links_to(&["ex-C"], chrono::Utc::now());
     add(&mut m, "piece-Q");
     assert_eq!(
         ids(&m),
@@ -1615,9 +1611,8 @@ fn test_start_session_opens_the_first_play_plain_whatever_the_plan() {
     let (mut model, entry_id) = model_with_exercise_building();
     update(
         &mut model,
-        Event::Session(SessionEvent::SetEntryPlan {
+        Event::Session(SessionEvent::SetEntryVariations {
             entry_id: entry_id.clone(),
-            section_ids: vec![],
             variation_ids: vec!["v-f".to_string()],
         }),
     );
@@ -1682,7 +1677,6 @@ fn test_switching_to_the_way_already_open_writes_nothing() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id: entry_id.clone(),
-            section_id: None,
             key: None,
             variation_ids: vec![],
             now: now + chrono::Duration::seconds(10),
@@ -2379,7 +2373,6 @@ fn test_recover_session() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
-        segment: None,
     };
 
     update(
@@ -2416,7 +2409,6 @@ fn test_recover_session_reanchors_current_item_timer() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
-        segment: None,
     };
 
     update(
@@ -2462,7 +2454,6 @@ fn a_corrupt_play_time_in_the_saved_copy_resumes_from_now() {
                 current_item_started_at: now,
                 session_started_at: now,
                 reflection: None,
-                segment: None,
             },
             now,
         }),
@@ -2497,7 +2488,6 @@ fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
-        segment: None,
     };
 
     update(
@@ -2567,7 +2557,6 @@ fn test_recover_session_reanchors_only_the_current_entry_play() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
-        segment: None,
     };
 
     update(
@@ -2605,7 +2594,6 @@ fn test_recover_session_when_not_idle() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
-        segment: None,
     };
 
     update(
@@ -2633,7 +2621,6 @@ fn test_recover_session_refuses_empty_setlist_and_clears_blob() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
-        segment: None,
     };
 
     let app = Intrada;
@@ -3453,58 +3440,35 @@ fn model_with_exercise_summary() -> (Model, String) {
     (model, entry_id)
 }
 
-fn give_exercise_a_section(model: &mut Model, id: &str, deleted: bool) {
-    let ex = model
-        .items
-        .iter_mut()
-        .find(|i| i.id == "exercise-1")
-        .expect("fixture exercise");
-    ex.sections.push(crate::domain::section::ItemSection {
-        id: id.to_string(),
-        name: "Coda".to_string(),
-        bars: None,
-        kind: crate::domain::section::SectionKind::Form,
-        target_bpm: None,
-        position: ex.sections.len(),
-        updated_at: Utc::now(),
-        deleted_at: deleted.then(Utc::now),
-    });
-}
-
-fn set_plan(model: &mut Model, entry_id: &str, sections: &[&str], variations: &[&str]) {
+fn set_plan(model: &mut Model, entry_id: &str, variations: &[&str]) {
     update(
         model,
-        Event::Session(SessionEvent::SetEntryPlan {
+        Event::Session(SessionEvent::SetEntryVariations {
             entry_id: entry_id.to_string(),
-            section_ids: sections.iter().map(|s| s.to_string()).collect(),
             variation_ids: variations.iter().map(|s| s.to_string()).collect(),
         }),
     );
 }
 
-fn planned(model: &Model) -> (Vec<String>, Vec<String>) {
-    let entry = &session_entries(model)[0];
-    (entry.plan.section_ids(), entry.plan.variation_ids.clone())
+fn planned(model: &Model) -> Vec<String> {
+    session_entries(model)[0].plan.variation_ids.clone()
 }
 
 #[test]
-fn a_plan_names_a_section_and_variations_while_building() {
+fn a_plan_names_variations_while_building() {
     let (mut model, entry_id) = model_with_exercise_building();
-    give_exercise_a_section(&mut model, "s-coda", false);
 
-    set_plan(&mut model, &entry_id, &["s-coda"], &["v-c", "v-f"]);
+    set_plan(&mut model, &entry_id, &["v-c", "v-f"]);
 
     assert!(model.last_error.is_none());
+    assert_eq!(planned(&model), ["v-c", "v-f"]);
+
+    set_plan(&mut model, &entry_id, &[]);
     assert_eq!(
         planned(&model),
-        (
-            vec!["s-coda".to_string()],
-            vec!["v-c".to_string(), "v-f".to_string()]
-        )
+        Vec::<String>::new(),
+        "an empty list clears"
     );
-
-    set_plan(&mut model, &entry_id, &[], &[]);
-    assert_eq!(planned(&model), (vec![], vec![]), "empty lists clear");
 }
 
 /// Planning is a Building-phase move (#1739 decision 5): once the entry has
@@ -3513,59 +3477,38 @@ fn a_plan_names_a_section_and_variations_while_building() {
 fn a_plan_is_rejected_on_a_completed_entry() {
     let (mut model, entry_id) = model_with_exercise_summary();
 
-    set_plan(&mut model, &entry_id, &[], &["v-c"]);
+    set_plan(&mut model, &entry_id, &["v-c"]);
 
     assert_eq!(
         model.last_error.as_deref(),
-        Some("A plan can only be set while building"),
+        Some("An entry can only be planned while building"),
         "surfaced, not silent"
     );
-    assert_eq!(planned(&model), (vec![], vec![]));
+    assert_eq!(planned(&model), Vec::<String>::new());
 }
 
 #[test]
 fn a_plan_is_refused_whole_on_any_bad_name() {
-    let cases: &[(&[&str], &[&str], &str)] = &[
-        (&["s-coda", "s-other"], &[], "Plan one section at a time"),
-        (&["s-gone"], &[], "That section doesn't belong to this item"),
-        (
-            &["s-nowhere"],
-            &[],
-            "That section doesn't belong to this item",
-        ),
-        (
-            &[],
-            &["v-dead"],
-            "That variation is no longer in the library",
-        ),
-        (
-            &[],
-            &["v-unknown"],
-            "That variation is no longer in the library",
-        ),
-        (&[], &["v-c", "v-c"], "A variation is listed twice"),
+    let cases: &[(&[&str], &str)] = &[
+        (&["v-dead"], "That variation is no longer in the library"),
+        (&["v-unknown"], "That variation is no longer in the library"),
+        (&["v-c", "v-c"], "A variation is listed twice"),
     ];
-    for (sections, variations, message) in cases {
+    for (variations, message) in cases {
         let (mut model, entry_id) = model_with_exercise_building();
-        give_exercise_a_section(&mut model, "s-coda", false);
-        give_exercise_a_section(&mut model, "s-gone", true);
         model.variations.push(crate::domain::variation::Variation {
             deleted_at: Some(Utc::now()),
             ..library_variation("v-dead", "Slow")
         });
 
-        set_plan(&mut model, &entry_id, sections, variations);
+        set_plan(&mut model, &entry_id, variations);
 
         assert_eq!(
             model.last_error.as_deref(),
             Some(*message),
-            "{sections:?} {variations:?}"
+            "{variations:?}"
         );
-        assert_eq!(
-            planned(&model),
-            (vec![], vec![]),
-            "{sections:?} {variations:?}"
-        );
+        assert_eq!(planned(&model), Vec::<String>::new(), "{variations:?}");
     }
 }
 
@@ -3576,10 +3519,10 @@ fn a_plan_may_name_any_live_library_variation() {
     let (mut model, entry_id) = model_with_exercise_building();
     model.variations.push(library_variation("v-other", "Slow"));
 
-    set_plan(&mut model, &entry_id, &[], &["v-other"]);
+    set_plan(&mut model, &entry_id, &["v-other"]);
 
     assert!(model.last_error.is_none());
-    assert_eq!(planned(&model).1, vec!["v-other".to_string()]);
+    assert_eq!(planned(&model), ["v-other"]);
 }
 
 #[test]
@@ -3597,7 +3540,7 @@ fn a_skipped_entry_keeps_its_plan() {
         );
     }
     let entry_id = building_entries(&model)[0].id.clone();
-    set_plan(&mut model, &entry_id, &[], &["v-c"]);
+    set_plan(&mut model, &entry_id, &["v-c"]);
     update(
         &mut model,
         Event::Session(SessionEvent::StartSession { now }),
@@ -3630,8 +3573,7 @@ fn a_skipped_entry_keeps_its_plan() {
 #[test]
 fn the_plan_and_what_was_played_both_reach_the_saved_session() {
     let (mut model, entry_id) = model_with_exercise_building();
-    give_exercise_a_section(&mut model, "s-coda", false);
-    set_plan(&mut model, &entry_id, &["s-coda"], &["v-c"]);
+    set_plan(&mut model, &entry_id, &["v-c"]);
     let now = Utc::now();
     update(
         &mut model,
@@ -3659,13 +3601,7 @@ fn the_plan_and_what_was_played_both_reach_the_saved_session() {
     assert_eq!(model.sessions.len(), 1);
     assert_eq!(model.sessions[0].capture_version, Some(CAPTURE_VERSION));
     let saved = &model.sessions[0].entries[0];
-    assert_eq!(saved.plan.section_ids(), vec!["s-coda".to_string()]);
     assert_eq!(saved.plan.variation_ids, vec!["v-c".to_string()]);
-    assert_eq!(
-        play_of(saved).section_id.as_deref(),
-        Some("s-coda"),
-        "the planned section opens the first play (#2249)"
-    );
     assert!(
         play_of(saved).variation_ids.is_empty(),
         "planned variations stay a plan: the play is what was played"
@@ -3676,11 +3612,11 @@ fn the_plan_and_what_was_played_both_reach_the_saved_session() {
 fn a_plan_for_an_unknown_entry_surfaces_an_error() {
     let (mut model, _) = model_with_exercise_building();
 
-    set_plan(&mut model, "no-such-entry", &[], &["v-c"]);
+    set_plan(&mut model, "no-such-entry", &["v-c"]);
 
     assert_eq!(
         model.last_error.as_deref(),
-        Some("Entry 'no-such-entry' not found")
+        Some("Entry 'no-such-entry' not found in setlist")
     );
 }
 
@@ -3777,7 +3713,6 @@ fn switch_to_d(model: &mut Model, at: DateTime<Utc>, reading: TempoReading) {
         model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: at,
@@ -3865,7 +3800,6 @@ fn re_tapping_the_open_way_with_the_click_sounding_stamps_nothing() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec![],
             now: start + chrono::Duration::seconds(180),
@@ -4371,7 +4305,6 @@ fn the_four_closing_events_round_trip_a_reading_on_the_bincode_wire() {
     let events = [
         SessionEvent::SwitchPlay {
             entry_id: "e1".to_string(),
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: tap_at(),
@@ -5876,10 +5809,6 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
             group_id: Some("g1".to_string()),
             variation_ids: vec!["v-2".to_string()],
             rep_target: Some(5),
-            segments: vec![Segment {
-                section_id: "s-1".to_string(),
-                planned_secs: 300,
-            }],
             key: None,
         },
         item_title: "Scales".to_string(),
@@ -5889,7 +5818,6 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
         notes: Some("warm up".to_string()),
         plays: vec![Play {
             id: "e1-play".to_string(),
-            section_id: Some("s-1".to_string()),
             key: crate::domain::key::Key::parse("Eb major"),
             variation_ids: vec!["v-1".to_string(), "v-2".to_string()],
             started_at: tap_at(),
@@ -5943,30 +5871,18 @@ fn pinned_active_session() -> ActiveSession {
     touched.plan.intention = Some("evenness".to_string());
     touched.plan.duration_secs = Some(300);
     touched.plan.group_id = Some("g1".to_string());
-    touched.plan.segments = vec![
-        Segment {
-            section_id: "s-1".to_string(),
-            planned_secs: 180,
-        },
-        Segment {
-            section_id: "s-2".to_string(),
-            planned_secs: 120,
-        },
-    ];
     touched.plan.focus = Some(IntentionFocus {
         kind: FocusKind::Tempo,
-        section_id: Some("s-1".to_string()),
         target: Some(84),
     });
     touched.intention_met = Some(IntentionMet::Partly);
     touched.felt = Some(Felt::Strained);
     touched.got_in_the_way = vec![Obstacle::Fingering, Obstacle::Memory];
     touched.note_points = vec![NotePoint {
-        kind: NotePointKind::Bars(crate::domain::section::BarRange {
+        kind: NotePointKind::Bars(crate::domain::bars::BarRange {
             first: 12,
             last: 14,
         }),
-        section_id: Some("s-1".to_string()),
         span: NoteSpan { start: 0, end: 12 },
     }];
     touched.plan.variation_ids = vec!["v-1".to_string()];
@@ -5974,7 +5890,6 @@ fn pinned_active_session() -> ActiveSession {
     touched.plan.key = crate::domain::key::Key::parse("G major");
     touched.plays = vec![Play {
         id: "e1-play".to_string(),
-        section_id: Some("s-1".to_string()),
         key: crate::domain::key::Key::parse("C# minor"),
         variation_ids: vec!["v-1".to_string(), "v-2".to_string()],
         started_at: tap_at(),
@@ -6054,52 +5969,41 @@ fn pinned_active_session() -> ActiveSession {
                 intention_met: Some(IntentionMet::Yes),
                 ways: vec![DraftWay {
                     play_id: "e2-play".to_string(),
-                    section_id: Some("s-2".to_string()),
                     key: crate::domain::key::Key::parse("D major"),
                     variation_ids: vec!["v-1".to_string()],
                 }],
             },
-        }),
-        segment: Some(SegmentClock {
-            index: 1,
-            started_at: tap_at(),
-            allowance_secs: 240,
-            taken_from_next_secs: 120,
-            left_out_secs: 60,
         }),
     }
 }
 
 const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "020000000000000073310200000000000000020000000000000065310200000000000000703100",
-    "0000000108000000000000006576656e6e6573730100000000010300000000000000732d310154",
-    "00012c010000010200000000000000673101000000000000000300000000000000762d31010a02",
-    "000000000000000300000000000000732d31b40000000300000000000000732d32780000000104",
-    "0000000000000001000000000d00000000000000436c616972206465204c756e65000000000000",
-    "00002c01000000000000000000000108000000000000007068726173696e670100000000000000",
-    "070000000000000065312d706c6179010300000000000000732d31010000000001000000010100",
-    "000002000000000000000300000000000000762d310300000000000000762d3214000000000000",
-    "00323032362d30392d30335430393a30303a30305a2c01000000000000010a0101010300000000",
-    "000000010000001400000000000000323032362d30392d30335430393a30303a30305a01780001",
-    "01000000001400000000000000323032362d30392d30335430393a30303a34305a017800010002",
-    "0000001400000000000000323032362d30392d30335430393a30303a34315a0000010000000000",
-    "00001400000000000000323032362d30392d30335430393a30303a32305a780001017800010708",
-    "0103000000000000000302022900010402000000000000001400000000000000323032362d3039",
-    "2d30335430393a30313a30305a011400000000000000323032362d30392d30335430393a30373a",
-    "30305a011400000000000000323032362d30392d30335430393a30383a32305a00000101000000",
-    "0102000000020000000000000002000000030000000100000000000000000000000c000e000103",
-    "00000000000000732d31000000000c000000020000000000000065320200000000000000783101",
-    "0000000000000000000000000000000000000000000000000006000000000000005363616c6573",
-    "010000000000000000000000000000000200000000000000000000000000000000000000000000",
-    "000000000000000001000000000000001400000000000000323032362d30392d30335430393a30",
-    "303a30305a1400000000000000323032362d30392d30335430383a34373a30305a011400000000",
-    "000000323032362d30392d30335430393a30303a30305aa8000101070801030000000000000003",
-    "020229000100000000000000070000000000000065322d706c6179060600000000000000737465",
-    "6164790100000000000000070000000000000065322d706c617996000001000000000100000000",
-    "000000040000000100000000000000000000000600000001000000000100000000000000070000",
-    "000000000065322d706c6179010300000000000000732d32010100000000000000010000000001",
-    "000000000000000300000000000000762d3101010000001400000000000000323032362d30392d",
-    "30335430393a30303a30305af0000000780000003c000000",
+    "0000000108000000000000006576656e6e6573730100000000015400012c010000010200000000",
+    "000000673101000000000000000300000000000000762d31010a01040000000000000001000000",
+    "000d00000000000000436c616972206465204c756e6500000000000000002c0100000000000000",
+    "0000000108000000000000007068726173696e670100000000000000070000000000000065312d",
+    "706c6179010000000001000000010100000002000000000000000300000000000000762d310300",
+    "000000000000762d321400000000000000323032362d30392d30335430393a30303a30305a2c01",
+    "000000000000010a0101010300000000000000010000001400000000000000323032362d30392d",
+    "30335430393a30303a30305a0178000101000000001400000000000000323032362d30392d3033",
+    "5430393a30303a34305a0178000100020000001400000000000000323032362d30392d30335430",
+    "393a30303a34315a000001000000000000001400000000000000323032362d30392d3033543039",
+    "3a30303a32305a7800010178000107080103000000000000000302022900010402000000000000",
+    "001400000000000000323032362d30392d30335430393a30313a30305a01140000000000000032",
+    "3032362d30392d30335430393a30373a30305a011400000000000000323032362d30392d303354",
+    "30393a30383a32305a000001010000000102000000020000000000000002000000030000000100",
+    "000000000000000000000c000e00000000000c0000000200000000000000653202000000000000",
+    "00783101000000000000000000000000000000000006000000000000005363616c657301000000",
+    "000000000000000000000000020000000000000000000000000000000000000000000000000000",
+    "0000000001000000000000001400000000000000323032362d30392d30335430393a30303a3030",
+    "5a1400000000000000323032362d30392d30335430383a34373a30305a01140000000000000032",
+    "3032362d30392d30335430393a30303a30305aa800010107080103000000000000000302022900",
+    "0100000000000000070000000000000065322d706c617906060000000000000073746561647901",
+    "00000000000000070000000000000065322d706c61799600000100000000010000000000000004",
+    "000000010000000000000000000000060000000100000000010000000000000007000000000000",
+    "0065322d706c617901010000000000000001000000000100000000000000030000000000000076",
+    "2d31",
 );
 
 const PINNED_BLOB_VERSION: u32 = 10;
@@ -6166,14 +6070,12 @@ fn plan_switch_and_tap_events_round_trip_on_ffi_bincode_wire() {
         click: Some(seven_eight_on_group_starts()),
     };
     for event in [
-        SessionEvent::SetEntryPlan {
+        SessionEvent::SetEntryVariations {
             entry_id: "e1".to_string(),
-            section_ids: vec!["s1".to_string()],
             variation_ids: vec!["v1".to_string(), "v2".to_string()],
         },
         SessionEvent::SwitchPlay {
             entry_id: "e1".to_string(),
-            section_id: Some("s1".to_string()),
             key: crate::domain::key::Key::parse("F# minor"),
             variation_ids: vec!["v1".to_string(), "v2".to_string()],
             now: tap_at(),
@@ -6267,7 +6169,6 @@ fn switching_mid_item_closes_the_open_play_and_opens_another() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: switched_at,
@@ -6291,7 +6192,6 @@ fn switching_to_the_variation_already_open_writes_nothing() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id: entry_id.clone(),
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(60),
@@ -6310,7 +6210,6 @@ fn switching_to_the_variation_already_open_writes_nothing() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(80),
@@ -6334,7 +6233,6 @@ fn naming_the_open_key_in_its_other_spelling_writes_nothing() {
     let switch = |key: &str, secs: i64| {
         Event::Session(SessionEvent::SwitchPlay {
             entry_id: entry_id.clone(),
-            section_id: None,
             key: crate::domain::key::Key::parse(key),
             variation_ids: vec![],
             now: start + chrono::Duration::seconds(secs),
@@ -6385,7 +6283,6 @@ fn naming_the_written_key_is_the_play_already_open() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: crate::domain::key::Key::parse("D# major"),
             variation_ids: vec![],
             now: start + chrono::Duration::seconds(20),
@@ -6423,7 +6320,6 @@ fn repetitions_and_tempo_land_on_the_open_play_and_reset_on_a_switch() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(30),
@@ -6448,7 +6344,6 @@ fn scoring_names_the_play_it_marks() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id: entry_id.clone(),
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(60),
@@ -6531,7 +6426,6 @@ fn switching_to_a_dead_variation_is_rejected() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-gone".to_string()],
             now: start + chrono::Duration::seconds(60),
@@ -6558,7 +6452,6 @@ fn an_entry_stops_at_the_play_cap() {
             &mut model,
             Event::Session(SessionEvent::SwitchPlay {
                 entry_id: entry_id.clone(),
-                section_id: None,
                 key: None,
                 variation_ids: vec![variation.to_string()],
                 now: start + chrono::Duration::seconds(60 * (i as i64 + 1)),
@@ -6587,7 +6480,6 @@ fn finishing_drops_a_play_that_recorded_nothing() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(298),
@@ -6654,7 +6546,6 @@ fn a_stray_tap_predicts_as_unmarkable_and_is_dropped() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id: entry_id.clone(),
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(298),
@@ -6724,7 +6615,6 @@ fn when_every_play_is_incidental_only_the_first_predicts_as_markable() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(2),
@@ -6770,7 +6660,6 @@ fn a_later_real_play_predicts_as_markable_even_when_the_first_was_incidental() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(2),
@@ -6821,7 +6710,6 @@ fn prepare_reflection_does_not_advance_or_drop() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id: entry_id.clone(),
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(1),
@@ -6885,7 +6773,6 @@ fn finishing_keeps_a_short_play_that_banked_a_repetition() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(298),
@@ -6986,7 +6873,6 @@ fn switch_variation_and_the_play_id_events_round_trip_on_the_bincode_wire() {
     crate::domain::types::assert_round_trips(crate::app::Event::Session(
         SessionEvent::SwitchPlay {
             entry_id: "e1".to_string(),
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: tap_at(),
@@ -7099,7 +6985,6 @@ fn switching_variation_saves_the_recovery_copy() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: now + chrono::Duration::seconds(20),
@@ -7619,7 +7504,6 @@ fn the_sheet_counts_every_play_of_the_item() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(40),
@@ -8065,7 +7949,6 @@ fn a_mark_on_a_play_about_to_be_dropped_is_refused() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(2),
@@ -8101,7 +7984,6 @@ fn a_way_changed_on_a_play_about_to_be_dropped_is_let_go() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(2),
@@ -8117,7 +7999,6 @@ fn a_way_changed_on_a_play_about_to_be_dropped_is_let_go() {
         ReflectionAnswers {
             ways: vec![DraftWay {
                 play_id: stray,
-                section_id: None,
                 key: None,
                 variation_ids: vec!["v-c".to_string()],
             }],
@@ -8210,7 +8091,6 @@ fn switching_variation_with_the_sheet_open_changes_nothing() {
         &mut model,
         Event::Session(SessionEvent::SwitchPlay {
             entry_id,
-            section_id: None,
             key: None,
             variation_ids: vec!["v-d".to_string()],
             now: start + chrono::Duration::seconds(90),
@@ -8474,7 +8354,7 @@ fn an_unchanged_or_unusable_tempo_keeps_nothing() {
 
 /// A section or a variation is not the piece (#50 decision 6); a key is.
 #[test]
-fn the_pieces_own_score_reads_plain_full_run_throughs_only() {
+fn the_pieces_own_score_reads_plain_run_throughs_only() {
     let scored = |score: u8, way: PlayWay| Play {
         score: Some(score),
         ..Play::opened(way, None, tap_at())
@@ -8486,13 +8366,6 @@ fn the_pieces_own_score_reads_plain_full_run_throughs_only() {
                 5,
                 PlayWay {
                     key: crate::domain::key::Key::parse("Eb major"),
-                    ..PlayWay::default()
-                },
-            ),
-            scored(
-                1,
-                PlayWay {
-                    section_id: Some("s-1".to_string()),
                     ..PlayWay::default()
                 },
             ),

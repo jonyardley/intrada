@@ -1,12 +1,11 @@
-//! What v0.17 adds to the record (#50): segments,
-//! the intention's focus, time away and the finish answers. Facts and the
+//! What v0.17 adds to the record (#50): the intention's focus, time away and the finish answers. Facts and the
 //! musician's own answers only; anything the app works out is read here, when
 //! asked, and never stored.
 
 use super::{Play, SetlistEntry};
+use crate::domain::bars::BarRange;
 use crate::domain::metre;
 use crate::domain::note_patterns::{self, NotePointKind as ReadKind};
-use crate::domain::section::BarRange;
 use crate::error::LibraryError;
 use crate::validation;
 use chrono::{DateTime, Utc};
@@ -14,14 +13,6 @@ use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
 
 // ── Plan ──
-
-/// One stretch of an entry given to one section, in order (#2315).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct Segment {
-    pub section_id: String,
-    pub planned_secs: u32,
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -38,8 +29,6 @@ pub enum FocusKind {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct IntentionFocus {
     pub kind: FocusKind,
-    /// `None` is the whole piece.
-    pub section_id: Option<String>,
     /// Crotchets for `Tempo`, a count for `CleanReps`, `None` otherwise.
     pub target: Option<u16>,
 }
@@ -107,7 +96,6 @@ pub struct NoteSpan {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct NotePoint {
     pub kind: NotePointKind,
-    pub section_id: Option<String>,
     pub span: NoteSpan,
 }
 
@@ -124,208 +112,8 @@ pub struct Away {
     pub left_out: bool,
 }
 
-/// The running segment of the current entry. It never stops the item: when
-/// `allowance_secs` is up the view offers to move on, and ignoring it changes
-/// nothing.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct SegmentClock {
-    pub index: u32,
-    pub started_at: DateTime<Utc>,
-    pub allowance_secs: u32,
-    /// What Stay has borrowed from the next segment so far.
-    pub taken_from_next_secs: u32,
-    /// Left out on plays this segment has already closed, kept here because a
-    /// resume moves the timestamps it was read from.
-    pub left_out_secs: u32,
-}
-
 /// A screen lock for a few seconds is not time away.
 pub const MIN_AWAY_SECS: i64 = 60;
-pub const STAY_SECS: u32 = 120;
-
-// ── Segments ──
-
-/// Fixed segments keep their time; those sent at zero share what is left in
-/// whole minutes, earliest first. Without a planned time every segment is zero.
-pub(crate) fn rebalance(
-    segments: &mut [Segment],
-    planned: Option<u32>,
-) -> Result<(), LibraryError> {
-    let Some(planned) = planned else {
-        for segment in segments.iter_mut() {
-            segment.planned_secs = 0;
-        }
-        return Ok(());
-    };
-    let refuse = || doesnt_fit(planned);
-    let min = validation::MIN_PLANNED_DURATION_SECS;
-    if segments
-        .iter()
-        .any(|s| s.planned_secs > 0 && s.planned_secs < min)
-    {
-        return Err(refuse());
-    }
-    let fixed = segments
-        .iter()
-        .fold(0u32, |sum, s| sum.saturating_add(s.planned_secs));
-    let free = segments.iter().filter(|s| s.planned_secs == 0).count() as u32;
-    if free == 0 {
-        let Some((last, rest)) = segments.split_last_mut() else {
-            return Ok(());
-        };
-        let others = rest
-            .iter()
-            .fold(0u32, |sum, s| sum.saturating_add(s.planned_secs));
-        last.planned_secs = planned
-            .checked_sub(others)
-            .filter(|secs| *secs >= min)
-            .ok_or_else(refuse)?;
-        return Ok(());
-    }
-    let remaining = planned.checked_sub(fixed).ok_or_else(refuse)?;
-    let minutes = remaining / 60;
-    if minutes < free {
-        return Err(refuse());
-    }
-    let (each, extra) = (minutes / free, minutes % free);
-    let mut given = 0;
-    let last_free = segments.iter().rposition(|s| s.planned_secs == 0);
-    for (i, segment) in segments.iter_mut().enumerate() {
-        if segment.planned_secs != 0 {
-            continue;
-        }
-        let bonus = u32::from(given < extra);
-        given += 1;
-        segment.planned_secs = (each + bonus) * 60;
-        if Some(i) == last_free {
-            segment.planned_secs += remaining % 60;
-        }
-    }
-    Ok(())
-}
-
-fn doesnt_fit(planned: u32) -> LibraryError {
-    LibraryError::Validation {
-        field: "segments".to_string(),
-        message: format!(
-            "Those minutes don't fit in this item's {} min",
-            planned / 60
-        ),
-    }
-}
-
-pub(crate) fn step_segment(
-    segments: &mut [Segment],
-    index: usize,
-    minutes: i8,
-) -> Result<(), LibraryError> {
-    let refuse = || LibraryError::Validation {
-        field: "segments".to_string(),
-        message: "Each section keeps at least a minute".to_string(),
-    };
-    let donor = if index + 1 == segments.len() {
-        index.checked_sub(1)
-    } else {
-        Some(index + 1)
-    };
-    let donor = donor
-        .filter(|&d| d < segments.len() && minutes != 0)
-        .ok_or_else(refuse)?;
-    let delta = i64::from(minutes) * 60;
-    let min = i64::from(validation::MIN_PLANNED_DURATION_SECS);
-    let taker = i64::from(segments[index].planned_secs) + delta;
-    let giver = i64::from(segments[donor].planned_secs) - delta;
-    if taker < min || giver < min {
-        return Err(refuse());
-    }
-    segments[index].planned_secs = u32::try_from(taker).map_err(|_| refuse())?;
-    segments[donor].planned_secs = u32::try_from(giver).map_err(|_| refuse())?;
-    Ok(())
-}
-
-/// An untuned split shares evenly again. A tuned one keeps its tuning: the
-/// new section's share is the planned minutes over the new count, at least
-/// one, taken from the largest segment (#2398).
-pub(crate) fn add_segment(
-    segments: &mut Vec<Segment>,
-    section_id: String,
-    planned: Option<u32>,
-) -> Result<(), LibraryError> {
-    let untuned = is_even(segments, planned);
-    segments.push(Segment {
-        section_id,
-        planned_secs: 0,
-    });
-    let Some(planned) = planned else {
-        return Ok(());
-    };
-    if untuned {
-        segments.iter_mut().for_each(|s| s.planned_secs = 0);
-        return rebalance(segments, Some(planned));
-    }
-    let count = u32::try_from(segments.len()).unwrap_or(u32::MAX);
-    let Some((added, rest)) = segments.split_last_mut() else {
-        return Ok(());
-    };
-    // Reversed because `max_by_key` keeps the last of equals: the earliest
-    // gives on a tie.
-    let Some(largest) = rest.iter_mut().rev().max_by_key(|s| s.planned_secs) else {
-        added.planned_secs = planned;
-        return Ok(());
-    };
-    let share = (planned / 60 / count).max(1) * 60;
-    largest.planned_secs = largest
-        .planned_secs
-        .checked_sub(share)
-        .filter(|secs| *secs >= validation::MIN_PLANNED_DURATION_SECS)
-        .ok_or_else(|| doesnt_fit(planned))?;
-    added.planned_secs = share;
-    Ok(())
-}
-
-pub(crate) fn can_add_segment(segments: &[Segment], planned: Option<u32>) -> bool {
-    add_segment(&mut segments.to_vec(), String::new(), planned).is_ok()
-}
-
-pub(crate) fn remove_segment(segments: &mut Vec<Segment>, index: usize, planned: Option<u32>) {
-    if index >= segments.len() {
-        return;
-    }
-    let untuned = is_even(segments, planned);
-    let secs = segments.remove(index).planned_secs;
-    if untuned {
-        split_evenly(segments, planned);
-        return;
-    }
-    let to = if index < segments.len() {
-        Some(index)
-    } else {
-        index.checked_sub(1)
-    };
-    if let Some(segment) = to.and_then(|i| segments.get_mut(i)) {
-        segment.planned_secs = segment.planned_secs.saturating_add(secs);
-    }
-}
-
-pub(crate) fn can_step_segment(segments: &[Segment], index: usize, minutes: i8) -> bool {
-    step_segment(&mut segments.to_vec(), index, minutes).is_ok()
-}
-
-fn is_even(segments: &[Segment], planned: Option<u32>) -> bool {
-    let mut even = segments.to_vec();
-    split_evenly(&mut even, planned);
-    even == segments
-}
-
-pub(crate) fn split_evenly(segments: &mut [Segment], planned: Option<u32>) {
-    for segment in segments.iter_mut() {
-        segment.planned_secs = 0;
-    }
-    // A planned time under a minute per segment keeps them at zero: the
-    // builder's minimum is a minute, and the plan still names the sections.
-    let _ = rebalance(segments, planned);
-}
 
 // ── Away ──
 
@@ -350,9 +138,8 @@ pub(crate) fn away_to_offer(play: &Play) -> Option<(&Away, i64)> {
 
 // ── Intention ──
 
-/// Worked out from the plays where the focus allows (a tempo on a section or
-/// the whole piece), never stored: met when a play of that part reached the
-/// target with the click sounding. `None` means the finish sheet asks.
+/// Worked out from the plays where the focus allows (a tempo), never stored:
+/// met when a play reached the target with the click sounding. `None` means the finish sheet asks.
 pub(crate) fn intention_met_read(entry: &SetlistEntry) -> Option<IntentionMet> {
     let focus = entry.plan.focus.as_ref()?;
     let target = focus.target?;
@@ -362,7 +149,6 @@ pub(crate) fn intention_met_read(entry: &SetlistEntry) -> Option<IntentionMet> {
     entry
         .plays
         .iter()
-        .filter(|p| p.section_id == focus.section_id)
         .any(|p| reached_with_click(p, target))
         .then_some(IntentionMet::Yes)
 }
@@ -396,19 +182,11 @@ pub(crate) fn asks_intention(entry: &SetlistEntry) -> bool {
     intended(entry) && intention_met_read(entry).is_none()
 }
 
-pub(crate) fn validate_focus(
-    focus: &IntentionFocus,
-    section_ids: &[&str],
-) -> Result<(), LibraryError> {
+pub(crate) fn validate_focus(focus: &IntentionFocus) -> Result<(), LibraryError> {
     let refuse = |message: &str| LibraryError::Validation {
         field: "focus".to_string(),
         message: message.to_string(),
     };
-    if let Some(id) = &focus.section_id {
-        if !section_ids.contains(&id.as_str()) {
-            return Err(refuse("That section isn't part of this item"));
-        }
-    }
     match (focus_target_range(focus.kind), focus.target) {
         (Some((range, _)), Some(target)) if range.contains(&target) => Ok(()),
         (Some(_), _) if focus.kind == FocusKind::Tempo => {
@@ -433,10 +211,11 @@ pub(crate) fn focus_target_range(kind: FocusKind) -> Option<(RangeInclusive<u16>
     }
 }
 
-pub(crate) fn starting_target(kind: FocusKind, section_bpm: Option<u16>) -> Option<u16> {
+/// A tempo focus starts at the piece's own marked tempo.
+pub(crate) fn starting_target(kind: FocusKind, piece_bpm: Option<u16>) -> Option<u16> {
     let (range, _) = focus_target_range(kind)?;
     let start = match kind {
-        FocusKind::Tempo => section_bpm.unwrap_or(metre::CLICK_TEMPO_DEFAULT),
+        FocusKind::Tempo => piece_bpm.unwrap_or(metre::CLICK_TEMPO_DEFAULT),
         _ => *range.start(),
     };
     Some(start.clamp(*range.start(), *range.end()))
@@ -453,21 +232,11 @@ pub(crate) fn target_caption(focus: &IntentionFocus) -> Option<String> {
 
 // ── Reading a note ──
 
-/// The points a note offers, each with the section named before it in the
-/// note. `sections` are the item's live sections as (id, name).
-pub(crate) fn note_offers(note: &str, sections: &[(&str, &str)]) -> Vec<NotePoint> {
-    let names: Vec<&str> = sections.iter().map(|(_, name)| *name).collect();
-    let mut section_id: Option<String> = None;
+/// The points a note offers.
+pub(crate) fn note_offers(note: &str) -> Vec<NotePoint> {
     let mut offers = Vec::new();
-    for point in note_patterns::read_note(note, &names) {
+    for point in note_patterns::read_note(note) {
         let kind = match point.kind {
-            ReadKind::Section { name } => {
-                section_id = sections
-                    .iter()
-                    .find(|(_, n)| *n == name)
-                    .map(|(id, _)| id.to_string());
-                continue;
-            }
             ReadKind::Bars(bars) => NotePointKind::Bars(bars),
             ReadKind::Tempo { bpm } => NotePointKind::Tempo { bpm },
             ReadKind::Repetitions {
@@ -488,36 +257,33 @@ pub(crate) fn note_offers(note: &str, sections: &[(&str, &str)]) -> Vec<NotePoin
         };
         offers.push(NotePoint {
             kind,
-            section_id: section_id.clone(),
             span: NoteSpan { start, end },
         });
     }
     offers
 }
 
-/// "A1 at 84" as a focus: the first tempo, else the first clean count.
-pub(crate) fn suggest_focus(text: &str, sections: &[(&str, &str)]) -> Option<IntentionFocus> {
-    let offers = note_offers(text, sections);
+/// "At 84" as a focus: the first tempo, else the first clean count.
+pub(crate) fn suggest_focus(text: &str) -> Option<IntentionFocus> {
+    let offers = note_offers(text);
     let tempo = offers.iter().find_map(|p| match p.kind {
-        NotePointKind::Tempo { bpm } => Some((FocusKind::Tempo, bpm, p)),
+        NotePointKind::Tempo { bpm } => Some((FocusKind::Tempo, bpm)),
         _ => None,
     });
     let clean = || {
         offers.iter().find_map(|p| match p.kind {
             NotePointKind::Repetitions {
                 count, clean: true, ..
-            } => Some((FocusKind::CleanReps, count, p)),
+            } => Some((FocusKind::CleanReps, count)),
             _ => None,
         })
     };
-    let (kind, target, point) = tempo.or_else(clean)?;
+    let (kind, target) = tempo.or_else(clean)?;
     let focus = IntentionFocus {
         kind,
-        section_id: point.section_id.clone(),
         target: Some(target),
     };
-    let ids: Vec<&str> = sections.iter().map(|(id, _)| *id).collect();
-    validate_focus(&focus, &ids).ok().map(|()| focus)
+    validate_focus(&focus).ok().map(|()| focus)
 }
 
 pub(crate) fn note_point_label(kind: &NotePointKind) -> String {
@@ -536,17 +302,13 @@ pub(crate) fn note_point_label(kind: &NotePointKind) -> String {
     }
 }
 
-pub(crate) fn focus_label(focus: &IntentionFocus, section: Option<&str>) -> String {
+pub(crate) fn focus_label(focus: &IntentionFocus) -> String {
     let target = focus.target.unwrap_or_default();
-    match (focus.kind, section) {
-        (FocusKind::Tempo, Some(s)) => format!("{s} at {target}"),
-        (FocusKind::Tempo, None) => format!("At {target}"),
-        (FocusKind::CleanReps, Some(s)) => format!("{s}: {target} clean in a row"),
-        (FocusKind::CleanReps, None) => format!("{target} clean in a row"),
-        (FocusKind::FromMemory, Some(s)) => format!("{s} from memory"),
-        (FocusKind::FromMemory, None) => "From memory".to_string(),
-        (FocusKind::Evenness, Some(s)) => format!("Evenness in {s}"),
-        (FocusKind::Evenness, None) => "Evenness".to_string(),
+    match focus.kind {
+        FocusKind::Tempo => format!("At {target}"),
+        FocusKind::CleanReps => format!("{target} clean in a row"),
+        FocusKind::FromMemory => "From memory".to_string(),
+        FocusKind::Evenness => "Evenness".to_string(),
     }
 }
 

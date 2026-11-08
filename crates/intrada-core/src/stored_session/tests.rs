@@ -288,7 +288,6 @@ fn current_session() -> PracticeSession {
     };
     let play = Play {
         id: "p1".to_string(),
-        section_id: Some("sec-b".to_string()),
         key: Key::parse("F# minor"),
         variation_ids: vec!["v-dotted".to_string()],
         started_at: at(START),
@@ -318,10 +317,6 @@ fn current_session() -> PracticeSession {
             item_type: ItemKind::Exercise,
             variation_ids: vec!["v-dotted".to_string()],
             rep_target: Some(5),
-            segments: vec![Segment {
-                section_id: "sec-b".to_string(),
-                planned_secs: 240,
-            }],
             key: crate::domain::key::Key::parse("A flat major"),
             ..SetlistEntry::fixture().plan
         },
@@ -373,7 +368,7 @@ fn a_written_row_keeps_the_shape_the_swift_encoder_wrote() {
         &serde_json::json!({
             "id": "entry-2", "itemId": "item-1", "itemTitle": "Item", "itemType": "piece",
             "position": 1, "durationSecs": 0, "status": "skipped",
-            "plannedVariationIds": [], "plays": [], "segments": [], "gotInTheWay": [],
+            "plannedVariationIds": [], "plays": [], "gotInTheWay": [],
             "notePoints": []
         })
     );
@@ -458,31 +453,25 @@ fn every_stored_enum_text_reads_back() {
     }
 }
 
-/// The shape v0.16 wrote (#2246): one planned section, before segments.
+/// The shape v0.16 wrote (#2246), with a planned section and a play on it.
 const V016_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":900,"status":"completed","plannedDurationSecs":900,"plannedSectionIds":["sec-b"],"plannedVariationIds":["v-dotted"],"plays":[{"id":"e1-play","sectionId":"sec-b","variationIds":["v-dotted"],"startedAt":"2026-09-01T10:00:00Z","seconds":900,"tempoChanges":[]}]}]"#;
 
 #[test]
-fn a_v016_planned_section_reads_as_one_segment_of_the_planned_time() {
+fn section_keys_an_older_row_carries_are_read_as_nothing_and_never_written() {
     let read = session_from_stored(&row(V016_ENTRY)).expect("reads");
 
     let entry = &read.session.entries[0];
-    assert_eq!(
-        entry.plan.segments,
-        [Segment {
-            section_id: "sec-b".to_string(),
-            planned_secs: 900,
-        }]
-    );
+    assert_eq!(entry.plan.variation_ids, ["v-dotted"]);
+    assert_eq!(entry.plays[0].variation_ids, ["v-dotted"]);
     assert_eq!(read.unreadable, Vec::<String>::new());
     let rewritten = session_to_stored(&read.session).expect("writes");
-    assert!(
-        !rewritten.entries.contains("plannedSectionIds"),
-        "the old field is read, never written"
-    );
+    for key in ["plannedSectionIds", "sectionId", "segments"] {
+        assert!(!rewritten.entries.contains(key), "{key} is never written");
+    }
 }
 
 /// The flat row every build writes, with every plan field set.
-const FULL_PLAN_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v-dotted"],"plannedRepTarget":5,"plays":[],"segments":[{"sectionId":"sec-a","plannedSecs":420},{"sectionId":"sec-b","plannedSecs":180}],"focus":{"kind":"tempo","sectionId":"sec-a","target":84},"gotInTheWay":[],"notePoints":[],"plannedKey":{"key":"Ab","modality":"major"}}]"#;
+const FULL_PLAN_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v-dotted"],"plannedRepTarget":5,"plays":[],"focus":{"kind":"tempo","target":84},"gotInTheWay":[],"notePoints":[],"plannedKey":{"key":"Ab","modality":"major"}}]"#;
 
 fn full_plan() -> PlannedItem {
     PlannedItem {
@@ -491,23 +480,12 @@ fn full_plan() -> PlannedItem {
         intention: Some("even semiquavers".to_string()),
         focus: Some(IntentionFocus {
             kind: FocusKind::Tempo,
-            section_id: Some("sec-a".to_string()),
             target: Some(84),
         }),
         duration_secs: Some(600),
         group_id: Some("g1".to_string()),
         variation_ids: vec!["v-dotted".to_string()],
         rep_target: Some(5),
-        segments: vec![
-            Segment {
-                section_id: "sec-a".to_string(),
-                planned_secs: 420,
-            },
-            Segment {
-                section_id: "sec-b".to_string(),
-                planned_secs: 180,
-            },
-        ],
         key: Key::parse("A flat major"),
     }
 }
@@ -525,7 +503,6 @@ fn a_saved_row_reads_back_to_the_same_plan_field_by_field() {
     assert_eq!(plan.group_id, expected.group_id);
     assert_eq!(plan.variation_ids, expected.variation_ids);
     assert_eq!(plan.rep_target, expected.rep_target);
-    assert_eq!(plan.segments, expected.segments);
     assert_eq!(plan.key, expected.key);
     assert_eq!(plan, expected, "a new plan field is read too");
 }

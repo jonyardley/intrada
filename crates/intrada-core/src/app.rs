@@ -486,7 +486,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -664,7 +663,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
         };
@@ -707,7 +705,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -730,7 +727,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -753,7 +749,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -773,7 +768,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -852,7 +846,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -872,7 +865,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1013,7 +1005,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1033,7 +1024,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1070,7 +1060,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1090,7 +1079,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1126,7 +1114,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1170,7 +1157,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1209,7 +1195,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1369,7 +1354,6 @@ mod tests {
                     .map(|k| {
                         crate::domain::link::ExerciseLink::new(
                             format!("e{:05}", (i * 7 + k * 997) % pieces),
-                            None,
                             k,
                             now,
                         )
@@ -1379,7 +1363,6 @@ mod tests {
                 chord_chart: None,
                 variation_ids: all_variations.clone(),
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             });
@@ -1401,7 +1384,6 @@ mod tests {
                 chord_chart: None,
                 variation_ids: all_variations.clone(),
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             });
@@ -1615,7 +1597,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1635,7 +1616,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1666,7 +1646,6 @@ mod tests {
                         group_id: None,
                         variation_ids: vec![],
                         rep_target: None,
-                        segments: Vec::new(),
                         key: None,
                     },
                     item_title: "Sonata".to_string(),
@@ -1696,7 +1675,6 @@ mod tests {
                         group_id: None,
                         variation_ids: vec![],
                         rep_target: None,
-                        segments: Vec::new(),
                         key: None,
                     },
                     item_title: "Sonata".to_string(),
@@ -1761,7 +1739,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1790,7 +1767,6 @@ mod tests {
                     group_id: None,
                     variation_ids: vec![],
                     rep_target: None,
-                    segments: Vec::new(),
                     key: None,
                 },
                 item_title: "Sonata".to_string(),
@@ -1832,7 +1808,6 @@ mod tests {
                     group_id: None,
                     variation_ids: vec![],
                     rep_target: None,
-                    segments: Vec::new(),
                     key: None,
                 },
                 item_title: "Sonata".to_string(),
@@ -1896,7 +1871,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1925,7 +1899,6 @@ mod tests {
                     group_id: None,
                     variation_ids: vec![],
                     rep_target: None,
-                    segments: Vec::new(),
                     key: None,
                 },
                 item_title: "Sonata".to_string(),
@@ -1978,7 +1951,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -2008,7 +1980,6 @@ mod tests {
                         group_id: None,
                         variation_ids: vec![],
                         rep_target: None,
-                        segments: Vec::new(),
                         key: None,
                     },
                     item_title: "Sonata".to_string(),
@@ -2038,7 +2009,6 @@ mod tests {
                         group_id: None,
                         variation_ids: vec![],
                         rep_target: None,
-                        segments: Vec::new(),
                         key: None,
                     },
                     item_title: "Sonata".to_string(),
@@ -2097,7 +2067,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -2126,7 +2095,6 @@ mod tests {
                     group_id: None,
                     variation_ids: vec![],
                     rep_target: None,
-                    segments: Vec::new(),
                     key: None,
                 },
                 item_title: "Sonata".to_string(),
@@ -2206,7 +2174,6 @@ mod tests {
                     group_id: None,
                     variation_ids: vec![],
                     rep_target: None,
-                    segments: Vec::new(),
                     key: None,
                 },
                 item_title: "Sonata".to_string(),
@@ -2361,7 +2328,6 @@ mod tests {
                     group_id: None,
                     variation_ids: vec![],
                     rep_target: None,
-                    segments: Vec::new(),
                     key: None,
                 },
                 item_title: "Sonata".to_string(),
@@ -2491,7 +2457,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         }
@@ -2505,7 +2470,7 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
-        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], chrono::Utc::now());
+        piece.exercise_links = crate::domain::link::links_to(&["ex1"], chrono::Utc::now());
         model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
 
         let up_next = app.view(&model).up_next.expect("a suggestion");
@@ -2526,10 +2491,9 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
         let mut first = make_item("p1", "Arabesque", ItemKind::Piece, now);
-        first.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], chrono::Utc::now());
+        first.exercise_links = crate::domain::link::links_to(&["ex1"], chrono::Utc::now());
         let mut second = make_item("p2", "Berceuse", ItemKind::Piece, now);
-        second.exercise_links =
-            crate::domain::link::whole_piece_links(&["ex2"], chrono::Utc::now());
+        second.exercise_links = crate::domain::link::links_to(&["ex2"], chrono::Utc::now());
         model.items = vec![
             first,
             second,
@@ -2553,7 +2517,7 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
-        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], chrono::Utc::now());
+        piece.exercise_links = crate::domain::link::links_to(&["ex1"], chrono::Utc::now());
         model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
         // Filtering the library to exercises hides the anchor piece from the
         // list; the suggestion is derived pre-filter and must survive it.
@@ -2773,7 +2737,7 @@ mod tests {
         assert!(!shows(&Model::default()), "no plan");
 
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
-        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], now);
+        piece.exercise_links = crate::domain::link::links_to(&["ex1"], now);
         let mut model = Model {
             items: vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into(),
             ..Default::default()
@@ -2876,37 +2840,17 @@ mod tests {
         assert_eq!(marks(&model), vec![Some(9), Some(3), None]);
     }
 
-    // ── Section marks (#2250) ──
+    // ── The piece's own mark (#2250) ──
 
-    fn sectioned_piece(names: &[&str]) -> Item {
-        let mut piece = ctx_item("p1", "Nocturne", ItemKind::Piece, None);
-        piece.sections = names
-            .iter()
-            .enumerate()
-            .map(|(position, name)| crate::domain::section::ItemSection {
-                id: format!("sec-{position}"),
-                name: name.to_string(),
-                bars: None,
-                kind: crate::domain::section::SectionKind::Form,
-                target_bpm: None,
-                position,
-                updated_at: chrono::Utc::now(),
-                deleted_at: None,
-            })
-            .collect();
-        piece
-    }
-
-    /// One entry on the piece holding a scored play per `(section, variation,
-    /// score)`; `None` is the whole piece, plain.
-    fn sectioned_session(id: &str, plays: &[(Option<&str>, Option<&str>, u8)]) -> PracticeSession {
+    /// One entry on the piece holding a scored play per `(variation, score)`;
+    /// `None` is plain.
+    fn scored_session(id: &str, plays: &[(Option<&str>, u8)]) -> PracticeSession {
         let mut entry = ctx_entry("p1", "Nocturne", ItemKind::Piece, None, None);
         entry.plays = plays
             .iter()
             .enumerate()
-            .map(|(minute, &(section, variation, score))| Play {
+            .map(|(minute, &(variation, score))| Play {
                 started_at: chrono::Utc::now() + chrono::Duration::minutes(minute as i64),
-                section_id: section.map(String::from),
                 variation_ids: variation.map(String::from).into_iter().collect(),
                 seconds: 120,
                 score: Some(score),
@@ -2917,211 +2861,19 @@ mod tests {
     }
 
     #[test]
-    fn a_sections_target_tempo_is_worded_on_the_view() {
-        let app = Intrada;
-        let mut piece = sectioned_piece(&["A", "B"]);
-        piece.sections[1].target_bpm = Some(60);
-        let model = Model {
-            items: vec![piece].into(),
-            ..Default::default()
-        };
-        let vm = app.rendered(&model);
-        let words: Vec<_> = vm.items[0]
-            .sections
-            .iter()
-            .map(|s| (s.target_tempo.as_deref(), s.target_tempo_spoken.as_deref()))
-            .collect();
-        assert_eq!(
-            words,
-            [(None, None), (Some("♩ 60"), Some("60 beats per minute"))]
-        );
-    }
-
-    fn section_marks(view: &LibraryItemView) -> Vec<(Option<u8>, bool)> {
-        view.sections
-            .iter()
-            .map(|s| (s.latest_score, s.is_weakest))
-            .collect()
-    }
-
-    #[test]
-    fn a_piece_strong_in_sections_but_weak_right_through_shows_both() {
-        let app = Intrada;
-        let mut piece = sectioned_piece(&["A", "B"]);
-        let library = give_variations(&mut piece, &["Hands separately"]);
-        let mut model = Model {
-            items: vec![piece].into(),
-            variations: library.into(),
-            sessions: vec![sectioned_session(
-                "s1",
-                &[
-                    (Some("sec-0"), None, 9),
-                    (Some("sec-1"), None, 8),
-                    (None, None, 3),
-                    (None, Some("v0"), 10),
-                    (Some("sec-0"), Some("v0"), 2),
-                ],
-            )]
-            .into(),
-            ..Default::default()
-        };
-        model.practice_summaries = build_practice_summaries(&model.sessions).into();
-        let vm = app.rendered(&model);
-        let view = &vm.items[0];
-        assert_eq!(
-            view.practice.as_ref().and_then(|p| p.latest_score),
-            Some(3),
-            "the piece's own mark is the plain run-through alone"
-        );
-        assert_eq!(section_marks(view), [(Some(9), false), (Some(8), true)]);
-        assert_eq!(view.sections[0].caption, "9 of 10");
-        assert_eq!(
-            view.variations[0].score_history.len(),
-            2,
-            "both hands separately plays feed the variation"
-        );
-    }
-
-    #[test]
     fn a_hands_separately_run_through_leaves_the_pieces_mark_alone() {
         let app = Intrada;
-        let mut piece = sectioned_piece(&["A"]);
+        let mut piece = ctx_item("p1", "Nocturne", ItemKind::Piece, None);
         let library = give_variations(&mut piece, &["Hands separately"]);
         let mut model = Model {
             items: vec![piece].into(),
             variations: library.into(),
-            sessions: vec![sectioned_session("s1", &[(None, Some("v0"), 10)])].into(),
+            sessions: vec![scored_session("s1", &[(Some("v0"), 10)])].into(),
             ..Default::default()
         };
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
         let vm = app.rendered(&model);
         assert_eq!(vm.items[0].practice.as_ref().unwrap().latest_score, None);
-        assert_eq!(vm.items[0].sections[0].latest_score, None);
-        assert_eq!(vm.items[0].sections[0].caption, "Not yet played");
-    }
-
-    #[test]
-    fn a_section_replayed_in_one_session_reads_its_later_mark() {
-        let app = Intrada;
-        let model = Model {
-            items: vec![sectioned_piece(&["A", "B"])].into(),
-            sessions: vec![sectioned_session(
-                "s1",
-                &[
-                    (Some("sec-0"), None, 3),
-                    (Some("sec-1"), None, 5),
-                    (Some("sec-0"), None, 7),
-                ],
-            )]
-            .into(),
-            ..Default::default()
-        };
-        assert_eq!(
-            section_marks(&app.rendered(&model).items[0]),
-            [(Some(7), false), (Some(5), true)]
-        );
-    }
-
-    #[test]
-    fn a_variation_on_a_section_leaves_the_sections_mark_alone() {
-        let app = Intrada;
-        let mut piece = sectioned_piece(&["A"]);
-        let library = give_variations(&mut piece, &["Hands separately"]);
-        let model = Model {
-            items: vec![piece].into(),
-            variations: library.into(),
-            sessions: vec![sectioned_session(
-                "s1",
-                &[(Some("sec-0"), None, 9), (Some("sec-0"), Some("v0"), 2)],
-            )]
-            .into(),
-            ..Default::default()
-        };
-        let view = &app.rendered(&model).items[0];
-        assert_eq!(view.sections[0].latest_score, Some(9));
-        assert_eq!(view.variations[0].latest_score, Some(2));
-    }
-
-    #[test]
-    fn the_weakest_section_needs_two_differing_marks() {
-        let app = Intrada;
-        let rendered = |plays: &[(Option<&str>, Option<&str>, u8)]| {
-            let model = Model {
-                items: vec![sectioned_piece(&["A", "B", "C"])].into(),
-                sessions: vec![sectioned_session("s1", plays)].into(),
-                ..Default::default()
-            };
-            section_marks(&app.rendered(&model).items[0])
-        };
-        assert_eq!(
-            rendered(&[(Some("sec-1"), None, 4)]),
-            [(None, false), (Some(4), false), (None, false)],
-            "one marked section is not the weakest of anything"
-        );
-        assert_eq!(
-            rendered(&[(Some("sec-0"), None, 6), (Some("sec-2"), None, 6)]),
-            [(Some(6), false), (None, false), (Some(6), false)],
-            "all tied, none is weakest"
-        );
-        assert_eq!(
-            rendered(&[
-                (Some("sec-0"), None, 7),
-                (Some("sec-1"), None, 4),
-                (Some("sec-2"), None, 4),
-            ]),
-            [(Some(7), false), (Some(4), true), (Some(4), false)],
-            "a tie at the bottom goes to the earlier section"
-        );
-    }
-
-    #[test]
-    fn up_next_names_the_section_the_piece_screen_marks_weakest() {
-        let app = Intrada;
-        let now = chrono::Utc::now();
-        let mut piece = sectioned_piece(&["A", "B"]);
-        piece.exercise_links = vec![crate::domain::link::ExerciseLink {
-            id: "l1".to_string(),
-            exercise_id: "ex1".to_string(),
-            section_id: None,
-            position: 0,
-            updated_at: now,
-            deleted_at: None,
-        }];
-        let model = Model {
-            items: vec![piece, ctx_item("ex1", "Scales", ItemKind::Exercise, None)].into(),
-            sessions: vec![sectioned_session(
-                "s1",
-                &[(Some("sec-0"), None, 8), (Some("sec-1"), None, 5)],
-            )]
-            .into(),
-            ..Default::default()
-        };
-        let vm = app.rendered(&model);
-        let weakest = vm
-            .items
-            .iter()
-            .find(|i| i.id == "p1")
-            .unwrap()
-            .sections
-            .iter()
-            .min_by_key(|s| s.latest_score)
-            .unwrap();
-        assert!(weakest.is_weakest);
-        let plan = crate::view::library::derive_up_next(&model, now).expect("a plan");
-        let piece_row = plan.blocks[0]
-            .items
-            .iter()
-            .find(|i| i.item_id == "p1")
-            .unwrap();
-        assert_eq!(
-            piece_row.weakest_section.as_deref(),
-            Some(format!("Weakest section · {}", weakest.label).as_str())
-        );
-        assert!(plan.blocks[0]
-            .items
-            .iter()
-            .filter(|i| i.item_id != "p1")
-            .all(|i| i.weakest_section.is_none()));
     }
 
     /// A deleted variation leaves every item's list but keeps its row, so the
@@ -4087,7 +3839,6 @@ mod tests {
                 chord_chart: None,
                 variation_ids: vec![],
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]
@@ -4203,7 +3954,6 @@ mod tests {
                 chord_chart: None,
                 variation_ids: vec![],
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]
@@ -4253,12 +4003,11 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            exercise_links: crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now()),
+            exercise_links: crate::domain::link::links_to(&["ex-1"], chrono::Utc::now()),
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -4278,7 +4027,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -4324,7 +4072,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    exercise_links: crate::domain::link::whole_piece_links(
+                    exercise_links: crate::domain::link::links_to(
                         &["ex-1", "ex-missing", "ex-2"],
                         chrono::Utc::now(),
                     ),
@@ -4332,7 +4080,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -4355,7 +4102,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -4375,7 +4121,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -4395,7 +4140,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -4470,8 +4214,7 @@ mod tests {
     fn used_in_includes_a_linked_piece_with_no_practice() {
         let app = Intrada;
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
-        piece.exercise_links =
-            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
+        piece.exercise_links = crate::domain::link::links_to(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
@@ -4534,8 +4277,7 @@ mod tests {
         let app = Intrada;
         let now = chrono::Utc::now();
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
-        piece.exercise_links =
-            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
+        piece.exercise_links = crate::domain::link::links_to(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
@@ -4569,10 +4311,9 @@ mod tests {
         // Ids deliberately run counter to the titles, so an id-only tie-break
         // would order these the other way round.
         let mut zeta = ctx_item("p-1", "Zeta", ItemKind::Piece, None);
-        zeta.exercise_links = crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
+        zeta.exercise_links = crate::domain::link::links_to(&["ex-1"], chrono::Utc::now());
         let mut alpha = ctx_item("p-2", "Alpha", ItemKind::Piece, None);
-        alpha.exercise_links =
-            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
+        alpha.exercise_links = crate::domain::link::links_to(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4644,7 +4385,7 @@ mod tests {
     fn used_in_derivation_seeds_nothing_for_a_link_to_a_missing_or_wrong_kind_item() {
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
         piece.exercise_links =
-            crate::domain::link::whole_piece_links(&["gone", "other-piece"], chrono::Utc::now());
+            crate::domain::link::links_to(&["gone", "other-piece"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4672,8 +4413,7 @@ mod tests {
         let recent = chrono::Utc::now() - chrono::Duration::days(1);
 
         let mut linked_only = ctx_item("p-live", "Live linked", ItemKind::Piece, None);
-        linked_only.exercise_links =
-            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
+        linked_only.exercise_links = crate::domain::link::links_to(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4714,8 +4454,7 @@ mod tests {
     fn used_in_offers_the_link_only_for_a_live_practised_unlinked_piece() {
         let now = chrono::Utc::now();
         let mut linked = ctx_item("p-linked", "Linked", ItemKind::Piece, None);
-        linked.exercise_links =
-            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
+        linked.exercise_links = crate::domain::link::links_to(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4786,7 +4525,6 @@ mod tests {
                 group_id: group.map(String::from),
                 variation_ids: vec![],
                 rep_target: None,
-                segments: Vec::new(),
                 key: None,
             },
             item_title: title.to_string(),
@@ -4843,7 +4581,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         }
@@ -4874,7 +4611,6 @@ mod tests {
                     current_item_started_at: chrono::Utc::now(),
                     session_started_at: chrono::Utc::now(),
                     reflection: None,
-                    segment: None,
                 },
             )),
             active_query: Some(ListQuery {
@@ -5210,8 +4946,7 @@ mod tests {
         let earlier = chrono::Utc::now() - chrono::Duration::days(1);
         let later = chrono::Utc::now();
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, None);
-        piece.exercise_links =
-            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
+        piece.exercise_links = crate::domain::link::links_to(&["ex-1"], chrono::Utc::now());
         let model = Model {
             items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
             sessions: vec![
@@ -5315,15 +5050,11 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    exercise_links: crate::domain::link::whole_piece_links(
-                        &["item-b"],
-                        chrono::Utc::now(),
-                    ),
+                    exercise_links: crate::domain::link::links_to(&["item-b"], chrono::Utc::now()),
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -5343,7 +5074,6 @@ mod tests {
                     chord_chart: None,
                     variation_ids: vec![],
                     keys: vec![],
-                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -5420,7 +5150,6 @@ mod tests {
                     group_id: None,
                     variation_ids: vec![],
                     rep_target: None,
-                    segments: Vec::new(),
                     key: None,
                 },
                 item_title: "Shells".to_string(),
