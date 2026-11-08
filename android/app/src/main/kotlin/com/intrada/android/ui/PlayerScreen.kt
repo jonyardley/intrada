@@ -375,3 +375,5 @@ private fun OptionRow(title: String, tag: String, danger: Boolean = false, onCli
         )
     }
 }
+
+class PlayChipActions(val onPickVariation: () -> Unit, val onLastTime: () -> Unit)
