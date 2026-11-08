@@ -41,7 +41,7 @@ on.
   simplify the app while the basics are worked on. Both apps, the core and the
   database lose them, with their saved data, in one store step. A way back is
   parked in #2768.
-- **Loose ends**: tempo in compound time shown by the piece's beat (#1510, in
+- **Loose ends**: tempo in compound time shown by the piece's beat (#1510,
   merged), and the shipped migrations test once a tester build carries the
   coach tables removal (#2600).
 - **Done**: main green (#2597), the review (#2577,
