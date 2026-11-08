@@ -97,10 +97,6 @@ struct NoteOffers: View {
         Image(systemName: kept ? "checkmark" : "plus")
           .iconSize(.caption, weight: .semibold)
         Text(offer.label).font(IntradaFont.bodyMedium)
-        if let section = offer.sectionLabel {
-          Text(section).font(IntradaFont.small)
-            .foregroundStyle(kept ? IntradaColor.ink : IntradaColor.inkSecondary)
-        }
       }
       .foregroundStyle(IntradaColor.ink)
       .padding(.horizontal, IntradaSpacing.cardCompact)
@@ -112,9 +108,7 @@ struct NoteOffers: View {
           style: StrokeStyle(lineWidth: 1, dash: kept ? [] : [4, 3])))
     }
     .buttonStyle(.plain)
-    .accessibilityLabel(
-      [offer.label, offer.sectionLabel].compactMap { $0 }.joined(separator: ", ")
-    )
+    .accessibilityLabel(offer.label)
     .accessibilityValue(kept ? "kept" : "not kept")
     .accessibilityAddTraits(kept ? [.isSelected] : [])
     .accessibilityIdentifier("reflection.noteOffer")

@@ -19,7 +19,6 @@ struct SheetBoundsTests {
     clickTempoBands: [TempoBand(unit: 4, min: 40, max: 208)],
     clickMetrePresets: LimitsView.preview.clickMetrePresets,
     clickBars: LimitsView.preview.clickBars,
-    sectionNameMax: LimitsView.preview.sectionNameMax, barMax: LimitsView.preview.barMax,
     // Unlike the seconds on purpose: the sheet reads the core's minutes (#2467).
     plannedDurationMinMins: 3, plannedDurationMaxMins: 9, plannedDurationDefaultMins: 7)
 

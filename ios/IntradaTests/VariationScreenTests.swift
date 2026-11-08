@@ -12,7 +12,7 @@ struct VariationScreenTests {
     repCount: UInt8? = nil, repTarget: UInt8? = nil, isMarkable: Bool = true
   ) -> PlayView {
     PlayView(
-      id: id, sectionId: nil, key: nil, variationIds: label.map { ["v-\($0)"] } ?? [],
+      id: id, key: nil, variationIds: label.map { ["v-\($0)"] } ?? [],
       label: label, seconds: seconds,
       durationDisplay: "4m 10s", metaParts: [], repTarget: repTarget, repCount: repCount,
       repTargetReached: nil, repHistory: nil, achievedTempo: tempo, clickPattern: nil,

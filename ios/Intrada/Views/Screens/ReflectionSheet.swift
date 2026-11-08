@@ -397,9 +397,7 @@ struct ReflectionSheet: View {
   }
 
   private var wayChoices: PlayWayChoices {
-    PlayWayChoices(
-      sections: finish?.sections ?? [], keys: finish?.keys ?? [], variations: variations,
-      planned: plannedLabel)
+    PlayWayChoices(keys: finish?.keys ?? [], variations: variations, planned: plannedLabel)
   }
 
   private func finishRow(_ play: ReflectionPlay) -> FinishRowView? {

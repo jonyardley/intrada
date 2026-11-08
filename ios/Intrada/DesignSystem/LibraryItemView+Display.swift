@@ -105,7 +105,6 @@ extension ExerciseUsageView {
   func spokenRow(topMark: Int) -> String {
     var parts = [rowTitle]
     if pieceRemoved { parts.append("removed from the library") }
-    if let linkCaption { parts.append(linkCaption) }
     guard sessionCount > 0 else {
       parts.append("not practised together yet")
       return parts.joined(separator: ", ")
