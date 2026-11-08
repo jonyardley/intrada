@@ -682,43 +682,6 @@ mod tests {
         );
     }
 
-    /// The card and a linked row read a 6/8 item's declared tempo in quavers (#1510).
-    #[test]
-    fn a_quaver_metre_items_tempo_line_reads_in_quavers() {
-        let six_eight = Some(crate::domain::metre::Metre {
-            beats: 6,
-            unit: 8,
-            groups: None,
-        });
-        let tempo = Some(crate::domain::types::Tempo {
-            marking: None,
-            bpm: Some(176),
-        });
-        let exercise = Item {
-            kind: ItemKind::Exercise,
-            tempo: tempo.clone(),
-            metre: six_eight.clone(),
-            ..Item::fixture("ex-1")
-        };
-        let piece = Item {
-            tempo,
-            metre: six_eight,
-            exercise_links: crate::domain::link::whole_piece_links(&["ex-1"], exercise.created_at),
-            ..Item::fixture("p1")
-        };
-        let model = Model {
-            items: vec![piece, exercise].into(),
-            ..Default::default()
-        };
-        let vm = Intrada.rendered(&model);
-        let piece_view = vm.items.iter().find(|i| i.id == "p1").expect("the piece");
-        assert_eq!(piece_view.tempo_line.as_deref(), Some("♪ = 176"));
-        assert_eq!(
-            piece_view.linked_exercises[0].tempo_line.as_deref(),
-            Some("♪ = 176")
-        );
-    }
-
     #[test]
     fn test_view_with_items() {
         let app = Intrada;

@@ -892,6 +892,43 @@ pub fn sort_and_filter_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::item::Item;
+    use crate::model::Model;
+
+    #[test]
+    fn each_rows_tempo_line_reads_in_its_own_items_metre() {
+        let six_eight = Some(crate::domain::metre::Metre {
+            beats: 6,
+            unit: 8,
+            groups: None,
+        });
+        let tempo = Some(crate::domain::types::Tempo {
+            marking: None,
+            bpm: Some(176),
+        });
+        let exercise = Item {
+            kind: ItemKind::Exercise,
+            tempo: tempo.clone(),
+            metre: six_eight.clone(),
+            ..Item::fixture("ex-1")
+        };
+        let piece = Item {
+            tempo,
+            exercise_links: crate::domain::link::whole_piece_links(&["ex-1"], exercise.created_at),
+            ..Item::fixture("p1")
+        };
+        let model = Model {
+            items: vec![piece, exercise].into(),
+            ..Default::default()
+        };
+        let vm = crate::view::rendered(&model);
+        let piece_view = vm.items.iter().find(|i| i.id == "p1").expect("the piece");
+        assert_eq!(piece_view.tempo_line.as_deref(), Some("♩ = 176"));
+        assert_eq!(
+            piece_view.linked_exercises[0].tempo_line.as_deref(),
+            Some("♪ = 176")
+        );
+    }
 
     // ── Count line (#2454) ──
 
