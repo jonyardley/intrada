@@ -42,6 +42,8 @@ import com.intrada.shared.ActiveSessionView
 
 // ── The variation being played and the last-time offer (#2249) ──
 
+class PlayChipActions(val onPickVariation: () -> Unit, val onLastTime: () -> Unit)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PlayChips(active: ActiveSessionView, actions: PlayChipActions) {

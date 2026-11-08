@@ -100,7 +100,7 @@ chosen for practice; a play's `None` is the written key. Church modes are #830.
 
 ## Sections
 
-Sections and trouble spots were removed in v0.19.0 with their saved data
+Sections and trouble spots are removed from v0.19.0 with their saved data
 (#2767); a way back is parked in #2768. A piece is one whole thing.
 
 ## Exercise links (#2248)
@@ -113,7 +113,7 @@ the piece and links the exercise to the whole piece.
 - **The host is a piece.** Unlinking tombstones.
 
 The piece's card changes one exercise at a time with `ChangePieceLink` and
-`LinkChange::Set`, `Move` or `Unlink` (#2447); the pickers send
+`LinkChange::Move` or `Unlink` (#2447); the pickers send
 `ChoosePieceExercises` and `ChooseExercisePieces` (#2379), and
 `SetExerciseLinks` writes an exercise's whole set in one batch. An identical
 set writes nothing.

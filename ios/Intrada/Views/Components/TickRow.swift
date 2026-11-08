@@ -38,7 +38,6 @@ struct TickRow: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    // Sections may share a name (#2245), so the caption is spoken too.
     .accessibilityLabel(caption.map { "\(label), \($0)" } ?? label)
     .accessibilityAddTraits(chosen ? .isSelected : [])
     .accessibilityIdentifier(identifier)

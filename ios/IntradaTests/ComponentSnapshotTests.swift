@@ -101,7 +101,7 @@ final class ComponentSnapshotTests: SnapshotTestCase {
 
   private var bottomSheet: some View {
     BottomSheet(
-      title: "Keys", confirmationLabel: "Save",
+      title: "Keys",
       leadingAction: { Button("Cancel") {} },
       content: {
         Text("C major, G major, D major")
@@ -176,7 +176,7 @@ final class ComponentSnapshotTests: SnapshotTestCase {
         SectionHeader(title: "Recently practised")
         SectionHeader(title: "Used in", caption: "3 pieces")
         SectionHeader(title: "Last five weeks", trailing: "best week · 95m")
-        SectionHeader(title: "Sections", action: .init(title: "Reorder", perform: {}))
+        SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))
       }
       .padding(IntradaSpacing.card)
     }

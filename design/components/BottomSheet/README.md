@@ -62,8 +62,7 @@ A short task that rises over the current screen, with its title, a way out and o
 
 ```swift
 BottomSheet(
-  title: "Keys", confirmationLabel: "Save", dismissesOnDone: false,
-  onDone: add,
+  title: "Keys", detents: [.large], dismissesOnDone: false, onDone: save,
   leadingAction: { Button("Cancel") { dismiss() } }
 ) {
   content

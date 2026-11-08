@@ -16,7 +16,7 @@ The 1 point line between rows in a card, and between columns.
 
 ## When to use
 
-- Between the rows of one card: fields on a form, sessions in a list, keys on a piece.
+- Between the rows of one card: fields on a form, sessions in a list, variations on a piece.
 - Between controls or columns side by side, such as the beat dots and the settings glyph on the metronome bar, or the columns of the iPad split.
 
 ## When not to use

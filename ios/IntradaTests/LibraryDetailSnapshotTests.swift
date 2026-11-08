@@ -100,6 +100,30 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(editing, store: store), as: config)
   }
 
+  // #2248: the card framed on its own, since the screen snapshots above cut off
+  // before it.
+  func testRelatedExercisesCard() {
+    assertSnapshot(of: relatedExercisesCard(editing: false), as: config)
+  }
+
+  func testRelatedExercisesCardEditing() {
+    assertSnapshot(of: relatedExercisesCard(editing: true), as: config)
+  }
+
+  private func relatedExercisesCard(editing: Bool) -> UIViewController {
+    let item = LibraryItemView.previewDetailWithLinkedExercises
+    let card = NavigationStack {
+      ZStack {
+        PaperBackground()
+        RelatedExercisesCard(
+          item: item, editing: .constant(editing), onAdd: {}, onShowSuggestions: {}
+        )
+        .padding(16)
+      }
+    }
+    return host(card, store: Store(bridge: PreviewBridge(items: [item])))
+  }
+
   // #1363: linked to pieces it has never been practised with: every row shows
   // the ring's unrated rest, so a fresh link never reads as a bad score.
   func testExerciseDetailUsedInLinkedOnly() {

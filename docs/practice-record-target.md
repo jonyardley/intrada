@@ -1,6 +1,6 @@
 # Practice record: target state
 
-> Sections and trouble spots were removed in v0.19.0 with their saved data
+> Sections and trouble spots are removed from v0.19.0 with their saved data
 > (#2767). What this page says about sections, segments and spots no longer
 > applies; #2768 holds the way back.
 
