@@ -56,7 +56,7 @@ struct SharedItemStoreTests {
       id: "p1", title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, tempo: nil,
       notes: nil, tags: ["recital"], createdAt: "2026-09-01T10:00:00Z",
       updatedAt: "2026-09-01T10:00:00Z", priority: false, chordChart: nil, photoId: nil,
-      metre: nil, sections: [], variationIds: [], keys: [], exerciseLinks: [])
+      metre: nil, variationIds: [], keys: [], exerciseLinks: [])
     do {
       #expect(try SharedItemStore.at(path: path).handle(.saveItem(item)) == .ack)
     }

@@ -60,28 +60,12 @@ struct Rendered {
 }
 
 extension RowsBridge {
-  /// Each edit saved as a new section after the last, one change at a time (#2447).
-  func addSections(_ edits: [SectionEdit], to item: String) throws {
-    for edit in edits {
-      _ = try update(.item(.changeSection(id: item, change: .save(edit))))
-    }
-  }
-
-  func addSections(named names: [String], to item: String) throws {
-    try addSections(
-      names.map { SectionEdit(id: nil, name: $0, bars: .blank, kind: .form, targetBpm: "") },
-      to: item)
-  }
-
-  /// A whole-piece link, keeping the sections the exercise already has (#2248).
+  /// Adds one exercise after the piece's last, keeping the rest as they are.
   func link(exercise: String, to piece: String) throws {
-    let card = items.first { $0.id == piece }?.linkedExercises
-    let sections = card?.first { $0.id == exercise }?.sections.map(\.id) ?? []
+    let linked = items.first { $0.id == piece }?.linkedExercises.map(\.id) ?? []
     _ = try update(
       .item(
-        .changePieceLink(
-          pieceId: piece,
-          change: .set(exerciseId: exercise, wholePiece: true, sectionIds: sections))))
+        .choosePieceExercises(pieceId: piece, exerciseIds: linked + [exercise], written: [])))
   }
 
   func unlink(exercise: String, from piece: String) throws {
