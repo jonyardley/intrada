@@ -107,8 +107,9 @@ jobs:
           # setup-gradle's gradle- entries change key with their content, and a
           # stale one expires after seven days unused.
           # Left alone: the tool caches (cargo-swift-, xcodegen-, gitleaks-,
-          # setup-ruby-) are a few MB each. Nothing writes buildkit- entries any
-          # more, since the API image build no longer exports a layer cache.
+          # setup-ruby-, tools-, actionlint-) are a few MB each. Nothing
+          # writes buildkit- entries any more, since the API image build no
+          # longer exports a layer cache.
 
           fresh="$work/after.tsv"
           gh api --paginate "$api?per_page=100" \

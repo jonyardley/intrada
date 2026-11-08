@@ -212,13 +212,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native"
+          # Tools come from the install-tools cache instead (#2778).
+          cache-bin: false
           cache-on-failure: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
       # nextest runs the same assertions as `cargo test` but with a smarter
       # scheduler: typically 40 to 50% faster.
-      - uses: taiki-e/install-action@v2.88.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: cargo-llvm-cov,cargo-nextest
+          tools: cargo-llvm-cov@0.9.1,cargo-nextest@0.9.150
       # One instrumented run emits both the junit XML dorny/test-reporter
       # reads and the Codecov upload, so the workspace builds once per run
       # instead of twice (#1517: measured 1.64x instrumented-vs-plain
@@ -289,10 +291,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "clippy"
+          # Tools come from the install-tools cache instead (#2778).
+          cache-bin: false
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: taiki-e/install-action@v2.88.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: clippy-sarif,sarif-fmt
+          tools: clippy-sarif@0.8.0,sarif-fmt@0.8.0
       # Run clippy with JSON output piped through clippy-sarif for GitHub
       # code scanning annotations, then check the exit code to fail the job.
       # --all-targets so test/bench code is linted too, not just lib/bin — a
@@ -546,6 +550,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native-ios-hosted"
+          # Tools come from the install-tools cache instead (#2778).
+          cache-bin: false
           cache-on-failure: true
       # dtolnay/rust-toolchain skips adding ~/.cargo/bin to PATH on the macOS
       # image; without this `cargo` resolves to Apple's stub.
@@ -553,9 +559,9 @@ jobs:
         run: |
           echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
           echo "RUSTUP_TOOLCHAIN=${{ env.RUST_VERSION }}" >> "$GITHUB_ENV"
-      - uses: taiki-e/install-action@v2.88.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: just
+          tools: just@1.59.0
       - name: Cache cargo-swift
         id: cargo-swift-cache
         uses: actions/cache@v6
@@ -661,12 +667,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "android"
+          # Tools come from the install-tools cache instead (#2778).
+          cache-bin: false
           shared-key: android
           cache-on-failure: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: taiki-e/install-action@v2.88.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: just,cargo-ndk@4.1.2
+          tools: just@1.59.0,cargo-ndk@4.1.2
       # 21, not 17: Robolectric's API 36 sandbox needs it for the snapshot test.
       - uses: actions/setup-java@v6
         with:
@@ -739,12 +747,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "android"
+          # Tools come from the install-tools cache instead (#2778).
+          cache-bin: false
           shared-key: android
           cache-on-failure: true
           save-if: false
-      - uses: taiki-e/install-action@v2.88.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: just,cargo-ndk@4.1.2
+          tools: just@1.59.0,cargo-ndk@4.1.2
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -873,27 +883,43 @@ jobs:
     # too, deliberately unnamed.
     name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear)
     runs-on: ubuntu-latest
+    env:
+      # In lockstep with mise.toml; the actionlint cache key reads it too.
+      ACTIONLINT_VERSION: "1.7.12"
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # Pinned: typos dictionary updates can start flagging previously-clean
       # words, failing unrelated PRs. Bump deliberately, with mise.toml.
-      - uses: taiki-e/install-action@v2.88.1
+      - uses: ./.github/actions/install-tools
         with:
-          tool: typos@1.48,cargo-shear@1.13,cargo-deny@0.20.2
+          tools: typos@1.48,cargo-shear@1.13,cargo-deny@0.20.2
       # actionlint is a Go binary, not a crate: install-action carries no entry
       # for it and its cargo-binstall fallback reports "actionlint is not
       # found". Fetch the pinned release directly; keep the version in lockstep
-      # with mise.toml.
+      # with mise.toml through the job's env. Cached like install-tools, so a
+      # release download outage only bites when the version changes (#2778).
+      - name: Restore actionlint
+        id: actionlint-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.local/bin/actionlint
+          key: actionlint-${{ env.ACTIONLINT_VERSION }}-${{ runner.os }}-${{ runner.arch }}
       - name: Install actionlint
-        env:
-          ACTIONLINT_VERSION: "1.7.12"
+        if: steps.actionlint-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p "$HOME/.local/bin"
           curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
             | tar -xz -C "$HOME/.local/bin" actionlint
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Save actionlint
+        if: steps.actionlint-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.local/bin/actionlint
+          key: ${{ steps.actionlint-cache.outputs.cache-primary-key }}
+      - name: Put actionlint on PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       # ── typos ──────────────────────────────────────────────────────────
       # Source-tree spell check (docs-heavy repo; also catches identifier
       # typos clippy/swift-format never will). Project words: _typos.toml.
