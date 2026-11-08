@@ -3082,8 +3082,6 @@ fn a_repeated_row_links_once() {
     assert_eq!(item(&model, "piece-2").exercise_links.len(), 1);
 }
 
-// ── Section and link wording both shells read (#2456) ──
-
 // ── The link pickers send only what was ticked (#2379) ──
 
 fn choose_piece_exercises(

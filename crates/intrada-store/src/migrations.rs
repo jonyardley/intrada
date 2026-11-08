@@ -309,9 +309,8 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
              ALTER TABLE session DROP COLUMN reflection_next_target;",
         ),
     ),
-    // Sections and trouble spots were removed (decided 2026-11-08): a link to
-    // a live section becomes the piece's, one per exercise, and every other
-    // trace goes.
+    // Sections and trouble spots were removed (#2767): a link to a live section
+    // becomes the piece's, one per exercise, and every other trace goes.
     ("v22_remove_sections", Step::Code(remove_sections)),
 ];
 
@@ -394,7 +393,12 @@ fn remove_sections(tx: &Transaction, unreadable: &mut Unreadable) -> rusqlite::R
          UPDATE exercise_link
          SET deleted_at = (SELECT at FROM now_text), updated_at = (SELECT at FROM now_text)
          WHERE deleted_at IS NULL AND section_id IS NOT NULL
-           AND section_id NOT IN (SELECT id FROM section WHERE deleted_at IS NULL);
+           AND NOT EXISTS (
+             SELECT 1 FROM section
+             WHERE section.id = exercise_link.section_id
+               AND section.item_id = exercise_link.piece_id
+               AND section.deleted_at IS NULL
+           );
          CREATE TEMP TABLE ranked AS
            SELECT id,
              ROW_NUMBER() OVER (
@@ -410,6 +414,17 @@ fn remove_sections(tx: &Transaction, unreadable: &mut Unreadable) -> rusqlite::R
          SET deleted_at = (SELECT at FROM now_text), updated_at = (SELECT at FROM now_text)
          WHERE id IN (SELECT id FROM ranked WHERE place > 1);
          DROP TABLE ranked;
+         CREATE TEMP TABLE renumbered AS
+           SELECT id,
+             ROW_NUMBER() OVER (PARTITION BY piece_id ORDER BY position, id) - 1 AS place
+           FROM exercise_link WHERE deleted_at IS NULL;
+         UPDATE exercise_link
+         SET position = (SELECT place FROM renumbered WHERE renumbered.id = exercise_link.id)
+         WHERE id IN (
+           SELECT renumbered.id FROM renumbered JOIN exercise_link AS l ON l.id = renumbered.id
+           WHERE l.position <> renumbered.place
+         );
+         DROP TABLE renumbered;
          DROP TABLE now_text;
          ALTER TABLE exercise_link DROP COLUMN section_id;
          DROP TABLE section;",

@@ -1,6 +1,6 @@
-//! What v0.17 adds to the record (#50): the intention's focus, time away and the finish answers. Facts and the
-//! musician's own answers only; anything the app works out is read here, when
-//! asked, and never stored.
+//! What v0.17 adds to the record (#50): the intention's focus, time away and
+//! the finish answers. Facts and the musician's own answers only; anything the
+//! app works out is read here, when asked, and never stored.
 
 use super::{Play, SetlistEntry};
 use crate::domain::bars::BarRange;

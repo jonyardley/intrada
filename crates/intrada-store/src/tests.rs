@@ -575,7 +575,10 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
         )
     })
     .collect();
-    let mut store = upgraded("v19_keys_and_variations", &seed);
+    let mut conn = Connection::open_in_memory().expect("opens");
+    migrations::migrate(&mut conn, "v19_keys_and_variations", &mut vec![]).expect("migrates");
+    conn.execute_batch(&seed).expect("seeds");
+    let mut store = Store::new(conn, "v20_exercise_link").expect("finishes");
     let link = |piece: &str, exercise: &str, position: usize| ExerciseLink {
         id: format!("link|{piece}|{exercise}"),
         exercise_id: exercise.into(),
@@ -733,10 +736,13 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
            ('p2', 'Nocturne', 'piece', '[]', '{EARLY}', '{EARLY}'),
            ('e1', 'Scales', 'exercise', '[]', '{EARLY}', '{EARLY}'),
            ('e2', 'Arpeggios', 'exercise', '[]', '{EARLY}', '{EARLY}'),
-           ('e3', 'Octaves', 'exercise', '[]', '{EARLY}', '{EARLY}');
+           ('e3', 'Octaves', 'exercise', '[]', '{EARLY}', '{EARLY}'),
+           ('e4', 'Trills', 'exercise', '[]', '{EARLY}', '{EARLY}'),
+           ('e5', 'Leaps', 'exercise', '[]', '{EARLY}', '{EARLY}');
          INSERT INTO section (id, item_id, name, kind, position, updated_at, deleted_at) VALUES
            ('a1', 'p1', 'A1', 'form', 0, '{EARLY}', NULL),
-           ('b', 'p1', '', 'trouble_spot', 1, '{EARLY}', '{EARLY}');
+           ('b', 'p1', '', 'trouble_spot', 1, '{EARLY}', '{EARLY}'),
+           ('q1', 'p2', 'Coda', 'form', 0, '{EARLY}', NULL);
          INSERT INTO exercise_link
              (id, piece_id, exercise_id, section_id, position, updated_at, deleted_at) VALUES
            ('l1', 'p1', 'e1', NULL, 3, '{EARLY}', NULL),
@@ -744,7 +750,9 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
            ('l3', 'p1', 'e2', 'a1', 1, '{EARLY}', NULL),
            ('l4', 'p1', 'e2', 'a1', 2, '{EARLY}', NULL),
            ('l5', 'p1', 'e3', 'b', 4, '{EARLY}', NULL),
-           ('l6', 'p2', 'e1', NULL, 0, '{EARLY}', '{EARLY}');
+           ('l6', 'p2', 'e1', NULL, 0, '{EARLY}', '{EARLY}'),
+           ('l7', 'p1', 'e4', NULL, 1, '{EARLY}', NULL),
+           ('l8', 'p1', 'e5', 'q1', 5, '{EARLY}', NULL);
          INSERT INTO session (id, started_at, completed_at, total_duration_secs,
              completion_status, entries, updated_at)
            VALUES ('s1', '{EARLY}', '{EARLY}', 600, 'completed', '{entries}', '{EARLY}');"
@@ -782,6 +790,25 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
         "a removed section took its links with it"
     );
     assert_eq!(
+        live(&store, "l7"),
+        Some("2".into()),
+        "a shared place is renumbered"
+    );
+    assert_eq!(
+        live(&store, "l8"),
+        None,
+        "a section live on another piece was never this piece's"
+    );
+    assert_eq!(
+        store.raw(
+            "SELECT (SELECT CAST(count(*) AS TEXT) FROM exercise_link
+             WHERE deleted_at IS NULL
+             GROUP BY piece_id, position HAVING count(*) > 1)"
+        ),
+        None,
+        "no two live links on a piece share a place"
+    );
+    assert_eq!(
         store.raw("SELECT deleted_at FROM exercise_link WHERE id = 'l6'"),
         Some(EARLY.into()),
         "a tombstone is left alone"
@@ -803,7 +830,7 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
         .filter(|l| l.deleted_at.is_none())
         .map(|l| l.exercise_id.as_str())
         .collect();
-    assert_eq!(linked, ["e1", "e2"]);
+    assert_eq!(linked, ["e1", "e2", "e4"]);
 
     let stored: serde_json::Value = serde_json::from_str(
         &store
@@ -832,8 +859,9 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
 fn v22_names_a_session_whose_entries_will_not_read_and_leaves_it() {
     let seed = format!(
         "INSERT INTO session (id, started_at, completed_at, total_duration_secs,
-             completion_status, entries, updated_at)
-           VALUES ('s1', '{EARLY}', '{EARLY}', 0, 'completed', 'not json', '{EARLY}');"
+             completion_status, entries, updated_at) VALUES
+           ('s1', '{EARLY}', '{EARLY}', 0, 'completed', 'not json', '{EARLY}'),
+           ('s2', '{EARLY}', '{EARLY}', 0, 'completed', '{{}}', '{EARLY}');"
     );
     let mut conn = Connection::open_in_memory().expect("opens");
     migrations::migrate(&mut conn, "v21_drop_unread_tables_and_columns", &mut vec![])
@@ -841,13 +869,22 @@ fn v22_names_a_session_whose_entries_will_not_read_and_leaves_it() {
     conn.execute_batch(&seed).expect("seeds");
     let mut unreadable = Vec::new();
     migrations::migrate(&mut conn, migrations::latest(), &mut unreadable).expect("migrates");
-    assert_eq!(unreadable, ["v22_remove_sections skipped row s1"]);
-    let entries: String = conn
-        .query_row("SELECT entries FROM session WHERE id = 's1'", [], |r| {
-            r.get(0)
-        })
-        .expect("a row");
-    assert_eq!(entries, "not json");
+    unreadable.sort();
+    assert_eq!(
+        unreadable,
+        [
+            "v22_remove_sections skipped row s1",
+            "v22_remove_sections skipped row s2"
+        ]
+    );
+    for (id, written) in [("s1", "not json"), ("s2", "{}")] {
+        let entries: String = conn
+            .query_row("SELECT entries FROM session WHERE id = ?1", [id], |r| {
+                r.get(0)
+            })
+            .expect("a row");
+        assert_eq!(entries, written, "{id}");
+    }
 }
 
 // ── Round trips ──
