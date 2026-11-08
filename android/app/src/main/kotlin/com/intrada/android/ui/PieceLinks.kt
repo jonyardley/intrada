@@ -26,7 +26,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.intrada.android.R
@@ -134,16 +133,6 @@ private fun LinkedExerciseEditRow(
     ) {
         LinkedExerciseTitle(exercise)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (piece.sections.isNotEmpty()) {
-                TextAction(
-                    "Choose sections",
-                    "relatedExercises.sections",
-                    { actions.navigation.onChooseSections(exercise.id) },
-                    Modifier.semantics {
-                        contentDescription = "Choose the sections ${exercise.title} is for"
-                    },
-                )
-            }
             Spacer(Modifier.weight(1f))
             IconAction(
                 R.drawable.ic_chevron_up,
@@ -171,7 +160,7 @@ private fun LinkedExerciseEditRow(
 private fun LinkedExerciseTitle(exercise: LinkedExerciseView, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         BasicText(exercise.title, style = IntradaFont.cardTitle.copy(color = IntradaColor.ink))
-        listOfNotNull(exercise.metaLine, exercise.linkCaption).forEach {
+        exercise.metaLine?.let {
             BasicText(it, style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary))
         }
     }

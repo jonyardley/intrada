@@ -42,5 +42,4 @@ private val FormErrorField.anchor: FormAnchor?
             FormErrorField.NOTES -> FormAnchor.NOTES
             FormErrorField.TAGS -> FormAnchor.TAGS
             FormErrorField.VARIATIONS -> FormAnchor.VARIATIONS
-            FormErrorField.SECTIONS -> null
         }

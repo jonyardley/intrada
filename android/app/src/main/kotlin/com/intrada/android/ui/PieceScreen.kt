@@ -36,20 +36,16 @@ import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
-import com.intrada.shared.SectionView
 import com.intrada.shared.VariationOptionView
 
 class PieceNavigation(
     val onEdit: () -> Unit,
-    val onSection: (String?) -> Unit,
     val onAddExercises: () -> Unit,
-    val onChooseSections: (String) -> Unit,
     val onOpenExercise: (String) -> Unit,
     val onClosed: () -> Unit,
 )
 
-class PieceScreenState(reordering: List<SectionView>? = null, editingLinks: Boolean = false) {
-    var reordering by mutableStateOf(reordering)
+class PieceScreenState(editingLinks: Boolean = false) {
     var editingLinks by mutableStateOf(editingLinks)
     var confirmingDelete by mutableStateOf(false)
     var choosingKeys by mutableStateOf(false)
@@ -82,9 +78,7 @@ fun PieceRoute(
     val closingNavigation =
         PieceNavigation(
             navigation.onEdit,
-            navigation.onSection,
             navigation.onAddExercises,
-            navigation.onChooseSections,
             navigation.onOpenExercise,
             onClosed = {
                 closing = true
@@ -145,7 +139,6 @@ fun PieceScreen(
                 }
                 BadgeRow(item)
                 item.notes?.takeIf { it.isNotEmpty() }?.let { NotesCard(it) }
-                SectionsCard(item, state, actions)
                 KeysAndVariations(item, state, topMark)
                 DetailRows(item)
                 PhotoCard(item.id, item.photoId, actions.send)

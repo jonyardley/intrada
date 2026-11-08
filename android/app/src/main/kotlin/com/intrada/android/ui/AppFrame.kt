@@ -56,7 +56,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.intrada.android.core.SentryReporter
 import com.intrada.android.core.Store
 import com.intrada.shared.Event
@@ -245,35 +244,10 @@ private fun NavGraphBuilder.pieceRoutes(store: Store, navController: NavHostCont
             id,
             PieceNavigation(
                 onEdit = { navController.navigate("$EDIT_ROUTE/$id") },
-                onSection = { sectionId ->
-                    navController.navigate(
-                        "$PIECE_ROUTE/$id/section" + sectionId?.let { "?sectionId=$it" }.orEmpty()
-                    )
-                },
                 onAddExercises = { navController.navigate("$PIECE_ROUTE/$id/exercises") },
-                onChooseSections = { navController.navigate("$PIECE_ROUTE/$id/links/$it") },
                 onOpenExercise = { navController.navigate("$EDIT_ROUTE/$it") },
                 onClosed = { navController.closeForm() },
             ),
-        )
-    }
-    composable(
-        "$PIECE_ROUTE/{id}/section?sectionId={sectionId}",
-        arguments = listOf(navArgument("sectionId") { nullable = true }),
-    ) { backStack ->
-        SectionRoute(
-            store,
-            backStack.arguments?.getString("id").orEmpty(),
-            backStack.arguments?.getString("sectionId"),
-            onDone = { navController.closeForm() },
-        )
-    }
-    composable("$PIECE_ROUTE/{id}/links/{exerciseId}") { backStack ->
-        LinkSectionsRoute(
-            store,
-            backStack.arguments?.getString("id").orEmpty(),
-            backStack.arguments?.getString("exerciseId").orEmpty(),
-            onDone = { navController.closeForm() },
         )
     }
     composable("$PIECE_ROUTE/{id}/exercises") { backStack ->

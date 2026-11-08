@@ -8,26 +8,17 @@ import com.intrada.android.core.Store
 import com.intrada.android.ui.ExercisePickerScreen
 import com.intrada.android.ui.ExercisePickerState
 import com.intrada.android.ui.KeysSheetScreen
-import com.intrada.android.ui.LinkSectionsScreen
-import com.intrada.android.ui.LinkSectionsState
 import com.intrada.android.ui.PieceActions
 import com.intrada.android.ui.PieceNavigation
 import com.intrada.android.ui.PieceScreen
 import com.intrada.android.ui.PieceScreenState
-import com.intrada.android.ui.SectionFormState
-import com.intrada.android.ui.SectionScreen
 import com.intrada.android.ui.VariationsSheetScreen
 import com.intrada.android.ui.keysWithAll
 import com.intrada.ffi.WheelMode
-import com.intrada.shared.BarsInput
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
-import com.intrada.shared.LinkChange
-import com.intrada.shared.SectionChange
-import com.intrada.shared.SectionEdit
-import com.intrada.shared.SectionKind
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -61,23 +52,7 @@ class PieceSnapshotTest {
     fun pieceEditing() = runTest {
         val piece = populatedPiece()
         captureRoboImage("src/test/snapshots/piece-editing.png") {
-            PieceScreen(piece, PieceScreenState(piece.sections, editingLinks = true), actions)
-        }
-    }
-
-    @Test
-    fun section() = runTest {
-        val piece = populatedPiece()
-        captureRoboImage("src/test/snapshots/piece-section.png") {
-            SectionScreen(piece, SectionFormState(piece.sections.last()), {}, {}, {})
-        }
-    }
-
-    @Test
-    fun linkSections() = runTest {
-        val piece = populatedPiece()
-        captureRoboImage("src/test/snapshots/piece-link-sections.png") {
-            LinkSectionsScreen(piece, LinkSectionsState(piece.linkedExercises.first()), {}, {})
+            PieceScreen(piece, PieceScreenState(editingLinks = true), actions)
         }
     }
 
@@ -110,7 +85,7 @@ class PieceSnapshotTest {
 
     private val actions =
         PieceActions(
-            PieceNavigation({}, {}, {}, {}, {}, {}),
+            PieceNavigation({}, {}, {}, {}),
             send = { true },
             sendFromSheet = { null },
         )
@@ -119,18 +94,7 @@ class PieceSnapshotTest {
 
     private suspend fun Store.populate(): LibraryItemView {
         val store = this
-        listOf(
-                SectionEdit(null, "A1", BarsInput.Typed("1 to 12"), SectionKind.FORM, "54"),
-                SectionEdit(null, "Run", BarsInput.Typed("19 to 20"), SectionKind.TROUBLESPOT, ""),
-            )
-            .forEach {
-                store.send(Event.Item(ItemEvent.ChangeSection(PIECE, SectionChange.Save(it))))
-            }
         store.send(Event.Item(ItemEvent.ChoosePieceExercises(PIECE, listOf(HANON), emptyList())))
-        val run = store.libraryRows.value.single { it.id == PIECE }.sections.last().id
-        store.send(
-            Event.Item(ItemEvent.ChangePieceLink(PIECE, LinkChange.Set(HANON, true, listOf(run))))
-        )
         val keys = keysWithAll(emptyList(), WheelMode.MAJOR).take(3)
         store.send(Event.Item(ItemEvent.UpdateKeys(PIECE, keys)))
         store.send(

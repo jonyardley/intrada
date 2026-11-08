@@ -164,7 +164,6 @@ private fun faultSpoken(field: FormErrorField?): String {
             FormErrorField.NOTES -> "Notes"
             FormErrorField.TAGS -> "Tags"
             FormErrorField.VARIATIONS -> "Variations"
-            FormErrorField.SECTIONS -> "Sections"
         }
     return "$name. $FAULT_HINT"
 }
