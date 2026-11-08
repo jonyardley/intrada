@@ -402,10 +402,12 @@ jobs:
       # `env:`, where it resolves to empty instead of failing.
       - name: Pin the Rust toolchain for this job
         run: echo "RUSTUP_TOOLCHAIN=${{ env.RUST_VERSION }}" >> "$GITHUB_ENV"
-      # rustup installs a new toolchain on demand but not its iOS targets, so a
-      # Rust bump would fail here first; this is a no-op once they are present.
-      - name: Add the iOS Rust targets
-        run: rustup target add --toolchain "$RUST_VERSION" aarch64-apple-ios aarch64-apple-ios-sim
+      # rustup installs a new toolchain on demand but not its iOS targets or
+      # clippy, so a Rust bump would fail here first; both are no-ops once present.
+      - name: Add the iOS Rust targets and clippy
+        run: |
+          rustup target add --toolchain "$RUST_VERSION" aarch64-apple-ios aarch64-apple-ios-sim
+          rustup component add --toolchain "$RUST_VERSION" clippy
       - name: swift format check
         run: just ios-fmt-check
       - name: Clippy (iOS device target)
