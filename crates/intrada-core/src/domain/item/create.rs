@@ -26,7 +26,6 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
         chord_chart: None,
         photo_id: input.photo_id,
         metre: None,
-        sections: vec![],
         variation_ids,
         keys: vec![],
     };
@@ -123,7 +122,7 @@ pub(super) fn add_piece_in_full(
         tempo: piece_tempo,
         notes: piece_input.notes,
         tags: piece_input.tags,
-        exercise_links: crate::domain::link::whole_piece_links(
+        exercise_links: crate::domain::link::links_to(
             &linked_ids.iter().map(String::as_str).collect::<Vec<_>>(),
             now,
         ),
@@ -133,7 +132,6 @@ pub(super) fn add_piece_in_full(
         chord_chart: chart,
         variation_ids: vec![],
         keys: vec![],
-        sections: vec![],
         photo_id: piece_input.photo_id,
         metre: None,
     };
@@ -217,7 +215,6 @@ pub(super) fn new_exercise(
         chord_chart: None,
         variation_ids: vec![],
         keys: vec![],
-        sections: vec![],
         photo_id: input.photo_id,
         metre: None,
         exercise_links: vec![],

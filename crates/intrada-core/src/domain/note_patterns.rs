@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use super::section::BarRange;
+use super::bars::BarRange;
 use crate::validation::MAX_BPM;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,9 +13,6 @@ pub enum NotePointKind {
         count: u16,
         clean: bool,
         in_a_row: bool,
-    },
-    Section {
-        name: String,
     },
 }
 
@@ -35,7 +32,7 @@ const EN_DASH: char = '\u{2013}';
 const CROTCHET_SIGN: char = '\u{2669}';
 
 #[must_use]
-pub fn read_note(note: &str, section_names: &[&str]) -> Vec<NotePoint> {
+pub fn read_note(note: &str) -> Vec<NotePoint> {
     let tokens = tokenise(note);
     let mut reader = Reader {
         consumed: vec![false; tokens.len()],
@@ -46,7 +43,6 @@ pub fn read_note(note: &str, section_names: &[&str]) -> Vec<NotePoint> {
     reader.read_repetitions();
     reader.read_tempos();
     reader.read_bare_bar_ranges();
-    reader.read_sections(section_names);
     let mut points = reader.points;
     points.sort_by_key(|p| p.span.start);
     points
@@ -193,7 +189,6 @@ const BEAT_UNITS: [&str; 9] = [
     "h",
     "e",
 ];
-const SECTION_CUES: [&str; 3] = ["section", "sections", "part"];
 
 // ── Reader ──
 
@@ -442,77 +437,6 @@ impl Reader<'_> {
             }
         }
     }
-
-    fn read_sections(&mut self, section_names: &[&str]) {
-        let mut names: Vec<(&str, Vec<Token<'_>>)> = section_names
-            .iter()
-            .map(|name| (*name, tokenise(name)))
-            .filter(|(_, tokens)| !tokens.is_empty())
-            .collect();
-        names.sort_by_key(|(_, tokens)| std::cmp::Reverse(tokens.len()));
-        let mut i = 0;
-        while i < self.tokens.len() {
-            let found = names.iter().find_map(|(name, name_tokens)| {
-                self.section_at(i, name_tokens).map(|r| (*name, r))
-            });
-            match found {
-                Some((name, span)) => {
-                    i = span.end;
-                    self.push(
-                        NotePointKind::Section {
-                            name: name.to_string(),
-                        },
-                        span,
-                    );
-                }
-                None => i += 1,
-            }
-        }
-    }
-
-    fn section_at(&self, i: usize, name: &[Token<'_>]) -> Option<Range<usize>> {
-        let end = i + name.len();
-        let matches = name.iter().enumerate().all(|(n, want)| {
-            self.free(i + n).is_some_and(|got| {
-                got.kind == want.kind && got.text.eq_ignore_ascii_case(want.text)
-            })
-        });
-        if !matches {
-            return None;
-        }
-        let is_alnum = |t: &Token| t.kind != TokenKind::Symbol;
-        let glued_before = i > 0
-            && self
-                .token(i - 1)
-                .is_some_and(|t| is_alnum(t) && t.end == self.tokens[i].start);
-        let glued_after = self
-            .token(end)
-            .is_some_and(|t| is_alnum(t) && t.start == self.tokens[end - 1].end);
-        if glued_before || glued_after {
-            return None;
-        }
-        let cue_before = i > 0
-            && self
-                .free(i - 1)
-                .is_some_and(|t| t.is_any_word(&SECTION_CUES));
-        let cue_after = self.free(end).is_some_and(|t| t.is_any_word(&SECTION_CUES));
-        let single_letter = name.len() == 1 && name[0].text.chars().count() == 1;
-        if single_letter {
-            let written_upper = !self.tokens[i].text.chars().any(char::is_lowercase);
-            if cue_before {
-                return Some(i - 1..end);
-            }
-            if cue_after && written_upper {
-                return Some(i..end + 1);
-            }
-            return None;
-        }
-        Some(match (cue_before, cue_after) {
-            (true, _) => i - 1..end,
-            (false, true) => i..end + 1,
-            (false, false) => i..end,
-        })
-    }
 }
 
 #[cfg(test)]
@@ -535,20 +459,12 @@ mod tests {
         }
     }
 
-    fn section(name: &str) -> NotePointKind {
-        NotePointKind::Section {
-            name: name.to_string(),
-        }
-    }
-
-    fn read<'a>(note: &'a str, sections: &[&str]) -> Vec<(NotePointKind, &'a str)> {
-        read_note(note, sections)
+    fn read(note: &str) -> Vec<(NotePointKind, &str)> {
+        read_note(note)
             .into_iter()
             .map(|p| (p.kind, &note[p.span]))
             .collect()
     }
-
-    const FORM: [&str; 3] = ["A", "B", "Coda"];
 
     #[test]
     fn reads_what_musicians_write() {
@@ -563,7 +479,7 @@ mod tests {
             ),
             (
                 "coda from memory, 3 clean",
-                vec![(section("Coda"), "coda"), (reps(3, true, false), "3 clean")],
+                vec![(reps(3, true, false), "3 clean")],
             ),
             (
                 "LH bar 5 at 60 then 72",
@@ -571,7 +487,7 @@ mod tests {
             ),
             (
                 "B section fingering in 21-24",
-                vec![(section("B"), "B section"), (bars(21, 24), "21-24")],
+                vec![(bars(21, 24), "21-24")],
             ),
             (
                 "five clean in a row at crotchet = 84",
@@ -605,11 +521,7 @@ mod tests {
             ),
             (
                 "x3 then section A @92",
-                vec![
-                    (reps(3, false, false), "x3"),
-                    (section("A"), "section A"),
-                    (tempo(92), "@92"),
-                ],
+                vec![(reps(3, false, false), "x3"), (tempo(92), "@92")],
             ),
             (
                 "bars 12 through 16",
@@ -631,7 +543,7 @@ mod tests {
             ),
         ];
         for (note, expected) in cases {
-            assert_eq!(read(note, &FORM), expected, "note: {note:?}");
+            assert_eq!(read(note), expected, "note: {note:?}");
         }
     }
 
@@ -649,20 +561,20 @@ mod tests {
             "in A major this time",
             "a lot more relaxed, played it as a whole",
         ] {
-            assert_eq!(read(note, &FORM), vec![], "note: {note:?}");
+            assert_eq!(read(note), vec![], "note: {note:?}");
         }
     }
 
     #[test]
     fn a_bar_number_is_never_a_tempo() {
-        assert_eq!(read("at bar 84", &[]), vec![(bars(84, 84), "bar 84")]);
-        assert_eq!(read("bar 84 bpm", &[]), vec![(bars(84, 84), "bar 84")]);
+        assert_eq!(read("at bar 84"), vec![(bars(84, 84), "bar 84")]);
+        assert_eq!(read("bar 84 bpm"), vec![(bars(84, 84), "bar 84")]);
     }
 
     #[test]
     fn number_words_count_for_bars_and_repetitions() {
         assert_eq!(
-            read("bar five, then three clean", &[]),
+            read("bar five, then three clean"),
             vec![
                 (bars(5, 5), "bar five"),
                 (reps(3, true, false), "three clean")
@@ -672,7 +584,7 @@ mod tests {
 
     #[test]
     fn a_number_word_is_not_a_tempo() {
-        assert_eq!(read("got it at eighty", &[]), vec![]);
+        assert_eq!(read("got it at eighty"), vec![]);
     }
 
     #[test]
@@ -683,33 +595,29 @@ mod tests {
             "right at 90% of the time",
             "at 5 it fell apart",
         ] {
-            assert_eq!(read(note, &[]), vec![], "note: {note:?}");
+            assert_eq!(read(note), vec![], "note: {note:?}");
         }
     }
 
     #[test]
     fn a_backwards_range_keeps_only_the_first_bar() {
-        assert_eq!(read("bars 16-12", &[]), vec![(bars(16, 16), "bars 16")]);
-        assert_eq!(read("did 16-12 again", &[]), vec![]);
+        assert_eq!(read("bars 16-12"), vec![(bars(16, 16), "bars 16")]);
+        assert_eq!(read("did 16-12 again"), vec![]);
     }
 
     #[test]
     fn dates_are_not_bar_ranges() {
-        assert_eq!(read("the 2026-10-04 run", &[]), vec![]);
-        assert_eq!(read("12-16 times over", &[]), vec![]);
+        assert_eq!(read("the 2026-10-04 run"), vec![]);
+        assert_eq!(read("12-16 times over"), vec![]);
     }
 
     #[test]
     fn spans_are_byte_offsets_in_notes_with_non_ascii_text() {
         let note = "Coda \u{2013} bars 12\u{2013}16, \u{2669}=84 na\u{ef}ve";
-        let points = read_note(note, &FORM);
+        let points = read_note(note);
         assert_eq!(
             points,
             vec![
-                NotePoint {
-                    kind: section("Coda"),
-                    span: 0..4
-                },
                 NotePoint {
                     kind: bars(12, 16),
                     span: 9..21
@@ -720,41 +628,5 @@ mod tests {
                 },
             ]
         );
-    }
-
-    #[test]
-    fn single_letter_names_need_a_section_word() {
-        let names = ["A", "B"];
-        assert_eq!(
-            read("section b sounded thin", &names),
-            vec![(section("B"), "section b")]
-        );
-        assert_eq!(
-            read("the A part is fine", &names),
-            vec![(section("A"), "A part")]
-        );
-        assert_eq!(read("B was better", &names), vec![]);
-        assert_eq!(read("2B section was messy", &names), vec![]);
-        assert_eq!(read("section B2 again", &names), vec![]);
-    }
-
-    #[test]
-    fn section_names_match_whole_words_case_insensitively() {
-        let names = ["Main", "Coda", "Section A"];
-        assert_eq!(
-            read("coda 2 still shaky", &["Coda", "Coda 2"]),
-            vec![(section("Coda 2"), "coda 2")]
-        );
-        assert_eq!(read("remain calm, codas are hard", &names), vec![]);
-        assert_eq!(read("in the CODA", &names), vec![(section("Coda"), "CODA")]);
-        assert_eq!(
-            read("section a again", &names),
-            vec![(section("Section A"), "section a")]
-        );
-    }
-
-    #[test]
-    fn a_section_name_is_not_read_out_of_a_bar_reference() {
-        assert_eq!(read("b. 12", &["B"]), vec![(bars(12, 12), "b. 12")]);
     }
 }

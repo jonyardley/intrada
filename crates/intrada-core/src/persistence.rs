@@ -462,7 +462,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         }

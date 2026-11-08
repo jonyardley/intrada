@@ -1,3 +1,4 @@
+pub mod bars;
 pub mod chart;
 pub mod first_run;
 pub mod item;
@@ -7,7 +8,6 @@ pub mod metre;
 pub mod note_patterns;
 pub mod practice_defaults;
 pub mod profile;
-pub mod section;
 pub mod session;
 pub mod tempo_words;
 pub mod types;
