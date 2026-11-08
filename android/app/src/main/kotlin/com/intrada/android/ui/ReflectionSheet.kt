@@ -51,7 +51,6 @@ import com.intrada.shared.PickerVariationView
 import com.intrada.shared.PlayView
 import com.intrada.shared.ReflectionAnswers
 import com.intrada.shared.ReflectionView
-import com.intrada.shared.SectionView
 import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.delay
 
@@ -110,7 +109,6 @@ class ReflectionState(seed: ReflectionAnswers, rows: List<com.intrada.shared.Ref
 }
 
 class PlayWayChoices(
-    val sections: List<SectionView>,
     val keys: List<KeyChoiceView>,
     val variations: List<PickerVariationView>,
     val planned: String?,
@@ -160,7 +158,6 @@ internal fun ReflectionRoute(
             wayChoices =
                 active.record.finish?.let {
                     PlayWayChoices(
-                        it.sections,
                         it.keys,
                         active.currentVariations,
                         entry?.plannedLabel,
