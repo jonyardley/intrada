@@ -41,3 +41,13 @@ not exist. Rows without a link are still to be written.
 | [ScoreSelector](ScoreSelector/README.md) | Giving an item, a play or a session its mark |
 | [LibraryItemCard](LibraryItemCard/README.md) | A piece or exercise in a list, with its mark |
 | [MasteryDeltaToast](MasteryDeltaToast/README.md) | The celebration banner for the biggest rise in a mark |
+| [SessionCard](SessionCard/README.md) | One past practice session, with its time, items and what was played |
+| [WeekStrip](WeekStrip/README.md) | Picking a day of the week on the Practice home |
+| [RecentSessions](RecentSessions/README.md) | An item's marks from its last few sessions, with the trend |
+| [MasteryDial](MasteryDial/README.md) | The average mark across the library, as a ring |
+| [RepCounter](RepCounter/README.md) | Counting repetitions in the player |
+| [UpNextHero](UpNextHero/README.md) | The suggested next session, ready to start |
+| [AddRowButton](AddRowButton/README.md) | The full-width row that adds something to a list |
+| [ConsistencyBars](ConsistencyBars/README.md) | Minutes practised each week, as bars |
+| [FormField](FormField/README.md) | A labelled text field in a form |
+| [ProfileBadge](ProfileBadge/README.md) | The musician's instrument, the way into their profile |
