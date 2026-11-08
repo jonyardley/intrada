@@ -13,7 +13,7 @@
   extension EntryRecordView {
     static var empty: EntryRecordView {
       EntryRecordView(
-        segments: [], canAddSection: true, addSectionCaption: nil, focus: nil, suggestedFocus: nil,
+        focus: nil, suggestedFocus: nil,
         intentionMet: nil,
         intentionMetRead: false,
         felt: nil, gotInTheWay: [], notePoints: [])
@@ -22,23 +22,7 @@
 
   extension ActiveRecordView {
     static var empty: ActiveRecordView {
-      ActiveRecordView(segment: nil, awayOffer: nil, finish: nil, lastTime: nil)
-    }
-  }
-
-  extension SectionView {
-    static var previewClairSections: [SectionView] {
-      [
-        ("sec-a1", "A1", 1, 14, 8), ("sec-b", "B", 15, 26, 5), ("sec-a2", "A2", 27, 42, nil),
-      ].map { (id: String, name: String, first: Int, last: Int, mark: UInt8?) in
-        SectionView(
-          id: id, name: name, kind: .form, targetBpm: nil, firstBar: UInt16(first),
-          lastBar: UInt16(last), label: name, barsCaption: "Bars \(first) to \(last)",
-          barsFieldText: "\(first) to \(last)",
-          latestScore: mark, scoreHistory: [],
-          caption: mark.map { "\($0) of 10" } ?? "Not yet played", isWeakest: id == "sec-b",
-          targetTempo: nil, targetTempoSpoken: nil)
-      }
+      ActiveRecordView(awayOffer: nil, finish: nil, lastTime: nil)
     }
   }
 
@@ -209,22 +193,17 @@
       building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
     }
 
-    /// Twelve minutes split into A1, B and A2 with a tempo focus on A1 (#2315, #2303).
+    /// Twelve minutes with a tempo focus (#2303).
     static var previewPlannedPiece: SetlistEntryView {
       var e = building(
         id: "plan-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 0)
-      e.intention = "Get A1 up to 84 with the click"
+      e.intention = "Get it up to 84 with the click"
       e.plannedDurationSecs = 720
       e.plannedDurationDisplay = "12 min"
-      e.record.segments = SectionView.previewClairSections.map {
-        SegmentView(
-          sectionId: $0.id, label: $0.label, plannedSecs: 240, plannedDisplay: "4 min",
-          canAddMinute: true, canTakeMinute: true)
-      }
       e.record.focus = FocusView(
-        focus: IntentionFocus(kind: .tempo, sectionId: "sec-a1", target: 84), label: "A1 at 84",
+        focus: IntentionFocus(kind: .tempo, target: 84), label: "At 84",
         targetCaption: "\u{2669} = 84")
-      e.planTags = ["A1 4 min", "B 4 min", "A2 4 min", "Focus: A1 at 84"]
+      e.planTags = ["Focus: At 84"]
       return e
     }
 
@@ -263,7 +242,7 @@
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
         durationDisplay: "0s", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group, removable: removable,
-        plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
+        plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: [], scoreSummary: nil, record: .empty, plannedKey: nil,
         planTags: [])
     }
@@ -292,16 +271,15 @@
           SuggestedItem(
             itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece", weakestSection: nil),
+            reason: "Not marked with this piece"),
           SuggestedItem(
             itemId: "ex-2", itemTitle: "Shell voicings", itemType: .exercise,
             latestScore: 4,
-            reason: "Marked 4 of 10 last time", weakestSection: nil),
+            reason: "Marked 4 of 10 last time"),
           SuggestedItem(
             itemId: "piece-1", itemTitle: "Like Someone in Love", itemType: .piece,
             latestScore: 6,
-            reason: "Marked 6 of 10 last time",
-            weakestSection: "Weakest section · Bridge"),
+            reason: "Marked 6 of 10 last time"),
         ],
         estimatedMinutes: 15)
     }
@@ -315,11 +293,11 @@
           SuggestedItem(
             itemId: "ex-3", itemTitle: "Contrary-motion scales", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece", weakestSection: nil),
+            reason: "Not marked with this piece"),
           SuggestedItem(
             itemId: "piece-2", itemTitle: "Prelude in C", itemType: .piece,
             latestScore: nil,
-            reason: "Not marked yet", weakestSection: nil),
+            reason: "Not marked yet"),
         ],
         estimatedMinutes: 10)
     }
@@ -335,11 +313,11 @@
           SuggestedItem(
             itemId: "ex-4", itemTitle: "Two-five-one in G minor", itemType: .exercise,
             latestScore: 7,
-            reason: "Marked 7 of 10 last time", weakestSection: nil),
+            reason: "Marked 7 of 10 last time"),
           SuggestedItem(
             itemId: "piece-3", itemTitle: "Autumn Leaves", itemType: .piece,
             latestScore: 5,
-            reason: "Marked 5 of 10 last time", weakestSection: nil),
+            reason: "Marked 5 of 10 last time"),
         ],
         estimatedMinutes: 10)
     }
@@ -450,7 +428,7 @@
         status == .completed
         ? [
           PlayView(
-            id: "entry-\(position)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
+            id: "entry-\(position)-p1", key: nil, variationIds: [], label: nil,
             seconds: 600,
             durationDisplay: "10 min",
             metaParts: previewMetaParts(
@@ -464,8 +442,7 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: status, notes: notes,
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
-        removable: true,
-        plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
+        removable: true, plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
         scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil,
         planTags: [])
@@ -497,12 +474,12 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: groupId, removable: removable, plannedSectionIds: [], plannedVariationIds: [],
+        groupId: groupId, removable: removable, plannedVariationIds: [],
         plannedLabel: nil,
         plannedRepTarget: nil,
         plays: [
           PlayView(
-            id: "entry-\(position)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
+            id: "entry-\(position)-p1", key: nil, variationIds: [], label: nil,
             seconds: 600,
             durationDisplay: "10 min", metaParts: ["10 min"], repTarget: nil, repCount: nil,
             repTargetReached: nil,
@@ -525,8 +502,8 @@
           previewEntry(4, "Czerny Op. 299", .exercise),
         ],
         currentRepTarget: nil, currentRepCount: nil, currentRepTargetReached: nil,
-        currentRepHistory: nil, currentRepSlots: 10,
-        currentSectionId: nil, currentKey: nil, currentVariationIds: [], currentPlayLabel: nil,
+        currentRepHistory: nil, currentRepSlots: 10, currentKey: nil, currentVariationIds: [],
+        currentPlayLabel: nil,
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
@@ -554,7 +531,7 @@
         currentRepTarget: base.currentRepTarget, currentRepCount: base.currentRepCount,
         currentRepTargetReached: base.currentRepTargetReached,
         currentRepHistory: base.currentRepHistory, currentRepSlots: 10,
-        currentSectionId: base.currentSectionId, currentKey: base.currentKey,
+        currentKey: base.currentKey,
         currentVariationIds: base.currentVariationIds, currentPlayLabel: base.currentPlayLabel,
         currentPlannedDurationSecs: base.currentPlannedDurationSecs,
         nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
@@ -585,8 +562,8 @@
           previewEntry(2, "Czerny Op. 299", .exercise),
         ],
         currentRepTarget: 10, currentRepCount: 4, currentRepTargetReached: false,
-        currentRepHistory: nil, currentRepSlots: 10,
-        currentSectionId: nil, currentKey: nil, currentVariationIds: ["variation-f"],
+        currentRepHistory: nil, currentRepSlots: 10, currentKey: nil,
+        currentVariationIds: ["variation-f"],
         currentPlayLabel: "F",
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Clair de Lune",
@@ -620,18 +597,18 @@
         itemTitle: LibraryItemView.previewExerciseWithVariations.title,
         itemType: .exercise, position: 0, durationDisplay: "10 min", status: .notAttempted,
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: nil, removable: true, plannedSectionIds: [], plannedVariationIds: ["variation-c"],
+        groupId: nil, removable: true, plannedVariationIds: ["variation-c"],
         plannedLabel: "C", plannedRepTarget: 10,
         plays: [
           PlayView(
-            id: "entry-0-p1", sectionId: nil, key: nil, variationIds: ["variation-c"], label: "C",
+            id: "entry-0-p1", key: nil, variationIds: ["variation-c"], label: "C",
             seconds: 190,
             durationDisplay: "3m 10s", metaParts: ["3m 10s", "10 of 10 reps"],
             repTarget: 10, repCount: 10, repTargetReached: true,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
           PlayView(
-            id: "entry-0-p2", sectionId: nil, key: nil, variationIds: ["variation-f"], label: "F",
+            id: "entry-0-p2", key: nil, variationIds: ["variation-f"], label: "F",
             seconds: 0,
             durationDisplay: "0s", metaParts: ["0s", "4 of 10 reps"],
             repTarget: 10, repCount: 4, repTargetReached: false,
@@ -654,8 +631,8 @@
           previewEntry(4, "Czerny Op. 299", .exercise),
         ],
         currentRepTarget: 10, currentRepCount: 7, currentRepTargetReached: false,
-        currentRepHistory: nil, currentRepSlots: 10,
-        currentSectionId: nil, currentKey: nil, currentVariationIds: [], currentPlayLabel: nil,
+        currentRepHistory: nil, currentRepSlots: 10, currentKey: nil, currentVariationIds: [],
+        currentPlayLabel: nil,
         currentPlannedDurationSecs: nil,
         nextItemTitle: "Czerny Op. 299",
         currentItemIntention: "Land each finger evenly",
@@ -724,7 +701,7 @@
         status == .completed
         ? [
           PlayView(
-            id: "\(id)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
+            id: "\(id)-p1", key: nil, variationIds: [], label: nil,
             seconds: seconds,
             durationDisplay: duration, metaParts: previewMetaParts(duration, tempo: tempo),
             repTarget: nil, repCount: nil, repTargetReached: nil,
@@ -736,7 +713,7 @@
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
         durationDisplay: duration, status: status, notes: notes, intention: intention,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil, removable: true,
-        plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
+        plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
         scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil,
         planTags: [])
@@ -791,7 +768,7 @@
       repTarget: UInt8? = nil
     ) -> PlayView {
       PlayView(
-        id: id, sectionId: nil, key: nil, variationIds: variationLabel.map { ["v-\($0)"] } ?? [],
+        id: id, key: nil, variationIds: variationLabel.map { ["v-\($0)"] } ?? [],
         label: variationLabel,
         seconds: seconds, durationDisplay: duration,
         metaParts: previewMetaParts(
@@ -819,7 +796,7 @@
         id: "entry-variations", itemId: "exercise-2", itemTitle: "Major Scales",
         itemType: .exercise, position: 0, durationDisplay: "12m 40s", status: .completed,
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
-        plannedDurationDisplay: nil, groupId: nil, removable: true, plannedSectionIds: [],
+        plannedDurationDisplay: nil, groupId: nil, removable: true,
         plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
         plays: plays, scoreSummary: 8, record: .empty, plannedKey: nil,
         planTags: [])
@@ -836,7 +813,7 @@
         id: "entry-one-variation", itemId: "exercise-3", itemTitle: "Arpeggios",
         itemType: .exercise, position: 0, durationDisplay: "6m 0s", status: .completed,
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: nil, removable: true, plannedSectionIds: [],
+        groupId: nil, removable: true,
         plannedVariationIds: ["v-E\u{266d} major"],
         plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
         plays: plays, scoreSummary: nil, record: .empty, plannedKey: nil,
@@ -845,24 +822,6 @@
   }
 
   extension ActiveSessionView {
-    /// Clair de Lune split into A1, B and A2, with A1 done and B's time up
-    /// four seconds before the reference instant, after a Stay that took two
-    /// minutes from A2, so the move-on offer and the strip's caption are drawn
-    /// (#2315, #2394).
-    static var previewActiveSectionTimeUp: ActiveSessionView {
-      var active = previewActive
-      active.record.segment = SegmentClockView(
-        label: "B", endsAt: "2026-05-30T09:04:08Z", moveLabel: "On to A2",
-        stayLabel: "Stay on B, 2 more minutes taken from A2",
-        bars: [
-          SegmentBarView(label: "A1", progress: .done, caption: nil),
-          SegmentBarView(label: "B", progress: .running, caption: nil),
-          SegmentBarView(label: "A2", progress: .toCome, caption: "B took 2 min"),
-        ],
-        positionLabel: "Section 2 of 3, 2 min taken from A2")
-      return active
-    }
-
     /// Back after six minutes away (#2306).
     static var previewActiveAway: ActiveSessionView {
       var active = previewActive
@@ -874,8 +833,8 @@
     static var previewActiveLastTime: ActiveSessionView {
       var active = previewActive
       active.record.lastTime = LastTimeView(
-        entryId: "entry-1", sectionId: "sec-b", variationIds: ["v-dot"],
-        label: "Last time: B · Dotted rhythms", key: nil)
+        entryId: "entry-1", variationIds: ["v-dot"],
+        label: "Last time: Dotted rhythms", key: nil)
       return active
     }
   }
@@ -886,10 +845,10 @@
       FinishSheetView(
         noteOffers: [
           NotePointView(
-            span: NoteSpan(start: 23, end: 29), label: "Bar 12", sectionLabel: "A1",
+            span: NoteSpan(start: 23, end: 29), label: "Bar 12",
             confirmed: false),
           NotePointView(
-            span: NoteSpan(start: 38, end: 40), label: "\u{2669} = 84", sectionLabel: "A1",
+            span: NoteSpan(start: 38, end: 40), label: "\u{2669} = 84",
             confirmed: true),
         ],
         asksIntention: asksIntention, intentionMetRead: read,
@@ -905,20 +864,13 @@
           ObstacleChoiceView(obstacle: .memory, label: "Memory"),
           ObstacleChoiceView(obstacle: .tone, label: "Tone"),
           ObstacleChoiceView(obstacle: .tension, label: "Tension"),
-        ], rows: [], sections: [], keys: [])
+        ], rows: [], keys: [])
     }
 
-    /// Clair de Lune's sections and keys, for changing what a row says was played (#2249).
+    /// Clair de Lune's keys, for changing what a row says was played (#2249).
     static var previewWayChoices: FinishSheetView {
-      func part(_ id: String, _ label: String) -> SectionView {
-        SectionView(
-          id: id, name: label, kind: .form, targetBpm: nil, firstBar: nil, lastBar: nil,
-          label: label, barsCaption: nil, barsFieldText: "", latestScore: nil, scoreHistory: [],
-          caption: "Not yet played", isWeakest: false, targetTempo: nil, targetTempoSpoken: nil)
-      }
       var finish = preview(asksIntention: false)
       finish.noteOffers = []
-      finish.sections = [part("sec-a1", "A1"), part("sec-b", "B"), part("sec-a2", "A2")]
       finish.keys = [
         KeyChoiceView(key: nil, label: "Written key", caption: "D\u{266d} major"),
         KeyChoiceView(
@@ -928,11 +880,11 @@
       ]
       finish.rows = [
         FinishRowView(
-          playId: "p1", label: "A1 · G major", sectionId: "sec-a1",
+          playId: "p1", label: "G major",
           key: Key(letter: .g, accidental: .natural, mode: .major), variationIds: [],
           canChange: true),
         FinishRowView(
-          playId: "p2", label: "B", sectionId: "sec-b", key: nil, variationIds: [], canChange: true),
+          playId: "p2", label: "No variation", key: nil, variationIds: [], canChange: true),
       ]
       return finish
     }

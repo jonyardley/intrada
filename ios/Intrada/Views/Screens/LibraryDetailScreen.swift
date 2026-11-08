@@ -21,10 +21,8 @@ struct LibraryDetailScreen: View {
   @State private var showingPiecePicker = false
   @State private var editingChart = false
   @State private var showingScaffold = false
-  @State private var editingSection: SectionSheetTarget?
   @State private var choosingKeys = false
   @State private var choosingVariations = false
-  @State private var choosingSectionsFor: SectionLinkTarget?
 
   init(item: LibraryItemView, showsBackButton: Bool = true, startEditingLinks: Bool = false) {
     self.item = item
@@ -74,14 +72,6 @@ struct LibraryDetailScreen: View {
     }
     .sheet(isPresented: $choosingVariations) {
       VariationsSheet(item: item)
-        .environment(store)
-    }
-    .sheet(item: $choosingSectionsFor) { target in
-      LinkSectionsSheet(piece: item, exercise: target.exercise)
-        .environment(store)
-    }
-    .sheet(item: $editingSection) { target in
-      SectionSheet(item: item, target: target)
         .environment(store)
     }
     .sheet(isPresented: $showingScaffold) {
@@ -224,15 +214,7 @@ struct LibraryDetailScreen: View {
           notesSection(notes)
         }
 
-        if item.itemType == .piece {
-          sectionsSection
-          variationsSection
-        }
-
-        if item.itemType == .exercise {
-          variationsSection
-          sectionsSection
-        }
+        variationsSection
 
         if !detailRows.isEmpty {
           VStack(spacing: 0) {
@@ -267,8 +249,7 @@ struct LibraryDetailScreen: View {
           RelatedExercisesCard(
             item: item, editing: $editingLinks,
             onAdd: { showingPicker = true },
-            onShowSuggestions: { showingScaffold = true },
-            onChooseSections: { choosingSectionsFor = SectionLinkTarget(exercise: $0) })
+            onShowSuggestions: { showingScaffold = true })
         }
 
         if item.itemType == .exercise {
@@ -291,14 +272,6 @@ struct LibraryDetailScreen: View {
     VariationsSection(
       item: item, onChooseKeys: { choosingKeys = true },
       onChooseVariations: { choosingVariations = true })
-  }
-
-  private var sectionsSection: some View {
-    SectionsSection(
-      item: item, onAdd: { editingSection = .new },
-      onEdit: { editingSection = .existing($0) }
-    )
-    .id(item.id)
   }
 
   private var starAndEditActions: some View {
@@ -424,8 +397,3 @@ private struct DetailRow: View {
     }
   }
 #endif
-
-private struct SectionLinkTarget: Identifiable {
-  let exercise: LinkedExerciseView
-  var id: String { exercise.id }
-}

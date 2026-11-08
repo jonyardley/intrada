@@ -264,12 +264,12 @@
             id: "re1",
             plan: PlannedItem(
               itemId: "i1", itemType: .exercise, intention: nil, focus: nil, durationSecs: nil,
-              groupId: nil, variationIds: [], repTarget: nil, segments: [], key: nil),
+              groupId: nil, variationIds: [], repTarget: nil, key: nil),
             itemTitle: "Scales · D♭ major", position: 0, durationSecs: 180, status: .completed,
             notes: nil,
             plays: [
               Play(
-                id: "re1-p1", sectionId: nil, key: nil, variationIds: [],
+                id: "re1-p1", key: nil, variationIds: [],
                 startedAt: "2026-06-16T08:59:00Z", seconds: 180, repTarget: nil, repCount: nil,
                 repHistory: nil, tempoChanges: [], achievedTempo: nil, clickPattern: nil,
                 score: nil, away: [])
@@ -278,13 +278,13 @@
             id: "re2",
             plan: PlannedItem(
               itemId: "i2", itemType: .piece, intention: nil, focus: nil, durationSecs: nil,
-              groupId: nil, variationIds: [], repTarget: nil, segments: [], key: nil),
+              groupId: nil, variationIds: [], repTarget: nil, key: nil),
             itemTitle: "Clair de Lune", position: 1, durationSecs: 0, status: .notAttempted,
             notes: nil, plays: [], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []),
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
-        reflection: nil, segment: nil)
+        reflection: nil)
       return store
     }
 
@@ -310,7 +310,7 @@
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
-            entryKeys: [], drillOffers: [], summary: "2 items", startTitle: "Start session")))
+            entryKeys: [], summary: "2 items", startTitle: "Start session")))
     }
 
     static var previewBuildingEmpty: Store {
@@ -321,7 +321,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
-            entryKeys: [], drillOffers: [], summary: "0 items", startTitle: "Start session")))
+            entryKeys: [], summary: "0 items", startTitle: "Start session")))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -334,7 +334,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: [], summary: "0 items", startTitle: "Start session"),
+            summary: "0 items", startTitle: "Start session"),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -352,7 +352,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: [], summary: "0 items", startTitle: "Start session"),
+            summary: "0 items", startTitle: "Start session"),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -384,7 +384,7 @@
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
             lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
-            focusChoices: [], entryKeys: [], drillOffers: [],
+            focusChoices: [], entryKeys: [],
             summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
             startTitle: "Start session \u{B7} 12 min")))
     }
@@ -417,7 +417,7 @@
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: [], summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
+            summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
             startTitle: "Start session \u{B7} 12 min")))
     }
 
@@ -441,14 +441,14 @@
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-            drillOffers: [], summary: "12 min \u{B7} 1 block \u{B7} 2 items",
+            summary: "12 min \u{B7} 1 block \u{B7} 2 items",
             startTitle: "Start session \u{B7} 12 min")))
     }
 
-    /// The builder with a split, focused piece and one offering last time
+    /// The builder with a focused piece and one offering last time
     /// (#2249, #2303, #2315). `first` replaces the first row, for the sheet.
     static func previewBuildingPlanned(
-      _ first: SetlistEntryView = .previewPlannedPiece, drillOffers: [DrillOfferView] = [],
+      _ first: SetlistEntryView = .previewPlannedPiece,
       entryKeys: [EntryKeysView] = []
     ) -> Store {
       let entries: [SetlistEntryView] = [first, .previewLastTimePiece, .previewExercise]
@@ -467,17 +467,14 @@
             },
             totalDurationDisplay: "22m 0s", totalDurationSummary: "22 min", lengthMins: 30,
             lengthSummary: "22 of 30 min planned",
-            entryVariations: [
-              EntryVariationsView(
-                entryId: first.id, variations: [], sections: SectionView.previewClairSections)
-            ],
+            entryVariations: [EntryVariationsView(entryId: first.id, variations: [])],
             lastTimes: [
               LastTimeView(
-                entryId: SetlistEntryView.previewLastTimePiece.id, sectionId: "sec-b",
-                variationIds: ["v-dot"], label: "Last time: B · Dotted rhythms", key: nil)
+                entryId: SetlistEntryView.previewLastTimePiece.id,
+                variationIds: ["v-dot"], label: "Last time: Dotted rhythms", key: nil)
             ],
             focusChoices: FocusChoiceView.previewChoices, entryKeys: entryKeys,
-            drillOffers: drillOffers, summary: "22 min \u{B7} 3 items",
+            summary: "22 min \u{B7} 3 items",
             startTitle: "Start session \u{B7} 22 min")))
     }
 
