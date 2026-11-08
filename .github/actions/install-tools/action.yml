@@ -65,9 +65,8 @@ runs:
       uses: taiki-e/install-action@v2.90.1
       with:
         tool: ${{ inputs.tools }}
-    # Where there is no $CARGO_HOME/bin, as on the macOS image whose cargo
-    # comes from Homebrew, install-action puts binaries in its own folder;
-    # copy them to where the cache looks.
+    # Where cargo does not run from $CARGO_HOME/bin (Homebrew's, on the macOS
+    # image), install-action uses its own folder; copy to where the cache looks (#2778).
     - name: Gather every tool where the cache looks
       if: steps.restore.outputs.cache-hit != 'true'
       shell: bash
@@ -79,9 +78,8 @@ runs:
         mkdir -p "$BIN"
         missing=0
         for name in $NAMES; do
-          [ -x "$BIN/$name" ] && continue
           if src=$(command -v "$name"); then
-            cp "$src" "$BIN/$name"
+            [ "$src" = "$BIN/$name" ] || cp "$src" "$BIN/$name"
           else
             echo "::error::$name was not installed, so the tool cache cannot hold it"
             missing=1
