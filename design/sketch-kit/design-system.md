@@ -13,9 +13,8 @@ Intrada is a practice notebook for musicians, with an iPhone app and an Android 
 
 - Group content on white cards (`cardFill`) with a one point `hairline` edge, a 3 point corner (`radius-card`) and a faint lift (`shadow-card`). See Card.
 - Give each entry in a screen's top-level list a card of its own, `spacing-cardCompact` (12) apart, as the Library's items and the Practice home's sessions do.
-- Draw a list inside a detail card, such as a piece's linked exercises, sections or variations, or the items in a session being built, as rows in that card with a `divider` line between them. A form's fields sit the same way.
+- Draw a list inside a detail card, such as a piece's linked exercises, sections or variations, or the items in a session being built, as rows in that card with a `divider` line (HairlineDivider) between them. A form's fields sit the same way.
 - Inset content `spacing-card` (16) from the card's edge, or `spacing-cardCompact` (12) in a dense list. Space sections `spacing-section` (24) apart and controls `spacing-controlGap` (8).
-- Neither app draws the lift yet; restoring it is #2638. Sketches draw it on purpose, as T24 decided.
 
 ## Type
 
@@ -81,10 +80,10 @@ Where the two apps still differ, a page says so in one line naming the GitHub is
 
 The sketch kit is a web copy of five components, `ScreenScaffold`, `Card`, `LibraryItemCard`, `MarkerButton` and `TabBar`, drawn from the tokens so a Claude Design canvas shows the real look of the apps. It is a copy of the code, never the source (T38). A sketch that needs anything else draws it from the tokens and names the catalogue component it stands for, so the build knows what to reach for.
 
-Where the kit follows a decision rather than the code:
+Where the kit follows a decision rather than the code (Jon, 15 October 2026):
 
 - **Cards have the lift**, as T24 decided. The kit draws it by default (`lift={false}` turns it off); neither app draws it until #2638 lands.
-- **The tab bar is drawn as it looks on a real iPhone**, an opaque bar in `tabBarFill`. The white bar in the iPhone snapshot is a test artefact (#2607). Its labels use `smallMedium`, the smallest type style, though the phone draws them a little smaller in the system font.
+- **The tab bar is drawn as it looks on a real iPhone**, an opaque bar in `tabBarFill`. The white bar in the iPhone snapshot is a test artefact (#2607). Its labels use `smallMedium`, the smallest type style, though the phone draws them a little smaller in the system font: the kit keeps to the theme's type.
 - **The library row** draws the whole iPhone row on both platforms. Android shows less until #2606 and #2679 land.
 - **The title's highlighter swipe** is drawn on iPhone only, as in the apps: Android's `ScreenScaffold` has none until #2605.
 
