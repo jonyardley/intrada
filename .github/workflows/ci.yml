@@ -33,7 +33,7 @@ env:
   SENTRY_ORG: jon-yardley
   # Asserted by the self-hosted gate, which runs on a machine that updates
   # itself (#1637).
-  SELFHOSTED_XCODE: "27.0"
+  SELFHOSTED_XCODE: "27.2"
 
 jobs:
   # Detects which paths changed: against the base branch on a PR, against the
