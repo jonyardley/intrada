@@ -15,7 +15,7 @@ A full-width "Add" row that invites the musician to put something into a list or
 
 ## When to use
 
-- The end of a list the musician fills: a session's pieces, a piece's sections, variations or related exercises.
+- The end of a list the musician fills: a session's pieces, a piece's variations or related exercises.
 - An empty slot that says what goes there, with a hint underneath.
 
 ## When not to use
@@ -28,7 +28,7 @@ A full-width "Add" row that invites the musician to put something into a list or
 
 - **Dashed** (`.dashed`, the default): use for an empty slot standing on its own. A dashed outline draws where the content will go.
 - **Plain** (`.plain`): use at the foot of a list or inside a card, where an outline would box in a box.
-- **With a hint** (`hint`): use when the slot needs a word on what it takes, such as "A1, B, Coda, or bars 12 to 14".
+- **With a hint** (`hint`): use when the slot needs a word on what it takes, such as "Hands separately, dotted rhythms, your own".
 
 ## Behaviour
 
@@ -40,7 +40,7 @@ A full-width "Add" row that invites the musician to put something into a list or
 - The label is `IntradaFont.bodyMedium` in `accent`, led by a plus glyph, centred.
 - The hint is `IntradaFont.secondary` in `inkSecondary`, centred, and wraps.
 - The dashed outline is one point of `addDashOutline`, dashed four on four, with the `IntradaRadius.card` corner, and `IntradaSpacing.card` (16) above and below the label. Plain has `cardCompact` (12).
-- The label starts with a verb and names the thing: "Add section", "Add piece or exercise", "Choose variations". Keep it to one line on a phone.
+- The label starts with a verb and names the thing: "Add a variation", "Add piece or exercise", "Choose variations". Keep it to one line on a phone.
 
 ## Accessibility
 
@@ -55,8 +55,8 @@ A full-width "Add" row that invites the musician to put something into a list or
 ## Usage
 
 ```swift
-AddRowButton(title: "Add sections", hint: "A1, B, Coda, or bars 12 to 14", action: onAdd)
-AddRowButton(title: "Add section", style: .plain, action: onAdd)
+AddRowButton(title: "Choose variations", hint: "Hands separately, dotted rhythms, your own", action: onChoose)
+AddRowButton(title: "Add a variation", style: .plain, action: addRow)
 ```
 
 ```kotlin
