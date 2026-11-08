@@ -47,8 +47,9 @@ pub(super) fn build_library_item_views(
                                 .and_then(|r| r.latest_score)
                         });
                     let (whole_piece, sections, link_caption) = link_summary(item, &ex.id);
-                    let (tempo_line, tempo_line_spoken) =
-                        TempoWords::split(tempo_words::tempo_line(ex.tempo.as_ref()));
+                    let (tempo_line, tempo_line_spoken) = TempoWords::split(
+                        tempo_words::tempo_line(ex.tempo.as_ref(), ex.metre.as_ref()),
+                    );
                     Some(LinkedExerciseView {
                         id: ex.id.clone(),
                         title: ex.title.clone(),
@@ -121,8 +122,10 @@ pub(super) fn build_library_item_views(
 
         let variations = build_variation_views(item, &model.variations, plays);
         let keys = build_key_views(item, plays);
-        let (tempo_line, tempo_line_spoken) =
-            TempoWords::split(tempo_words::tempo_line(item.tempo.as_ref()));
+        let (tempo_line, tempo_line_spoken) = TempoWords::split(tempo_words::tempo_line(
+            item.tempo.as_ref(),
+            item.metre.as_ref(),
+        ));
         items.push(LibraryItemView {
             id: item.id.clone(),
             item_type: item.kind.clone(),
