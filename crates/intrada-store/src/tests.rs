@@ -313,9 +313,8 @@ fn every_earlier_version_reaches_the_current_one_with_its_rows() {
     }
 }
 
-// Phones in testers' hands have these recorded in `grdb_migrations` by the
-// GRDB store this replaced (#2432): one renamed or reordered runs again over
-// their notebook.
+// Testers' phones record these in `grdb_migrations` once a tester build carries
+// them (#2432, #2600): one renamed or reordered runs again over their notebook.
 #[test]
 fn the_shipped_migrations_keep_their_ids_and_order() {
     let shipped = [
@@ -339,6 +338,7 @@ fn the_shipped_migrations_keep_their_ids_and_order() {
         "v18_section",
         "v19_keys_and_variations",
         "v20_exercise_link",
+        "v21_drop_unread_tables_and_columns",
     ];
     let here: Vec<&str> = MIGRATIONS.iter().map(|(id, _)| *id).collect();
     assert_eq!(here[..shipped.len()], shipped);
