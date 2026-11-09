@@ -9,7 +9,10 @@ waste the most time.
 The `just` recipes build, run, screenshot and test (`just --list`, iOS group),
 regenerating bindings when the core changed.
 
-- `just ios-test`: the fast tier, unit and snapshot.
+- `just ios-test`: the fast tier, unit and snapshot; the check before pushing.
+- `just ios-test-class <Class>`: one unit or snapshot class, or a Swift Testing
+  suite by its type name, for checking a change in seconds; a name that
+  matches nothing fails.
 - `just ios-test-ui-class <Class>`: one UI class, what `/ship` runs for each
   class the diff touches.
 - `just ios-test-full`: every XCUITest, about five minutes; not in `/ship`,

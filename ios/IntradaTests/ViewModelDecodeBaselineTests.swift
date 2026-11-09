@@ -11,7 +11,10 @@ import Testing
 struct ViewModelDecodeBaselineTests {
   private static let pieces = 100
   private static let exercises = 100
-  private static let pastSessions = 100
+  // The library's size sets the payload; the history barely moves it, and seeding 100 sessions
+  // cost the size check 5 s (#2740). The baseline keeps the realistic history.
+  private static let payloadHistory = (sessions: 10, linksPerPiece: 1)
+  private static let baselineHistory = (sessions: 100, linksPerPiece: 3)
   private static let entriesPerSession = 6
   private static let base = Date(timeIntervalSince1970: 1_767_225_600)
 
@@ -33,7 +36,7 @@ struct ViewModelDecodeBaselineTests {
 
   private static let keys = ["C major", "G major", "D major", "A major", "E major", "B major"]
 
-  private func seededBridge() throws -> (RowsBridge, [String]) {
+  private func seededBridge(sessions: Int, linksPerPiece: Int) throws -> (RowsBridge, [String]) {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     for index in 0..<Self.exercises {
@@ -49,13 +52,13 @@ struct ViewModelDecodeBaselineTests {
     #expect(exerciseIds.count == Self.exercises)
     #expect(pieceIds.count == Self.pieces)
     for (index, pieceId) in pieceIds.enumerated() {
-      for offset in 0..<3 {
-        let exerciseId = exerciseIds[(index * 3 + offset) % exerciseIds.count]
+      for offset in 0..<linksPerPiece {
+        let exerciseId = exerciseIds[(index * linksPerPiece + offset) % exerciseIds.count]
         try bridge.link(exercise: exerciseId, to: pieceId)
       }
     }
 
-    for day in 0..<Self.pastSessions {
+    for day in 0..<sessions {
       _ = try bridge.update(.session(.startBuilding))
       for offset in 0..<Self.entriesPerSession {
         let itemId = exerciseIds[(day * Self.entriesPerSession + offset) % exerciseIds.count]
@@ -83,7 +86,7 @@ struct ViewModelDecodeBaselineTests {
     }
     let seeded = try bridge.rendered()
     #expect(seeded.error == nil)
-    #expect(seeded.sessions.count == Self.pastSessions)
+    #expect(seeded.sessions.count == sessions)
     return (bridge, exerciseIds)
   }
 
@@ -98,8 +101,10 @@ struct ViewModelDecodeBaselineTests {
 
   @Test("the screen state sent on Start and on each Next stays under 20 KB")
   func payloadPerTap() throws {
-    let (bridge, exerciseIds) = try seededBridge()
-    let day = Self.pastSessions
+    let history = Self.payloadHistory
+    let (bridge, exerciseIds) = try seededBridge(
+      sessions: history.sessions, linksPerPiece: history.linksPerPiece)
+    let day = history.sessions
     _ = try bridge.update(.session(.startBuilding))
     for offset in 0..<Self.entriesPerSession {
       _ = try bridge.update(.session(.addToSetlist(itemId: exerciseIds[offset])))
@@ -122,7 +127,9 @@ struct ViewModelDecodeBaselineTests {
     "a realistic ViewModel decodes, and the per-event cost is recorded as a baseline",
     .enabled(if: ProcessInfo.processInfo.environment["INTRADA_BASELINE"] != nil))
   func decodeAndRoundTripBaseline() throws {
-    let (bridge, exerciseIds) = try seededBridge()
+    let history = Self.baselineHistory
+    let (bridge, exerciseIds) = try seededBridge(
+      sessions: history.sessions, linksPerPiece: history.linksPerPiece)
     let clock = ContinuousClock()
 
     let bytes = try bridge.view().bincodeSerialize()
@@ -135,7 +142,7 @@ struct ViewModelDecodeBaselineTests {
     var starts: [Duration] = []
     var nexts: [Duration] = []
     for round in 0..<5 {
-      let day = Self.pastSessions + round
+      let day = history.sessions + round
       _ = try bridge.update(.session(.startBuilding))
       for offset in 0..<Self.entriesPerSession {
         _ = try bridge.update(.session(.addToSetlist(itemId: exerciseIds[offset + round])))
@@ -166,7 +173,7 @@ struct ViewModelDecodeBaselineTests {
     defer { defaults.removePersistentDomain(forName: suite) }
     let store = Store(bridge: bridge, sortDefaults: defaults)
     var storeNexts: [Duration] = []
-    let day = Self.pastSessions + 5
+    let day = history.sessions + 5
     store.send(.session(.startBuilding))
     for offset in 0..<Self.entriesPerSession {
       store.send(.session(.addToSetlist(itemId: exerciseIds[offset])))
@@ -183,7 +190,7 @@ struct ViewModelDecodeBaselineTests {
 
     let decode = Self.median(decodes)
     let report = """
-      library items \(Self.pieces + Self.exercises), past sessions \(Self.pastSessions)
+      library items \(Self.pieces + Self.exercises), past sessions \(history.sessions)
       ViewModel bytes \(bytes.count)
       decode median ms \(String(format: "%.2f", decode))
       StartSession bridge round trip median ms \(String(format: "%.2f", Self.median(starts)))

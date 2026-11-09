@@ -483,10 +483,33 @@ ios-logs:
 
 [doc("Force a full regenerate of both Swift packages and refresh the change stamp")]
 [group('iOS')]
-ios-gen slices="all": ios-typegen (ios-package "debug" slices)
-    @mkdir -p ios/generated
-    @echo "$(just _ios-src-hash) {{slices}}" > ios/generated/.gen-stamp
-    @echo "✓ bindings regenerated"
+ios-gen slices="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Side by side, type generation in its own Rust build folder so neither
+    # waits on the other's lock: about 3 s against 6 s after a core edit (#2742).
+    typegen_log=$(mktemp)
+    typegen_pid=""
+    trap '[ -n "$typegen_pid" ] && kill "$typegen_pid" 2>/dev/null; rm -f "$typegen_log"' EXIT
+    CARGO_TARGET_DIR="{{justfile_directory()}}/target/codegen" just ios-typegen > "$typegen_log" 2>&1 &
+    typegen_pid=$!
+    package_status=0
+    just ios-package debug {{slices}} || package_status=$?
+    typegen_status=0
+    wait "$typegen_pid" || typegen_status=$?
+    typegen_pid=""
+    if [ "$typegen_status" != 0 ]; then
+        cat "$typegen_log" >&2
+        echo "✗ Swift type generation failed (exit $typegen_status)" >&2
+    else
+        cat "$typegen_log"
+        echo "✓ ios/generated/SharedTypes"
+    fi
+    [ "$package_status" = 0 ] || echo "✗ Rust library build failed (exit $package_status)" >&2
+    [ "$typegen_status" = 0 ] && [ "$package_status" = 0 ] || exit 1
+    mkdir -p ios/generated
+    echo "$(just _ios-src-hash) {{slices}}" > ios/generated/.gen-stamp
+    echo "✓ bindings regenerated"
 
 # Build a signed Release .ipa and upload it to TestFlight (internal testing).
 # Mirrors the release-testflight.yml CI lane for local debugging. Needs Ruby >=3
@@ -609,6 +632,25 @@ ios-test-ui-class class: _ios-sync
     just _ios-test-guard
     just _ios-build-for-testing
     just _ios-test-without-building "-only-testing:IntradaUITests/{{class}}" 0
+
+# Rebuild and run one IntradaTests class or Swift Testing suite, for checking a
+# Swift change against the tests it touches in seconds rather than the whole
+# fast tier (#2739); `ios-test` stays the check before pushing. A name that
+# matches nothing fails: the counts check refuses a run with zero passed.
+[doc("Rebuild and run one unit or snapshot test class or suite")]
+[group('iOS')]
+ios-test-class class: _ios-sync
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/ios-sim-lock.sh
+    ios_sim_lock_acquire_for_run
+    _ios_test_class_cleanup() {
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
+    }
+    trap _ios_test_class_cleanup EXIT
+    just _ios-test-guard
+    just _ios-build-for-testing
+    just _ios-test-without-building "-only-testing:IntradaTests/{{class}}" 0
 
 # Compile-only Release build (no signing, no tests) — catches `#if DEBUG`-only
 # code referenced from a file that itself compiles in Release, which passes
@@ -734,6 +776,13 @@ _ios-build-for-testing:
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+    # Swift Testing runs the unit tests in parallel inside one process, still on
+    # one simulator (#2741). Set here because XcodeGen writes only on or off for
+    # a target, and on would also clone simulators for the XCTest classes.
+    run=(build/dd/Build/Products/*.xctestrun)
+    # Read first, so a renamed key fails here instead of going quietly serial.
+    plutil -extract IntradaTests.InProcessParallelizationEnabled raw "${run[0]}" >/dev/null
+    plutil -replace IntradaTests.InProcessParallelizationEnabled -bool true "${run[0]}"
     # Written last, so it only exists for a build that actually succeeded (#1530).
     just _ios-inputs-fingerprint > build/dd/Build/Products/ios-inputs.sha256
 
@@ -785,10 +834,19 @@ _ios-test-without-building filters retry parallel="0":
         echo "  Running them anyway lets a deliberately broken line pass, which is how a good test gets deleted (#1530)." >&2
         exit 1
     fi
-    flags=(-parallel-testing-enabled NO)
+    # The flag overrides the run file, so a run of IntradaTests alone drops it to
+    # keep the in-process parallel the build set (#2741); anything reaching the
+    # UI tests keeps it, one test at a time.
+    flags=()
+    unit_only=0
     if [ -n "{{filters}}" ]; then
-        for f in {{filters}}; do flags+=("$f"); done
+        unit_only=1
+        for f in {{filters}}; do
+            flags+=("$f")
+            case "$f" in -only-testing:IntradaTests | -only-testing:IntradaTests/*) ;; *) unit_only=0 ;; esac
+        done
     fi
+    [ "$unit_only" = "1" ] || flags=(-parallel-testing-enabled NO ${flags[@]+"${flags[@]}"})
     # Parallel is opt-in per caller, defaulting off: a second simulator's test
     # runner hits "Application failed preflight checks (Busy)" under memory
     # pressure, which reds the gate for no test reason. Six measured on the
@@ -1056,7 +1114,7 @@ _ios-sync slices="sim":
 
 [private]
 _ios-src-hash:
-    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-store/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml crates/intrada-store/Cargo.toml Cargo.lock -type f -exec shasum {} \; | shasum | cut -d' ' -f1
+    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-store/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml crates/intrada-store/Cargo.toml Cargo.lock -type f -exec shasum {} + | shasum | cut -d' ' -f1
 
 # ── Android ──
 

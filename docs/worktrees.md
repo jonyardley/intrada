@@ -23,6 +23,11 @@ with another worktree's. Worktrunk's machine-local config
 - **A cmux workspace.** The same hook opens one at the new tree; `pre-switch`
   reopens a missing one and `pre-remove` closes it.
 
+`just ios-gen` builds the Swift type generator in a second Rust build folder,
+`target/codegen`, so it runs beside the Rust library build (#2742). Each
+checkout, main included, pays about 13 s once to fill it at its first core
+change, and the folder takes about 0.9 GB of disk.
+
 Remove one with `wt remove` from inside it, or `just worktree-rm <name>`, which
 also cleans its simulator. Claude Code's own subagent worktrees stay in
 `.claude/worktrees`.
