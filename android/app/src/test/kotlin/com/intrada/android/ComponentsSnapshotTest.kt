@@ -238,13 +238,8 @@ class ComponentsSnapshotTest {
                     SectionHeader("Keys", caption = "2 of 4 solid")
                     SectionHeader("Last five weeks", trailing = "best week · 95m")
                     SectionHeader(
-                        "Sections",
-                        action =
-                            HeaderAction(
-                                "Reorder",
-                                "Reorder or remove sections",
-                                "sections.header",
-                            ) {},
+                        "Chord chart",
+                        action = HeaderAction("Edit", "Edit chord chart", "chart.header") {},
                     )
                 }
             }

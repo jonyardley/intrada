@@ -61,15 +61,6 @@ pub fn declared_bpm(bpm: u16, metre: Option<&Metre>) -> TempoWords {
     click_readout(bpm, metre.map_or(Metre::default().unit, |m| m.unit))
 }
 
-/// A section's target beside its name: "♩ 60".
-#[must_use]
-pub fn section_target(bpm: u16) -> TempoWords {
-    TempoWords {
-        text: format!("♩ {bpm}"),
-        spoken: format!("{bpm} beats per minute"),
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TrendWords {
     pub chip: Option<String>,
@@ -107,13 +98,6 @@ pub fn trend_words(measured: &[u16], sessions: usize) -> TrendWords {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_sections_target_reads_as_a_crotchet_figure() {
-        let words = section_target(60);
-        assert_eq!(words.text, "♩ 60");
-        assert_eq!(words.spoken, "60 beats per minute");
-    }
 
     #[test]
     fn the_trend_card_words_none_one_and_several_measurements() {

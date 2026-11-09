@@ -6,7 +6,6 @@ struct RelatedExercisesCard: View {
   @Binding var editing: Bool
   let onAdd: () -> Void
   let onShowSuggestions: () -> Void
-  let onChooseSections: (LinkedExerciseView) -> Void
 
   @Environment(Store.self) private var store
 
@@ -76,7 +75,6 @@ struct RelatedExercisesCard: View {
           exercise: exercise,
           isFirst: index == 0,
           isLast: index == item.linkedExercises.count - 1,
-          onChooseSections: item.sections.isEmpty ? nil : { onChooseSections(exercise) },
           onMoveUp: { moveExercise(at: index, by: -1) },
           onMoveDown: { moveExercise(at: index, by: 1) },
           onRemove: { removeExercise(id: exercise.id) })
@@ -223,11 +221,6 @@ private struct LinkedExerciseTitle: View {
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
-      if let caption = exercise.linkCaption {
-        Text(caption)
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
   }
@@ -260,7 +253,6 @@ private struct LinkedExerciseRow: View {
   private var accessibilityLabel: String {
     var parts = ["Exercise", exercise.title]
     if let meta = exercise.metaSpoken { parts.append(meta) }
-    if let caption = exercise.linkCaption { parts.append(caption) }
     if let score = exercise.pieceContextScore {
       parts.append("Mark \(score) of \(scoreRange.upperBound) on this piece")
     } else {
@@ -275,7 +267,6 @@ private struct LinkedExerciseEditRow: View {
   let exercise: LinkedExerciseView
   let isFirst: Bool
   let isLast: Bool
-  let onChooseSections: (() -> Void)?
   let onMoveUp: () -> Void
   let onMoveDown: () -> Void
   let onRemove: () -> Void
@@ -292,11 +283,6 @@ private struct LinkedExerciseEditRow: View {
     return layout {
       LinkedExerciseTitle(exercise: exercise)
       HStack(spacing: IntradaSpacing.controlGap) {
-        if let onChooseSections {
-          CapsuleActionButton(title: "Choose sections", action: onChooseSections)
-            .accessibilityLabel("Choose the sections \(exercise.title) is for")
-            .accessibilityIdentifier("relatedExercises.sections")
-        }
         VStack(spacing: 0) {
           Button(action: onMoveUp) {
             Image(systemName: "chevron.up")

@@ -5,12 +5,8 @@ use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
 use super::key::Key;
-pub(crate) use super::link::LinkEdit;
-pub use super::link::{ExerciseLink, LinkChange, LinkTarget};
+pub use super::link::{ExerciseLink, LinkChange};
 use super::metre::Metre;
-pub use super::section::{
-    BarRange, BarsInput, ItemSection, SectionChange, SectionEdit, SectionKind,
-};
 use super::types::{CreateItem, KeyEdit, Tempo, UpdateItem};
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
@@ -74,9 +70,6 @@ pub struct Item {
     /// from (#1499). `None` means the piece does not declare one.
     #[serde(default)]
     pub metre: Option<Metre>,
-    /// Tombstones included (#2245).
-    #[serde(default)]
-    pub sections: Vec<ItemSection>,
     /// The library variations this item uses, in the order chosen (#2246).
     #[serde(default)]
     pub variation_ids: Vec<String>,
@@ -163,22 +156,16 @@ pub enum ItemEvent {
         id: String,
         keys: Vec<Key>,
     },
-    /// The exercise's whole set of links across pieces, every changed piece
-    /// saved in one batch. Refused whole on the first invalid row.
-    SetExerciseLinks {
-        exercise_id: String,
-        targets: Vec<LinkTarget>,
-    },
     /// The piece's exercise picker (#2379): only the ticked exercises and the
-    /// ones written there. A kept exercise keeps its sections; a new tick, then
-    /// each written one, links to the whole piece after them.
+    /// ones written there. A kept exercise keeps its place; a new tick, then
+    /// each written one, links after them.
     ChoosePieceExercises {
         piece_id: String,
         exercise_ids: Vec<String>,
         written: Vec<CreateItem>,
     },
-    /// The exercise's piece picker (#2379): only the ticked pieces. A kept piece
-    /// keeps the exercise's sections on it; a new one links as a whole.
+    /// The exercise's piece picker (#2379): only the ticked pieces, every
+    /// changed piece saved in one batch.
     ChooseExercisePieces {
         exercise_id: String,
         piece_ids: Vec<String>,
@@ -192,12 +179,7 @@ pub enum ItemEvent {
         variation_ids: Vec<String>,
         new_labels: Vec<String>,
     },
-    /// One section saved, removed or the list arranged (#2447).
-    ChangeSection {
-        id: String,
-        change: SectionChange,
-    },
-    /// One exercise's links set, moved or removed on the piece's card (#2447).
+    /// One exercise moved or removed on the piece's card (#2447).
     ChangePieceLink {
         piece_id: String,
         change: LinkChange,
@@ -299,7 +281,6 @@ fn form_field(error: &LibraryError) -> Option<FormErrorField> {
         "notes" => Some(FormErrorField::Notes),
         "tags" => Some(FormErrorField::Tags),
         "labels" | "variation_labels" => Some(FormErrorField::Variations),
-        "sections" => Some(FormErrorField::Sections),
         _ => None,
     }
 }
@@ -309,8 +290,6 @@ mod edit;
 mod links;
 mod metre;
 mod photo;
-mod sections;
-pub(crate) use sections::update_sections;
 #[cfg(test)]
 impl Item {
     pub(crate) fn fixture(id: &str) -> Self {
@@ -330,7 +309,6 @@ impl Item {
             chord_chart: None,
             photo_id: None,
             metre: None,
-            sections: Vec::new(),
             variation_ids: Vec::new(),
             keys: Vec::new(),
             exercise_links: Vec::new(),
@@ -375,10 +353,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             links::commit_scaffold(model, piece_id, kinds)
         }
-        ItemEvent::SetExerciseLinks {
-            exercise_id,
-            targets,
-        } => links::set_exercise_links(model, exercise_id, targets),
         ItemEvent::ChoosePieceExercises {
             piece_id,
             exercise_ids,
@@ -388,7 +362,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             exercise_id,
             piece_ids,
         } => links::choose_exercise_pieces(model, exercise_id, piece_ids),
-        ItemEvent::ChangeSection { id, change } => sections::change_section(model, id, change),
         ItemEvent::ChangePieceLink { piece_id, change } => {
             links::change_piece_link(model, piece_id, change)
         }

@@ -14,7 +14,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
           entries: [], itemCount: 0, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
           lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-          drillOffers: [], summary: "0 items", startTitle: "Start session")))
+          summary: "0 items", startTitle: "Start session")))
     assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
   }
 
@@ -54,7 +54,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
           entries: [.previewExercise], itemCount: 1, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
           lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
-          drillOffers: [], summary: "1 item", startTitle: "Start session")))
+          summary: "1 item", startTitle: "Start session")))
     assertSnapshot(
       of: host(AddToSessionSheet(), store: store),
       as: .image(
@@ -107,7 +107,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
-  func testEntrySettingsSheetSplitWithFocus() throws {
+  func testEntrySettingsSheetWithFocus() throws {
     let store = Store.previewBuildingPlanned()
     let limits = try XCTUnwrap(store.viewModel?.limits)
     assertSnapshot(
@@ -123,15 +123,6 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
-  private static let clairDrills = [
-    DrillOfferView(
-      entryId: "plan-p", sectionId: "sec-a2", exerciseId: "ex-arp", title: "Left hand arpeggios",
-      addedEntryId: "drill-arp"),
-    DrillOfferView(
-      entryId: "plan-p", sectionId: "sec-a2", exerciseId: "ex-pedal", title: "Pedal changes",
-      addedEntryId: nil),
-  ]
-
   private static let clairKeys = EntryKeysView(
     entryId: "plan-p",
     keys: [
@@ -146,14 +137,6 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     var entry = SetlistEntryView.previewPlannedPiece
     entry.plannedKey = Key(letter: .d, accidental: .natural, mode: .major)
     return entry
-  }
-
-  func testEntrySettingsSheetOffersDrillsOneTicked() throws {
-    let store = Store.previewBuildingPlanned(drillOffers: Self.clairDrills)
-    let limits = try XCTUnwrap(store.viewModel?.limits)
-    assertSnapshot(
-      of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
-      as: tallFormConfig)
   }
 
   func testEntrySettingsSheetKeyRow() throws {

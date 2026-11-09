@@ -25,7 +25,6 @@ import com.intrada.shared.ListQuery
 import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -69,18 +68,6 @@ class BuilderScreenTest {
             .performScrollTo()
             .performClick()
         assertEquals(emptyList<String>(), store.setlist().titles())
-    }
-
-    @Test
-    fun aSectionChosenInSettingsIsPlannedOnThePiece() = runTest {
-        val store = buildingStore()
-        val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
-        compose.setContent { EntrySettingsRoute(store, piece.id, onDone = {}) }
-
-        compose.onNodeWithContentDescription("Add Run").performScrollTo().performClick()
-
-        val planned = store.setlist().entries.single { it.id == piece.id }
-        assertEquals(listOf("Run"), planned.record.segments.map { it.label })
     }
 
     @Test
@@ -136,19 +123,6 @@ class BuilderScreenTest {
 
         val keys = store.setlist().entryKeys.single { it.entryId == piece.id }
         assertEquals("A minor", keys.currentLabel)
-    }
-
-    @Test
-    fun tickingADrillAddsItToTheSessionAndTickingAgainTakesItOut() = runTest {
-        val store = plannedPieceStore()
-        val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
-        compose.setContent { EntrySettingsRoute(store, piece.id, onDone = {}) }
-
-        compose.onNodeWithTag("entrySettings.drill").performScrollTo().performClick()
-        assertTrue(Fixtures.scales.title in store.setlist().titles())
-
-        compose.onNodeWithTag("entrySettings.drill").performScrollTo().performClick()
-        assertFalse(Fixtures.scales.title in store.setlist().titles())
     }
 
     @Test

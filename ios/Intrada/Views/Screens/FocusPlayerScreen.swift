@@ -22,11 +22,8 @@ struct FocusPlayerScreen: View {
   @State private var click = ClickController()
   @State private var configuringClick = false
   @State private var switchingVariation = false
-  @State private var addingSpot = false
-  @State private var spotRefusal: String?
   /// The away offer the musician waved off, so it stays gone until the next time away.
   @State private var keptAway: String?
-  @State private var offeringMoveOn = false
 
   private var active: ActiveSessionView? { store.viewModel?.activeSession }
 
@@ -75,24 +72,11 @@ struct FocusPlayerScreen: View {
           onPick: { switchVariation(active, to: $0) })
       }
     }
-    .sheet(
-      isPresented: $addingSpot,
-      onDismiss: { spotRefusal = nil }
-    ) {
-      if let active, let limits = store.viewModel?.limits {
-        TroubleSpotSheet(
-          context: spotContext(active), barMax: Int(limits.barMax), refusal: spotRefusal,
-          onAdd: { addSpot(active, first: $0, last: $1) })
-      }
-    }
     .task { reseedClick() }
     .onChange(of: active?.reflection == nil) { _, closed in
       if closed { reflectionRefusal = nil }
     }
     .onChange(of: active?.currentPosition) { _, _ in reseedClick() }
-    .onChange(of: active?.record.segment?.moveLabel == nil) { _, gone in
-      if gone { offeringMoveOn = false }
-    }
     // `initial: true` is what takes the hold for a session started in the
     // foreground, where the phase never changes (#1513).
     .onChange(of: scenePhase, initial: true) { _, phase in
@@ -120,27 +104,10 @@ struct FocusPlayerScreen: View {
       awayOffer(active)
       Spacer(minLength: IntradaSpacing.card)
       centerInfo(active).fadeUp(1)
-      if let segment = active.record.segment {
-        SegmentClockRow(
-          segment: segment,
-          referenceDate: SessionClock.heldAt(
-            stoppedAt: active.reflection?.stoppedAt, reference: referenceDate),
-          offering: $offeringMoveOn,
-          onMove: {
-            store.send(
-              .session(.moveToNextSegment(now: SessionClock.nowRFC3339(), reading: tempoReading)))
-          },
-          onStay: { store.send(.session(.stayOnSegment)) }
-        )
-        .padding(.top, IntradaSpacing.cardCompact)
-      }
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
       clickRow(active).padding(.top, IntradaSpacing.controlGap)
       if click.isRunning {
         barLine.padding(.top, IntradaSpacing.controlGap)
-      }
-      if !offeringMoveOn {
-        troubleSpotButton.padding(.top, IntradaSpacing.controlGap)
       }
       repCounter(active).fadeUp(3).padding(.top, IntradaSpacing.section)
       Spacer(minLength: IntradaSpacing.card)
@@ -272,7 +239,7 @@ struct FocusPlayerScreen: View {
     -> SessionEvent
   {
     .switchPlay(
-      entryId: offer.entryId, sectionId: offer.sectionId, key: offer.key,
+      entryId: offer.entryId, key: offer.key,
       variationIds: offer.variationIds, now: now, reading: reading)
   }
 
@@ -320,8 +287,7 @@ struct FocusPlayerScreen: View {
     return store.sendAccepted(
       .session(
         .switchPlay(
-          entryId: active.entries[pos].id, sectionId: active.currentSectionId,
-          key: active.currentKey, variationIds: [variationId],
+          entryId: active.entries[pos].id, key: active.currentKey, variationIds: [variationId],
           now: SessionClock.nowRFC3339(), reading: tempoReading)))
   }
 
@@ -350,8 +316,7 @@ struct FocusPlayerScreen: View {
   }
 
   @ViewBuilder private func timerBody(elapsed: Int, planned: UInt32?) -> some View {
-    TimerRing(
-      elapsed: elapsed, planned: planned.map(Int.init), size: offeringMoveOn ? 160 : 200)
+    TimerRing(elapsed: elapsed, planned: planned.map(Int.init), size: 200)
   }
 
   // A marking with no BPM, or one outside the click's range (crotchet = 240
@@ -452,7 +417,7 @@ struct FocusPlayerScreen: View {
     .padding(.bottom, IntradaSpacing.card)
   }
 
-  // ── Time away and trouble spots (#2306, #2249) ──
+  // ── Time away (#2306) ──
 
   @ViewBuilder private func awayOffer(_ active: ActiveSessionView) -> some View {
     if let offer = active.record.awayOffer, keptAway != offer.label {
@@ -478,43 +443,6 @@ struct FocusPlayerScreen: View {
     default:
       break
     }
-  }
-
-  private var troubleSpotButton: some View {
-    Button {
-      addingSpot = true
-    } label: {
-      Label("Trouble spot", systemImage: "flag")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.ink)
-        .padding(.horizontal, IntradaSpacing.card)
-        .frame(minHeight: 44)
-        .background(IntradaColor.cardFill, in: Capsule())
-        .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
-    }
-    .buttonStyle(PressRebound())
-    .accessibilityIdentifier("player.troubleSpot")
-  }
-
-  private func spotContext(_ active: ActiveSessionView) -> String {
-    guard let segment = active.record.segment else { return active.currentItemTitle }
-    return "\(active.currentItemTitle) · in \(segment.label)"
-  }
-
-  private func addSpot(_ active: ActiveSessionView, first: Int, last: Int) -> Bool {
-    let pos = Int(active.currentPosition)
-    guard active.entries.indices.contains(pos) else { return false }
-    let accepted = store.send(
-      .session(
-        .addTroubleSpot(
-          itemId: active.entries[pos].itemId,
-          bars: BarRange(first: UInt16(clamping: first), last: UInt16(clamping: last)))),
-      onSuccess: .success)
-    if !accepted {
-      spotRefusal = store.viewModel?.error ?? "Couldn't add the spot. Try again."
-      store.send(.clearError)
-    }
-    return accepted
   }
 
   // ── Reflection at hand-off ───────────────────────────────────────────

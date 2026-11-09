@@ -1,18 +1,14 @@
 use super::*;
 use crate::domain::link::{reconcile_links, same_links, ExerciseLink, WantedLink};
 
-/// Whole-piece links to `ids` after the piece's last, skipping any already live.
-pub(super) fn append_whole_piece_links(
-    piece: &mut Item,
-    ids: &[String],
-    now: chrono::DateTime<chrono::Utc>,
-) {
+/// Links to `ids` after the piece's last, skipping any already live.
+pub(super) fn append_links(piece: &mut Item, ids: &[String], now: chrono::DateTime<chrono::Utc>) {
     for id in ids {
-        if !piece.has_live_link(id, None) {
+        if !piece.has_live_link(id) {
             let position = piece.next_link_position();
             piece
                 .exercise_links
-                .push(ExerciseLink::new(id.clone(), None, position, now));
+                .push(ExerciseLink::new(id.clone(), position, now));
         }
     }
 }
@@ -69,7 +65,6 @@ pub(super) fn commit_scaffold(
             updated_at: now,
             priority: false,
             chord_chart: None,
-            sections: vec![],
             variation_ids: vec![],
             keys: vec![],
             photo_id: None,
@@ -90,7 +85,7 @@ pub(super) fn commit_scaffold(
         model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
         return crux_core::render::render();
     };
-    append_whole_piece_links(piece, &new_ids, now);
+    append_links(piece, &new_ids, now);
     piece.updated_at = now;
     let piece = piece.clone();
 
@@ -108,7 +103,7 @@ pub(super) fn commit_scaffold(
 pub(super) fn set_piece_links(
     model: &mut Model,
     piece_id: String,
-    links: Vec<LinkEdit>,
+    links: Vec<ScaffoldEntry>,
 ) -> Command<Effect, Event> {
     if let Err(e) = validation::validate_piece_host(&piece_id, model) {
         model.raise_error(e.to_string());
@@ -116,26 +111,17 @@ pub(super) fn set_piece_links(
     }
 
     let mut rows = Vec::with_capacity(links.len());
-    for (index, edit) in links.into_iter().enumerate() {
-        let Some(piece) = model.items.iter().find(|i| i.id == piece_id) else {
-            model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
+    for (index, exercise) in links.into_iter().enumerate() {
+        let Some(entry) = super::create::validate_entry(model, index, exercise) else {
             return crux_core::render::render();
         };
-        if let Err(e) = validation::validate_link_section(piece, edit.section_id.as_deref()) {
-            model.last_error_target = Some(FormErrorTarget::Exercise { index, field: None });
-            model.raise_error(e.to_string());
-            return crux_core::render::render();
-        }
-        let Some(entry) = super::create::validate_entry(model, index, edit.exercise) else {
-            return crux_core::render::render();
-        };
-        rows.push((entry, edit.section_id));
+        rows.push(entry);
     }
 
     let now = chrono::Utc::now();
     let mut created: Vec<Item> = Vec::new();
     let mut wanted: Vec<WantedLink> = Vec::new();
-    for (entry, section_id) in rows {
+    for entry in rows {
         let exercise_id = match entry {
             super::create::Entry::New(input, tempo) => {
                 let exercise = super::create::new_exercise(*input, tempo, now);
@@ -145,14 +131,10 @@ pub(super) fn set_piece_links(
             }
             super::create::Entry::Existing(id) => id,
         };
-        let repeated = wanted
-            .iter()
-            .any(|w| w.exercise_id == exercise_id && w.section_id == section_id);
-        if !repeated {
+        if !wanted.iter().any(|w| w.exercise_id == exercise_id) {
             let position = Some(wanted.len());
             wanted.push(WantedLink {
                 exercise_id,
-                section_id,
                 position,
             });
         }
@@ -162,15 +144,12 @@ pub(super) fn set_piece_links(
         model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
         return crux_core::render::render();
     };
-    let stored: Vec<(&str, Option<&str>)> = piece
+    let stored: Vec<&str> = piece
         .live_links()
         .into_iter()
-        .map(|l| (l.exercise_id.as_str(), l.section_id.as_deref()))
+        .map(|l| l.exercise_id.as_str())
         .collect();
-    let asked: Vec<(&str, Option<&str>)> = wanted
-        .iter()
-        .map(|w| (w.exercise_id.as_str(), w.section_id.as_deref()))
-        .collect();
+    let asked: Vec<&str> = wanted.iter().map(|w| w.exercise_id.as_str()).collect();
     if created.is_empty() && stored == asked {
         model.last_error = None;
         return crux_core::render::render();
@@ -192,31 +171,23 @@ pub(super) fn set_piece_links(
     ])
 }
 
-pub(super) fn set_exercise_links(
+pub(super) fn choose_exercise_pieces(
     model: &mut Model,
     exercise_id: String,
-    targets: Vec<LinkTarget>,
+    piece_ids: Vec<String>,
 ) -> Command<Effect, Event> {
     if let Err(e) = validation::validate_exercise_link_target(&exercise_id, model) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
-    let mut wanted: Vec<LinkTarget> = Vec::with_capacity(targets.len());
-    for t in targets {
-        if let Err(e) = validation::validate_piece_host(&t.piece_id, model) {
+    let mut wanted: Vec<String> = Vec::with_capacity(piece_ids.len());
+    for piece_id in piece_ids {
+        if let Err(e) = validation::validate_piece_host(&piece_id, model) {
             model.raise_error(e.to_string());
             return crux_core::render::render();
         }
-        let Some(piece) = model.items.iter().find(|i| i.id == t.piece_id) else {
-            model.raise_error(LibraryError::NotFound { id: t.piece_id }.to_string());
-            return crux_core::render::render();
-        };
-        if let Err(e) = validation::validate_link_section(piece, t.section_id.as_deref()) {
-            model.raise_error(e.to_string());
-            return crux_core::render::render();
-        }
-        if !wanted.contains(&t) {
-            wanted.push(t);
+        if !wanted.contains(&piece_id) {
+            wanted.push(piece_id);
         }
     }
 
@@ -225,10 +196,9 @@ pub(super) fn set_exercise_links(
     for piece in model.items.iter_mut().filter(|i| i.kind == ItemKind::Piece) {
         let mine: Vec<WantedLink> = wanted
             .iter()
-            .filter(|t| t.piece_id == piece.id)
-            .map(|t| WantedLink {
+            .filter(|id| **id == piece.id)
+            .map(|_| WantedLink {
                 exercise_id: exercise_id.clone(),
-                section_id: t.section_id.clone(),
                 position: None,
             })
             .collect();
@@ -262,87 +232,29 @@ pub(super) fn choose_piece_exercises(
     exercise_ids: Vec<String>,
     written: Vec<CreateItem>,
 ) -> Command<Effect, Event> {
-    let stored: Vec<LinkEdit> = model
+    let stored: Vec<String> = model
         .items
         .iter()
         .find(|i| i.id == piece_id)
-        .map(|piece| {
-            piece
-                .live_links()
-                .into_iter()
-                .map(|l| LinkEdit {
-                    exercise: ScaffoldEntry::Existing {
-                        id: l.exercise_id.clone(),
-                    },
-                    section_id: l.section_id.clone(),
-                })
-                .collect()
-        })
+        .map(Item::linked_exercise_ids)
         .unwrap_or_default();
-    let linked = |id: &str| {
-        stored
-            .iter()
-            .any(|e| matches!(&e.exercise, ScaffoldEntry::Existing { id: s } if s == id))
-    };
-    let added: Vec<LinkEdit> = exercise_ids
+    let kept = stored
         .iter()
-        .filter(|id| !linked(id))
-        .map(|id| LinkEdit {
-            exercise: ScaffoldEntry::Existing { id: id.clone() },
-            section_id: None,
-        })
-        .collect();
-    let kept = stored.iter().filter(
-        |e| matches!(&e.exercise, ScaffoldEntry::Existing { id } if exercise_ids.contains(id)),
-    );
+        .filter(|id| exercise_ids.contains(id))
+        .cloned();
+    let added = exercise_ids
+        .iter()
+        .filter(|id| !stored.contains(id))
+        .cloned();
     let links = kept
-        .cloned()
         .chain(added)
-        .chain(written.into_iter().map(|input| LinkEdit {
-            exercise: ScaffoldEntry::New(input),
-            section_id: None,
-        }))
+        .map(|id| ScaffoldEntry::Existing { id })
+        .chain(written.into_iter().map(ScaffoldEntry::New))
         .collect();
     set_piece_links(model, piece_id, links)
 }
 
-pub(super) fn choose_exercise_pieces(
-    model: &mut Model,
-    exercise_id: String,
-    piece_ids: Vec<String>,
-) -> Command<Effect, Event> {
-    let targets = piece_ids
-        .into_iter()
-        .flat_map(|piece_id| {
-            let sections: Vec<Option<String>> = model
-                .items
-                .iter()
-                .find(|i| i.id == piece_id && i.kind == ItemKind::Piece)
-                .map(|piece| {
-                    piece
-                        .live_links()
-                        .into_iter()
-                        .filter(|l| l.exercise_id == exercise_id)
-                        .map(|l| l.section_id.clone())
-                        .collect()
-                })
-                .unwrap_or_default();
-            let sections = if sections.is_empty() {
-                vec![None]
-            } else {
-                sections
-            };
-            sections.into_iter().map(move |section_id| LinkTarget {
-                piece_id: piece_id.clone(),
-                section_id,
-            })
-        })
-        .collect();
-    set_exercise_links(model, exercise_id, targets)
-}
-
-/// Works on the card: each linked exercise still in the library once, in the
-/// order of its first live link, with all its links kept together under it.
+/// Works on the card: each linked exercise still in the library, in link order.
 pub(super) fn change_piece_link(
     model: &mut Model,
     piece_id: String,
@@ -352,60 +264,22 @@ pub(super) fn change_piece_link(
         model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
         return crux_core::render::render();
     };
-    // A deleted exercise leaves its link rows behind; the card the musician
-    // sees skips them, so the rebuilt set drops them too.
+    // A deleted exercise leaves its link row behind; the card the musician
+    // sees skips it, so the rebuilt set drops it too.
     let in_library = |id: &str| {
         model
             .items
             .iter()
             .any(|i| i.id == id && i.kind == ItemKind::Exercise)
     };
-    let mut card: Vec<(String, Vec<Option<String>>)> = Vec::new();
-    for link in piece
-        .live_links()
+    let mut card: Vec<String> = piece
+        .linked_exercise_ids()
         .into_iter()
-        .filter(|l| in_library(&l.exercise_id))
-    {
-        match card.iter_mut().find(|(id, _)| id == &link.exercise_id) {
-            Some((_, rows)) => rows.push(link.section_id.clone()),
-            None => card.push((link.exercise_id.clone(), vec![link.section_id.clone()])),
-        }
-    }
-    let score_order: Vec<String> = piece
-        .live_sections()
-        .into_iter()
-        .map(|s| s.id.clone())
+        .filter(|id| in_library(id))
         .collect();
-    let place = |card: &[(String, Vec<Option<String>>)], exercise_id: &str| {
-        card.iter().position(|(id, _)| id == exercise_id)
-    };
+    let place = |card: &[String], exercise_id: &str| card.iter().position(|id| id == exercise_id);
 
     match change {
-        LinkChange::Set {
-            exercise_id,
-            whole_piece,
-            mut section_ids,
-        } => {
-            section_ids.sort_by_key(|id| {
-                score_order
-                    .iter()
-                    .position(|s| s == id)
-                    .unwrap_or(usize::MAX)
-            });
-            let rows: Vec<Option<String>> = whole_piece
-                .then_some(None)
-                .into_iter()
-                .chain(section_ids.into_iter().map(Some))
-                .collect();
-            match (place(&card, &exercise_id), rows.is_empty()) {
-                (Some(at), true) => {
-                    card.remove(at);
-                }
-                (Some(at), false) => card[at].1 = rows,
-                (None, false) => card.push((exercise_id, rows)),
-                (None, true) => {}
-            }
-        }
         LinkChange::Move { exercise_id, to } => {
             if let Some(from) = place(&card, &exercise_id) {
                 let moved = card.remove(from);
@@ -421,12 +295,7 @@ pub(super) fn change_piece_link(
 
     let links = card
         .into_iter()
-        .flat_map(|(id, rows)| {
-            rows.into_iter().map(move |section_id| LinkEdit {
-                exercise: ScaffoldEntry::Existing { id: id.clone() },
-                section_id,
-            })
-        })
+        .map(|id| ScaffoldEntry::Existing { id })
         .collect();
     set_piece_links(model, piece_id, links)
 }

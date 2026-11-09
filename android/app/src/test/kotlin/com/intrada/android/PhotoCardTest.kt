@@ -157,7 +157,7 @@ class PhotoCardTest {
         return store
     }
 
-    private val navigation = PieceNavigation({}, {}, {}, {}, {}, {})
+    private val navigation = PieceNavigation({}, {}, {}, {})
 
     private companion object {
         const val PIECE = "01J0000000000000000000ITEM"

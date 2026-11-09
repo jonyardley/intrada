@@ -79,8 +79,6 @@ pub struct TempoChange {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Play {
     pub id: String,
-    /// `None` is the whole piece.
-    pub section_id: Option<String>,
     /// `None` is the written key, or no key.
     pub key: Option<Key>,
     /// Library variations; empty is plain.
@@ -97,10 +95,9 @@ pub struct Play {
     pub away: Vec<Away>,
 }
 
-/// How a play is played: the part of the item, the key and the variations.
+/// How a play is played: the key and the variations.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PlayWay {
-    pub section_id: Option<String>,
     pub key: Option<Key>,
     pub variation_ids: Vec<String>,
 }
@@ -109,7 +106,6 @@ impl Play {
     pub fn opened(way: PlayWay, rep_target: Option<u8>, started_at: DateTime<Utc>) -> Self {
         Self {
             id: ulid::Ulid::generate().to_string(),
-            section_id: way.section_id,
             key: way.key,
             variation_ids: way.variation_ids,
             started_at,
@@ -125,13 +121,13 @@ impl Play {
         }
     }
 
-    /// The whole item, no variations; any key. The piece's own score reads
-    /// only these (#50 decision 6).
+    /// No variations; any key. The piece's own score reads only these (#50
+    /// decision 6).
     pub fn is_plain_run_through(&self) -> bool {
-        self.section_id.is_none() && self.variation_ids.is_empty()
+        self.variation_ids.is_empty()
     }
 
-    /// The same section, key in either spelling, and set of variations, in any order.
+    /// The same key in either spelling, and set of variations, in any order.
     pub fn is_played(&self, way: &PlayWay) -> bool {
         let sorted = |ids: &[String]| {
             let mut ids = ids.to_vec();
@@ -142,9 +138,7 @@ impl Play {
             (Some(open), Some(named)) => open.same_key(&named),
             (open, named) => open == named,
         };
-        self.section_id == way.section_id
-            && same_key
-            && sorted(&self.variation_ids) == sorted(&way.variation_ids)
+        same_key && sorted(&self.variation_ids) == sorted(&way.variation_ids)
     }
 
     /// A mark or a banked repetition. Time alone is not a record: the clock
@@ -180,9 +174,6 @@ pub struct PlannedItem {
     /// Every play the entry opens starts from it, so a switch redraws the same
     /// number of slots.
     pub rep_target: Option<u8>,
-    /// The sections, in order, with their time (#2315). Planned against played
-    /// is the clearest sign of avoiding a hard part.
-    pub segments: Vec<Segment>,
     /// `None` is the written key. The first play opens in it.
     pub key: Option<Key>,
 }
@@ -198,13 +189,8 @@ impl PlannedItem {
             group_id: None,
             variation_ids: Vec::new(),
             rep_target: None,
-            segments: Vec::new(),
             key: None,
         }
-    }
-
-    pub fn section_ids(&self) -> Vec<String> {
-        self.segments.iter().map(|s| s.section_id.clone()).collect()
     }
 }
 
@@ -263,7 +249,7 @@ impl SetlistEntry {
 
     /// The one place several marks collapse into one (#1739 decision 9): the
     /// mean of the plain full run-throughs that carry a score, rounded to
-    /// nearest (#2246). A section or a variation is not the piece.
+    /// nearest (#2246). A variation is not the piece.
     pub fn score_summary(&self) -> Option<u8> {
         let scored: Vec<u16> = self
             .plays
@@ -304,7 +290,6 @@ impl Play {
     pub(crate) fn fixture() -> Self {
         Self {
             id: "play-1".to_string(),
-            section_id: None,
             key: None,
             variation_ids: Vec::new(),
             started_at: DateTime::<Utc>::from_timestamp(0, 0).expect("epoch"),
@@ -412,7 +397,7 @@ pub struct ReflectionAnswers {
     /// The spans of the note's points the musician confirmed.
     pub note_points: Vec<NoteSpan>,
     pub intention_met: Option<IntentionMet>,
-    /// Only the rows whose section, key or variations were changed by hand.
+    /// Only the rows whose key or variations were changed by hand.
     pub ways: Vec<DraftWay>,
 }
 
@@ -421,7 +406,6 @@ pub struct ReflectionAnswers {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct DraftWay {
     pub play_id: String,
-    pub section_id: Option<String>,
     pub key: Option<Key>,
     pub variation_ids: Vec<String>,
 }
@@ -477,19 +461,17 @@ pub struct ActiveSession {
     pub session_started_at: DateTime<Utc>,
     /// `Some` while the item-complete sheet is open on the current entry.
     pub reflection: Option<ReflectionDraft>,
-    /// `Some` while the current entry runs through two or more segments.
-    pub segment: Option<SegmentClock>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 8;
+const RETIRED_BLOB_VERSION_MAX: u32 = 9;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 8 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 9;
+    /// 9 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 10;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
@@ -532,14 +514,6 @@ pub enum SessionEvent {
     SetEntryIntention {
         entry_id: String,
         intention: Option<String>,
-    },
-    /// Plan the section (at most one) and the variations an entry will be
-    /// practised on; empty lists clear (#2246). Building phase only: once
-    /// practice starts the record is the plays, and `SwitchPlay` changes it.
-    SetEntryPlan {
-        entry_id: String,
-        section_ids: Vec<String>,
-        variation_ids: Vec<String>,
     },
     /// Set or clear the rep target for an entry during building phase.
     /// `None` disables the counter; `Some(n)` enables it with target `n`.
@@ -681,7 +655,6 @@ pub enum SessionEvent {
     /// the repetition counter. Active phase only.
     SwitchPlay {
         entry_id: String,
-        section_id: Option<String>,
         key: Option<Key>,
         variation_ids: Vec<String>,
         now: DateTime<Utc>,
@@ -757,30 +730,14 @@ pub enum SessionEvent {
     RetiredSessionFound,
 
     // === v0.17 record (#2249), appended ===
-    /// The sections an entry runs through, in order. Segments sent at zero
-    /// share what the others leave of the planned time. Building phase only.
-    SetSegments {
-        entry_id: String,
-        segments: Vec<Segment>,
-    },
     SetFocus {
         entry_id: String,
         focus: Option<IntentionFocus>,
     },
-    /// Plan the section and variations the item was last played on.
+    /// Plan the variations and key the item was last played on.
     ApplyLastTime {
         entry_id: String,
     },
-    /// A nameless trouble spot on the item, in score order (#2245's rules).
-    AddTroubleSpot {
-        item_id: String,
-        bars: crate::domain::section::BarRange,
-    },
-    MoveToNextSegment {
-        now: DateTime<Utc>,
-        reading: TempoReading,
-    },
-    StayOnSegment,
     WentAway {
         at: DateTime<Utc>,
     },
@@ -808,51 +765,22 @@ pub enum SessionEvent {
     },
 
     // === Builder rules (#2393), appended ===
-    /// The entry's variations, its segments left as they are. Building only.
+    /// The entry's variations, in order; empty clears. Building only.
     SetEntryVariations {
         entry_id: String,
         variation_ids: Vec<String>,
     },
-    /// Moves whole minutes onto a segment from its neighbour, which the core
-    /// picks. Refused when either would drop under a minute.
-    StepSegment {
-        entry_id: String,
-        section_id: String,
-        minutes: i8,
-    },
-
-    // === Keeping tuned minutes (#2398), appended ===
-    /// Adds the section last, with an even share of the planned time taken
-    /// from the largest segment. Refused when that would leave it under a
-    /// minute.
-    AddSegment {
-        entry_id: String,
-        section_id: String,
-    },
-    /// Its minutes go to the next segment, or the one before for the last.
-    RemoveSegment {
-        entry_id: String,
-        section_id: String,
-    },
-
     // === The rest of #2249, appended ===
     /// `None` is the written key. Building only; any key is valid.
     SetEntryKey {
         entry_id: String,
         key: Option<Key>,
     },
-    /// An exercise linked to a planned section of the piece, into the
-    /// piece's block, forming one when it has none. Building only.
-    AddDrill {
-        entry_id: String,
-        exercise_id: String,
-    },
     /// The finish sheet's confirm, sent after `NextItem` like the marks.
     /// `play_id` must belong to `entry_id`; the same way writes nothing.
     UpdatePlayWay {
         entry_id: String,
         play_id: String,
-        section_id: Option<String>,
         key: Option<Key>,
         variation_ids: Vec<String>,
     },
@@ -892,11 +820,10 @@ mod summary;
 mod tests;
 
 pub(crate) use building::{last_plan, last_time};
-pub(crate) use live::can_stay;
 pub(crate) use record::*;
 pub use record::{
     Away, Felt, FocusKind, IntentionFocus, IntentionMet, NotePoint, NotePointKind, NoteSpan,
-    Obstacle, Segment, SegmentClock,
+    Obstacle,
 };
 pub(crate) use saved::{forget_restored_delete, undo_offer};
 
@@ -920,12 +847,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             intention,
         } => building::set_entry_intention(model, entry_id, intention),
-
-        SessionEvent::SetEntryPlan {
-            entry_id,
-            section_ids,
-            variation_ids,
-        } => building::set_entry_plan(model, entry_id, section_ids, variation_ids),
 
         SessionEvent::SetRepTarget { entry_id, target } => {
             building::set_rep_target(model, entry_id, target)
@@ -1023,17 +944,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::SwitchPlay {
             entry_id,
-            section_id,
             key,
             variation_ids,
             now,
             reading,
         } => {
-            let way = PlayWay {
-                section_id,
-                key,
-                variation_ids,
-            };
+            let way = PlayWay { key, variation_ids };
             active::switch_play(model, entry_id, way, now, reading)
         }
 
@@ -1051,23 +967,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             answers,
         } => active::submit_reflection(model, next_item_started_at, answers),
 
-        SessionEvent::SetSegments { entry_id, segments } => {
-            building::set_segments(model, entry_id, segments)
-        }
-
         SessionEvent::SetFocus { entry_id, focus } => building::set_focus(model, entry_id, focus),
 
         SessionEvent::ApplyLastTime { entry_id } => building::apply_last_time(model, entry_id),
-
-        SessionEvent::AddTroubleSpot { item_id, bars } => {
-            live::add_trouble_spot(model, item_id, bars)
-        }
-
-        SessionEvent::MoveToNextSegment { now, reading } => {
-            live::move_to_next_segment(model, now, reading)
-        }
-
-        SessionEvent::StayOnSegment => live::stay_on_segment(model),
 
         SessionEvent::WentAway { at } => live::went_away(model, at),
 
@@ -1094,43 +996,17 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             variation_ids,
         } => building::set_entry_variations(model, entry_id, variation_ids),
 
-        SessionEvent::StepSegment {
-            entry_id,
-            section_id,
-            minutes,
-        } => building::step_segment(model, entry_id, section_id, minutes),
-
-        SessionEvent::AddSegment {
-            entry_id,
-            section_id,
-        } => building::add_segment(model, entry_id, section_id),
-
-        SessionEvent::RemoveSegment {
-            entry_id,
-            section_id,
-        } => building::remove_segment(model, entry_id, section_id),
-
         SessionEvent::SetEntryKey { entry_id, key } => {
             building::set_entry_key(model, entry_id, key)
         }
 
-        SessionEvent::AddDrill {
-            entry_id,
-            exercise_id,
-        } => building::add_drill(model, entry_id, exercise_id),
-
         SessionEvent::UpdatePlayWay {
             entry_id,
             play_id,
-            section_id,
             key,
             variation_ids,
         } => {
-            let way = PlayWay {
-                section_id,
-                key,
-                variation_ids,
-            };
+            let way = PlayWay { key, variation_ids };
             summary::update_play_way(model, entry_id, play_id, way)
         }
 

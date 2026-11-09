@@ -109,48 +109,6 @@ pub(super) fn set_entry_intention(
     })
 }
 
-pub(super) fn set_entry_plan(
-    model: &mut Model,
-    entry_id: String,
-    section_ids: Vec<String>,
-    variation_ids: Vec<String>,
-) -> Command<Effect, Event> {
-    // The plan is a Building-phase thing: once practice starts, the
-    // record is the plays and `SwitchPlay` is what changes it (#1739
-    // decision 5).
-    if !matches!(model.session_status, SessionStatus::Building(_)) {
-        model.raise_error("A plan can only be set while building".to_string());
-        return crux_core::render::render();
-    }
-
-    let Some(entry) = entry_for_plan(model, &entry_id) else {
-        model.raise_error(format!("Entry '{entry_id}' not found"));
-        return crux_core::render::render();
-    };
-
-    if let Err(e) = validation::validate_entry_plan(entry, &section_ids, &variation_ids, model) {
-        model.raise_error(e.to_string());
-        return crux_core::render::render();
-    }
-
-    let Some(entry) = entry_for_plan_mut(model, &entry_id) else {
-        model.raise_error(format!("Entry '{entry_id}' not found"));
-        return crux_core::render::render();
-    };
-    let mut segments: Vec<Segment> = section_ids
-        .into_iter()
-        .map(|section_id| Segment {
-            section_id,
-            planned_secs: 0,
-        })
-        .collect();
-    split_evenly(&mut segments, entry.plan.duration_secs);
-    entry.plan.segments = segments;
-    entry.plan.variation_ids = variation_ids;
-    model.last_error = None;
-    crux_core::render::render()
-}
-
 pub(super) fn set_rep_target(
     model: &mut Model,
     entry_id: String,
@@ -170,27 +128,6 @@ pub(super) fn set_entry_duration(
     let check = validation::validate_planned_duration(&duration_secs);
     set_planned(model, &entry_id, check, |entry| {
         entry.plan.duration_secs = duration_secs;
-        split_evenly(&mut entry.plan.segments, duration_secs);
-    })
-}
-
-pub(super) fn set_segments(
-    model: &mut Model,
-    entry_id: String,
-    mut segments: Vec<Segment>,
-) -> Command<Effect, Event> {
-    if !matches!(model.session_status, SessionStatus::Building(_)) {
-        model.raise_error("Segments can only be set while building".to_string());
-        return crux_core::render::render();
-    }
-    let Some(entry) = entry_for_plan(model, &entry_id) else {
-        model.raise_error(format!("Entry '{entry_id}' not found"));
-        return crux_core::render::render();
-    };
-    let check = validation::validate_segment_sections(entry, &segments, model)
-        .and_then(|()| rebalance(&mut segments, entry.plan.duration_secs));
-    set_planned(model, &entry_id, check, |entry| {
-        entry.plan.segments = segments
     })
 }
 
@@ -199,23 +136,16 @@ pub(super) fn set_focus(
     entry_id: String,
     focus: Option<IntentionFocus>,
 ) -> Command<Effect, Event> {
-    let item_id = entry_for_plan(model, &entry_id).map(|e| e.plan.item_id.clone());
+    let piece_bpm = entry_for_plan(model, &entry_id)
+        .and_then(|e| model.items.iter().find(|i| i.id == e.plan.item_id))
+        .and_then(|i| i.tempo.as_ref()?.bpm);
     let focus = focus.map(|mut focus| {
         if focus.target.is_none() {
-            let section_bpm = item_id.as_deref().and_then(|item_id| {
-                section_target_bpm(model, item_id, focus.section_id.as_deref()?)
-            });
-            focus.target = starting_target(focus.kind, section_bpm);
+            focus.target = starting_target(focus.kind, piece_bpm);
         }
         focus
     });
-    let check = match (&focus, &item_id) {
-        (Some(focus), Some(item_id)) => {
-            let sections = live_section_ids(model, item_id);
-            validate_focus(focus, &sections)
-        }
-        _ => Ok(()),
-    };
+    let check = focus.as_ref().map_or(Ok(()), validate_focus);
     set_planned(model, &entry_id, check, |entry| entry.plan.focus = focus)
 }
 
@@ -240,150 +170,6 @@ pub(super) fn set_entry_key(
     set_planned(model, &entry_id, Ok(()), |entry| entry.plan.key = key)
 }
 
-/// Offered drills only: an exercise linked to a section the entry plans.
-pub(super) fn add_drill(
-    model: &mut Model,
-    entry_id: String,
-    exercise_id: String,
-) -> Command<Effect, Event> {
-    let SessionStatus::Building(ref building) = model.session_status else {
-        model.raise_error("An exercise for a section can only be added while building".to_string());
-        return crux_core::render::render();
-    };
-    let Some(entry) = building.entries.iter().find(|e| e.id == entry_id) else {
-        model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
-        return crux_core::render::render();
-    };
-    let offered = model
-        .items
-        .iter()
-        .find(|i| i.id == entry.plan.item_id)
-        .is_some_and(|piece| {
-            entry
-                .plan
-                .segments
-                .iter()
-                .any(|s| piece.has_live_link(&exercise_id, Some(&s.section_id)))
-        });
-    let is_exercise = model
-        .items
-        .iter()
-        .any(|i| i.id == exercise_id && i.kind == ItemKind::Exercise);
-    if !offered || !is_exercise {
-        model.raise_error("That exercise isn't linked to a section in this plan".to_string());
-        return crux_core::render::render();
-    }
-    // Membership is binary (#939): a drill already in the session is ticked.
-    if building
-        .entries
-        .iter()
-        .any(|e| e.plan.item_id == exercise_id)
-    {
-        model.last_error = None;
-        return crux_core::render::render();
-    }
-    let group_id = entry.plan.group_id.clone().unwrap_or_else(|| {
-        let group_id = ulid::Ulid::generate().to_string();
-        if let SessionStatus::Building(ref mut building) = model.session_status {
-            if let Some(piece) = building.entries.iter_mut().find(|e| e.id == entry_id) {
-                piece.plan.group_id = Some(group_id.clone());
-            }
-        }
-        group_id
-    });
-    add_exercise_to_block(model, group_id, exercise_id)
-}
-
-pub(super) fn step_segment(
-    model: &mut Model,
-    entry_id: String,
-    section_id: String,
-    minutes: i8,
-) -> Command<Effect, Event> {
-    let Some(mut segments) = entry_for_plan(model, &entry_id).map(|e| e.plan.segments.clone())
-    else {
-        return set_planned(model, &entry_id, Ok(()), |_| {});
-    };
-    let check = section_index(&segments, &section_id)
-        .and_then(|index| record::step_segment(&mut segments, index, minutes));
-    set_planned(model, &entry_id, check, |entry| {
-        entry.plan.segments = segments
-    })
-}
-
-pub(super) fn add_segment(
-    model: &mut Model,
-    entry_id: String,
-    section_id: String,
-) -> Command<Effect, Event> {
-    let Some(entry) = entry_for_plan(model, &entry_id) else {
-        return set_planned(model, &entry_id, Ok(()), |_| {});
-    };
-    let mut segments = entry.plan.segments.clone();
-    let added = record::add_segment(&mut segments, section_id, entry.plan.duration_secs);
-    // A refused section outranks refused minutes: a duplicate says so, not
-    // that the minutes don't fit.
-    let check = validation::validate_segment_sections(entry, &segments, model).and(added);
-    set_planned(model, &entry_id, check, |entry| {
-        entry.plan.segments = segments
-    })
-}
-
-/// Unchecked against the piece, so a section deleted from it mid-build can
-/// still be taken out.
-pub(super) fn remove_segment(
-    model: &mut Model,
-    entry_id: String,
-    section_id: String,
-) -> Command<Effect, Event> {
-    let Some((mut segments, planned)) =
-        entry_for_plan(model, &entry_id).map(|e| (e.plan.segments.clone(), e.plan.duration_secs))
-    else {
-        return set_planned(model, &entry_id, Ok(()), |_| {});
-    };
-    let check = section_index(&segments, &section_id)
-        .map(|index| record::remove_segment(&mut segments, index, planned));
-    set_planned(model, &entry_id, check, |entry| {
-        entry.plan.segments = segments
-    })
-}
-
-fn section_index(segments: &[Segment], section_id: &str) -> Result<usize, LibraryError> {
-    segments
-        .iter()
-        .position(|s| s.section_id == section_id)
-        .ok_or_else(|| LibraryError::Validation {
-            field: "segments".to_string(),
-            message: "That section isn't in this item's plan".to_string(),
-        })
-}
-
-fn section_target_bpm(model: &Model, item_id: &str, section_id: &str) -> Option<u16> {
-    model
-        .items
-        .iter()
-        .find(|i| i.id == item_id)?
-        .sections
-        .iter()
-        .find(|s| s.id == section_id && s.deleted_at.is_none())?
-        .target_bpm
-}
-
-fn live_section_ids<'a>(model: &'a Model, item_id: &str) -> Vec<&'a str> {
-    model
-        .items
-        .iter()
-        .find(|i| i.id == item_id)
-        .map(|i| {
-            i.sections
-                .iter()
-                .filter(|s| s.deleted_at.is_none())
-                .map(|s| s.id.as_str())
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Effect, Event> {
     let last = entry_for_plan(model, &entry_id).and_then(|e| last_plan(model, &e.plan.item_id));
     let Some((way, focus)) = last else {
@@ -391,16 +177,6 @@ pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Ef
         return crux_core::render::render();
     };
     set_planned(model, &entry_id, Ok(()), |entry| {
-        let mut segments: Vec<Segment> = way
-            .section_id
-            .into_iter()
-            .map(|section_id| Segment {
-                section_id,
-                planned_secs: 0,
-            })
-            .collect();
-        split_evenly(&mut segments, entry.plan.duration_secs);
-        entry.plan.segments = segments;
         entry.plan.key = way.key;
         entry.plan.variation_ids = way.variation_ids;
         entry.plan.focus = focus;
@@ -415,8 +191,8 @@ pub(crate) fn last_plan(model: &Model, item_id: &str) -> Option<(PlayWay, Option
 }
 
 /// Taken only from an entry that was played, and offered only when the
-/// builder would accept it today, so a section since deleted or a tempo the
-/// click cannot play is left behind.
+/// builder would accept it today, so a tempo the click cannot play is left
+/// behind.
 fn last_focus(model: &Model, item_id: &str) -> Option<IntentionFocus> {
     let focus = model
         .sessions
@@ -429,12 +205,10 @@ fn last_focus(model: &Model, item_id: &str) -> Option<IntentionFocus> {
         .filter(|e| e.plan.item_id == item_id)
         .filter(|e| e.plays.iter().any(|p| !p.is_incidental()))
         .find_map(|e| e.plan.focus.clone())?;
-    validate_focus(&focus, &live_section_ids(model, item_id))
-        .is_ok()
-        .then_some(focus)
+    validate_focus(&focus).is_ok().then_some(focus)
 }
 
-/// Kept to what is still in the library; the whole piece, plain, offers nothing.
+/// Kept to what is still in the library; plain in the written key offers nothing.
 pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
     let play = model
         .sessions
@@ -447,7 +221,6 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
         .flat_map(|e| e.plays.iter())
         .rev()
         .find(|p| !p.is_incidental())?;
-    let sections = live_section_ids(model, item_id);
     let live_variation = |id: &String| {
         model
             .variations
@@ -455,10 +228,6 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
             .any(|v| &v.id == id && v.deleted_at.is_none())
     };
     let way = PlayWay {
-        section_id: play
-            .section_id
-            .clone()
-            .filter(|id| sections.contains(&id.as_str())),
         key: play.key,
         variation_ids: play
             .variation_ids
@@ -628,7 +397,7 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
     };
     let piece = (item.id.clone(), item.title.clone(), item.kind.clone());
     let related: Vec<(String, String, ItemKind)> = if item.kind == ItemKind::Piece {
-        item.whole_piece_exercise_ids()
+        item.linked_exercise_ids()
             .iter()
             .filter_map(|ex_id| {
                 model
@@ -923,13 +692,11 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
-        segment: None,
     };
 
     if let Some(entry) = active.entries.first_mut() {
         open_first_play(entry, now);
     }
-    active.segment = first_segment_clock(active.current_entry(), now);
 
     let persist = persist_active(&active);
     model.session_status = SessionStatus::Active(Box::new(active));

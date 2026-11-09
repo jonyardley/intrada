@@ -91,8 +91,7 @@
       LinkedExerciseView(
         id: id, title: title, key: key, keyLabel: key.flatMap(KeyHelper.display),
         tempoMarking: tempoMarking, tempoBpm: tempoBpm, tempoLine: tempoLine,
-        tempoLineSpoken: tempoLineSpoken, practice: nil, pieceContextScore: nil,
-        wholePiece: true, sections: [], linkCaption: nil)
+        tempoLineSpoken: tempoLineSpoken, practice: nil, pieceContextScore: nil)
     }
   }
 
@@ -112,81 +111,18 @@
             key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
             tempoMarking: nil,
             tempoBpm: 108, tempoLine: "♩ = 108", tempoLineSpoken: "108 beats per minute",
-            practice: nil, pieceContextScore: 7, wholePiece: true, sections: [],
-            linkCaption: nil),
+            practice: nil, pieceContextScore: 7),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
             tempoMarking: nil,
             tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil, practice: nil,
-            pieceContextScore: nil, wholePiece: true, sections: [], linkCaption: nil),
+            pieceContextScore: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
-    }
-
-    /// Clair de lune split as the #2364 mocks draw it, with one tricky spot (#2247).
-    static var previewPieceWithSections: LibraryItemView {
-      func part(
-        _ id: String, _ name: String, _ first: UInt16, _ last: UInt16, _ mark: UInt8? = nil
-      ) -> SectionView {
-        SectionView(
-          id: id, name: name, kind: .form, targetBpm: nil, firstBar: first, lastBar: last,
-          label: name, barsCaption: "Bars \(first) to \(last)",
-          barsFieldText: "\(first) to \(last)",
-          latestScore: mark,
-          scoreHistory: [], caption: mark.map { "\($0) of 10" } ?? "Not yet played",
-          isWeakest: false, targetTempo: nil, targetTempoSpoken: nil)
-      }
-      var item = previewPiece
-      item.id = "piece-sections"
-      item.linkedExercises = []
-      item.sections = [
-        part("s1", "A1", 1, 14, 8), part("s2", "B", 15, 26, 6),
-        SectionView(
-          id: "s3", name: "", kind: .troubleSpot, targetBpm: 54, firstBar: 19, lastBar: 20,
-          label: "Bars 19 to 20", barsCaption: nil, barsFieldText: "19 to 20", latestScore: 4,
-          scoreHistory: [],
-          caption: "4 of 10", isWeakest: true, targetTempo: "♩ 54",
-          targetTempoSpoken: "54 beats per minute"),
-        part("s4", "A2", 27, 42), part("s5", "Coda", 43, 72, 7),
-      ]
-      return item
-    }
-
-    /// The sectioned Clair de lune with drills aimed at its parts (#2248): one
-    /// for the whole piece and A2, one for the tricky spot alone.
-    static var previewPieceWithSectionLinks: LibraryItemView {
-      var item = previewPieceWithSections
-      item.id = "piece-section-links"
-      var octaves = LinkedExerciseView.fixture(id: "exercise-octaves", title: "Broken octaves")
-      octaves.sections = [LinkedSectionView(id: "s4", label: "A2", labelInText: "A2")]
-      octaves.linkCaption = "For the whole piece and A2"
-      var thirds = LinkedExerciseView.fixture(
-        id: "exercise-thirds", title: "Thirds in D\u{266D}",
-        key: Key(letter: .d, accidental: .flat, mode: .major), tempoBpm: 60,
-        tempoLine: "♩ = 60", tempoLineSpoken: "60 beats per minute")
-      thirds.wholePiece = false
-      thirds.sections = [
-        LinkedSectionView(id: "s3", label: "Bars 19 to 20", labelInText: "bars 19 to 20")
-      ]
-      thirds.linkCaption = "For bars 19 to 20"
-      item.linkedExercises = [octaves, thirds]
-      return item
-    }
-
-    /// An exercise aimed at A2 of one piece and the coda of another (#2248).
-    static var previewExerciseUsedInSections: LibraryItemView {
-      var item = previewExerciseLinkedOnly
-      item.id = "exercise-sections"
-      item.usedIn[0].wholePiece = false
-      item.usedIn[0].sections = [LinkedSectionView(id: "s4", label: "A2", labelInText: "A2")]
-      item.usedIn[1].sections = [LinkedSectionView(id: "s9", label: "Coda", labelInText: "Coda")]
-      item.usedIn[0].linkCaption = "For A2"
-      item.usedIn[1].linkCaption = "For the whole piece and Coda"
-      return item
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     static var previewExercise: LibraryItemView {
@@ -201,7 +137,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
@@ -216,7 +152,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: nil, sections: [])
+        keySelection: nil)
     }
 
     static var previewDetail: LibraryItemView {
@@ -232,7 +168,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     /// A charted piece: exercises the chord-chart card (parsed grid + preview).
@@ -262,7 +198,7 @@
         usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 10, modality: .minor, spelling: "G"), sections: [])
+        keySelection: KeyWheelSelection(ring: 10, modality: .minor, spelling: "G"))
     }
 
     static var previewMinimal: LibraryItemView { LibraryItemFixture.view() }
@@ -301,7 +237,7 @@
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
               tempoTrend: .fixture([100, 104, 108]),
               lastPracticedAt: "2026-06-28T09:00:00Z"),
-            pieceContextScore: 5, wholePiece: true, sections: [], linkCaption: nil),
+            pieceContextScore: 5),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
@@ -310,17 +246,16 @@
             practice: ItemPracticeSummary.fixture(
               sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
               lastPracticedAt: "2026-06-25T09:00:00Z"),
-            pieceContextScore: 6, wholePiece: true, sections: [], linkCaption: nil),
+            pieceContextScore: 6),
           LinkedExerciseView(
             id: "exercise-3", title: "Arpeggios in Db", key: nil, keyLabel: nil,
             tempoMarking: nil, tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil,
-            practice: nil, pieceContextScore: nil, wholePiece: true, sections: [],
-            linkCaption: nil),
+            practice: nil, pieceContextScore: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
@@ -347,17 +282,15 @@
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
-            sections: [], linkCaption: nil),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
-            sections: [], linkCaption: nil),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// Every "Used in" row state at once: linked and practised, practised
@@ -384,30 +317,29 @@
               id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw"),
             linked: true, latestScore: 7, sessionCount: 3,
             lastPracticedAt: "2026-06-24T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
-            offersLink: false, wholePiece: true, sections: [], linkCaption: nil),
+            offersLink: false),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Blue Bossa", subtitle: "Kenny Dorham"),
             linked: false, latestScore: 5, sessionCount: 2,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
-            offersLink: true, wholePiece: false, sections: [], linkCaption: nil),
+            offersLink: true),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-3", title: "Autumn Leaves", subtitle: "Kosma"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
-            sections: [], linkCaption: nil),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-gone", title: "Solar", subtitle: nil),
             linked: false, latestScore: 4, sessionCount: 2,
             lastPracticedAt: "2026-06-20T09:00:00Z", pieceRemoved: true, pieceInLibrary: false,
-            offersLink: false, wholePiece: false, sections: [], linkCaption: nil),
+            offersLink: false),
           ExerciseUsageView(
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false, pieceInLibrary: false,
-            offersLink: false, wholePiece: false, sections: [], linkCaption: nil),
+            offersLink: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// An exercise with variations: one solid, one marked but not yet solid,
@@ -431,7 +363,7 @@
             caption: "Not yet played"),
         ], photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: "1 of 3 solid",
-        keySelection: nil, sections: [])
+        keySelection: nil)
     }
 
     /// Twelve chromatic variations, stress-testing the horizontal scroller
@@ -457,7 +389,7 @@
             caption: solid ? "9 of 10" : (current ? "6 of 10" : "Not yet played"))
         }, photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: "4 of 12 solid",
-        keySelection: nil, sections: [])
+        keySelection: nil)
     }
 
     /// Variations that are inversions, not keys: pins the "variations" word and the stairs
@@ -477,7 +409,7 @@
             scoreHistory: [], caption: "Not yet played")
         }, photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: "0 of 3 solid",
-        keySelection: nil, sections: [])
+        keySelection: nil)
     }
 
     /// Free-text variation names, matching the issue's own example (#1786).
@@ -499,7 +431,7 @@
             caption: index == 0 ? "8 of 10" : "Not yet played")
         }, photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: "1 of 3 solid",
-        keySelection: nil, sections: [])
+        keySelection: nil)
     }
 
     /// A piece with no linked exercises, for the empty-state snapshot.
@@ -515,7 +447,7 @@
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
         chordChart: nil, metre: nil, variations: [], photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D"), sections: []
+        keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D")
       )
     }
   }
@@ -564,7 +496,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
-        keySelection: keySelection, sections: [])
+        keySelection: keySelection)
     }
 
     static func record(
@@ -579,7 +511,7 @@
         id: id, title: title, kind: kind, composer: composer, key: key,
         tempo: tempo, notes: notes, tags: tags,
         createdAt: createdAt, updatedAt: updatedAt ?? createdAt, priority: priority,
-        chordChart: chordChart, photoId: photoId, metre: metre, sections: [], variationIds: [],
+        chordChart: chordChart, photoId: photoId, metre: metre, variationIds: [],
         keys: [], exerciseLinks: exerciseLinks)
     }
   }

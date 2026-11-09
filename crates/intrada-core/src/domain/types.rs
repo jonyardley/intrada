@@ -385,7 +385,6 @@ mod tests {
                 group_id: None,
                 variation_ids: vec![],
                 rep_target: Some(5),
-                segments: Vec::new(),
                 key: crate::domain::key::Key::parse("E flat major"),
             },
             item_title: "Clair de Lune".to_string(),
@@ -395,7 +394,6 @@ mod tests {
             notes: Some("phrasing".to_string()),
             plays: vec![Play {
                 id: "play-1".to_string(),
-                section_id: None,
                 key: crate::domain::key::Key::parse("Bb minor"),
                 variation_ids: vec!["v-1".to_string()],
                 tempo_changes: vec![],
@@ -489,16 +487,11 @@ mod tests {
             entry_id: "e1".to_string(),
             duration_secs: None,
         });
-        assert_round_trips(SessionEvent::SetEntryPlan {
-            entry_id: "e1".to_string(),
-            section_ids: vec!["s-1".to_string()],
-            variation_ids: vec!["v-1".to_string()],
-        });
     }
 
     #[test]
     fn save_item_and_variation_ops_round_trip_on_ffi_bincode_wire() {
-        // Keys, variation ids, a tombstoned section and links ride SaveItem and
+        // Keys, variation ids and links ride SaveItem and
         // SaveItems to the store (#846 class).
         use crate::persistence::PersistenceOperation;
         use chrono::TimeZone;
@@ -516,7 +509,6 @@ mod tests {
                 crate::domain::link::ExerciseLink {
                     id: "l-1".to_string(),
                     exercise_id: "ex-2".to_string(),
-                    section_id: Some("s-1".to_string()),
                     position: 0,
                     updated_at: at,
                     deleted_at: None,
@@ -524,7 +516,6 @@ mod tests {
                 crate::domain::link::ExerciseLink {
                     id: "l-2".to_string(),
                     exercise_id: "ex-3".to_string(),
-                    section_id: None,
                     position: 1,
                     updated_at: at,
                     deleted_at: Some(at),
@@ -536,31 +527,6 @@ mod tests {
             chord_chart: None,
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
-            sections: vec![
-                crate::domain::section::ItemSection {
-                    id: "s-1".to_string(),
-                    name: "A1".to_string(),
-                    bars: Some(crate::domain::section::BarRange { first: 1, last: 16 }),
-                    kind: crate::domain::section::SectionKind::Form,
-                    target_bpm: Some(96),
-                    position: 0,
-                    updated_at: at,
-                    deleted_at: None,
-                },
-                crate::domain::section::ItemSection {
-                    id: "s-2".to_string(),
-                    name: String::new(),
-                    bars: Some(crate::domain::section::BarRange {
-                        first: 12,
-                        last: 14,
-                    }),
-                    kind: crate::domain::section::SectionKind::TroubleSpot,
-                    target_bpm: None,
-                    position: 1,
-                    updated_at: at,
-                    deleted_at: Some(at),
-                },
-            ],
             keys: vec![crate::domain::key::Key::C_MAJOR],
             variation_ids: vec!["v-1".to_string()],
         };
@@ -591,7 +557,6 @@ mod tests {
                 group_id: Some("block-1".to_string()),
                 variation_ids: vec![],
                 rep_target: None,
-                segments: Vec::new(),
                 key: None,
             },
             item_title: "Scales".to_string(),
@@ -620,7 +585,6 @@ mod tests {
                 current_item_started_at: anchor,
                 session_started_at: anchor,
                 reflection: None,
-                segment: None,
             },
             now: anchor,
         });

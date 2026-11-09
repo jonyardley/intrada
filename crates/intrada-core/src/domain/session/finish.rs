@@ -4,22 +4,6 @@ use crate::app::{Effect, Event};
 use crate::model::Model;
 use crux_core::Command;
 
-/// The item's live named sections as (id, name), for reading its notes.
-pub(crate) fn named_sections<'a>(model: &'a Model, item_id: &str) -> Vec<(&'a str, &'a str)> {
-    model
-        .items
-        .iter()
-        .find(|i| i.id == item_id)
-        .map(|i| {
-            i.sections
-                .iter()
-                .filter(|s| s.deleted_at.is_none() && !s.name.is_empty())
-                .map(|s| (s.id.as_str(), s.name.as_str()))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 /// A finish answer lands like a mark: on a completed entry, in the sheet's
 /// hand-off after `NextItem` or on the summary.
 fn answer(
@@ -84,8 +68,7 @@ pub(super) fn confirm_note_point(
     let Some(entry) = entry_for_plan(model, &entry_id) else {
         return crux_core::render::render();
     };
-    let sections = named_sections(model, &entry.plan.item_id);
-    let offered = note_offers(entry.notes.as_deref().unwrap_or_default(), &sections)
+    let offered = note_offers(entry.notes.as_deref().unwrap_or_default())
         .into_iter()
         .find(|p| p.span == span);
     let Some(point) = offered else {

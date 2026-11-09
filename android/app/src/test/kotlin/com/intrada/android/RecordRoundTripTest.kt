@@ -56,7 +56,6 @@ class RecordRoundTripTest {
                 SessionEvent.UpdatePlayWay(
                     entryId,
                     play?.id.orEmpty(),
-                    null,
                     gSharpMinor,
                     emptyList(),
                 )

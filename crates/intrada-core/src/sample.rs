@@ -46,7 +46,6 @@ pub(crate) fn sample_items() -> Vec<Item> {
             exercise_links: vec![],
             priority: false,
             chord_chart: None,
-            sections: vec![],
             photo_id: None,
             metre: None,
             variation_ids: vec![],
@@ -132,7 +131,7 @@ pub(crate) fn sample_items() -> Vec<Item> {
     // no related exercises (it drives the empty-state CTA) and adds the top two
     // library cards expecting two standalone rows.
     if let Some(nocturne) = items.iter_mut().find(|i| i.id == "sample-nocturne") {
-        nocturne.exercise_links = crate::domain::link::whole_piece_links(&["sample-scales"], now);
+        nocturne.exercise_links = crate::domain::link::links_to(&["sample-scales"], now);
     }
     items
 }
@@ -152,7 +151,6 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
     ) -> crate::domain::session::Play {
         crate::domain::session::Play {
             id: id.to_string(),
-            section_id: None,
             key: key.and_then(sample_key),
             variation_ids: vec![],
             started_at,
@@ -185,7 +183,6 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
                 group_id: None,
                 variation_ids: vec![],
                 rep_target: None,
-                segments: Vec::new(),
                 key: None,
             },
             item_title: item_title.to_string(),

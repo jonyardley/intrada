@@ -30,7 +30,6 @@ ios/Intrada/Views/Components/ConsistencyBars.swift	spacing: 9	1	#2706
 ios/Intrada/Views/Components/DraftItemRow.swift	.padding(.leading, 20)	1	#2706
 ios/Intrada/Views/Components/DraftItemRow.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Components/EntryFocusCard.swift	spacing: 2	1	#2706
-ios/Intrada/Views/Components/EntrySegmentsCard.swift	spacing: 2	2	#2706
 ios/Intrada/Views/Components/FinishRecordSections.swift	.padding(.vertical, 6)	1	#2706
 ios/Intrada/Views/Components/FinishRecordSections.swift	spacing: 2	2	#2706
 ios/Intrada/Views/Components/FinishRecordSections.swift	spacing: 6	1	#2706
@@ -127,7 +126,6 @@ ios/Intrada/Views/Screens/LibraryDetail/ChordChartCard.swift	spacing: 6	2	#2706
 ios/Intrada/Views/Screens/LibraryDetail/ExerciseHero.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Screens/LibraryDetail/RelatedExercisesCard.swift	.padding(.leading, 20)	1	#2706
 ios/Intrada/Views/Screens/LibraryDetail/RelatedExercisesCard.swift	spacing: 3	2	#2706
-ios/Intrada/Views/Screens/LibraryDetail/SectionsSection.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Screens/LibraryDetail/VariationsSection.swift	spacing: 2	1	#2706
 ios/Intrada/Views/Screens/LibraryDetail/VariationsSection.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Screens/LibraryDetailScreen.swift	minLength: 16	1	#2706
@@ -160,7 +158,6 @@ android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	padding(to
 android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	spacedBy(2.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	spacedBy(4.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	spacedBy(6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/EntrySettingsScreen.kt	spacedBy(2.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/FirstRunScreen.kt	spacedBy(2.dp)	2	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/GlobalBanner.kt	padding(vertical = 10.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/ItemFormExercises.kt	spacedBy(3.dp)	1	#2706
@@ -172,7 +169,6 @@ android/app/src/main/kotlin/com/intrada/android/ui/PageParts.kt	spacedBy(3.dp)	2
 android/app/src/main/kotlin/com/intrada/android/ui/PieceKeys.kt	spacedBy(6.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PieceLinks.kt	spacedBy(3.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PieceScreen.kt	padding(horizontal = 10.dp, vertical = 5.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PieceSections.kt	spacedBy(3.dp)	2	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PieceVariations.kt	spacedBy(2.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt	padding(18.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt	spacedBy(3.dp)	1	#2706

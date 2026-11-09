@@ -6,18 +6,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,144 +34,13 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.intrada.android.R
 import com.intrada.android.ui.components.scaled
 import com.intrada.shared.ActiveSessionView
-import com.intrada.shared.SegmentClockView
-import com.intrada.shared.SegmentProgress
-import java.time.Instant
-
-// ── The section clock and its move-on offer (#2315, #2471) ──
-
-/** Rounded up, so the last second reads 00:01 rather than 00:00 while it is still running. */
-internal fun secondsLeft(endsAt: Instant, now: Instant): Long =
-    -Math.floorDiv(now.toEpochMilli() - endsAt.toEpochMilli(), MILLIS_PER_SECOND)
-
-/** The core leaves this clock comparison to the shell (#2315). */
-internal fun offersMoveOn(segment: SegmentClockView?, now: Instant): Boolean {
-    val endsAt = segment?.let { SessionClock.parse(it.endsAt) } ?: return false
-    return segment.moveLabel != null && secondsLeft(endsAt, now) <= 0
-}
-
-@Composable
-internal fun SegmentClockRow(
-    segment: SegmentClockView,
-    now: Instant,
-    onMove: () -> Unit,
-    onStay: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val endsAt = SessionClock.parse(segment.endsAt) ?: return
-    val left = secondsLeft(endsAt, now)
-    val moveLabel = segment.moveLabel
-    Column(
-        modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-    ) {
-        val clock = "${SessionClock.clockDisplay(left)} left"
-        Row(
-            Modifier.clearAndSetSemantics {
-                contentDescription = "${segment.label}, $clock"
-                testTag = "player.segment"
-            },
-            horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BasicText(segment.label, style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
-            BasicText(clock, style = IntradaFont.figure.copy(color = IntradaColor.inkSecondary))
-        }
-        SectionStrip(segment)
-        if (moveLabel != null && left <= 0) {
-            InkButton(moveLabel, "player.moveOn", onMove)
-            segment.stayLabel?.let { stay ->
-                val shape = RoundedCornerShape(IntradaRadius.control)
-                Box(
-                    Modifier.fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .clip(shape)
-                        .background(IntradaColor.cardFill)
-                        .border(1.dp, IntradaColor.divider, shape)
-                        .buttonSemantics(stay, "player.stay", onStay)
-                        .padding(horizontal = IntradaSpacing.cardCompact),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    BasicText(
-                        stay,
-                        style =
-                            IntradaFont.bodyMedium.copy(
-                                color = IntradaColor.ink,
-                                textAlign = TextAlign.Center,
-                            ),
-                    )
-                }
-            }
-        }
-    }
-}
-
-// Every section of the item, filled once done, with what Stay took (#2394). Drawn by hand until
-// the shared strip lands (#2636).
-@Composable
-private fun SectionStrip(segment: SegmentClockView) {
-    val bars = segment.bars
-    Column(
-        Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = segment.positionLabel },
-        verticalArrangement = Arrangement.spacedBy(IntradaSpacing.segmentGap),
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.segmentGap),
-        ) {
-            bars.forEach { bar ->
-                Box(
-                    Modifier.weight(1f)
-                        .height(6.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (bar.progress == SegmentProgress.DONE) IntradaColor.accent
-                            else IntradaColor.divider
-                        )
-                )
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.segmentGap),
-        ) {
-            bars.forEach { bar ->
-                val running = bar.progress == SegmentProgress.RUNNING
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    BasicText(
-                        bar.label,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style =
-                            (if (running) IntradaFont.smallMedium else IntradaFont.small).copy(
-                                color = if (running) IntradaColor.ink else IntradaColor.inkSecondary
-                            ),
-                    )
-                    val caption = bar.caption
-                    if (caption != null) {
-                        BasicText(
-                            caption,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ── The variation being played and the last-time offer (#2249) ──
-
-class PlayChipActions(val onPickVariation: () -> Unit, val onLastTime: () -> Unit)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -294,26 +159,6 @@ private fun Modifier.dashedCapsule() = drawBehind {
     )
 }
 
-// ── Trouble spot (#2249) ──
-
-@Composable
-internal fun TroubleSpotButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .heightIn(min = 48.dp)
-            .clip(CircleShape)
-            .background(IntradaColor.cardFill)
-            .border(1.dp, IntradaColor.divider, CircleShape)
-            .buttonSemantics("Trouble spot", "player.troubleSpot", onClick)
-            .padding(horizontal = IntradaSpacing.card),
-        horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ChipIcon(R.drawable.ic_plus, IntradaIconSize.caption)
-        BasicText("Trouble spot", style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
-    }
-}
-
 internal fun Modifier.buttonSemantics(spoken: String, tag: String, onClick: () -> Unit) =
     clickable(role = Role.Button, onClick = onClick).clearAndSetSemantics {
         contentDescription = spoken
@@ -325,6 +170,5 @@ internal fun Modifier.buttonSemantics(spoken: String, tag: String, onClick: () -
         }
     }
 
-private const val MILLIS_PER_SECOND = 1000L
 private const val DASH = 12f
 private const val GAP = 9f

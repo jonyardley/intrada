@@ -22,10 +22,6 @@ struct EntrySettingsSheet: View {
     store.viewModel?.buildingSetlist?.entryVariations.first { $0.entryId == entry.id }
   }
   private var variants: [PickerVariationView] { plannable?.variations ?? [] }
-  private var sections: [SectionView] { plannable?.sections ?? [] }
-  private var drills: [DrillOfferView] {
-    store.viewModel?.buildingSetlist?.drillOffers.filter { $0.entryId == entry.id } ?? []
-  }
   private var keys: EntryKeysView? {
     store.viewModel?.buildingSetlist?.entryKeys.first { $0.entryId == entry.id }
   }
@@ -65,9 +61,6 @@ struct EntrySettingsSheet: View {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           aimSection
           focusSection
-          if !sections.isEmpty {
-            segmentsSection
-          }
           if let keys {
             keySection(keys)
           }
@@ -107,36 +100,11 @@ struct EntrySettingsSheet: View {
     EntryFocusCard(
       current: live.record.focus,
       choices: store.viewModel?.buildingSetlist?.focusChoices ?? [],
-      sections: sections,
       send: setFocus)
   }
 
   private func setFocus(_ focus: IntentionFocus?) {
     store.send(.session(.setFocus(entryId: entry.id, focus: focus)))
-  }
-
-  private var segmentsSection: some View {
-    EntrySegmentsCard(
-      segments: live.record.segments,
-      sections: sections,
-      drills: drills,
-      hasPlannedTime: live.plannedDurationSecs != nil,
-      canAddSection: live.record.canAddSection,
-      addSectionCaption: live.record.addSectionCaption,
-      wholePiece: { store.send(.session(.setSegments(entryId: entry.id, segments: []))) },
-      add: { store.send(.session(.addSegment(entryId: entry.id, sectionId: $0))) },
-      remove: { store.send(.session(.removeSegment(entryId: entry.id, sectionId: $0))) },
-      step: { store.send(.session(.stepSegment(entryId: entry.id, sectionId: $0, minutes: $1))) },
-      tickDrill: tickDrill)
-  }
-
-  private func tickDrill(_ offer: DrillOfferView) {
-    store.send(.session(Self.tickEvent(offer)))
-  }
-
-  static func tickEvent(_ offer: DrillOfferView) -> SessionEvent {
-    offer.addedEntryId.map { .removeFromSetlist(entryId: $0) }
-      ?? .addDrill(entryId: offer.entryId, exerciseId: offer.exerciseId)
   }
 
   private func keySection(_ keys: EntryKeysView) -> some View {

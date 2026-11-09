@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use intrada_core::domain::link::ExerciseLink;
-use intrada_core::domain::section::{BarRange, ItemSection};
 use intrada_core::persistence::StoredItem;
 use intrada_core::{Item, Key, Tempo};
 use rusqlite::{params, OptionalExtension, Row, Transaction};
@@ -13,8 +12,8 @@ use serde::de::DeserializeOwned;
 use crate::codec::{
     self, decode_chord_chart, decode_json, decode_keys, decode_metre, encode_chord_chart,
     encode_json, encode_keys, encode_metre, is_unknown_modality, item_kind, item_kind_to_write,
-    parse_time, section_kind, section_kind_to_write, stored_key, time_text, try_decode_json,
-    StoredChart, StoredKeyJson, StoredMetre, Unreadable,
+    parse_time, stored_key, time_text, try_decode_json, StoredChart, StoredKeyJson, StoredMetre,
+    Unreadable,
 };
 use crate::StoreError;
 
@@ -29,7 +28,7 @@ pub(crate) fn load(tx: &Transaction, unreadable: &mut Unreadable) -> Result<Vec<
 
 /// Tombstones included, for the sync merge (`specs/icloud-sync.md`).
 /// `skipped` gains each piece the merge must not write over: one that will
-/// not read, or one with a section or link that will not.
+/// not read, or one with a link that will not.
 pub(crate) fn load_with_tombstones(
     tx: &Transaction,
     unreadable: &mut Unreadable,
@@ -45,7 +44,6 @@ fn load_rows(
     skipped: &mut Vec<String>,
 ) -> Result<Vec<StoredItem>, StoreError> {
     let mut partial = HashSet::new();
-    let mut sections = sections_by_item(tx, unreadable, &mut partial)?;
     let mut links = links_by_piece(tx, unreadable, &mut partial)?;
     let mut stmt = tx.prepare(&format!(
         "SELECT * FROM item {filter} ORDER BY created_at DESC"
@@ -54,9 +52,8 @@ fn load_rows(
     let mut items = Vec::new();
     while let Some(row) = rows.next()? {
         let id: String = row.get("id")?;
-        let item_sections = sections.remove(&id).unwrap_or_default();
         let item_links = links.remove(&id).unwrap_or_default();
-        let read = item(row, item_sections, item_links, unreadable).and_then(|item| {
+        let read = item(row, item_links, unreadable).and_then(|item| {
             Ok(StoredItem {
                 item,
                 deleted_at: optional_time(row, "deleted_at")?,
@@ -81,7 +78,7 @@ fn load_rows(
 }
 
 /// The merge's copy, its tombstone written exactly as it arrived. The piece
-/// wins whole: a section or link only this device has is deleted as of the
+/// wins whole: a link only this device has is deleted as of the
 /// winner's change.
 pub(crate) fn put_merged(tx: &Transaction, stored: &StoredItem) -> Result<(), StoreError> {
     let item = &stored.item;
@@ -92,9 +89,7 @@ pub(crate) fn put_merged(tx: &Transaction, stored: &StoredItem) -> Result<(), St
     let changed_at = stored
         .deleted_at
         .map_or(item.updated_at, |d| d.max(item.updated_at));
-    let sections: Vec<&str> = item.sections.iter().map(|s| s.id.as_str()).collect();
     let links: Vec<&str> = item.exercise_links.iter().map(|l| l.id.as_str()).collect();
-    delete_unnamed(tx, "section", "item_id", &item.id, &sections, &changed_at)?;
     delete_unnamed(
         tx,
         "exercise_link",
@@ -127,7 +122,6 @@ fn delete_unnamed(
 
 fn item(
     row: &Row,
-    sections: Vec<ItemSection>,
     exercise_links: Vec<ExerciseLink>,
     unreadable: &mut Unreadable,
 ) -> Result<Item, String> {
@@ -156,7 +150,6 @@ fn item(
         chord_chart: decode_chord_chart(chord_chart.as_deref(), &id, unreadable),
         photo_id: column(row, "photo_id")?,
         metre: decode_metre(metre.as_deref(), &id, unreadable),
-        sections,
         variation_ids: variation_ids
             .and_then(|json| decode_json(&json, "variation_ids", &id, unreadable))
             .unwrap_or_default(),
@@ -187,47 +180,6 @@ fn narrow<T: TryFrom<i64>>(value: Option<i64>, name: &str) -> Result<Option<T>, 
         .transpose()
 }
 
-/// Tombstones included: the core reconciles (#2245).
-fn sections_by_item(
-    tx: &Transaction,
-    unreadable: &mut Unreadable,
-    partial: &mut HashSet<String>,
-) -> Result<HashMap<String, Vec<ItemSection>>, StoreError> {
-    let mut stmt = tx.prepare("SELECT * FROM section ORDER BY item_id, position, id")?;
-    let mut rows = stmt.query([])?;
-    let mut by_item: HashMap<String, Vec<ItemSection>> = HashMap::new();
-    while let Some(row) = rows.next()? {
-        let id: String = row.get("id")?;
-        match section(row, unreadable) {
-            Ok((item_id, section)) => by_item.entry(item_id).or_default().push(section),
-            Err(reason) => {
-                unreadable.push(format!("section {id} skipped: {reason}"));
-                partial.extend(row.get::<_, String>("item_id").ok());
-            }
-        }
-    }
-    Ok(by_item)
-}
-
-fn section(row: &Row, unreadable: &mut Unreadable) -> Result<(String, ItemSection), String> {
-    let first = narrow::<u16>(column(row, "bar_first")?, "bar_first")?;
-    let last = narrow::<u16>(column(row, "bar_last")?, "bar_last")?;
-    let position = narrow::<usize>(Some(column(row, "position")?), "position")?.unwrap_or(0);
-    let section = ItemSection {
-        id: column(row, "id")?,
-        name: column(row, "name")?,
-        bars: first
-            .zip(last)
-            .map(|(first, last)| BarRange { first, last }),
-        kind: section_kind(&column::<String>(row, "kind")?, unreadable),
-        target_bpm: narrow::<u16>(column(row, "target_bpm")?, "target_bpm")?,
-        position,
-        updated_at: time(row, "updated_at")?,
-        deleted_at: optional_time(row, "deleted_at")?,
-    };
-    Ok((column(row, "item_id")?, section))
-}
-
 /// Tombstones included: the core reconciles (#2248).
 fn links_by_piece(
     tx: &Transaction,
@@ -254,7 +206,6 @@ fn exercise_link(row: &Row) -> Result<(String, ExerciseLink), String> {
     let link = ExerciseLink {
         id: column(row, "id")?,
         exercise_id: column(row, "exercise_id")?,
-        section_id: column(row, "section_id")?,
         position: narrow::<usize>(Some(column(row, "position")?), "position")?.unwrap_or(0),
         updated_at: time(row, "updated_at")?,
         deleted_at: optional_time(row, "deleted_at")?,
@@ -328,47 +279,19 @@ pub(crate) fn upsert(tx: &Transaction, item: &Item) -> Result<(), StoreError> {
             keys,
         ],
     )?;
-    for s in &item.sections {
-        let kind = section_kind_to_write(s.kind, stored_section_kind(tx, &s.id)?);
-        tx.execute(
-            "INSERT INTO section
-               (id, item_id, name, bar_first, bar_last, kind, target_bpm, position, updated_at,
-                deleted_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-             ON CONFLICT(id) DO UPDATE SET
-               item_id = excluded.item_id, name = excluded.name,
-               bar_first = excluded.bar_first, bar_last = excluded.bar_last,
-               kind = excluded.kind, target_bpm = excluded.target_bpm,
-               position = excluded.position, updated_at = excluded.updated_at,
-               deleted_at = excluded.deleted_at",
-            params![
-                s.id,
-                item.id,
-                s.name,
-                s.bars.map(|b| b.first),
-                s.bars.map(|b| b.last),
-                kind,
-                s.target_bpm,
-                position(s.position)?,
-                time_text(&s.updated_at),
-                s.deleted_at.as_ref().map(time_text),
-            ],
-        )?;
-    }
     for l in &item.exercise_links {
         tx.execute(
             "INSERT INTO exercise_link
-               (id, piece_id, exercise_id, section_id, position, updated_at, deleted_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+               (id, piece_id, exercise_id, position, updated_at, deleted_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(id) DO UPDATE SET
                piece_id = excluded.piece_id, exercise_id = excluded.exercise_id,
-               section_id = excluded.section_id, position = excluded.position,
+               position = excluded.position,
                updated_at = excluded.updated_at, deleted_at = excluded.deleted_at",
             params![
                 l.id,
                 item.id,
                 l.exercise_id,
-                l.section_id,
                 position(l.position)?,
                 time_text(&l.updated_at),
                 l.deleted_at.as_ref().map(time_text),
@@ -472,12 +395,4 @@ fn kept_item_key(
         Some((Some(text), modality)) => codec::kept_key(&text, modality.as_deref(), saving),
         _ => None,
     })
-}
-
-fn stored_section_kind(tx: &Transaction, id: &str) -> Result<Option<String>, StoreError> {
-    Ok(tx
-        .query_row("SELECT kind FROM section WHERE id = ?1", [id], |row| {
-            row.get::<_, String>(0)
-        })
-        .optional()?)
 }

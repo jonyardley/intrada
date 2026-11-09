@@ -24,7 +24,6 @@ fn make_piece(id: &str) -> Item {
         chord_chart: None,
         variation_ids: vec![],
         keys: vec![],
-        sections: vec![],
         photo_id: None,
         metre: None,
     }
@@ -48,7 +47,6 @@ fn make_exercise(id: &str) -> Item {
         chord_chart: None,
         variation_ids: vec![],
         keys: vec![],
-        sections: vec![],
         photo_id: None,
         metre: None,
     }
@@ -396,7 +394,7 @@ fn commit_scaffold_does_not_clobber_a_handmade_exercise_of_the_same_title() {
     model.items.push(handmade);
     if let Some(piece) = model.items.iter_mut().find(|i| i.id == "piece-1") {
         piece.exercise_links =
-            crate::domain::link::whole_piece_links(&["handmade-shells"], chrono::Utc::now());
+            crate::domain::link::links_to(&["handmade-shells"], chrono::Utc::now());
     }
 
     send(
@@ -2703,563 +2701,16 @@ fn typed_tempo_round_trips_on_the_ffi_bincode_wire() {
         },
     });
 }
-// ── The whole-list section write ──
 
-fn row(id: Option<&str>, name: &str, bars: BarsInput) -> SectionEdit {
-    SectionEdit {
-        id: id.map(str::to_string),
-        name: name.to_string(),
-        bars,
-        kind: SectionKind::Form,
-        target_bpm: String::new(),
-    }
-}
+// ── Exercise links (#2248) ──
 
-fn typed(raw: &str) -> BarsInput {
-    BarsInput::Typed(raw.to_string())
-}
+use crate::domain::link::ExerciseLink;
 
-fn update_sections(
-    model: &mut Model,
-    id: &str,
-    sections: Vec<SectionEdit>,
-) -> Command<Effect, Event> {
-    super::sections::update_sections(model, id.to_string(), sections)
-}
-
-fn piece_sections(model: &Model) -> Vec<ItemSection> {
-    model
-        .items
-        .iter()
-        .find(|i| i.id == "piece-1")
-        .map(|i| i.sections.clone())
-        .unwrap_or_default()
-}
-
-fn live_sections(model: &Model) -> Vec<ItemSection> {
-    let mut live: Vec<ItemSection> = piece_sections(model)
-        .into_iter()
-        .filter(|s| s.deleted_at.is_none())
-        .collect();
-    live.sort_by_key(|s| s.position);
-    live
-}
-
-fn section_id(model: &Model, name: &str) -> String {
-    live_sections(model)
-        .into_iter()
-        .find(|s| s.name == name)
-        .unwrap_or_else(|| panic!("live section {name}"))
-        .id
-}
-
-fn piece_view(model: &Model) -> crate::model::LibraryItemView {
-    Intrada
-        .rendered(model)
-        .items
-        .into_iter()
-        .find(|i| i.id == "piece-1")
-        .expect("piece in view")
-}
-
-fn bars(first: u16, last: u16) -> Option<BarRange> {
-    Some(BarRange { first, last })
-}
-
-/// Bars a musician types or dictates, read through the event that consumes
-/// them (#1256): stored bars, or `None` when the field was left blank.
-#[test]
-fn typed_bars_a_musician_would_write_are_read() {
-    for (raw, expected) in [
-        ("1-16", bars(1, 16)),
-        ("1 - 16", bars(1, 16)),
-        ("1\u{2013}16", bars(1, 16)),
-        ("1\u{2014}16", bars(1, 16)),
-        ("1\u{2212}16", bars(1, 16)),
-        ("1 to 16", bars(1, 16)),
-        ("bars 5 to 12", bars(5, 12)),
-        ("Bars 5-12", bars(5, 12)),
-        ("bar 12", bars(12, 12)),
-        ("12", bars(12, 12)),
-        ("bb. 5-12", bars(5, 12)),
-        ("mm. 5-12", bars(5, 12)),
-        ("", None),
-        ("   ", None),
-    ] {
-        let mut model = model_with_piece_and_exercise();
-        let mut cmd = update_sections(&mut model, "piece-1", vec![row(None, "A", typed(raw))]);
-
-        assert!(model.last_error.is_none(), "{raw:?} refused");
-        assert!(emits_save(&mut cmd, "piece-1"), "{raw:?} not saved");
-        let live = live_sections(&model);
-        assert_eq!(live.len(), 1, "{raw:?}");
-        assert_eq!(live[0].bars, expected, "{raw:?}");
-    }
-}
-
-#[test]
-fn typed_bars_that_are_not_one_range_are_refused_and_nothing_saves() {
-    for raw in [
-        "16-1",
-        "0-4",
-        "1-",
-        "-4",
-        "1-16, 20-24",
-        "12-14 left hand",
-        "five to twelve",
-        "10000",
-        "1.5-3",
-    ] {
-        let mut model = model_with_piece_and_exercise();
-        let mut cmd = update_sections(&mut model, "piece-1", vec![row(None, "A", typed(raw))]);
-
-        assert!(model.last_error.is_some(), "{raw:?} accepted");
-        assert_eq!(
-            model.last_error_target,
-            Some(FormErrorTarget::Piece {
-                field: FormErrorField::Sections
-            }),
-            "{raw:?}"
-        );
-        assert!(!emits_save(&mut cmd, "piece-1"), "{raw:?} saved");
-        assert!(piece_sections(&model).is_empty(), "{raw:?}");
-    }
-}
-
-#[test]
-fn picked_bars_follow_the_same_rules_as_typed_ones() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, "A", BarsInput::Picked { first: 9, last: 4 })],
-    );
-    assert!(model.last_error.is_some(), "a reversed pick is refused");
-
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, "A", BarsInput::Picked { first: 4, last: 9 })],
-    );
-    assert!(model.last_error.is_none());
-    assert_eq!(live_sections(&model)[0].bars, bars(4, 9));
-}
-
-#[test]
-fn a_piece_takes_a_form_and_a_nameless_trouble_spot() {
-    let mut model = model_with_piece_and_exercise();
-    let mut cmd = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "A1", typed("1-16")),
-            row(None, "B", BarsInput::Blank),
-            row(None, "A2", BarsInput::Blank),
-            SectionEdit {
-                kind: SectionKind::TroubleSpot,
-                target_bpm: " 72 ".to_string(),
-                ..row(None, "", typed("bars 12 to 14"))
-            },
-        ],
-    );
-
-    assert!(model.last_error.is_none());
-    assert!(emits_save(&mut cmd, "piece-1"));
-    let live = live_sections(&model);
-    let names: Vec<&str> = live.iter().map(|s| s.name.as_str()).collect();
-    assert_eq!(names, vec!["A1", "B", "A2", ""]);
-    assert_eq!(live[3].kind, SectionKind::TroubleSpot);
-    assert_eq!(live[3].bars, bars(12, 14));
-    assert_eq!(live[3].target_bpm, Some(72));
-    assert_eq!(live[0].target_bpm, None, "blank is the piece's tempo");
-}
-
-#[test]
-fn an_exercise_takes_sections_too() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(&mut model, "ex-1", vec![row(None, "Up", BarsInput::Blank)]);
-
-    assert!(model.last_error.is_none());
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.sections.len(), 1);
-}
-
-#[test]
-fn rename_rebar_kind_target_reorder_add_and_remove_land_in_one_write() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "A", typed("1-8")),
-            row(None, "B", typed("9-16")),
-            row(None, "C", typed("17-24")),
-        ],
-    );
-    let a = section_id(&model, "A");
-    let b = section_id(&model, "B");
-    let c = section_id(&model, "C");
-
-    let mut cmd = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            SectionEdit {
-                kind: SectionKind::TroubleSpot,
-                target_bpm: "60".to_string(),
-                ..row(Some(&b), "B'", typed("9-12"))
-            },
-            row(Some(&a), "A", typed("1-8")),
-            row(None, "Coda", BarsInput::Blank),
-        ],
-    );
-
-    assert!(model.last_error.is_none());
-    assert!(emits_save(&mut cmd, "piece-1"));
-    let live = live_sections(&model);
-    let shape: Vec<(&str, &str)> = live
-        .iter()
-        .map(|s| (s.id.as_str(), s.name.as_str()))
-        .collect();
-    assert_eq!(shape[0], (b.as_str(), "B'"));
-    assert_eq!(shape[1], (a.as_str(), "A"));
-    assert_eq!(shape[2].1, "Coda");
-    assert_eq!(live[0].bars, bars(9, 12));
-    assert_eq!(live[0].kind, SectionKind::TroubleSpot);
-    assert_eq!(live[0].target_bpm, Some(60));
-
-    let removed = piece_sections(&model)
-        .into_iter()
-        .find(|s| s.id == c)
-        .expect("a removed section stays as a tombstone");
-    assert!(removed.deleted_at.is_some());
-    assert_eq!(
-        Some(removed.updated_at),
-        removed.deleted_at,
-        "the tombstone carries its own LWW stamp"
-    );
-}
-
-#[test]
-fn a_row_naming_a_tombstone_revives_it() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, "A", BarsInput::Blank)],
-    );
-    let a = section_id(&model, "A");
-    let _ = update_sections(&mut model, "piece-1", vec![]);
-
-    let mut cmd = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(Some(&a), "A", BarsInput::Blank)],
-    );
-
-    assert!(emits_save(&mut cmd, "piece-1"));
-    let live = live_sections(&model);
-    assert_eq!(live.len(), 1);
-    assert_eq!(live[0].id, a);
-}
-
-#[test]
-fn the_view_orders_by_position_whatever_order_the_store_loaded() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "A", BarsInput::Blank),
-            row(None, "B", BarsInput::Blank),
-        ],
-    );
-    let piece = model.items.iter_mut().find(|i| i.id == "piece-1").unwrap();
-    piece.sections.reverse();
-
-    let labels: Vec<String> = piece_view(&model)
-        .sections
-        .into_iter()
-        .map(|s| s.label)
-        .collect();
-    assert_eq!(labels, vec!["A", "B"]);
-}
-
-#[test]
-fn a_swap_of_two_names_keeps_each_id() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "A", BarsInput::Blank),
-            row(None, "B", BarsInput::Blank),
-        ],
-    );
-    let a = section_id(&model, "A");
-    let b = section_id(&model, "B");
-
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(Some(&a), "B", BarsInput::Blank),
-            row(Some(&b), "A", BarsInput::Blank),
-        ],
-    );
-
-    let live = live_sections(&model);
-    assert_eq!(live[0].id, a);
-    assert_eq!(live[0].name, "B");
-    assert_eq!(live[1].id, b);
-    assert_eq!(
-        piece_sections(&model).len(),
-        2,
-        "a swap is not remove plus add"
-    );
-}
-
-#[test]
-fn duplicate_names_are_two_sections() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "A", typed("1-8")),
-            row(None, "B", typed("9-16")),
-            row(None, "A", typed("17-24")),
-        ],
-    );
-
-    assert!(model.last_error.is_none());
-    assert_eq!(live_sections(&model).len(), 3);
-}
-
-#[test]
-fn a_refused_row_saves_nothing_even_after_valid_ones() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, "A", BarsInput::Blank)],
-    );
-    let before = piece_sections(&model);
-
-    let mut cmd = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "B", BarsInput::Blank),
-            row(None, "C", typed("16-1")),
-        ],
-    );
-
-    assert!(model.last_error.is_some());
-    assert!(!emits_save(&mut cmd, "piece-1"));
-    assert_eq!(piece_sections(&model), before);
-}
-
-#[test]
-fn a_nameless_row_with_no_bars_is_refused() {
-    let mut model = model_with_piece_and_exercise();
-    let mut cmd = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, "  ", BarsInput::Blank)],
-    );
-
-    assert!(model.last_error.is_some());
-    assert!(!emits_save(&mut cmd, "piece-1"));
-}
-
-#[test]
-fn a_long_name_and_an_unreadable_target_are_refused() {
-    let mut model = model_with_piece_and_exercise();
-    let long = "x".repeat(crate::validation::MAX_SECTION_NAME + 1);
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, &long, BarsInput::Blank)],
-    );
-    assert!(model.last_error.is_some(), "name over the limit");
-
-    for target in ["0", "401", "fast", "72.5"] {
-        let mut model = model_with_piece_and_exercise();
-        let _ = update_sections(
-            &mut model,
-            "piece-1",
-            vec![SectionEdit {
-                target_bpm: target.to_string(),
-                ..row(None, "A", BarsInput::Blank)
-            }],
-        );
-        assert_eq!(
-            model.last_error_target,
-            Some(FormErrorTarget::Piece {
-                field: FormErrorField::Sections
-            }),
-            "{target:?}"
-        );
-    }
-}
-
-#[test]
-fn an_identical_list_writes_nothing_and_keeps_updated_at() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "A", typed("1-8")),
-            row(None, "B", BarsInput::Blank),
-        ],
-    );
-    let a = section_id(&model, "A");
-    let b = section_id(&model, "B");
-    let before = model
-        .items
-        .iter()
-        .find(|i| i.id == "piece-1")
-        .unwrap()
-        .clone();
-
-    let mut cmd = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(Some(&a), " A ", typed("bars 1 to 8")),
-            row(Some(&b), "B", BarsInput::Blank),
-        ],
-    );
-
-    assert!(model.last_error.is_none());
-    assert!(!emits_save(&mut cmd, "piece-1"));
-    let after = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(after, &before);
-}
-
-#[test]
-fn an_empty_list_tombstones_every_section() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, "A", BarsInput::Blank)],
-    );
-
-    let mut cmd = update_sections(&mut model, "piece-1", vec![]);
-
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert!(live_sections(&model).is_empty());
-    assert_eq!(piece_sections(&model).len(), 1);
-}
-
-#[test]
-fn an_unknown_item_is_not_found() {
-    let mut model = model_with_piece_and_exercise();
-    let mut cmd = update_sections(
-        &mut model,
-        "missing",
-        vec![row(None, "A", BarsInput::Blank)],
-    );
-
-    assert!(model.last_error.is_some());
-    assert!(!emits_save(&mut cmd, "missing"));
-}
-
-#[test]
-fn the_view_hides_tombstones_orders_by_position_and_labels_by_bars() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(None, "Gone", BarsInput::Blank),
-            row(None, "A1", typed("1-16")),
-            row(None, "", typed("bar 12")),
-            row(None, "", typed("12-14")),
-            row(None, "B", BarsInput::Blank),
-        ],
-    );
-    let gone = section_id(&model, "Gone");
-    let a1 = section_id(&model, "A1");
-    let b = section_id(&model, "B");
-    let spots: Vec<String> = live_sections(&model)
-        .into_iter()
-        .filter(|s| s.name.is_empty())
-        .map(|s| s.id)
-        .collect();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![
-            row(Some(&b), "B", BarsInput::Blank),
-            row(Some(&a1), "A1", typed("1-16")),
-            row(Some(&spots[0]), "", typed("bar 12")),
-            row(Some(&spots[1]), "", typed("12-14")),
-        ],
-    );
-    assert!(piece_sections(&model).iter().any(|s| s.id == gone));
-
-    let views = piece_view(&model).sections;
-    let labels: Vec<(&str, Option<&str>)> = views
-        .iter()
-        .map(|v| (v.label.as_str(), v.bars_caption.as_deref()))
-        .collect();
-    assert_eq!(
-        labels,
-        vec![
-            ("B", None),
-            ("A1", Some("Bars 1 to 16")),
-            ("Bar 12", None),
-            ("Bars 12 to 14", None),
-        ]
-    );
-    assert_eq!(views[1].first_bar, Some(1));
-    assert_eq!(views[1].last_bar, Some(16));
-    assert_eq!(views[3].name, "");
-}
-
-#[test]
-fn an_item_with_sections_round_trips_on_ffi_bincode_wire() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(None, "A1", typed("1-16")), row(None, "", typed("12"))],
-    );
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    crate::domain::types::assert_round_trips(piece.clone());
-    crate::domain::types::assert_round_trips(piece_view(&model));
-}
-
-// ── Section links (#2248) ──
-
-use crate::domain::link::{ExerciseLink, LinkEdit, LinkTarget};
-
-fn section(id: &str, name: &str, position: usize) -> ItemSection {
-    ItemSection {
-        id: id.to_string(),
-        name: name.to_string(),
-        bars: None,
-        kind: SectionKind::Form,
-        target_bpm: None,
-        position,
-        updated_at: chrono::Utc::now(),
-        deleted_at: None,
-    }
-}
-
-/// Nocturne (A1, A2, a removed B) and an étude (coda), with two drills.
+/// A nocturne and an étude, with two exercises.
 fn linking_model() -> Model {
-    let mut nocturne = make_piece("piece-1");
-    let mut removed = section("s-b", "B", 2);
-    removed.deleted_at = Some(chrono::Utc::now());
-    nocturne.sections = vec![section("s-a1", "A1", 0), section("s-a2", "A2", 1), removed];
+    let nocturne = make_piece("piece-1");
     let mut etude = make_piece("piece-2");
     etude.title = "Étude".to_string();
-    etude.sections = vec![section("s-coda", "Coda", 0)];
     let mut thirds = make_exercise("ex-2");
     thirds.title = "Thirds".to_string();
     Model {
@@ -3272,39 +2723,25 @@ fn item<'a>(model: &'a Model, id: &str) -> &'a Item {
     model.items.iter().find(|i| i.id == id).expect("item")
 }
 
-/// The live link rows of a piece as (exercise, section), by position.
-fn live_pairs(model: &Model, piece_id: &str) -> Vec<(String, Option<String>)> {
+/// The exercises a piece's live links name, by position.
+fn live_pairs(model: &Model, piece_id: &str) -> Vec<String> {
     item(model, piece_id)
         .live_links()
         .into_iter()
-        .map(|l| (l.exercise_id.clone(), l.section_id.clone()))
+        .map(|l| l.exercise_id.clone())
         .collect()
 }
 
-fn pair(exercise: &str, section: Option<&str>) -> (String, Option<String>) {
-    (exercise.to_string(), section.map(str::to_string))
-}
-
-fn existing(exercise: &str, section: Option<&str>) -> LinkEdit {
-    LinkEdit {
-        exercise: ScaffoldEntry::Existing {
-            id: exercise.to_string(),
-        },
-        section_id: section.map(str::to_string),
-    }
-}
-
-fn target(piece: &str, section: Option<&str>) -> LinkTarget {
-    LinkTarget {
-        piece_id: piece.to_string(),
-        section_id: section.map(str::to_string),
+fn existing(exercise: &str) -> ScaffoldEntry {
+    ScaffoldEntry::Existing {
+        id: exercise.to_string(),
     }
 }
 
 fn set_piece_links(
     model: &mut Model,
     piece_id: &str,
-    links: Vec<LinkEdit>,
+    links: Vec<ScaffoldEntry>,
 ) -> Command<Effect, Event> {
     super::links::set_piece_links(model, piece_id.to_string(), links)
 }
@@ -3312,13 +2749,13 @@ fn set_piece_links(
 fn set_exercise_links(
     model: &mut Model,
     exercise_id: &str,
-    targets: Vec<LinkTarget>,
+    pieces: Vec<&str>,
 ) -> Command<Effect, Event> {
     send_cmd(
         model,
-        ItemEvent::SetExerciseLinks {
+        ItemEvent::ChooseExercisePieces {
             exercise_id: exercise_id.to_string(),
-            targets,
+            piece_ids: pieces.into_iter().map(str::to_string).collect(),
         },
     )
 }
@@ -3352,68 +2789,17 @@ fn draft(title: &str) -> CreateItem {
 }
 
 #[test]
-fn set_piece_links_holds_whole_piece_and_section_links_in_card_order() {
-    let mut model = linking_model();
-
-    let mut cmd = set_piece_links(
-        &mut model,
-        "piece-1",
-        vec![
-            existing("ex-1", None),
-            existing("ex-2", Some("s-a2")),
-            existing("ex-1", Some("s-a2")),
-        ],
-    );
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![
-            pair("ex-1", None),
-            pair("ex-2", Some("s-a2")),
-            pair("ex-1", Some("s-a2")),
-        ]
-    );
-    let card = view_of(&model, "piece-1").linked_exercises;
-    let rows: Vec<(String, bool, Vec<String>)> = card
-        .iter()
-        .map(|e| {
-            (
-                e.id.clone(),
-                e.whole_piece,
-                e.sections.iter().map(|s| s.label.clone()).collect(),
-            )
-        })
-        .collect();
-    assert_eq!(
-        rows,
-        vec![
-            ("ex-1".to_string(), true, vec!["A2".to_string()]),
-            ("ex-2".to_string(), false, vec!["A2".to_string()]),
-        ]
-    );
-}
-
-#[test]
 fn set_piece_links_adds_and_removes_in_one_event() {
     let mut model = linking_model();
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
 
-    let _ = set_piece_links(
-        &mut model,
-        "piece-1",
-        vec![existing("ex-2", None), existing("ex-1", Some("s-a1"))],
-    );
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-2")]);
 
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair("ex-2", None), pair("ex-1", Some("s-a1"))]
-    );
+    assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-2".to_string()]);
     let removed: Vec<&ExerciseLink> = item(&model, "piece-1")
         .exercise_links
         .iter()
-        .filter(|l| l.exercise_id == "ex-1" && l.section_id.is_none())
+        .filter(|l| l.exercise_id == "ex-1")
         .collect();
     assert_eq!(removed.len(), 1);
     assert!(
@@ -3423,16 +2809,13 @@ fn set_piece_links_adds_and_removes_in_one_event() {
 }
 
 #[test]
-fn set_piece_links_creates_a_written_exercise_linked_to_a_section() {
+fn set_piece_links_creates_a_written_exercise_and_links_it() {
     let mut model = linking_model();
 
     let mut cmd = set_piece_links(
         &mut model,
         "piece-1",
-        vec![LinkEdit {
-            exercise: ScaffoldEntry::New(draft("  Broken octaves ")),
-            section_id: Some("s-a2".to_string()),
-        }],
+        vec![ScaffoldEntry::New(draft("  Broken octaves "))],
     );
 
     assert!(model.last_error.is_none(), "{:?}", model.last_error);
@@ -3443,10 +2826,7 @@ fn set_piece_links_creates_a_written_exercise_linked_to_a_section() {
         .expect("created")
         .clone();
     assert_eq!(created.kind, ItemKind::Exercise);
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair(&created.id, Some("s-a2"))]
-    );
+    assert_eq!(live_pairs(&model, "piece-1"), vec![created.id.clone()]);
     assert_eq!(
         emits_save_items(&mut cmd),
         Some(vec![created.id.clone(), "piece-1".to_string()])
@@ -3456,29 +2836,16 @@ fn set_piece_links_creates_a_written_exercise_linked_to_a_section() {
 #[test]
 fn set_piece_links_refuses_the_whole_set_on_one_bad_row() {
     for (case, bad) in [
-        ("unknown section", existing("ex-2", Some("s-nope"))),
-        ("another piece's section", existing("ex-2", Some("s-coda"))),
-        ("a removed section", existing("ex-2", Some("s-b"))),
-        ("a piece as the exercise", existing("piece-2", None)),
-        ("an unknown exercise", existing("ex-nope", None)),
-        (
-            "a draft with no title",
-            LinkEdit {
-                exercise: ScaffoldEntry::New(draft("   ")),
-                section_id: None,
-            },
-        ),
+        ("a piece as the exercise", existing("piece-2")),
+        ("an unknown exercise", existing("ex-nope")),
+        ("a draft with no title", ScaffoldEntry::New(draft("   "))),
     ] {
         let mut model = linking_model();
-        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
         let before = item(&model, "piece-1").clone();
         let count = model.items.len();
 
-        let mut cmd = set_piece_links(
-            &mut model,
-            "piece-1",
-            vec![existing("ex-1", Some("s-a1")), bad],
-        );
+        let mut cmd = set_piece_links(&mut model, "piece-1", vec![existing("ex-1"), bad]);
 
         assert!(model.last_error.is_some(), "{case}: refused");
         assert!(!persists_anything(&mut cmd), "{case}: nothing saved");
@@ -3490,7 +2857,7 @@ fn set_piece_links_refuses_the_whole_set_on_one_bad_row() {
 #[test]
 fn set_piece_links_refuses_an_exercise_as_the_host() {
     let mut model = linking_model();
-    let mut cmd = set_piece_links(&mut model, "ex-1", vec![existing("ex-2", None)]);
+    let mut cmd = set_piece_links(&mut model, "ex-1", vec![existing("ex-2")]);
     assert!(model.last_error.is_some());
     assert!(!persists_anything(&mut cmd));
     assert!(item(&model, "ex-1").exercise_links.is_empty());
@@ -3502,14 +2869,14 @@ fn set_piece_links_with_the_stored_set_writes_nothing() {
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+        vec![existing("ex-1"), existing("ex-2")],
     );
     let stamped = item(&model, "piece-1").updated_at;
 
     let mut cmd = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+        vec![existing("ex-1"), existing("ex-2")],
     );
 
     assert!(!persists_anything(&mut cmd));
@@ -3519,11 +2886,11 @@ fn set_piece_links_with_the_stored_set_writes_nothing() {
 #[test]
 fn relinking_after_an_unlink_revives_the_same_row() {
     let mut model = linking_model();
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", Some("s-a2"))]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
     let first = item(&model, "piece-1").exercise_links[0].id.clone();
 
     let _ = set_piece_links(&mut model, "piece-1", vec![]);
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", Some("s-a2"))]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
 
     let rows = &item(&model, "piece-1").exercise_links;
     assert_eq!(rows.len(), 1, "no twin row minted");
@@ -3532,89 +2899,60 @@ fn relinking_after_an_unlink_revives_the_same_row() {
 }
 
 #[test]
-fn set_exercise_links_reaches_sections_of_two_pieces_in_one_batch() {
+fn set_exercise_links_reaches_two_pieces_in_one_batch() {
     let mut model = linking_model();
 
-    let mut cmd = set_exercise_links(
-        &mut model,
-        "ex-1",
-        vec![
-            target("piece-1", Some("s-a2")),
-            target("piece-2", Some("s-coda")),
-        ],
-    );
+    let mut cmd = set_exercise_links(&mut model, "ex-1", vec!["piece-1", "piece-2"]);
 
     assert!(model.last_error.is_none(), "{:?}", model.last_error);
     let mut saved = emits_save_items(&mut cmd).expect("one batch");
     saved.sort();
     assert_eq!(saved, vec!["piece-1".to_string(), "piece-2".to_string()]);
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair("ex-1", Some("s-a2"))]
-    );
-    assert_eq!(
-        live_pairs(&model, "piece-2"),
-        vec![pair("ex-1", Some("s-coda"))]
-    );
+    assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-1".to_string()]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec!["ex-1".to_string()]);
 
-    let mut used_in: Vec<(String, bool, bool, Vec<String>)> = view_of(&model, "ex-1")
+    let mut used_in: Vec<(String, bool)> = view_of(&model, "ex-1")
         .used_in
         .iter()
-        .map(|u| {
-            (
-                u.piece.as_ref().expect("a piece").id.clone(),
-                u.linked,
-                u.whole_piece,
-                u.sections.iter().map(|s| s.label.clone()).collect(),
-            )
-        })
+        .map(|u| (u.piece.as_ref().expect("a piece").id.clone(), u.linked))
         .collect();
     used_in.sort();
     assert_eq!(
         used_in,
-        vec![
-            ("piece-1".to_string(), true, false, vec!["A2".to_string()]),
-            ("piece-2".to_string(), true, false, vec!["Coda".to_string()]),
-        ]
+        vec![("piece-1".to_string(), true), ("piece-2".to_string(), true)]
     );
 }
 
 #[test]
 fn set_exercise_links_saves_only_the_pieces_it_changes() {
     let mut model = linking_model();
-    let _ = set_exercise_links(
-        &mut model,
-        "ex-1",
-        vec![target("piece-1", None), target("piece-2", None)],
-    );
+    let _ = set_exercise_links(&mut model, "ex-1", vec!["piece-1", "piece-2"]);
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-1", None), existing("ex-2", None)],
+        vec![existing("ex-1"), existing("ex-2")],
     );
 
-    let mut cmd = set_exercise_links(&mut model, "ex-1", vec![target("piece-2", None)]);
+    let mut cmd = set_exercise_links(&mut model, "ex-1", vec!["piece-2"]);
 
     assert_eq!(
         emits_save_items(&mut cmd),
         Some(vec!["piece-1".to_string()])
     );
-    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-2", None)]);
-    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+    assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-2".to_string()]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec!["ex-1".to_string()]);
 }
 
 #[test]
 fn set_exercise_links_refuses_the_whole_set_on_one_bad_target() {
     for (case, bad) in [
-        ("another piece's section", target("piece-1", Some("s-coda"))),
-        ("a removed section", target("piece-1", Some("s-b"))),
-        ("an exercise as the piece", target("ex-2", None)),
-        ("an unknown piece", target("piece-nope", None)),
+        ("an exercise as the piece", "ex-2"),
+        ("an unknown piece", "piece-nope"),
     ] {
         let mut model = linking_model();
         let before: Vec<Item> = model.items.iter().cloned().collect();
 
-        let mut cmd = set_exercise_links(&mut model, "ex-1", vec![target("piece-2", None), bad]);
+        let mut cmd = set_exercise_links(&mut model, "ex-1", vec!["piece-2", bad]);
 
         assert!(model.last_error.is_some(), "{case}: refused");
         assert!(!persists_anything(&mut cmd), "{case}: nothing saved");
@@ -3622,7 +2960,7 @@ fn set_exercise_links_refuses_the_whole_set_on_one_bad_target() {
         assert_eq!(after, before, "{case}: nothing changed");
     }
     let mut model = linking_model();
-    let mut cmd = set_exercise_links(&mut model, "piece-2", vec![target("piece-1", None)]);
+    let mut cmd = set_exercise_links(&mut model, "piece-2", vec!["piece-1"]);
     assert!(
         model.last_error.is_some(),
         "a piece is not linked as an exercise"
@@ -3631,79 +2969,20 @@ fn set_exercise_links_refuses_the_whole_set_on_one_bad_target() {
 }
 
 #[test]
-fn removing_a_section_removes_only_its_links() {
-    let mut model = linking_model();
-    let _ = set_piece_links(
-        &mut model,
-        "piece-1",
-        vec![
-            existing("ex-1", None),
-            existing("ex-1", Some("s-a2")),
-            existing("ex-2", Some("s-a1")),
-        ],
-    );
-    let exercise_before = item(&model, "ex-1").clone();
-
-    let mut cmd = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(Some("s-a1"), "A1", BarsInput::Blank)],
-    );
-
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert!(!emits_save(&mut cmd, "ex-1"), "the exercise is not written");
-    assert_eq!(item(&model, "ex-1"), &exercise_before);
-    let piece = item(&model, "piece-1");
-    let a2 = piece
-        .exercise_links
-        .iter()
-        .find(|l| l.section_id.as_deref() == Some("s-a2"))
-        .expect("the row is kept");
-    assert!(
-        a2.deleted_at.is_some(),
-        "the removed section's link is tombstoned"
-    );
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair("ex-1", None), pair("ex-2", Some("s-a1"))]
-    );
-}
-
-#[test]
-fn a_link_to_a_removed_section_is_hidden_from_both_screens() {
-    let mut model = linking_model();
-    let now = chrono::Utc::now();
-    if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
-        p.exercise_links = vec![
-            ExerciseLink::new("ex-1".to_string(), Some("s-b".to_string()), 0, now),
-            ExerciseLink::new("ex-2".to_string(), Some("s-a1".to_string()), 1, now),
-        ];
-    }
-
-    let card: Vec<String> = view_of(&model, "piece-1")
-        .linked_exercises
-        .iter()
-        .map(|e| e.id.clone())
-        .collect();
-    assert_eq!(card, vec!["ex-2".to_string()]);
-    assert!(view_of(&model, "ex-1").used_in.is_empty());
-}
-
-#[test]
 fn link_events_and_an_item_with_links_round_trip_on_ffi_bincode_wire() {
     crate::domain::types::assert_round_trips(crate::app::Event::Item(
-        ItemEvent::SetExerciseLinks {
+        ItemEvent::ChooseExercisePieces {
             exercise_id: "ex-1".to_string(),
-            targets: vec![target("piece-1", None), target("piece-2", Some("s-coda"))],
+            piece_ids: vec!["piece-1".to_string(), "piece-2".to_string()],
         },
     ));
     let mut model = linking_model();
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+        vec![existing("ex-1"), existing("ex-2")],
     );
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-2", Some("s-a2"))]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-2")]);
     let piece = item(&model, "piece-1");
     assert!(piece.exercise_links.iter().any(|l| l.deleted_at.is_some()));
     crate::domain::types::assert_round_trips(piece.clone());
@@ -3715,8 +2994,8 @@ fn old_stamp() -> chrono::DateTime<chrono::Utc> {
     chrono::Utc::now() - chrono::Duration::days(30)
 }
 
-/// Links on piece-1 as (exercise, section, position), every row stamped long ago.
-fn seed_links(model: &mut Model, rows: &[(&str, Option<&str>, usize)]) {
+/// Links on piece-1 as (exercise, position), every row stamped long ago.
+fn seed_links(model: &mut Model, rows: &[(&str, usize)]) {
     let at = old_stamp();
     let piece = model
         .items
@@ -3725,30 +3004,28 @@ fn seed_links(model: &mut Model, rows: &[(&str, Option<&str>, usize)]) {
         .expect("piece");
     piece.exercise_links = rows
         .iter()
-        .map(|(ex, section, position)| {
-            ExerciseLink::new(ex.to_string(), section.map(str::to_string), *position, at)
-        })
+        .map(|(ex, position)| ExerciseLink::new(ex.to_string(), *position, at))
         .collect();
 }
 
-fn link_row<'a>(model: &'a Model, exercise: &str, section: Option<&str>) -> &'a ExerciseLink {
+fn link_row<'a>(model: &'a Model, exercise: &str) -> &'a ExerciseLink {
     item(model, "piece-1")
         .exercise_links
         .iter()
-        .find(|l| l.exercise_id == exercise && l.section_id.as_deref() == section)
+        .find(|l| l.exercise_id == exercise)
         .expect("link row")
 }
 
 #[test]
 fn set_piece_links_with_the_stored_set_at_gapped_positions_writes_nothing() {
     let mut model = linking_model();
-    seed_links(&mut model, &[("ex-1", None, 0), ("ex-2", Some("s-a2"), 2)]);
+    seed_links(&mut model, &[("ex-1", 0), ("ex-2", 2)]);
     let stamped = item(&model, "piece-1").updated_at;
 
     let mut cmd = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+        vec![existing("ex-1"), existing("ex-2")],
     );
 
     assert!(!persists_anything(&mut cmd));
@@ -3757,18 +3034,16 @@ fn set_piece_links_with_the_stored_set_at_gapped_positions_writes_nothing() {
 
 #[test]
 fn every_link_write_stamps_the_rows_it_changes() {
-    let stale = |model: &Model, ex: &str, section: Option<&str>| {
-        link_row(model, ex, section).updated_at <= old_stamp()
-    };
+    let stale = |model: &Model, ex: &str| link_row(model, ex).updated_at <= old_stamp();
 
     let mut model = linking_model();
-    seed_links(&mut model, &[("ex-1", None, 0), ("ex-2", None, 1)]);
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-2", None)]);
-    assert!(!stale(&model, "ex-1", None), "a tombstone is stamped");
-    assert!(!stale(&model, "ex-2", None), "a moved row is stamped");
+    seed_links(&mut model, &[("ex-1", 0), ("ex-2", 1)]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-2")]);
+    assert!(!stale(&model, "ex-1"), "a tombstone is stamped");
+    assert!(!stale(&model, "ex-2"), "a moved row is stamped");
 
     let mut model = linking_model();
-    seed_links(&mut model, &[("ex-1", None, 0)]);
+    seed_links(&mut model, &[("ex-1", 0)]);
     let mut tombstoned = model
         .items
         .iter()
@@ -3779,29 +3054,17 @@ fn every_link_write_stamps_the_rows_it_changes() {
     if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
         *p = tombstoned;
     }
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
-    assert!(!stale(&model, "ex-1", None), "a revived row is stamped");
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
+    assert!(!stale(&model, "ex-1"), "a revived row is stamped");
 
     let mut model = linking_model();
-    seed_links(&mut model, &[("ex-1", None, 0), ("ex-2", None, 1)]);
+    seed_links(&mut model, &[("ex-1", 0), ("ex-2", 1)]);
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-2", None), existing("ex-1", None)],
+        vec![existing("ex-2"), existing("ex-1")],
     );
-    assert!(!stale(&model, "ex-1", None), "a reordered row is stamped");
-
-    let mut model = linking_model();
-    seed_links(&mut model, &[("ex-1", Some("s-a2"), 0)]);
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        vec![row(Some("s-a1"), "A1", BarsInput::Blank)],
-    );
-    assert!(
-        !stale(&model, "ex-1", Some("s-a2")),
-        "a link removed with its section is stamped"
-    );
+    assert!(!stale(&model, "ex-1"), "a reordered row is stamped");
 }
 
 #[test]
@@ -3810,119 +3073,13 @@ fn a_repeated_row_links_once() {
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![
-            existing("ex-1", Some("s-a2")),
-            existing("ex-1", Some("s-a2")),
-        ],
+        vec![existing("ex-1"), existing("ex-1")],
     );
     assert_eq!(item(&model, "piece-1").exercise_links.len(), 1);
 
     let mut model = linking_model();
-    let _ = set_exercise_links(
-        &mut model,
-        "ex-1",
-        vec![
-            target("piece-2", Some("s-coda")),
-            target("piece-2", Some("s-coda")),
-        ],
-    );
+    let _ = set_exercise_links(&mut model, "ex-1", vec!["piece-2", "piece-2"]);
     assert_eq!(item(&model, "piece-2").exercise_links.len(), 1);
-}
-
-/// How each kind of link reads in a sentence on both screens, from sections a
-/// musician would mark (#2248).
-#[test]
-fn a_linked_section_reads_in_sentence_case() {
-    for (name, bars, whole_piece, expected) in [
-        ("A2", None, false, vec!["A2"]),
-        ("A2", Some((27, 42)), false, vec!["A2"]),
-        ("", Some((19, 20)), false, vec!["bars 19 to 20"]),
-        ("", Some((12, 12)), false, vec!["bar 12"]),
-        ("", None, true, vec![]),
-    ] {
-        let mut model = linking_model();
-        let mut spot = section("s-x", name, 3);
-        spot.bars = bars.map(|(first, last)| BarRange { first, last });
-        if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
-            p.sections.push(spot);
-        }
-        let section_id = (!whole_piece).then_some("s-x");
-        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", section_id)]);
-
-        let card = &view_of(&model, "piece-1").linked_exercises[0];
-        let in_text: Vec<String> = card
-            .sections
-            .iter()
-            .map(|s| s.label_in_text.clone())
-            .collect();
-        assert_eq!(in_text, expected, "{name:?} {bars:?}");
-        assert_eq!(card.whole_piece, whole_piece);
-        let used_in = &view_of(&model, "ex-1").used_in[0];
-        let in_text: Vec<String> = used_in
-            .sections
-            .iter()
-            .map(|s| s.label_in_text.clone())
-            .collect();
-        assert_eq!(in_text, expected, "the exercise's side reads the same");
-    }
-}
-
-// ── Section and link wording both shells read (#2456) ──
-
-#[test]
-fn a_sections_bars_field_opens_with_text_the_parser_reads_back() {
-    for (bars, expected) in [
-        (Some((12, 12)), "12"),
-        (Some((19, 20)), "19 to 20"),
-        (None, ""),
-    ] {
-        let mut model = linking_model();
-        let mut spot = section("s-x", "", 3);
-        spot.bars = bars.map(|(first, last)| BarRange { first, last });
-        if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
-            p.sections.push(spot.clone());
-        }
-
-        let view = view_of(&model, "piece-1");
-        let field = view
-            .sections
-            .iter()
-            .find(|s| s.id == "s-x")
-            .map(|s| s.bars_field_text.clone());
-        assert_eq!(field.as_deref(), Some(expected), "{bars:?}");
-        assert_eq!(
-            crate::validation::parse_bar_range(field.as_deref().unwrap_or_default()).ok(),
-            Some(spot.bars),
-            "{expected:?} reads back as the bars it came from"
-        );
-    }
-}
-
-#[test]
-fn an_exercises_link_caption_names_what_it_is_linked_to() {
-    for (links, expected) in [
-        (vec![None], None),
-        (vec![None, Some("s-a2")], Some("For the whole piece and A2")),
-        (vec![Some("s-a1"), Some("s-a2")], Some("For A1 and A2")),
-        (vec![Some("s-a2")], Some("For A2")),
-        (
-            vec![None, Some("s-a1"), Some("s-a2")],
-            Some("For the whole piece, A1 and A2"),
-        ),
-    ] {
-        let mut model = linking_model();
-        let edits = links.iter().map(|s| existing("ex-1", *s)).collect();
-        let _ = set_piece_links(&mut model, "piece-1", edits);
-
-        let card = &view_of(&model, "piece-1").linked_exercises[0];
-        assert_eq!(card.link_caption.as_deref(), expected, "{links:?}");
-        let used_in = &view_of(&model, "ex-1").used_in[0];
-        assert_eq!(
-            used_in.link_caption.as_deref(),
-            expected,
-            "the exercise's side reads the same"
-        );
-    }
 }
 
 // ── The link pickers send only what was ticked (#2379) ──
@@ -3958,16 +3115,9 @@ fn choose_exercise_pieces(
 }
 
 #[test]
-fn a_kept_exercise_keeps_its_sections_and_a_new_tick_links_whole_after_it() {
+fn a_kept_exercise_keeps_its_place_and_a_new_tick_links_after_it() {
     let mut model = linking_model();
-    let _ = set_piece_links(
-        &mut model,
-        "piece-1",
-        vec![
-            existing("ex-1", Some("s-a1")),
-            existing("ex-1", Some("s-a2")),
-        ],
-    );
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
 
     let mut cmd = choose_piece_exercises(&mut model, "piece-1", &["ex-2", "ex-1"], vec![]);
 
@@ -3975,12 +3125,21 @@ fn a_kept_exercise_keeps_its_sections_and_a_new_tick_links_whole_after_it() {
     assert!(emits_save(&mut cmd, "piece-1"));
     assert_eq!(
         live_pairs(&model, "piece-1"),
-        vec![
-            pair("ex-1", Some("s-a1")),
-            pair("ex-1", Some("s-a2")),
-            pair("ex-2", None),
-        ]
+        vec!["ex-1".to_string(), "ex-2".to_string()]
     );
+}
+
+/// An exercise is linked to a piece once, however often it is ticked
+/// (sections removed 2026-11-08).
+#[test]
+fn ticking_an_exercise_already_linked_keeps_one_link() {
+    let mut model = linking_model();
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
+
+    let mut cmd = choose_piece_exercises(&mut model, "piece-1", &["ex-1", "ex-1"], vec![]);
+
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(item(&model, "piece-1").exercise_links.len(), 1);
 }
 
 #[test]
@@ -3989,21 +3148,18 @@ fn an_unticked_exercise_is_unlinked_from_the_piece() {
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+        vec![existing("ex-1"), existing("ex-2")],
     );
 
     let _ = choose_piece_exercises(&mut model, "piece-1", &["ex-2"], vec![]);
 
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair("ex-2", Some("s-a2"))]
-    );
+    assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-2".to_string()]);
 }
 
 #[test]
 fn a_written_exercise_from_the_picker_links_whole_after_the_ticked_ones() {
     let mut model = linking_model();
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", Some("s-a1"))]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
 
     let mut cmd = choose_piece_exercises(
         &mut model,
@@ -4021,11 +3177,7 @@ fn a_written_exercise_from_the_picker_links_whole_after_the_ticked_ones() {
         .clone();
     assert_eq!(
         live_pairs(&model, "piece-1"),
-        vec![
-            pair("ex-1", Some("s-a1")),
-            pair("ex-2", None),
-            pair(&created, None),
-        ]
+        vec!["ex-1".to_string(), "ex-2".to_string(), created.clone(),]
     );
     assert_eq!(emits_save_items(&mut cmd).map(|b| b.len()), Some(2));
 }
@@ -4036,7 +3188,7 @@ fn ticking_the_same_exercises_again_persists_nothing() {
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-2", Some("s-a2")), existing("ex-1", None)],
+        vec![existing("ex-2"), existing("ex-1")],
     );
 
     let mut cmd = choose_piece_exercises(&mut model, "piece-1", &["ex-1", "ex-2"], vec![]);
@@ -4044,7 +3196,7 @@ fn ticking_the_same_exercises_again_persists_nothing() {
     assert!(!persists_anything(&mut cmd));
     assert_eq!(
         live_pairs(&model, "piece-1"),
-        vec![pair("ex-2", Some("s-a2")), pair("ex-1", None)]
+        vec!["ex-2".to_string(), "ex-1".to_string()]
     );
 }
 
@@ -4052,13 +3204,13 @@ fn ticking_the_same_exercises_again_persists_nothing() {
 fn an_exercise_picker_tick_that_is_not_an_exercise_is_refused_whole() {
     for bad in ["nope", "piece-2"] {
         let mut model = linking_model();
-        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1")]);
 
         let mut cmd = choose_piece_exercises(&mut model, "piece-1", &["ex-2", bad], vec![]);
 
         assert!(model.last_error.is_some(), "{bad}");
         assert!(!persists_anything(&mut cmd), "{bad}");
-        assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-1", None)]);
+        assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-1".to_string()]);
     }
 }
 
@@ -4069,8 +3221,8 @@ fn a_tick_sent_twice_links_once() {
     let _ = choose_piece_exercises(&mut model, "piece-1", &["ex-2", "ex-2"], vec![]);
     let _ = choose_exercise_pieces(&mut model, "ex-1", &["piece-2", "piece-2"]);
 
-    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-2", None)]);
-    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+    assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-2".to_string()]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec!["ex-1".to_string()]);
 }
 
 #[test]
@@ -4079,7 +3231,7 @@ fn a_kept_piece_keeps_its_sections_and_a_new_piece_links_whole() {
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-2", None), existing("ex-1", Some("s-a2"))],
+        vec![existing("ex-2"), existing("ex-1")],
     );
 
     let mut cmd = choose_exercise_pieces(&mut model, "ex-1", &["piece-2", "piece-1"]);
@@ -4088,10 +3240,10 @@ fn a_kept_piece_keeps_its_sections_and_a_new_piece_links_whole() {
     assert!(emits_save_items(&mut cmd).is_some());
     assert_eq!(
         live_pairs(&model, "piece-1"),
-        vec![pair("ex-2", None), pair("ex-1", Some("s-a2"))],
+        vec!["ex-2".to_string(), "ex-1".to_string()],
         "another exercise's links on a kept piece stay its own"
     );
-    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec!["ex-1".to_string()]);
 }
 
 #[test]
@@ -4100,32 +3252,25 @@ fn an_unticked_piece_drops_the_exercise_and_leaves_its_other_links() {
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![existing("ex-2", None), existing("ex-1", Some("s-a1"))],
+        vec![existing("ex-2"), existing("ex-1")],
     );
-    let _ = set_exercise_links(
-        &mut model,
-        "ex-1",
-        vec![target("piece-1", Some("s-a1")), target("piece-2", None)],
-    );
+    let _ = set_exercise_links(&mut model, "ex-1", vec!["piece-1", "piece-2"]);
 
     let _ = choose_exercise_pieces(&mut model, "ex-1", &["piece-2"]);
 
-    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-2", None)]);
-    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+    assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-2".to_string()]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec!["ex-1".to_string()]);
 }
 
 #[test]
 fn ticking_the_same_pieces_again_persists_nothing() {
     let mut model = linking_model();
-    let _ = set_exercise_links(&mut model, "ex-1", vec![target("piece-1", Some("s-a2"))]);
+    let _ = set_exercise_links(&mut model, "ex-1", vec!["piece-1"]);
 
     let mut cmd = choose_exercise_pieces(&mut model, "ex-1", &["piece-1"]);
 
     assert!(!persists_anything(&mut cmd));
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair("ex-1", Some("s-a2"))]
-    );
+    assert_eq!(live_pairs(&model, "piece-1"), vec!["ex-1".to_string()]);
 }
 
 #[test]
@@ -4159,17 +3304,6 @@ fn picker_events_round_trip_on_ffi_bincode_wire() {
 // ── One section or link change at a time (#2447) ──
 
 use crate::domain::link::LinkChange;
-use crate::domain::section::SectionChange;
-
-fn change_section(model: &mut Model, change: SectionChange) -> Command<Effect, Event> {
-    send_cmd(
-        model,
-        ItemEvent::ChangeSection {
-            id: "piece-1".to_string(),
-            change,
-        },
-    )
-}
 
 fn change_link(model: &mut Model, change: LinkChange) -> Command<Effect, Event> {
     send_cmd(
@@ -4179,32 +3313,6 @@ fn change_link(model: &mut Model, change: LinkChange) -> Command<Effect, Event> 
             change,
         },
     )
-}
-
-fn live_names(model: &Model) -> Vec<String> {
-    live_sections(model).into_iter().map(|s| s.name).collect()
-}
-
-/// A piece with sections A, B and C, saved through the whole-list write.
-fn model_with_abc() -> Model {
-    let mut model = model_with_piece_and_exercise();
-    let _ = update_sections(
-        &mut model,
-        "piece-1",
-        ["A", "B", "C"]
-            .into_iter()
-            .map(|n| row(None, n, BarsInput::Blank))
-            .collect(),
-    );
-    model
-}
-
-fn set_links(exercise: &str, whole_piece: bool, sections: &[&str]) -> LinkChange {
-    LinkChange::Set {
-        exercise_id: exercise.to_string(),
-        whole_piece,
-        section_ids: sections.iter().map(|s| s.to_string()).collect(),
-    }
 }
 
 fn card(model: &Model) -> Vec<String> {
@@ -4224,269 +3332,9 @@ fn model_with_three_drills() -> Model {
     let _ = set_piece_links(
         &mut model,
         "piece-1",
-        vec![
-            existing("ex-1", None),
-            existing("ex-2", None),
-            existing("ex-3", None),
-        ],
+        vec![existing("ex-1"), existing("ex-2"), existing("ex-3")],
     );
     model
-}
-
-#[test]
-fn saving_a_new_section_adds_it_after_the_last() {
-    let mut model = model_with_abc();
-
-    let mut cmd = change_section(
-        &mut model,
-        SectionChange::Save(row(None, "Coda", typed("40 to 48"))),
-    );
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert_eq!(live_names(&model), ["A", "B", "C", "Coda"]);
-    assert_eq!(live_sections(&model)[3].bars, bars(40, 48));
-}
-
-#[test]
-fn saving_a_section_with_its_id_changes_it_in_place() {
-    let mut model = model_with_abc();
-    let b = section_id(&model, "B");
-
-    let _ = change_section(
-        &mut model,
-        SectionChange::Save(SectionEdit {
-            kind: SectionKind::TroubleSpot,
-            target_bpm: "60".to_string(),
-            ..row(Some(&b), "B section", typed("9 to 16"))
-        }),
-    );
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    assert_eq!(live_names(&model), ["A", "B section", "C"]);
-    let saved = &live_sections(&model)[1];
-    assert_eq!(saved.id, b);
-    assert_eq!(saved.bars, bars(9, 16));
-    assert_eq!(saved.kind, SectionKind::TroubleSpot);
-    assert_eq!(saved.target_bpm, Some(60));
-}
-
-#[test]
-fn saving_leaves_the_other_sections_as_stored() {
-    let mut model = model_with_abc();
-    let a = section_id(&model, "A");
-    let c = section_id(&model, "C");
-    let piece = model.items.iter_mut().find(|i| i.id == "piece-1").unwrap();
-    let stored = piece.sections.iter_mut().find(|s| s.id == c).unwrap();
-    stored.bars = bars(17, 24);
-    stored.target_bpm = Some(72);
-    stored.name = "C".repeat(crate::validation::MAX_SECTION_NAME + 1);
-
-    let _ = change_section(
-        &mut model,
-        SectionChange::Save(row(Some(&a), "A1", BarsInput::Blank)),
-    );
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    let kept = live_sections(&model)
-        .into_iter()
-        .find(|s| s.id == c)
-        .unwrap();
-    assert_eq!(kept.bars, bars(17, 24));
-    assert_eq!(kept.target_bpm, Some(72));
-    assert_eq!(live_sections(&model)[0].name, "A1");
-}
-
-#[test]
-fn saving_a_section_that_is_gone_is_refused() {
-    let mut model = model_with_abc();
-    let b = section_id(&model, "B");
-    let _ = change_section(
-        &mut model,
-        SectionChange::Remove {
-            section_id: b.clone(),
-        },
-    );
-
-    for id in [b.as_str(), "s-stranger"] {
-        let mut cmd = change_section(
-            &mut model,
-            SectionChange::Save(row(Some(id), "B again", BarsInput::Blank)),
-        );
-
-        assert!(model.last_error.is_some(), "{id} accepted");
-        assert!(!persists_anything(&mut cmd));
-        assert_eq!(live_names(&model), ["A", "C"]);
-    }
-}
-
-#[test]
-fn a_bad_section_is_refused_and_marks_the_sections_field() {
-    let mut model = model_with_abc();
-
-    let mut cmd = change_section(
-        &mut model,
-        SectionChange::Save(row(None, "D", typed("16-1"))),
-    );
-
-    assert!(model.last_error.is_some());
-    assert_eq!(
-        model.last_error_target,
-        Some(FormErrorTarget::Piece {
-            field: FormErrorField::Sections
-        })
-    );
-    assert!(!persists_anything(&mut cmd));
-    assert_eq!(live_names(&model), ["A", "B", "C"]);
-}
-
-#[test]
-fn removing_a_section_takes_its_drill_link_but_not_the_drill() {
-    let mut model = linking_model();
-    let _ = set_piece_links(
-        &mut model,
-        "piece-1",
-        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
-    );
-
-    let mut cmd = change_section(
-        &mut model,
-        SectionChange::Remove {
-            section_id: "s-a2".to_string(),
-        },
-    );
-
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert_eq!(live_names(&model), ["A1"]);
-    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-1", None)]);
-    assert!(model.items.iter().any(|i| i.id == "ex-2"));
-}
-
-#[test]
-fn removing_a_section_that_is_already_gone_changes_nothing() {
-    let mut model = model_with_abc();
-
-    let mut cmd = change_section(
-        &mut model,
-        SectionChange::Remove {
-            section_id: "s-stranger".to_string(),
-        },
-    );
-
-    assert!(model.last_error.is_none());
-    assert!(!persists_anything(&mut cmd));
-    assert_eq!(live_names(&model), ["A", "B", "C"]);
-}
-
-#[test]
-fn arranging_saves_the_new_order_and_removes_any_left_out() {
-    let mut model = model_with_abc();
-    let (a, b, c) = (
-        section_id(&model, "A"),
-        section_id(&model, "B"),
-        section_id(&model, "C"),
-    );
-
-    let mut cmd = change_section(
-        &mut model,
-        SectionChange::Arrange {
-            section_ids: vec![c, a],
-        },
-    );
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert_eq!(live_names(&model), ["C", "A"]);
-    let removed = piece_sections(&model)
-        .into_iter()
-        .find(|s| s.id == b)
-        .unwrap();
-    assert!(removed.deleted_at.is_some());
-}
-
-#[test]
-fn arranging_a_list_that_is_not_this_items_is_refused_whole() {
-    let mut model = model_with_abc();
-    let a = section_id(&model, "A");
-
-    for ids in [
-        vec![a.clone(), "s-from-another-piece".to_string()],
-        vec![a.clone(), a.clone()],
-    ] {
-        let mut cmd = change_section(&mut model, SectionChange::Arrange { section_ids: ids });
-
-        assert!(model.last_error.is_some());
-        assert!(!persists_anything(&mut cmd));
-        assert_eq!(live_names(&model), ["A", "B", "C"]);
-    }
-}
-
-#[test]
-fn ticking_sections_saves_them_in_score_order_whatever_the_tick_order() {
-    let mut model = linking_model();
-
-    let mut cmd = change_link(&mut model, set_links("ex-1", false, &["s-a2", "s-a1"]));
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair("ex-1", Some("s-a1")), pair("ex-1", Some("s-a2"))]
-    );
-}
-
-#[test]
-fn setting_an_exercise_keeps_its_place_on_the_card() {
-    let mut model = model_with_three_drills();
-
-    let _ = change_link(&mut model, set_links("ex-1", true, &["s-a2"]));
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    assert_eq!(card(&model), ["ex-1", "ex-2", "ex-3"]);
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![
-            pair("ex-1", None),
-            pair("ex-1", Some("s-a2")),
-            pair("ex-2", None),
-            pair("ex-3", None),
-        ]
-    );
-}
-
-#[test]
-fn setting_an_exercise_not_on_the_card_adds_it_last() {
-    let mut model = linking_model();
-    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
-
-    let _ = change_link(&mut model, set_links("ex-2", false, &["s-a1"]));
-
-    assert_eq!(card(&model), ["ex-1", "ex-2"]);
-}
-
-#[test]
-fn unticking_everything_takes_the_exercise_off_the_piece() {
-    let mut model = model_with_three_drills();
-
-    let mut cmd = change_link(&mut model, set_links("ex-2", false, &[]));
-
-    assert!(emits_save(&mut cmd, "piece-1"));
-    assert_eq!(card(&model), ["ex-1", "ex-3"]);
-    assert!(model.items.iter().any(|i| i.id == "ex-2"));
-}
-
-#[test]
-fn ticking_a_removed_section_is_refused_and_changes_nothing() {
-    let mut model = model_with_three_drills();
-
-    let mut cmd = change_link(&mut model, set_links("ex-1", true, &["s-b"]));
-
-    assert!(model.last_error.is_some());
-    assert!(!persists_anything(&mut cmd));
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![pair("ex-1", None), pair("ex-2", None), pair("ex-3", None)]
-    );
 }
 
 #[test]
@@ -4519,37 +3367,6 @@ fn moving_an_exercise_past_the_end_puts_it_last() {
     );
 
     assert_eq!(card(&model), ["ex-2", "ex-3", "ex-1"]);
-}
-
-#[test]
-fn moving_an_exercise_keeps_all_its_links_together() {
-    let mut model = linking_model();
-    let _ = set_piece_links(
-        &mut model,
-        "piece-1",
-        vec![
-            existing("ex-1", None),
-            existing("ex-2", Some("s-a1")),
-            existing("ex-1", Some("s-a2")),
-        ],
-    );
-
-    let _ = change_link(
-        &mut model,
-        LinkChange::Move {
-            exercise_id: "ex-2".to_string(),
-            to: 0,
-        },
-    );
-
-    assert_eq!(
-        live_pairs(&model, "piece-1"),
-        vec![
-            pair("ex-2", Some("s-a1")),
-            pair("ex-1", None),
-            pair("ex-1", Some("s-a2")),
-        ]
-    );
 }
 
 #[test]
@@ -4596,7 +3413,9 @@ fn a_link_change_on_an_exercise_as_host_is_refused() {
         &mut model,
         ItemEvent::ChangePieceLink {
             piece_id: "ex-1".to_string(),
-            change: set_links("ex-2", true, &[]),
+            change: LinkChange::Unlink {
+                exercise_id: "ex-2".to_string(),
+            },
         },
     );
 
@@ -4605,38 +3424,8 @@ fn a_link_change_on_an_exercise_as_host_is_refused() {
 }
 
 #[test]
-fn section_and_link_changes_round_trip_on_ffi_bincode_wire() {
+fn link_changes_round_trip_on_ffi_bincode_wire() {
     for change in [
-        SectionChange::Save(row(Some("s-1"), "A1", typed("1 to 16"))),
-        SectionChange::Save(SectionEdit {
-            kind: SectionKind::TroubleSpot,
-            target_bpm: "72".to_string(),
-            ..row(
-                None,
-                "",
-                BarsInput::Picked {
-                    first: 12,
-                    last: 14,
-                },
-            )
-        }),
-        SectionChange::Save(row(None, "B", BarsInput::Blank)),
-        SectionChange::Remove {
-            section_id: "s-1".to_string(),
-        },
-        SectionChange::Arrange {
-            section_ids: vec!["s-2".to_string(), "s-1".to_string()],
-        },
-    ] {
-        crate::domain::types::assert_round_trips(crate::app::Event::Item(
-            ItemEvent::ChangeSection {
-                id: "piece-1".to_string(),
-                change,
-            },
-        ));
-    }
-    for change in [
-        set_links("ex-1", true, &["s-1"]),
         LinkChange::Move {
             exercise_id: "ex-1".to_string(),
             to: 2,

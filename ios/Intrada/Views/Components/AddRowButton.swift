@@ -55,7 +55,8 @@ struct AddRowButton: View {
     VStack(spacing: 16) {
       AddRowButton(title: "Add a related exercise") {}
       AddRowButton(title: "Add a related exercise", style: .plain) {}
-      AddRowButton(title: "Add sections", hint: "A1, B, Coda, or bars 12 to 14") {}
+      AddRowButton(title: "Choose variations", hint: "Hands separately, dotted rhythms, your own") {
+      }
     }
     .padding()
     .background(IntradaColor.cardFill)

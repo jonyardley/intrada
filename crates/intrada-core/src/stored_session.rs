@@ -5,14 +5,14 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::domain::bars::BarRange;
 use crate::domain::item::{ItemKind, Modality};
 use crate::domain::key::{key_from_stored, key_to_stored, Key};
 use crate::domain::metre::Metre;
-use crate::domain::section::BarRange;
 use crate::domain::session::{
-    split_evenly, Away, ClickState, CompletionStatus, EntryStatus, Felt, FocusKind, IntentionFocus,
-    IntentionMet, NotePoint, NotePointKind, NoteSpan, Obstacle, PlannedItem, Play, PracticeSession,
-    RepAction, RepEvent, Segment, SetlistEntry, TempoChange,
+    Away, ClickState, CompletionStatus, EntryStatus, Felt, FocusKind, IntentionFocus, IntentionMet,
+    NotePoint, NotePointKind, NoteSpan, Obstacle, PlannedItem, Play, PracticeSession, RepAction,
+    RepEvent, SetlistEntry, TempoChange,
 };
 
 /// The `session` table's columns, as the shell reads and writes them.
@@ -292,7 +292,8 @@ where
 /// The per-play fields below `plays` are LEGACY: every row written before
 /// #1739 carries them at entry level and has no `plays`. They are read, never
 /// written; nothing on device is rewritten (#1739 decision 8). A step a row
-/// names, planned or played, is not read: steps were retired, not moved (#2246).
+/// names, planned or played, is not read: steps were retired, not moved (#2246),
+/// and so were sections.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StoredEntry {
@@ -318,8 +319,6 @@ struct StoredEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     plays: Option<Vec<StoredPlay>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    segments: Option<Vec<StoredSegment>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     focus: Option<StoredFocus>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     intention_met: Option<String>,
@@ -332,9 +331,6 @@ struct StoredEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     planned_key: Option<StoredKey>,
 
-    /// The v0.16 plan, at most one section, before segments (#2315).
-    #[serde(default, skip_serializing)]
-    planned_section_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing)]
     score: Option<u8>,
     #[serde(default, skip_serializing)]
@@ -353,8 +349,6 @@ struct StoredEntry {
 #[serde(rename_all = "camelCase")]
 struct StoredPlay {
     id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    section_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     key: Option<StoredKey>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -381,17 +375,8 @@ struct StoredPlay {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct StoredSegment {
-    section_id: String,
-    planned_secs: u32,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct StoredFocus {
     kind: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    section_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     target: Option<u16>,
 }
@@ -414,8 +399,6 @@ struct StoredNotePoint {
     clean: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     in_a_row: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    section_id: Option<String>,
     start: u32,
     end: u32,
 }
@@ -528,28 +511,6 @@ impl Reader {
             EntryStatus::NotAttempted,
         );
         let plays = self.plays(e, &status);
-        let segments = match &e.segments {
-            Some(stored) => stored
-                .iter()
-                .map(|s| Segment {
-                    section_id: s.section_id.clone(),
-                    planned_secs: s.planned_secs,
-                })
-                .collect(),
-            None => {
-                let mut legacy: Vec<Segment> = e
-                    .planned_section_ids
-                    .iter()
-                    .flatten()
-                    .map(|id| Segment {
-                        section_id: id.clone(),
-                        planned_secs: 0,
-                    })
-                    .collect();
-                split_evenly(&mut legacy, e.planned_duration_secs);
-                legacy
-            }
-        };
         let focus = e.focus.as_ref().and_then(|f| {
             let kind = focus_kind(&f.kind).or_else(|| {
                 self.note(format!("unknown FocusKind on decode: {:?}", f.kind));
@@ -557,7 +518,6 @@ impl Reader {
             })?;
             Some(IntentionFocus {
                 kind,
-                section_id: f.section_id.clone(),
                 target: f.target,
             })
         });
@@ -593,7 +553,6 @@ impl Reader {
                 group_id: e.group_id.clone(),
                 variation_ids: e.planned_variation_ids.clone().unwrap_or_default(),
                 rep_target: e.planned_rep_target.or(e.rep_target),
-                segments,
                 key: planned_key,
             },
             item_title: e.item_title.clone(),
@@ -627,7 +586,6 @@ impl Reader {
         };
         Some(NotePoint {
             kind,
-            section_id: p.section_id.clone(),
             span: NoteSpan {
                 start: p.start,
                 end: p.end,
@@ -649,7 +607,6 @@ impl Reader {
         }
         vec![Play {
             id: format!("{}-play", e.id),
-            section_id: None,
             key: None,
             variation_ids: Vec::new(),
             started_at: self.session_start,
@@ -677,7 +634,6 @@ impl Reader {
         let key = p.key.as_ref().and_then(|k| self.key(k));
         Play {
             id: p.id.clone(),
-            section_id: p.section_id.clone(),
             key,
             variation_ids: p.variation_ids.clone().unwrap_or_default(),
             started_at: self.time(&p.started_at),
@@ -767,19 +723,8 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
         planned_variation_ids: Some(e.plan.variation_ids.clone()),
         planned_rep_target: e.plan.rep_target,
         plays: Some(e.plays.iter().map(stored_play).collect()),
-        segments: Some(
-            e.plan
-                .segments
-                .iter()
-                .map(|s| StoredSegment {
-                    section_id: s.section_id.clone(),
-                    planned_secs: s.planned_secs,
-                })
-                .collect(),
-        ),
         focus: e.plan.focus.as_ref().map(|f| StoredFocus {
             kind: focus_kind_text(f.kind).to_string(),
-            section_id: f.section_id.clone(),
             target: f.target,
         }),
         intention_met: e.intention_met.map(|m| intention_met_text(m).to_string()),
@@ -792,7 +737,6 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
         ),
         note_points: Some(e.note_points.iter().map(stored_note_point).collect()),
         planned_key: e.plan.key.as_ref().map(stored_key),
-        planned_section_ids: None,
         score: None,
         rep_target: None,
         rep_count: None,
@@ -813,7 +757,6 @@ fn stored_key(key: &Key) -> StoredKey {
 fn stored_play(p: &Play) -> StoredPlay {
     StoredPlay {
         id: p.id.clone(),
-        section_id: p.section_id.clone(),
         key: p.key.as_ref().map(stored_key),
         variation_ids: Some(p.variation_ids.clone()),
         started_at: time_text(&p.started_at),
@@ -868,7 +811,6 @@ fn stored_play(p: &Play) -> StoredPlay {
 
 fn stored_note_point(p: &NotePoint) -> StoredNotePoint {
     let base = StoredNotePoint {
-        section_id: p.section_id.clone(),
         start: p.span.start,
         end: p.span.end,
         ..StoredNotePoint::default()

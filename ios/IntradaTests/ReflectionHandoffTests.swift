@@ -135,7 +135,7 @@ struct ReflectionHandoffTests {
     let (_, plays) = try pieceMidSession(bridge)
     let play = try #require(plays.first)
     let g = Key(letter: .g, accidental: .natural, mode: .major)
-    let changed = DraftWay(playId: play.id, sectionId: nil, key: g, variationIds: [])
+    let changed = DraftWay(playId: play.id, key: g, variationIds: [])
     _ = try bridge.update(.session(.updateReflectionDraft(answers: .preview(ways: [changed]))))
     let row = try #require(try bridge.rendered().activeSession?.record.finish?.rows.first)
     #expect(row.label == "G major", "the row reads what the core drafted")
@@ -152,7 +152,7 @@ struct ReflectionHandoffTests {
     let (_, plays) = try pieceMidSession(bridge)
     let play = try #require(plays.first)
     let changed = DraftWay(
-      playId: play.id, sectionId: nil, key: Key(letter: .g, accidental: .natural, mode: .major),
+      playId: play.id, key: Key(letter: .g, accidental: .natural, mode: .major),
       variationIds: [])
     _ = try bridge.update(
       .session(
@@ -175,7 +175,7 @@ struct ReflectionHandoffTests {
     let play = try #require(plays.first)
     let g = Key(letter: .g, accidental: .natural, mode: .major)
     for key in [g, nil] {
-      let way = DraftWay(playId: play.id, sectionId: nil, key: key, variationIds: [])
+      let way = DraftWay(playId: play.id, key: key, variationIds: [])
       _ = try bridge.update(.session(.updateReflectionDraft(answers: .preview(ways: [way]))))
     }
 

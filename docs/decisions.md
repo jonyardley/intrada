@@ -28,6 +28,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - Store events and the musician's own answers, never a verdict the app works out; verdicts are computed when read (#50).
 - How a section is going is worked out from plays when read, never stored on it (#2245, #2321).
 - Links live on the piece, one row per exercise and section, reconciled so relinking revives the old row (#2248).
+- Sections and trouble spots removed on 2026-11-08, with their saved data, to simplify the app while the basics are worked on; a piece is one whole thing again, and a way back is parked in #2768 (#2767).
 - A key is one typed value everywhere and keeps its spelling (#2246, #2106).
 - Clearing a key crosses the bridge as a three-way KeyEdit, because Kotlin cannot tell `Option<Option>` apart (#2461).
 - Session intention, time target and the three reflection boxes removed for good (#1766, #1374); their five columns stay, unread, in the session table.

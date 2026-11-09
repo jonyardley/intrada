@@ -29,8 +29,6 @@ pub struct PlannedItem {
     pub group_id: Option<String>,
     pub variation_ids: Vec<String>,
     pub rep_target: Option<u8>,
-    /// The sections, in order, with their time.
-    pub segments: Vec<Segment>,
     /// `None` is the written key.
     pub key: Option<Key>,
 }

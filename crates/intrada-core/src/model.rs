@@ -264,8 +264,6 @@ pub enum FormErrorField {
     /// The exercise's inline variation rows (#1831). Appended last: the
     /// bincode wire is positional.
     Variations,
-    /// A piece's or exercise's section rows (#2245). Appended last.
-    Sections,
 }
 
 /// Serializable view state sent to shells for rendering.
@@ -359,8 +357,6 @@ pub struct LimitsView {
     pub click_tempo_bands: Vec<TempoBand>,
     pub click_metre_presets: Vec<Metre>,
     pub click_bars: Vec<ClickBarOption>,
-    pub section_name_max: usize,
-    pub bar_max: u16,
     /// The planned-time stepper's range and starting point in whole minutes,
     /// the bounds in seconds rounded inwards (#2467).
     pub planned_duration_min_mins: u16,
@@ -410,8 +406,6 @@ impl Default for LimitsView {
             click_tempo_bands: metre::click_tempo_bands(),
             click_metre_presets: metre::click_metre_presets(),
             click_bars: metre::click_bars(),
-            section_name_max: validation::MAX_SECTION_NAME,
-            bar_max: validation::MAX_BAR,
             planned_duration_min_mins,
             planned_duration_max_mins,
             planned_duration_default_mins,
@@ -464,22 +458,6 @@ pub struct LinkedExerciseView {
     /// has never been practised together (or scored) in a session.
     #[serde(default)]
     pub piece_context_score: Option<u8>,
-    /// Linked to the piece as a whole; may sit beside section links (#2248).
-    pub whole_piece: bool,
-    /// The live sections it is linked to, in score order.
-    pub sections: Vec<LinkedSectionView>,
-    /// "For the whole piece and A2"; `None` for a whole-piece link alone (#2456).
-    pub link_caption: Option<String>,
-}
-
-/// A section an exercise is linked to, as the link rows name it.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct LinkedSectionView {
-    pub id: String,
-    pub label: String,
-    /// The label as it reads inside a sentence: "A2", "bars 19 to 20".
-    pub label_in_text: String,
 }
 
 /// The derived scaffold curriculum for a charted piece — the read-only preview
@@ -549,11 +527,6 @@ pub struct ExerciseUsageView {
     /// The row shows the link button: a piece in the library, practised
     /// alongside but not linked.
     pub offers_link: bool,
-    /// Linked to the piece as a whole (#2248).
-    pub whole_piece: bool,
-    /// The live sections of the piece it is linked to, in score order.
-    pub sections: Vec<LinkedSectionView>,
-    pub link_caption: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -606,37 +579,6 @@ pub struct LibraryItemView {
     pub variations_caption: Option<String>,
     /// The wedge the key picker lights for the stored key (#2074).
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
-    /// Live sections only, in score order (#2245).
-    pub sections: Vec<SectionView>,
-}
-
-/// One live section as the item screen shows it (#2245).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct SectionView {
-    pub id: String,
-    pub name: String,
-    pub kind: crate::domain::section::SectionKind,
-    pub target_bpm: Option<u16>,
-    pub first_bar: Option<u16>,
-    pub last_bar: Option<u16>,
-    /// The name, else "Bars 12 to 14" or "Bar 12".
-    pub label: String,
-    /// "Bars 1 to 16", shown beside a named section; `None` when the label
-    /// already is the bars, or there are none.
-    pub bars_caption: Option<String>,
-    /// What the bars field opens with: "19 to 20", "12", or empty (#2456).
-    pub bars_field_text: String,
-    /// The marks of the plays on this section with no variations, any key:
-    /// the piece's own rule, narrowed to the section (#2250).
-    pub latest_score: Option<u8>,
-    pub score_history: Vec<ScoreHistoryEntry>,
-    pub caption: String,
-    /// The one section the builder and Up next point to: the lowest latest
-    /// mark, once two or more are marked and they differ (#2250).
-    pub is_weakest: bool,
-    pub target_tempo: Option<String>,
-    pub target_tempo_spoken: Option<String>,
 }
 
 /// One library variation an item uses, with its practice state on that item:
@@ -710,17 +652,16 @@ pub struct PickerVariationView {
 
 /// One stretch of an item played one way, as the sheet and the Progress
 /// screen read it (#1739, #2246). Labels are resolved here, tombstones
-/// included, because a play on a variation or a section since deleted still
-/// has to say what it was.
+/// included, because a play on a variation since deleted still has to say
+/// what it was.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PlayView {
     pub id: String,
-    pub section_id: Option<String>,
     pub key: Option<Key>,
     pub variation_ids: Vec<String>,
-    /// "Bars 1 to 8 · E♭ major · Hands separately"; `None` for the whole
-    /// item, plain, in the written key.
+    /// "E♭ major · Hands separately"; `None` for the item plain, in the
+    /// written key.
     pub label: Option<String>,
     pub seconds: u64,
     pub duration_display: String,
@@ -870,10 +811,9 @@ pub struct SetlistEntryView {
     /// False for a block's piece: removing it alone would dissolve the block,
     /// so the block's own remove offers that instead.
     pub removable: bool,
-    /// What the builder planned (#2246): at most one section, any variations.
-    pub planned_section_ids: Vec<String>,
+    /// What the builder planned (#2246): any variations.
     pub planned_variation_ids: Vec<String>,
-    /// "Bars 1 to 8 · Hands separately"; `None` with no plan.
+    /// "Hands separately"; `None` with no plan.
     pub planned_label: Option<String>,
     /// The repetition target set in the builder, which every play starts from.
     pub planned_rep_target: Option<u8>,
@@ -885,9 +825,8 @@ pub struct SetlistEntryView {
     pub score_summary: Option<u8>,
     pub record: EntryRecordView,
     pub planned_key: Option<crate::domain::key::Key>,
-    /// The builder's tags under the row: each section, with its minutes when
-    /// the time is split, then the variations still on the item, then
-    /// "Focus: A1 at 84" (#2467). Empty outside the builder.
+    /// The builder's tags under the row: the variations still on the item,
+    /// then "Focus: at 84" (#2467). Empty outside the builder.
     pub plan_tags: Vec<String>,
 }
 
@@ -895,13 +834,8 @@ pub struct SetlistEntryView {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EntryRecordView {
-    pub segments: Vec<SegmentView>,
-    /// Whether another section's share fits the planned time (#2398).
-    pub can_add_section: bool,
-    /// Why no more sections fit, shown where adding one would be (#2405).
-    pub add_section_caption: Option<String>,
     pub focus: Option<FocusView>,
-    /// Read from the typed intention ("A1 at 84"); `None` once it is the focus.
+    /// Read from the typed intention ("at 84"); `None` once it is the focus.
     pub suggested_focus: Option<FocusView>,
     /// The answer, or what the plays show where the focus allows.
     pub intention_met: Option<crate::domain::session::IntentionMet>,
@@ -914,21 +848,9 @@ pub struct EntryRecordView {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct SegmentView {
-    pub section_id: String,
-    pub label: String,
-    pub planned_secs: u32,
-    pub planned_display: String,
-    /// Whether a minute more, or a minute less, would land (#2393).
-    pub can_add_minute: bool,
-    pub can_take_minute: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct FocusView {
     pub focus: crate::domain::session::IntentionFocus,
-    /// "A1 at 84", "5 clean in a row", "From memory".
+    /// "At 84", "5 clean in a row", "From memory".
     pub label: String,
     /// "♩ = 84", "5 clean in a row"; `None` for a focus with no number.
     pub target_caption: Option<String>,
@@ -941,7 +863,6 @@ pub struct NotePointView {
     pub span: crate::domain::session::NoteSpan,
     /// "Bars 21 to 24", "♩ = 84", "3 clean".
     pub label: String,
-    pub section_label: Option<String>,
     pub confirmed: bool,
 }
 
@@ -950,9 +871,8 @@ pub struct NotePointView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LastTimeView {
     pub entry_id: String,
-    pub section_id: Option<String>,
     pub variation_ids: Vec<String>,
-    /// "Last time: B · Dotted".
+    /// "Last time: Dotted".
     pub label: String,
     pub key: Option<crate::domain::key::Key>,
 }
@@ -977,64 +897,14 @@ pub struct EntryKeysView {
     pub current_label: String,
 }
 
-/// An exercise linked to a section the entry plans, offered with a tick.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct DrillOfferView {
-    pub entry_id: String,
-    pub section_id: String,
-    pub exercise_id: String,
-    pub title: String,
-    /// The drill's own entry once ticked, for `RemoveFromSetlist`.
-    pub added_entry_id: Option<String>,
-}
-
 /// What the practice screen offers on the current entry beyond the play.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveRecordView {
-    pub segment: Option<SegmentClockView>,
     pub away_offer: Option<AwayOfferView>,
     /// `Some` while the item-complete sheet is open.
     pub finish: Option<FinishSheetView>,
     pub last_time: Option<LastTimeView>,
-}
-
-/// The running segment. The shell compares `ends_at` with its clock and,
-/// once past, shows the offers; ignoring them changes nothing.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct SegmentClockView {
-    pub label: String,
-    /// RFC3339, left-out time away included.
-    pub ends_at: String,
-    /// "On to B"; `None` on the last segment.
-    pub move_label: Option<String>,
-    /// "Stay on A1, 2 more minutes taken from B"; `None` when B cannot give it.
-    pub stay_label: Option<String>,
-    /// Every section of the item, in order (#2394).
-    pub bars: Vec<SegmentBarView>,
-    /// "Section 2 of 3".
-    pub position_label: String,
-}
-
-/// One section on the practice screen's strip.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct SegmentBarView {
-    pub label: String,
-    pub progress: SegmentProgress,
-    /// "A1 took 2 min" while Stay has borrowed from this section.
-    pub caption: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
-pub enum SegmentProgress {
-    Done,
-    Running,
-    ToCome,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1057,9 +927,8 @@ pub struct FinishSheetView {
     pub obstacle_choices: Vec<ObstacleChoiceView>,
     /// One per play, in play order.
     pub rows: Vec<FinishRowView>,
-    /// What each row can be changed to; the variations are `current_variations`.
-    pub sections: Vec<SectionView>,
-    /// Empty when the written key is the only choice.
+    /// What each row's key can be changed to; the variations are
+    /// `current_variations`. Empty when the written key is the only choice.
     pub keys: Vec<KeyChoiceView>,
 }
 
@@ -1069,7 +938,6 @@ pub struct FinishSheetView {
 pub struct FinishRowView {
     pub play_id: String,
     pub label: String,
-    pub section_id: Option<String>,
     /// Spelt as its row in the sheet's `keys`.
     pub key: Option<crate::domain::key::Key>,
     pub variation_ids: Vec<String>,
@@ -1113,7 +981,6 @@ pub struct ActiveSessionView {
     /// is not a recorded one: `current_rep_target` stays `None` until a tap.
     pub current_rep_slots: u8,
     /// How the open play is being played, so the player can show it (#2246).
-    pub current_section_id: Option<String>,
     pub current_key: Option<Key>,
     pub current_variation_ids: Vec<String>,
     /// The open play's label; `None` for the whole item, plain.
@@ -1231,13 +1098,11 @@ pub struct BuildingSetlistView {
     /// The variations each entry can be tagged to, for the entries whose item
     /// has any. Looked up in the whole library, so a search cannot empty it.
     pub entry_variations: Vec<EntryVariationsView>,
-    /// For the entries whose item was last played on a section or variations.
+    /// For the entries whose item was last played in a key or on variations.
     pub last_times: Vec<LastTimeView>,
     pub focus_choices: Vec<FocusChoiceView>,
     /// For the entries whose item keeps keys of its own.
     pub entry_keys: Vec<EntryKeysView>,
-    /// By entry, then the plan's section order, then the link order.
-    pub drill_offers: Vec<DrillOfferView>,
     /// "10 min · 2 blocks · 3 items": the time only once some is planned,
     /// the blocks only once there is one (#2467).
     pub summary: String,
@@ -1262,13 +1127,12 @@ pub struct FocusTargetView {
     pub step: u16,
 }
 
-/// What an entry's plan can name: its item's variations and live sections.
+/// What an entry's plan can name: its item's variations.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EntryVariationsView {
     pub entry_id: String,
     pub variations: Vec<PickerVariationView>,
-    pub sections: Vec<SectionView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1314,7 +1178,6 @@ impl LibraryItemView {
             chord_chart: None,
             metre: None,
             variations: Vec::new(),
-            sections: vec![],
             photo_id: None,
             keys: Vec::new(),
             keys_caption: None,
@@ -1338,9 +1201,6 @@ impl LinkedExerciseView {
             tempo_line_spoken: None,
             practice: None,
             piece_context_score: None,
-            whole_piece: true,
-            sections: Vec::new(),
-            link_caption: None,
         }
     }
 }
@@ -1657,13 +1517,6 @@ mod tests {
             piece_removed: true,
             piece_in_library: false,
             offers_link: true,
-            whole_piece: false,
-            sections: vec![LinkedSectionView {
-                id: "s-1".to_string(),
-                label: "A2".to_string(),
-                label_in_text: "A2".to_string(),
-            }],
-            link_caption: Some("For A2".to_string()),
         });
     }
 
@@ -1723,32 +1576,6 @@ mod tests {
         ]));
     }
 
-    /// A section's marks cross the wire inside `LibraryItemView` (#2250).
-    #[test]
-    fn section_view_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(SectionView {
-            id: "sec-1".to_string(),
-            name: "A".to_string(),
-            kind: crate::domain::section::SectionKind::Form,
-            target_bpm: Some(84),
-            first_bar: Some(1),
-            last_bar: Some(16),
-            label: "A".to_string(),
-            bars_caption: Some("Bars 1 to 16".to_string()),
-            bars_field_text: "1 to 16".to_string(),
-            latest_score: Some(4),
-            score_history: vec![ScoreHistoryEntry {
-                session_date: "2026-10-01T00:00:00+00:00".to_string(),
-                score: 4,
-                session_id: "s1".to_string(),
-            }],
-            caption: "4 of 10".to_string(),
-            is_weakest: true,
-            target_tempo: Some("♩ 84".to_string()),
-            target_tempo_spoken: Some("84 beats per minute".to_string()),
-        });
-    }
-
     /// `LinkedExerciseView` crosses the same bincode wire; `piece_context_score`
     /// (#1087 B2) is a trailing `Option` — guard it against the #846 drop class.
     #[test]
@@ -1764,13 +1591,6 @@ mod tests {
             tempo_line_spoken: Some("Allegro, 132 beats per minute".to_string()),
             practice: None,
             piece_context_score: Some(7),
-            whole_piece: true,
-            sections: vec![LinkedSectionView {
-                id: "s-1".to_string(),
-                label: "Bars 12 to 14".to_string(),
-                label_in_text: "bars 12 to 14".to_string(),
-            }],
-            link_caption: Some("For the whole piece and bars 12 to 14".to_string()),
         });
     }
 

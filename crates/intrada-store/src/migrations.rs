@@ -309,6 +309,9 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
              ALTER TABLE session DROP COLUMN reflection_next_target;",
         ),
     ),
+    // Sections and trouble spots were removed (#2767): a link to a live section
+    // becomes the piece's, one per exercise, and every other trace goes.
+    ("v22_remove_sections", Step::Code(remove_sections)),
 ];
 
 pub(crate) fn latest() -> &'static str {
@@ -375,6 +378,84 @@ fn rescale_entry_scores(tx: &Transaction, unreadable: &mut Unreadable) -> rusqli
                 "UPDATE session
                  SET entries = json_set(entries, ?1, min(10, json_extract(entries, ?1) * 2))
                  WHERE id = ?2",
+                [&path, &id],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// JSON surgery in SQL, never through the session codec (#1947): only the
+/// section keys leave a row, and the mark on a play that was a section, which
+/// would otherwise count as a run through of the whole piece (#2767).
+fn remove_sections(tx: &Transaction, unreadable: &mut Unreadable) -> rusqlite::Result<()> {
+    tx.execute_batch(
+        "CREATE TEMP TABLE now_text AS SELECT strftime('%Y-%m-%dT%H:%M:%SZ', 'now') AS at;
+         UPDATE exercise_link
+         SET deleted_at = (SELECT at FROM now_text), updated_at = (SELECT at FROM now_text)
+         WHERE deleted_at IS NULL AND section_id IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM section
+             WHERE section.id = exercise_link.section_id
+               AND section.item_id = exercise_link.piece_id
+               AND section.deleted_at IS NULL
+           );
+         CREATE TEMP TABLE ranked AS
+           SELECT id,
+             ROW_NUMBER() OVER (
+               PARTITION BY piece_id, exercise_id
+               ORDER BY section_id IS NOT NULL, position, id
+             ) AS place,
+             MIN(position) OVER (PARTITION BY piece_id, exercise_id) AS first_position
+           FROM exercise_link WHERE deleted_at IS NULL;
+         UPDATE exercise_link
+         SET position = (SELECT first_position FROM ranked WHERE ranked.id = exercise_link.id)
+         WHERE id IN (SELECT id FROM ranked WHERE place = 1 AND position <> first_position);
+         UPDATE exercise_link
+         SET deleted_at = (SELECT at FROM now_text), updated_at = (SELECT at FROM now_text)
+         WHERE id IN (SELECT id FROM ranked WHERE place > 1);
+         DROP TABLE ranked;
+         CREATE TEMP TABLE renumbered AS
+           SELECT id,
+             ROW_NUMBER() OVER (PARTITION BY piece_id ORDER BY position, id) - 1 AS place
+           FROM exercise_link WHERE deleted_at IS NULL;
+         UPDATE exercise_link
+         SET position = (SELECT place FROM renumbered WHERE renumbered.id = exercise_link.id)
+         WHERE id IN (
+           SELECT renumbered.id FROM renumbered JOIN exercise_link AS l ON l.id = renumbered.id
+           WHERE l.position <> renumbered.place
+         );
+         DROP TABLE renumbered;
+         DROP TABLE now_text;
+         ALTER TABLE exercise_link DROP COLUMN section_id;
+         DROP TABLE section;",
+    )?;
+    let rows: Vec<(String, String, Option<bool>)> = tx
+        .prepare(
+            "SELECT id, entries,
+               CASE WHEN json_valid(entries) THEN json_type(entries) END = 'array' AS readable
+             FROM session",
+        )?
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    for (id, entries, readable) in rows {
+        if readable != Some(true) {
+            unreadable.push(format!("v22_remove_sections skipped row {id}"));
+            continue;
+        }
+        let paths: Vec<String> = tx
+            .prepare(
+                "SELECT path || '.score' FROM json_tree(?1)
+                 WHERE key = 'sectionId' AND path LIKE '%.plays[%]'
+                 UNION ALL
+                 SELECT fullkey FROM json_tree(?1)
+                 WHERE key IN ('segments', 'plannedSectionIds', 'sectionId')",
+            )?
+            .query_map([&entries], |row| row.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        for path in paths {
+            tx.execute(
+                "UPDATE session SET entries = json_remove(entries, ?1) WHERE id = ?2",
                 [&path, &id],
             )?;
         }

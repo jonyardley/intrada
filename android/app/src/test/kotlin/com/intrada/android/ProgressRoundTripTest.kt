@@ -118,7 +118,7 @@ class ProgressRoundTripTest {
         if (variation != null) {
             bridge.update(
                 Event.Session(
-                    SessionEvent.SwitchPlay(entryId, null, null, listOf(variation), at(0), silent)
+                    SessionEvent.SwitchPlay(entryId, null, listOf(variation), at(0), silent)
                 )
             )
         }

@@ -177,7 +177,7 @@ private fun ColumnScope.PlayerBody(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.heightIn(min = IntradaSpacing.card))
-        PlayHeader(active, now, stamped, actions)
+        PlayHeader(active, stamped, actions)
         SessionClock.parse(active.currentItemStartedAt)?.let { itemStart ->
             TimerRing(
                 SessionClock.secondsBetween(itemStart, now),
@@ -186,12 +186,6 @@ private fun ColumnScope.PlayerBody(
             )
         }
         PlayerClick(active, limits, click, changed)
-        if (!offersMoveOn(active.record.segment, now)) {
-            TroubleSpotButton(
-                { actions.open(RecordSheet.TROUBLE_SPOT) },
-                Modifier.padding(top = IntradaSpacing.controlGap),
-            )
-        }
         RepCounter(
             RepState(
                 count = active.currentRepCount?.toInt() ?: 0,
@@ -215,7 +209,6 @@ private fun ColumnScope.PlayerBody(
 @Composable
 private fun PlayHeader(
     active: ActiveSessionView,
-    now: Instant,
     stamped: ((String, TempoReading) -> SessionEvent) -> Boolean,
     actions: BodyActions,
 ) {
@@ -229,7 +222,6 @@ private fun PlayHeader(
                     stamped { at, reading ->
                         SessionEvent.SwitchPlay(
                             lastTime.entryId,
-                            lastTime.sectionId,
                             lastTime.key,
                             lastTime.variationIds,
                             at,
@@ -240,15 +232,6 @@ private fun PlayHeader(
             },
         ),
     )
-    active.record.segment?.let {
-        SegmentClockRow(
-            it,
-            now,
-            onMove = { stamped(SessionEvent::MoveToNextSegment) },
-            onStay = { actions.send(Event.Session(SessionEvent.StayOnSegment)) },
-            Modifier.padding(top = IntradaSpacing.cardCompact),
-        )
-    }
 }
 
 @Composable
@@ -392,3 +375,5 @@ private fun OptionRow(title: String, tag: String, danger: Boolean = false, onCli
         )
     }
 }
+
+class PlayChipActions(val onPickVariation: () -> Unit, val onLastTime: () -> Unit)

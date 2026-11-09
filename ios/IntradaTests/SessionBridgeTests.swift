@@ -28,12 +28,12 @@ final class SessionBridgeTests: XCTestCase {
     let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
 
     _ = try bridge.update(
-      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: [slowId])))
+      .session(.setEntryVariations(entryId: entryId, variationIds: [slowId])))
     XCTAssertNil(try bridge.rendered().error, "a plan must decode on the wire (#846)")
     XCTAssertEqual(
       try bridge.rendered().buildingSetlist?.entries.first?.plannedVariationIds, [slowId])
     _ = try bridge.update(
-      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: [])))
+      .session(.setEntryVariations(entryId: entryId, variationIds: [])))
     XCTAssertEqual(
       try bridge.rendered().buildingSetlist?.entries.first?.plannedVariationIds, [],
       "clearing the plan round-trips")
@@ -675,14 +675,14 @@ final class SessionBridgeTests: XCTestCase {
       id: "re1",
       plan: PlannedItem(
         itemId: "i1", itemType: .exercise, intention: nil, focus: nil, durationSecs: nil,
-        groupId: nil, variationIds: [], repTarget: nil, segments: [], key: nil),
+        groupId: nil, variationIds: [], repTarget: nil, key: nil),
       itemTitle: "Recovered Scales", position: 0, durationSecs: 0, status: .notAttempted,
       notes: nil, plays: [], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []
     )
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
       currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
-      reflection: nil, segment: nil)
+      reflection: nil)
     _ = try bridge.update(.session(.recoverSession(session: blob, now: "2026-06-16T11:00:00Z")))
     let recovered = try bridge.rendered()
     XCTAssertEqual(recovered.activeSession?.currentItemTitle, "Recovered Scales")
@@ -920,7 +920,7 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.setRepTarget(entryId: entryId, target: 3)))
     _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: 300)))
     _ = try bridge.update(
-      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: [variantId])))
+      .session(.setEntryVariations(entryId: entryId, variationIds: [variantId])))
 
     _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
     _ = try bridge.update(.session(.repMissed(now: "2026-09-04T09:01:00Z", reading: .silent)))
@@ -1017,7 +1017,7 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(
       .session(
         .switchPlay(
-          entryId: entryId, sectionId: nil, key: nil, variationIds: [slowId],
+          entryId: entryId, key: nil, variationIds: [slowId],
           now: "2026-09-04T09:00:00Z", reading: .silent)))
     _ = try bridge.update(
       .session(
@@ -1161,7 +1161,7 @@ final class SessionBridgeTests: XCTestCase {
       _ = try bridge.update(
         .session(
           .switchPlay(
-            entryId: entryId, sectionId: nil, key: nil, variationIds: [dotted],
+            entryId: entryId, key: nil, variationIds: [dotted],
             now: "\(day)T09:00:00Z", reading: .silent)))
       _ = try bridge.update(
         .session(

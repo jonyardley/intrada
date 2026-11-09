@@ -51,7 +51,7 @@ Stacking, reading the caption and hiding an off action are the rules; Android fo
 ## Accessibility
 
 - The title, caption and fact are read in order. A caller can hide a bare count from VoiceOver when the content says it better (`captionAccessibilityHidden`).
-- The action is its own button, read as its spoken label ("Reorder or remove sections").
+- The action is its own button, read as its spoken label ("Edit chord chart").
 - Every part scales with Dynamic Type and font scale.
 
 ## Do and don't
@@ -63,7 +63,7 @@ Stacking, reading the caption and hiding an off action are the rules; Android fo
 
 ```swift
 SectionHeader(title: "Used in", caption: pieceCountCaption)
-SectionHeader(title: "Sections", action: headerAction)
+SectionHeader(title: "Chord chart", action: headerAction)
 ```
 
 ```kotlin

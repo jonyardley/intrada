@@ -135,7 +135,7 @@ struct PreviewFixtureParityTests {
       _ = try bridge.update(
         .session(
           .switchPlay(
-            entryId: entryId, sectionId: nil, key: nil, variationIds: [variation], now: at,
+            entryId: entryId, key: nil, variationIds: [variation], now: at,
             reading: .silent)))
     }
     let active = try #require(try bridge.rendered().activeSession)
@@ -145,7 +145,7 @@ struct PreviewFixtureParityTests {
     #expect(fixture.currentVariations.map(picker) == active.currentVariations.map(picker))
   }
 
-  // ── Measured tempo and section targets (#2486) ────────────────────────
+  // ── Measured tempo (#2486) ────────────────────────────────────────────
 
   private struct TrendWords: Equatable {
     let hasTrend: Bool
@@ -188,24 +188,6 @@ struct PreviewFixtureParityTests {
     let projected = try #require(try item(bridge, id).practice?.tempoTrend)
 
     #expect(words(TempoTrendView.fixture(tempos.map { $0 })) == words(projected))
-  }
-
-  @Test func theTrickySpotsTargetIsWordedAsTheCoreDoes() throws {
-    let bridge = RowsBridge()
-    _ = try bridge.update(.startApp)
-    let id = try add(bridge, title: "Clair de Lune", kind: .piece, key: nil, tempo: nil, labels: [])
-    try bridge.addSections(
-      [
-        SectionEdit(
-          id: nil, name: "", bars: .picked(first: 19, last: 20), kind: .troubleSpot,
-          targetBpm: "54")
-      ], to: id)
-    let projected = try #require(try item(bridge, id).sections.first)
-    let fixture = try #require(
-      LibraryItemView.previewPieceWithSections.sections.first { $0.targetBpm == 54 })
-
-    #expect(fixture.targetTempo == projected.targetTempo)
-    #expect(fixture.targetTempoSpoken == projected.targetTempoSpoken)
   }
 
   // ── Driving the core ───────────────────────────────────────────────────
@@ -260,7 +242,7 @@ struct PreviewFixtureParityTests {
       _ = try bridge.update(
         .session(
           .switchPlay(
-            entryId: entryId, sectionId: nil, key: nil, variationIds: [variation.id],
+            entryId: entryId, key: nil, variationIds: [variation.id],
             now: stamp(minutes: index * 5), reading: .silent)))
     }
     let end = stamp(minutes: scored.count * 5)

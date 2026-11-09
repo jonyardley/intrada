@@ -14,7 +14,7 @@ A short task that rises over the current screen, with its title, a way out and o
 
 ## When to use
 
-- A choice or a small edit that belongs to the screen underneath: keys, variations, a section, a trouble spot, the metronome, adding to a session.
+- A choice or a small edit that belongs to the screen underneath: keys, variations, the metronome, adding to a session.
 - Anything the musician finishes and returns from, without leaving the screen they were on.
 
 ## When not to use
@@ -26,7 +26,7 @@ A short task that rises over the current screen, with its title, a way out and o
 ## Variants
 
 - **Leading action:** use for a way out other than dragging down, usually Cancel, or Clear on a filter.
-- **Confirmation label:** use a verb such as "Save" or "Add spot" when the tap commits the change; keep "Done" when changes are already applied.
+- **Confirmation label:** use a verb such as "Save" or "Add" when the tap commits the change; keep "Done" when changes are already applied.
 - **Confirmation disabled:** use while there is nothing to confirm, such as no suggestion chosen.
 - **Stays open on confirm** (`dismissesOnDone: false`): use when the sheet closes itself after a save, so a refused save keeps it open.
 - **Full height only** (`detents: [.large]`): use for a long list or a form; otherwise the sheet opens at half height and drags up.
@@ -43,7 +43,7 @@ A short task that rises over the current screen, with its title, a way out and o
 
 - The sheet's background is the paper (`PaperBackground`), so cards inside it lift off it as they do on a screen.
 - The top bar holds the title inline in the centre, the leading action on the left and the confirming action on the right. The confirming action carries the identifier `sheet.done`.
-- The title names the task in sentence case, two or three words: "Keys", "Trouble spot", "Add to session".
+- The title names the task in sentence case, two or three words: "Keys", "Filter by tag", "Add to session".
 - A disabled confirming action greys out and does nothing.
 - At accessibility text sizes the inline title would truncate, so it moves into the top of the content as a heading in `IntradaFont.cardTitle`, scaling with Dynamic Type. The second snapshot shows this.
 
@@ -62,8 +62,7 @@ A short task that rises over the current screen, with its title, a way out and o
 
 ```swift
 BottomSheet(
-  title: "Trouble spot", confirmationLabel: "Add spot", dismissesOnDone: false,
-  onDone: add,
+  title: "Keys", detents: [.large], dismissesOnDone: false, onDone: save,
   leadingAction: { Button("Cancel") { dismiss() } }
 ) {
   content

@@ -17,16 +17,15 @@ import com.intrada.ffi.StoreFfi
 import com.intrada.ffi.StoreFfiInterface
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
+import com.intrada.shared.ExerciseLink
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
-import com.intrada.shared.ItemSection
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.RecordKey
 import com.intrada.shared.RecordKind
 import com.intrada.shared.Request
-import com.intrada.shared.SectionKind
 import com.intrada.shared.ViewModel
 import java.io.File
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -257,17 +256,13 @@ class StoreTest {
     fun aWriteTheStoreRefusesIsThrownForTheStoreToReport() {
         val items = SharedItemStore(StoreFfi.inMemory(), log = {}, reporter = RecordingReporter())
         val unstorable =
-            ItemSection(
-                id = "s1",
-                name = "A",
-                bars = null,
-                kind = SectionKind.FORM,
-                targetBpm = null,
-                position = ULong.MAX_VALUE,
-                updatedAt = "2026-09-01T09:00:00Z",
-                deletedAt = null,
+            ExerciseLink(
+                "l1",
+                "01J0000000000000000000HANO",
+                ULong.MAX_VALUE,
+                "2026-09-01T09:00:00Z",
             )
-        val broken = Fixtures.item().copy(sections = listOf(unstorable))
+        val broken = Fixtures.item(exerciseLinks = listOf(unstorable))
 
         assertThrows(StoreFailure::class.java) { items.run(PersistenceOperation.SaveItem(broken)) }
     }

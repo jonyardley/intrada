@@ -139,7 +139,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
 
     let sorted = crate::view::library::sorted_order(&library, &model.active_sort);
 
-    let labels = play_labels(&model.items, &model.variations);
+    let labels = play_labels(&model.variations);
     let mut finished: Vec<_> = model.sessions.iter().collect();
     finished.sort_by_key(|s| std::cmp::Reverse(s.completed_at));
     let sessions = finished

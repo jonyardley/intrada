@@ -126,7 +126,7 @@ class PieceSheetsTest {
         )
     }
 
-    private val navigation = PieceNavigation({}, {}, {}, {}, {}, {})
+    private val navigation = PieceNavigation({}, {}, {}, {})
 
     private fun Store.piece(): LibraryItemView = libraryRows.value.single { it.id == PIECE }
 

@@ -56,9 +56,7 @@ class BuilderSnapshotTest {
         val store = plannedPieceStore()
         val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
         val tempo = store.setlist().focusChoices.first { it.target != null }
-        store.send(
-            Event.Session(SessionEvent.SetFocus(piece.id, IntentionFocus(tempo.kind, null, null)))
-        )
+        store.send(Event.Session(SessionEvent.SetFocus(piece.id, IntentionFocus(tempo.kind))))
         store.settle()
         val planned = store.setlist().entries.single { it.id == piece.id }
         val limits = store.viewModel.value?.limits ?: error("no limits")
@@ -91,9 +89,7 @@ class BuilderSnapshotTest {
         val store = buildingStore()
         val setlist = store.setlist()
         val piece = setlist.entries.single { it.itemId == BuilderFixtures.PIECE }
-        val run = setlist.entryVariations.single { it.entryId == piece.id }.sections.last().id
         store.send(Event.Session(SessionEvent.SetEntryDuration(piece.id, 600u)))
-        store.send(Event.Session(SessionEvent.AddSegment(piece.id, run)))
         store.send(Event.Session(SessionEvent.SetSessionLength(30u)))
         store.settle()
         return store

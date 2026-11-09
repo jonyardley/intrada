@@ -16,8 +16,7 @@ use crate::model::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
     FeltChoiceView, FinishRowView, FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView,
     LastTimeView, NotePointView, ObstacleChoiceView, PickerVariationView, PlayView,
-    PracticeSessionView, ReflectionTempoView, ReflectionView, SectionView, SegmentBarView,
-    SegmentClockView, SegmentProgress, SegmentView, SetlistBlockView, SetlistEntryView,
+    PracticeSessionView, ReflectionTempoView, ReflectionView, SetlistBlockView, SetlistEntryView,
     SummaryView, VariationView,
 };
 
@@ -71,38 +70,18 @@ pub fn format_duration_summary(secs: u64) -> String {
     }
 }
 
-/// Every variation and section name in the library, tombstoned ones
-/// included. A play on one since deleted still has to say what it was, which
-/// is what the tombstone exists for (#1739).
+/// Every variation name in the library, tombstoned ones included. A play on
+/// one since deleted still has to say what it was, which is what the
+/// tombstone exists for (#1739).
 pub struct PlayLabels<'a> {
     variations: HashMap<&'a str, &'a str>,
-    sections: HashMap<&'a str, String>,
-    /// Each item's live named sections as (id, name), for reading its notes.
-    named_sections: HashMap<&'a str, Vec<(&'a str, &'a str)>>,
 }
 
-pub fn play_labels<'a>(items: &'a [Item], variations: &'a [Variation]) -> PlayLabels<'a> {
+pub fn play_labels(variations: &[Variation]) -> PlayLabels<'_> {
     PlayLabels {
         variations: variations
             .iter()
             .map(|v| (v.id.as_str(), v.label.as_str()))
-            .collect(),
-        sections: items
-            .iter()
-            .flat_map(|i| i.sections.iter())
-            .map(|s| (s.id.as_str(), s.label()))
-            .collect(),
-        named_sections: items
-            .iter()
-            .map(|i| {
-                let named = i
-                    .sections
-                    .iter()
-                    .filter(|s| s.deleted_at.is_none() && !s.name.is_empty())
-                    .map(|s| (s.id.as_str(), s.name.as_str()))
-                    .collect();
-                (i.id.as_str(), named)
-            })
             .collect(),
     }
 }
@@ -112,8 +91,6 @@ impl<'a> PlayLabels<'a> {
     pub(crate) fn new() -> Self {
         Self {
             variations: HashMap::new(),
-            sections: HashMap::new(),
-            named_sections: HashMap::new(),
         }
     }
 }
@@ -123,8 +100,6 @@ impl<'a> FromIterator<(&'a str, &'a str)> for PlayLabels<'a> {
     fn from_iter<I: IntoIterator<Item = (&'a str, &'a str)>>(pairs: I) -> Self {
         Self {
             variations: pairs.into_iter().collect(),
-            sections: HashMap::new(),
-            named_sections: HashMap::new(),
         }
     }
 }
@@ -134,18 +109,15 @@ impl PlayLabels<'_> {
         self.variations.get(id).copied()
     }
 
-    /// The parts of a way of playing, in reading order; empty for the whole
-    /// item, plain, in the written key.
+    /// The parts of a way of playing, in reading order; empty for the item
+    /// plain, in the written key.
     fn parts(
         &self,
-        section_ids: &[&str],
         key: Option<&crate::domain::key::Key>,
         variation_ids: &[String],
     ) -> Vec<String> {
-        section_ids
-            .iter()
-            .filter_map(|id| self.sections.get(id).cloned())
-            .chain(key.map(crate::domain::key::Key::label))
+        key.map(crate::domain::key::Key::label)
+            .into_iter()
             .chain(
                 variation_ids
                     .iter()
@@ -159,42 +131,21 @@ impl PlayLabels<'_> {
     }
 
     pub fn play(&self, play: &Play) -> Option<String> {
-        let sections: Vec<&str> = play.section_id.as_deref().into_iter().collect();
-        Self::joined(self.parts(&sections, play.key.as_ref(), &play.variation_ids))
+        Self::joined(self.parts(play.key.as_ref(), &play.variation_ids))
     }
 
     pub fn plan(&self, entry: &SetlistEntry) -> Option<String> {
-        let sections: Vec<&str> = entry
-            .plan
-            .segments
-            .iter()
-            .map(|s| s.section_id.as_str())
-            .collect();
-        Self::joined(self.parts(
-            &sections,
-            entry.plan.key.as_ref(),
-            &entry.plan.variation_ids,
-        ))
+        Self::joined(self.parts(entry.plan.key.as_ref(), &entry.plan.variation_ids))
     }
 
     pub fn way(&self, way: &PlayWay) -> Option<String> {
-        let sections: Vec<&str> = way.section_id.as_deref().into_iter().collect();
-        Self::joined(self.parts(&sections, way.key.as_ref(), &way.variation_ids))
-    }
-
-    fn section(&self, id: &str) -> Option<String> {
-        self.sections.get(id).cloned()
-    }
-
-    fn named_sections(&self, item_id: &str) -> &[(&str, &str)] {
-        self.named_sections.get(item_id).map_or(&[], Vec::as_slice)
+        Self::joined(self.parts(way.key.as_ref(), &way.variation_ids))
     }
 
     fn focus(&self, focus: &IntentionFocus) -> FocusView {
-        let section = focus.section_id.as_deref().and_then(|id| self.section(id));
         FocusView {
             focus: focus.clone(),
-            label: session::focus_label(focus, section.as_deref()),
+            label: session::focus_label(focus),
             target_caption: session::target_caption(focus),
         }
     }
@@ -203,7 +154,6 @@ impl PlayLabels<'_> {
         NotePointView {
             span: point.span,
             label: session::note_point_label(&point.kind),
-            section_label: point.section_id.as_deref().and_then(|id| self.section(id)),
             confirmed,
         }
     }
@@ -212,7 +162,6 @@ impl PlayLabels<'_> {
 pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> PlayView {
     PlayView {
         id: play.id.clone(),
-        section_id: play.section_id.clone(),
         key: play.key,
         variation_ids: play.variation_ids.clone(),
         label: labels.play(play),
@@ -307,7 +256,6 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .map(|secs| format_planned_duration(u64::from(secs))),
         group_id: entry.plan.group_id.clone(),
         removable: !(entry.plan.item_type == ItemKind::Piece && entry.plan.group_id.is_some()),
-        planned_section_ids: entry.plan.section_ids(),
         planned_variation_ids: entry.plan.variation_ids.clone(),
         planned_label: labels.plan(entry),
         planned_rep_target: entry.plan.rep_target,
@@ -323,24 +271,12 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
     }
 }
 
-/// A section's minutes show only when the time is split between several.
 pub(crate) fn plan_tags(
-    segments: &[SegmentView],
     key: Option<String>,
     variations: impl Iterator<Item = String>,
     focus: Option<&FocusView>,
 ) -> Vec<String> {
-    let split = segments.len() > 1;
-    segments
-        .iter()
-        .map(|s| {
-            if split && s.planned_secs > 0 {
-                format!("{} {}", s.label, s.planned_display)
-            } else {
-                s.label.clone()
-            }
-        })
-        .chain(key)
+    key.into_iter()
         .chain(variations)
         .chain(focus.map(|f| format!("Focus: {}", f.label)))
         .collect()
@@ -352,36 +288,10 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
         .plan
         .intention
         .as_deref()
-        .and_then(|text| session::suggest_focus(text, labels.named_sections(&entry.plan.item_id)))
+        .and_then(session::suggest_focus)
         .filter(|suggested| entry.plan.focus.as_ref() != Some(suggested))
         .map(|suggested| labels.focus(&suggested));
-    let can_add_section = session::can_add_segment(&entry.plan.segments, entry.plan.duration_secs);
     EntryRecordView {
-        add_section_caption: entry
-            .plan
-            .duration_secs
-            .filter(|_| !can_add_section)
-            .map(|secs| {
-                format!(
-                    "No more sections fit in {}",
-                    format_planned_duration(u64::from(secs))
-                )
-            }),
-        segments: entry
-            .plan
-            .segments
-            .iter()
-            .enumerate()
-            .map(|(index, s)| SegmentView {
-                section_id: s.section_id.clone(),
-                label: labels.section(&s.section_id).unwrap_or_default(),
-                planned_secs: s.planned_secs,
-                planned_display: format_planned_duration(u64::from(s.planned_secs)),
-                can_add_minute: session::can_step_segment(&entry.plan.segments, index, 1),
-                can_take_minute: session::can_step_segment(&entry.plan.segments, index, -1),
-            })
-            .collect(),
-        can_add_section,
         focus: entry.plan.focus.as_ref().map(|f| labels.focus(f)),
         suggested_focus,
         intention_met: entry.intention_met.or(read),
@@ -410,7 +320,6 @@ pub fn last_time_view(
     LastTimeView {
         entry_id: entry.id.clone(),
         label: format!("Last time: {}", parts.join(" · ")),
-        section_id: way.section_id,
         variation_ids: way.variation_ids,
         key: way.key,
     }
@@ -492,7 +401,6 @@ pub fn fill_finish_choices(
     entry: &SetlistEntry,
     draft: &ReflectionDraft,
     item: &Item,
-    sections: Vec<SectionView>,
     has_variations: bool,
     labels: &PlayLabels,
 ) {
@@ -507,12 +415,10 @@ pub fn fill_finish_choices(
                 .find(|w| w.play_id == play.id)
                 .map_or_else(
                     || PlayWay {
-                        section_id: play.section_id.clone(),
                         key: play.key,
                         variation_ids: play.variation_ids.clone(),
                     },
                     |w| PlayWay {
-                        section_id: w.section_id.clone(),
                         key: w.key,
                         variation_ids: w.variation_ids.clone(),
                     },
@@ -521,13 +427,7 @@ pub fn fill_finish_choices(
         .collect();
     let recorded: Vec<Key> = ways.iter().filter_map(|w| w.key).collect();
     let keys = key_choices(item, &recorded);
-    finish.sections = sections;
-    let can_change = !finish.sections.is_empty() || keys.len() > 1 || has_variations;
-    let plain = if finish.sections.is_empty() {
-        "No variation"
-    } else {
-        "Whole piece"
-    };
+    let can_change = keys.len() > 1 || has_variations;
     finish.rows = entry
         .plays
         .iter()
@@ -539,8 +439,9 @@ pub fn fill_finish_choices(
             };
             FinishRowView {
                 play_id: play.id.clone(),
-                label: labels.way(&way).unwrap_or_else(|| plain.to_string()),
-                section_id: way.section_id,
+                label: labels
+                    .way(&way)
+                    .unwrap_or_else(|| "No variation".to_string()),
                 key: way.key,
                 variation_ids: way.variation_ids,
                 can_change,
@@ -592,68 +493,6 @@ fn shown_item_start(active: &ActiveSession) -> DateTime<Utc> {
 
 fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveRecordView {
     let current = active.current_entry();
-    let segment = active.segment.as_ref().and_then(|clock| {
-        let here = current.plan.segments.get(clock.index as usize)?;
-        let label = labels.section(&here.section_id).unwrap_or_default();
-        let next = current
-            .plan
-            .segments
-            .get(clock.index as usize + 1)
-            .map(|s| labels.section(&s.section_id).unwrap_or_default());
-        let ends_at = clock.started_at
-            + chrono::Duration::seconds(i64::from(clock.allowance_secs))
-            + chrono::Duration::seconds(i64::from(clock.left_out_secs))
-            + open_left_out(active, clock.started_at);
-        let stay_label = next
-            .as_ref()
-            .filter(|_| session::can_stay(current, clock))
-            .map(|next| {
-                format!(
-                    "Stay on {label}, {} more minutes taken from {next}",
-                    session::STAY_SECS / 60
-                )
-            });
-        let running = clock.index as usize;
-        let taken_spoken = next
-            .as_ref()
-            .filter(|_| clock.taken_from_next_secs > 0)
-            .map(|next| {
-                format!(
-                    ", {} taken from {next}",
-                    format_planned_duration(u64::from(clock.taken_from_next_secs))
-                )
-            })
-            .unwrap_or_default();
-        let bars = current
-            .plan
-            .segments
-            .iter()
-            .enumerate()
-            .map(|(i, s)| SegmentBarView {
-                label: labels.section(&s.section_id).unwrap_or_default(),
-                progress: match i.cmp(&running) {
-                    std::cmp::Ordering::Less => SegmentProgress::Done,
-                    std::cmp::Ordering::Equal => SegmentProgress::Running,
-                    std::cmp::Ordering::Greater => SegmentProgress::ToCome,
-                },
-                caption: (i == running + 1 && clock.taken_from_next_secs > 0).then(|| {
-                    format!(
-                        "{label} took {}",
-                        format_planned_duration(u64::from(clock.taken_from_next_secs))
-                    )
-                }),
-            })
-            .collect();
-        Some(SegmentClockView {
-            position_label: format!("Section {} of {}", running + 1, current.plan.segments.len())
-                + &taken_spoken,
-            bars,
-            move_label: next.as_ref().map(|next| format!("On to {next}")),
-            stay_label,
-            ends_at: ends_at.to_rfc3339(),
-            label,
-        })
-    });
     let away_offer = current
         .open_play()
         .filter(|_| active.reflection.is_none())
@@ -667,7 +506,6 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
             }
         });
     ActiveRecordView {
-        segment,
         away_offer,
         finish: active
             .reflection
@@ -684,13 +522,10 @@ fn finish_sheet_view(
 ) -> FinishSheetView {
     let read = session::intention_met_read(entry);
     FinishSheetView {
-        note_offers: session::note_offers(
-            &draft.answers.note,
-            labels.named_sections(&entry.plan.item_id),
-        )
-        .iter()
-        .map(|p| labels.note_point(p, draft.answers.note_points.contains(&p.span)))
-        .collect(),
+        note_offers: session::note_offers(&draft.answers.note)
+            .iter()
+            .map(|p| labels.note_point(p, draft.answers.note_points.contains(&p.span)))
+            .collect(),
         asks_intention: session::asks_intention(entry),
         intention_met_read: read,
         felt_choices: session::FELT_CHOICES
@@ -708,7 +543,6 @@ fn finish_sheet_view(
             })
             .collect(),
         rows: Vec::new(),
-        sections: Vec::new(),
         keys: Vec::new(),
     }
 }
@@ -866,7 +700,6 @@ pub fn build_active_session_view(
         current_rep_slots: open
             .and_then(|p| p.rep_target)
             .unwrap_or(defaults.rep_target),
-        current_section_id: open.and_then(|p| p.section_id.clone()),
         current_key: open.and_then(|p| p.key),
         current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
         current_play_label: open.and_then(|p| labels.play(p)),
@@ -1216,7 +1049,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         }
@@ -1355,22 +1187,10 @@ mod tests {
         }
     }
 
-    fn segment(label: &str, secs: u32) -> SegmentView {
-        SegmentView {
-            section_id: format!("s-{label}"),
-            label: label.to_string(),
-            planned_secs: secs,
-            planned_display: format_planned_duration(u64::from(secs)),
-            can_add_minute: false,
-            can_take_minute: false,
-        }
-    }
-
     fn focus_view(label: &str) -> FocusView {
         FocusView {
             focus: IntentionFocus {
                 kind: session::FocusKind::FromMemory,
-                section_id: None,
                 target: None,
             },
             label: label.to_string(),
@@ -1379,56 +1199,32 @@ mod tests {
     }
 
     #[test]
-    fn tags_name_the_sections_then_variations_then_focus() {
-        /// Name, sections, variation names, focus, tags.
-        type Case<'a> = (
-            &'a str,
-            Vec<SegmentView>,
-            Vec<&'a str>,
-            Option<FocusView>,
-            Vec<&'a str>,
-        );
-        let cases: [Case; 6] = [
-            ("nothing planned", vec![], vec![], None, vec![]),
+    fn tags_name_the_variations_then_the_focus() {
+        /// Name, variation names, focus, tags.
+        type Case<'a> = (&'a str, Vec<&'a str>, Option<FocusView>, Vec<&'a str>);
+        let cases: [Case; 4] = [
+            ("nothing planned", vec![], None, vec![]),
             (
-                "one section keeps its minutes to itself",
-                vec![segment("A", 600)],
-                vec![],
-                None,
-                vec!["A"],
-            ),
-            (
-                "a split section says each share",
-                vec![segment("A", 420), segment("B", 300)],
-                vec![],
-                None,
-                vec!["A 7 min", "B 5 min"],
-            ),
-            (
-                "a split with no planned time names the sections alone",
-                vec![segment("A", 0), segment("B", 0)],
-                vec![],
-                None,
-                vec!["A", "B"],
-            ),
-            (
-                "variations follow the sections",
-                vec![segment("A", 0)],
+                "each variation is a tag",
                 vec!["Dotted", "Swung"],
                 None,
-                vec!["A", "Dotted", "Swung"],
+                vec!["Dotted", "Swung"],
+            ),
+            (
+                "a repeated name keeps both tags",
+                vec!["Dotted", "Dotted"],
+                None,
+                vec!["Dotted", "Dotted"],
             ),
             (
                 "the focus comes last",
-                vec![],
                 vec!["Dotted"],
                 Some(focus_view("From memory")),
                 vec!["Dotted", "Focus: From memory"],
             ),
         ];
-        for (name, segments, variations, focus, expected) in cases {
+        for (name, variations, focus, expected) in cases {
             let tags = plan_tags(
-                &segments,
                 None,
                 variations.into_iter().map(str::to_string),
                 focus.as_ref(),
@@ -1480,31 +1276,18 @@ mod tests {
         assert_eq!(entry_to_view(&unplanned, &labels).planned_label, None);
     }
 
-    /// Section first, then the key, then the variations, as a musician says
-    /// it; a section or variation deleted since still reads (#2246).
+    /// The key, then the variations, as a musician says it; a variation
+    /// deleted since still reads (#2246).
     #[test]
-    fn a_play_label_names_the_section_the_key_and_the_variations() {
-        let mut item = make_item("i1", "Nocturne", ItemKind::Piece);
-        item.sections.push(crate::domain::section::ItemSection {
-            id: "s-1".to_string(),
-            name: "Coda".to_string(),
-            bars: None,
-            kind: crate::domain::section::SectionKind::Form,
-            target_bpm: None,
-            position: 0,
-            updated_at: Utc::now(),
-            deleted_at: Some(Utc::now()),
-        });
+    fn a_play_label_names_the_key_and_the_variations() {
         let library = vec![crate::domain::variation::Variation {
             id: "v-1".to_string(),
             label: "Dotted rhythms".to_string(),
             updated_at: Utc::now(),
             deleted_at: Some(Utc::now()),
         }];
-        let items = [item];
-        let labels = play_labels(&items, &library);
+        let labels = play_labels(&library);
         let play = Play {
-            section_id: Some("s-1".to_string()),
             key: crate::domain::key::Key::parse("Eb major"),
             variation_ids: vec!["v-1".to_string()],
             ..Play::fixture()
@@ -1512,7 +1295,7 @@ mod tests {
 
         assert_eq!(
             labels.play(&play).as_deref(),
-            Some("Coda · E\u{266d} major · Dotted rhythms")
+            Some("E\u{266d} major · Dotted rhythms")
         );
         assert_eq!(labels.play(&Play::fixture()), None);
     }
@@ -1588,7 +1371,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         assert_eq!(
             build_active_session_view(
@@ -1644,7 +1426,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = |active: &ActiveSession| {
             build_active_session_view(
@@ -1716,7 +1497,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let sounding = |index: usize, click: ClickStart| {
             let at = ActiveSession {
@@ -1753,7 +1533,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let four = PracticeDefaults {
             rep_target: 4,
@@ -1787,7 +1566,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1811,7 +1589,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1834,7 +1611,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1861,7 +1637,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1892,7 +1667,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1919,7 +1693,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1943,7 +1716,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let item = Item {
             id: "i1".to_string(),
@@ -1964,7 +1736,6 @@ mod tests {
             chord_chart: None,
             variation_ids: vec![],
             keys: vec![],
-            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -2024,7 +1795,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -2050,7 +1820,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let item1 = Item {
             notes: Some("Watch the thumb crossing".to_string()),
@@ -2083,7 +1852,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let item = make_item("i1", "Scale", ItemKind::Exercise);
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
@@ -2109,7 +1877,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         }
     }
 
@@ -2482,7 +2249,6 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
-            segment: None,
         };
         let player = build_active_session_view(
             &active,
@@ -2658,7 +2424,6 @@ mod tests {
                 chord_chart: None,
                 variation_ids: vec![],
                 keys: vec![],
-                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]
@@ -2716,7 +2481,6 @@ mod tests {
     fn variation_play_view_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(PlayView {
             id: "p1".to_string(),
-            section_id: Some("s-1".to_string()),
             key: crate::domain::key::Key::parse("Eb major"),
             variation_ids: vec!["v-c".to_string(), "v-d".to_string()],
             label: Some("Coda · E\u{266d} major · Hands separately".to_string()),
@@ -2778,44 +2542,15 @@ mod tests {
         assert_eq!(view.tempo_display, Some(168));
     }
 
-    /// The iPhone row once drew tags by their text and dropped a repeat (#2404).
+    /// A planned key reads before the variations, decided 2026-10-22 on #2392.
     #[test]
-    fn a_variation_named_like_a_section_keeps_both_tags() {
-        let segment = SegmentView {
-            section_id: "s1".to_string(),
-            label: "Dotted".to_string(),
-            planned_secs: 0,
-            planned_display: String::new(),
-            can_add_minute: false,
-            can_take_minute: false,
-        };
+    fn a_planned_key_is_a_tag_before_the_variations() {
         let tags = plan_tags(
-            &[segment],
-            None,
-            std::iter::once("Dotted".to_string()),
-            None,
-        );
-        assert_eq!(tags, vec!["Dotted", "Dotted"]);
-    }
-
-    /// A planned key reads after the sections, decided 2026-10-22 on #2392.
-    #[test]
-    fn a_planned_key_is_a_tag_after_the_sections() {
-        let segment = |id: &str, label: &str| SegmentView {
-            section_id: id.to_string(),
-            label: label.to_string(),
-            planned_secs: 360,
-            planned_display: "6 min".to_string(),
-            can_add_minute: false,
-            can_take_minute: false,
-        };
-        let tags = plan_tags(
-            &[segment("s1", "A1"), segment("s2", "B")],
             Some("D major".to_string()),
             std::iter::once("Dotted".to_string()),
             None,
         );
-        assert_eq!(tags, vec!["A1 6 min", "B 6 min", "D major", "Dotted"]);
+        assert_eq!(tags, vec!["D major", "Dotted"]);
     }
 
     /// The history reads the beat the musician counted (#2543).

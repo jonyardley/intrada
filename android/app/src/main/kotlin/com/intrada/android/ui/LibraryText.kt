@@ -15,6 +15,5 @@ internal val LinkedExerciseView.spoken: String
                 listOfNotNull(keyLabel, tempoLineSpoken)
                     .takeIf { it.isNotEmpty() }
                     ?.joinToString(", "),
-                linkCaption,
             )
             .joinToString(", ")

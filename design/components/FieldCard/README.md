@@ -16,7 +16,7 @@ One labelled setting on a form or sheet: a card with the label inside, above wha
 
 ## When to use
 
-- A setting on a sheet: Beats in the bar, Beat value and Sounds on in the metronome, a section's Kind.
+- A setting on a sheet: Beats in the bar, Beat value and Sounds on in the metronome.
 - A field whose control is not a text field, such as pills or a stepper.
 
 ## When not to use

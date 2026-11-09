@@ -1,7 +1,6 @@
 use crate::domain::item::ItemKind;
 use crate::domain::key::Key;
 use crate::domain::profile::{suggest_icon, Profile};
-use crate::domain::section::{BarRange, BarsInput, SectionDraft, SectionEdit};
 use crate::domain::session::{PlayWay, SetlistEntry};
 use crate::domain::types::{CreateItem, Tempo, TempoInput, UpdateItem};
 use crate::domain::variation::Variation;
@@ -28,10 +27,7 @@ pub const MAX_VARIATION_LABEL: usize = 100;
 /// Per item, and per play.
 pub const MAX_VARIATIONS: usize = 24;
 pub const MAX_KEYS: usize = 24;
-pub const MAX_SECTION_NAME: usize = 100;
-pub const MAX_BAR: u16 = 9999;
 pub const MAX_PLAYS_PER_ENTRY: usize = 24;
-pub const MAX_SEGMENTS: usize = 12;
 pub const MAX_TIMES_AWAY: usize = 50;
 pub const MAX_NOTE_POINTS: usize = 50;
 pub const MAX_CLEAN_REPS: u16 = 100;
@@ -505,21 +501,6 @@ pub fn validate_exercise_link_target(exercise_id: &str, model: &Model) -> Result
     Ok(())
 }
 
-/// A link names a live section of the piece it sits on, or none (the whole
-/// piece). A removed section is refused: its links went with it (#2248).
-pub fn validate_link_section(
-    piece: &crate::domain::item::Item,
-    section_id: Option<&str>,
-) -> Result<(), LibraryError> {
-    match section_id {
-        Some(id) if !piece.is_live_section(id) => Err(LibraryError::Validation {
-            field: "section_id".to_string(),
-            message: "That section is not part of this piece".to_string(),
-        }),
-        _ => Ok(()),
-    }
-}
-
 /// A chord chart hangs off a piece. The host must exist and be a `Piece` —
 /// exercises don't carry changes.
 pub fn validate_chart_host(piece_id: &str, model: &Model) -> Result<(), LibraryError> {
@@ -539,102 +520,6 @@ pub fn validate_chart_host(piece_id: &str, model: &Model) -> Result<(), LibraryE
     }
 
     Ok(())
-}
-
-fn sections_error(message: impl Into<String>) -> LibraryError {
-    LibraryError::Validation {
-        field: "sections".to_string(),
-        message: message.into(),
-    }
-}
-
-/// One range of bars as a musician types or dictates it: "1-16", "1 to 16",
-/// "bars 5 to 12", "bar 12", "bb. 5-12", "mm. 5-12" or a bare "12". En and em
-/// dashes and the minus sign read as a hyphen, since iOS Smart Dashes and
-/// pasted text bring them in. Reading bars out of a sentence is #2307's.
-pub(crate) fn parse_bar_range(raw: &str) -> Result<Option<BarRange>, LibraryError> {
-    let lowered = raw.trim().to_lowercase();
-    if lowered.is_empty() {
-        return Ok(None);
-    }
-    let rest = ["bars", "bar", "bb.", "mm."]
-        .iter()
-        .find_map(|prefix| lowered.strip_prefix(prefix))
-        .unwrap_or(&lowered)
-        .replace(['\u{2013}', '\u{2014}', '\u{2212}'], "-");
-    let words: Vec<&str> = rest.split_whitespace().collect();
-    let (first, last) = match (rest.split_once('-'), words.as_slice()) {
-        (Some((first, last)), _) => (first.trim(), last.trim()),
-        (None, [first, "to", last]) => (*first, *last),
-        (None, [only]) => (*only, *only),
-        _ => return Err(unreadable_bars()),
-    };
-    validate_bar_range(parse_bar(first)?, parse_bar(last)?).map(Some)
-}
-
-fn unreadable_bars() -> LibraryError {
-    sections_error("Write bars as 1-16, 1 to 16 or bar 12")
-}
-
-fn parse_bar(text: &str) -> Result<u16, LibraryError> {
-    if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
-        return Err(unreadable_bars());
-    }
-    text.parse::<u16>()
-        .ok()
-        .filter(|bar| *bar <= MAX_BAR)
-        .ok_or_else(|| sections_error(format!("Bars go up to {MAX_BAR}")))
-}
-
-pub(crate) fn validate_bar_range(first: u16, last: u16) -> Result<BarRange, LibraryError> {
-    if first == 0 {
-        return Err(sections_error("Bars start at 1"));
-    }
-    if last > MAX_BAR {
-        return Err(sections_error(format!("Bars go up to {MAX_BAR}")));
-    }
-    if last < first {
-        return Err(sections_error("Bars run from the lower bar to the higher"));
-    }
-    Ok(BarRange { first, last })
-}
-
-/// Every row of a section list, refused whole on the first bad one.
-pub(crate) fn validate_section_edits(
-    edits: Vec<SectionEdit>,
-) -> Result<Vec<SectionDraft>, LibraryError> {
-    edits
-        .into_iter()
-        .map(|edit| {
-            let name = edit.name.trim().to_string();
-            if exceeds_chars(&name, MAX_SECTION_NAME) {
-                return Err(sections_error(format!(
-                    "A section name must not exceed {MAX_SECTION_NAME} characters"
-                )));
-            }
-            let bars = match edit.bars {
-                BarsInput::Blank => None,
-                BarsInput::Picked { first, last } => Some(validate_bar_range(first, last)?),
-                BarsInput::Typed(raw) => parse_bar_range(&raw)?,
-            };
-            if name.is_empty() && bars.is_none() {
-                return Err(sections_error("A section needs a name or bars"));
-            }
-            let target_bpm = parse_bpm(&edit.target_bpm).map_err(|e| match e {
-                LibraryError::Validation { .. } => sections_error(format!(
-                    "A section's target tempo must be a whole number between {MIN_BPM} and {MAX_BPM}"
-                )),
-                other => other,
-            })?;
-            Ok(SectionDraft {
-                id: edit.id,
-                name,
-                bars,
-                kind: edit.kind,
-                target_bpm,
-            })
-        })
-        .collect()
 }
 
 pub fn validate_variation_label(label: &str) -> Result<(), LibraryError> {
@@ -720,85 +605,14 @@ pub fn validate_keys(keys: &[Key]) -> Result<(), LibraryError> {
     Ok(())
 }
 
-/// A section named against an entry must be a live section of its item.
-fn validate_entry_section(
-    entry: &SetlistEntry,
-    section_id: &str,
-    model: &Model,
-) -> Result<(), LibraryError> {
-    let live = model
-        .items
-        .iter()
-        .find(|i| i.id == entry.plan.item_id)
-        .is_some_and(|item| {
-            item.sections
-                .iter()
-                .any(|s| s.id == section_id && s.deleted_at.is_none())
-        });
-    if live {
-        return Ok(());
-    }
-    Err(LibraryError::Validation {
-        field: "section_id".to_string(),
-        message: "That section doesn't belong to this item".to_string(),
-    })
-}
-
-/// At most one planned section for now; segments (#2315) lift the cap.
-pub fn validate_entry_plan(
-    entry: &SetlistEntry,
-    section_ids: &[String],
-    variation_ids: &[String],
-    model: &Model,
-) -> Result<(), LibraryError> {
-    if section_ids.len() > 1 {
-        return Err(LibraryError::Validation {
-            field: "section_ids".to_string(),
-            message: "Plan one section at a time".to_string(),
-        });
-    }
-    for id in section_ids {
-        validate_entry_section(entry, id, model)?;
-    }
-    validate_variation_ids(model, variation_ids)
-}
-
-pub fn validate_segment_sections(
-    entry: &SetlistEntry,
-    segments: &[crate::domain::session::Segment],
-    model: &Model,
-) -> Result<(), LibraryError> {
-    let refuse = |message: &str| LibraryError::Validation {
-        field: "segments".to_string(),
-        message: message.to_string(),
-    };
-    if segments.len() > MAX_SEGMENTS {
-        return Err(refuse("That's more segments than one item can hold"));
-    }
-    let mut seen = std::collections::HashSet::new();
-    for segment in segments {
-        if !seen.insert(segment.section_id.as_str()) {
-            return Err(refuse("Each section can be one segment only"));
-        }
-        validate_entry_section(entry, &segment.section_id, model)?;
-    }
-    Ok(())
-}
-
-/// `recorded` is the play being changed, if any: a section or variation it
-/// already holds stays sayable after the library deletes it, so changing only
-/// the key of such a play is not refused (#2249).
+/// `recorded` is the play being changed, if any: a variation it already
+/// holds stays sayable after the library deletes it, so changing only the key
+/// of such a play is not refused (#2249).
 pub fn validate_play_way(
-    entry: &SetlistEntry,
     way: &PlayWay,
     recorded: Option<&crate::domain::session::Play>,
     model: &Model,
 ) -> Result<(), LibraryError> {
-    if let Some(id) = &way.section_id {
-        if !recorded.is_some_and(|p| p.section_id.as_ref() == Some(id)) {
-            validate_entry_section(entry, id, model)?;
-        }
-    }
     let mut seen = std::collections::HashSet::new();
     let repeats = !way.variation_ids.iter().all(|id| seen.insert(id.as_str()));
     if repeats || way.variation_ids.len() > MAX_VARIATIONS {

@@ -1,36 +1,18 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::item::{Item, ScaffoldEntry};
+use super::item::Item;
 
-/// An exercise linked to a piece, as a whole or to one of its sections
-/// (#2248). Held on the piece beside its sections, tombstones included.
+/// An exercise linked to a piece, at most one live link per pair (#2248).
+/// Held on the piece, tombstones included.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ExerciseLink {
     pub id: String,
     pub exercise_id: String,
-    /// `None` is the whole piece.
-    pub section_id: Option<String>,
     pub position: usize,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
-}
-
-/// One row of the piece's chosen set: an exercise, existing or written now,
-/// and what it is linked to.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct LinkEdit {
-    pub exercise: ScaffoldEntry,
-    pub section_id: Option<String>,
-}
-
-/// One row of the exercise's chosen set: a piece, as a whole or one section.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct LinkTarget {
-    pub piece_id: String,
-    pub section_id: Option<String>,
 }
 
 /// One change to a piece's exercise card (#2447); the core builds the whole set.
@@ -38,41 +20,22 @@ pub struct LinkTarget {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum LinkChange {
-    /// What the exercise prepares on this piece, in place on the card;
-    /// nothing ticked takes it off.
-    Set {
-        exercise_id: String,
-        whole_piece: bool,
-        section_ids: Vec<String>,
-    },
-    Move {
-        exercise_id: String,
-        to: usize,
-    },
-    Unlink {
-        exercise_id: String,
-    },
+    Move { exercise_id: String, to: usize },
+    Unlink { exercise_id: String },
 }
 
 /// A link a write asks for. `position: None` keeps a claimed row where it is
 /// and appends a new one after the piece's last.
 pub(crate) struct WantedLink {
     pub exercise_id: String,
-    pub section_id: Option<String>,
     pub position: Option<usize>,
 }
 
 impl ExerciseLink {
-    pub(crate) fn new(
-        exercise_id: String,
-        section_id: Option<String>,
-        position: usize,
-        now: DateTime<Utc>,
-    ) -> Self {
+    pub(crate) fn new(exercise_id: String, position: usize, now: DateTime<Utc>) -> Self {
         Self {
             id: ulid::Ulid::generate().to_string(),
             exercise_id,
-            section_id,
             position,
             updated_at: now,
             deleted_at: None,
@@ -80,34 +43,26 @@ impl ExerciseLink {
     }
 }
 
-pub(crate) fn whole_piece_links(ids: &[&str], now: DateTime<Utc>) -> Vec<ExerciseLink> {
+pub(crate) fn links_to(ids: &[&str], now: DateTime<Utc>) -> Vec<ExerciseLink> {
     ids.iter()
         .enumerate()
-        .map(|(position, id)| ExerciseLink::new(id.to_string(), None, position, now))
+        .map(|(position, id)| ExerciseLink::new(id.to_string(), position, now))
         .collect()
 }
 
 impl Item {
-    /// Live links whose section, when they name one, is a live section of
-    /// this item, by position.
+    /// Live links, by position.
     pub(crate) fn live_links(&self) -> Vec<&ExerciseLink> {
         let mut live: Vec<&ExerciseLink> = self
             .exercise_links
             .iter()
             .filter(|l| l.deleted_at.is_none())
-            .filter(|l| {
-                l.section_id.as_ref().is_none_or(|sid| {
-                    self.sections
-                        .iter()
-                        .any(|s| &s.id == sid && s.deleted_at.is_none())
-                })
-            })
             .collect();
         live.sort_by_key(|l| l.position);
         live
     }
 
-    /// Each linked exercise once, in the order of its first live link.
+    /// Each linked exercise once, in link order.
     pub(crate) fn linked_exercise_ids(&self) -> Vec<String> {
         let mut ids: Vec<String> = Vec::new();
         for link in self.live_links() {
@@ -118,28 +73,10 @@ impl Item {
         ids
     }
 
-    /// Each exercise linked to the whole piece once; a section's drills are
-    /// offered when that section is planned, never brought along (#2249).
-    pub(crate) fn whole_piece_exercise_ids(&self) -> Vec<String> {
-        let mut ids: Vec<String> = Vec::new();
-        for link in self.live_links() {
-            if link.section_id.is_none() && !ids.contains(&link.exercise_id) {
-                ids.push(link.exercise_id.clone());
-            }
-        }
-        ids
-    }
-
-    pub(crate) fn has_live_link(&self, exercise_id: &str, section_id: Option<&str>) -> bool {
+    pub(crate) fn has_live_link(&self, exercise_id: &str) -> bool {
         self.live_links()
             .iter()
-            .any(|l| l.exercise_id == exercise_id && l.section_id.as_deref() == section_id)
-    }
-
-    pub(crate) fn is_live_section(&self, section_id: &str) -> bool {
-        self.sections
-            .iter()
-            .any(|s| s.id == section_id && s.deleted_at.is_none())
+            .any(|l| l.exercise_id == exercise_id)
     }
 
     pub(crate) fn next_link_position(&self) -> usize {
@@ -151,7 +88,7 @@ impl Item {
     }
 }
 
-/// Claims by (exercise, section), reviving a tombstone before minting (#2248).
+/// Claims by exercise, reviving a tombstone before minting (#2248).
 /// `wanted` holds each key once.
 pub(crate) fn reconcile_links(
     existing: &[ExerciseLink],
@@ -169,8 +106,7 @@ pub(crate) fn reconcile_links(
     };
 
     for w in wanted {
-        let same =
-            |l: &ExerciseLink| l.exercise_id == w.exercise_id && l.section_id == w.section_id;
+        let same = |l: &ExerciseLink| l.exercise_id == w.exercise_id;
         let claimed = pool
             .iter()
             .position(|l| same(l) && l.deleted_at.is_none())
@@ -192,12 +128,7 @@ pub(crate) fn reconcile_links(
             }
             None => {
                 let position = w.position.unwrap_or_else(&mut append);
-                next.push(ExerciseLink::new(
-                    w.exercise_id,
-                    w.section_id,
-                    position,
-                    now,
-                ));
+                next.push(ExerciseLink::new(w.exercise_id, position, now));
             }
         }
     }

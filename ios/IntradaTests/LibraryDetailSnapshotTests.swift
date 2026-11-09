@@ -100,6 +100,30 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(editing, store: store), as: config)
   }
 
+  // #2248: the card framed on its own, since the screen snapshots above cut off
+  // before it.
+  func testRelatedExercisesCard() {
+    assertSnapshot(of: relatedExercisesCard(editing: false), as: config)
+  }
+
+  func testRelatedExercisesCardEditing() {
+    assertSnapshot(of: relatedExercisesCard(editing: true), as: config)
+  }
+
+  private func relatedExercisesCard(editing: Bool) -> UIViewController {
+    let item = LibraryItemView.previewDetailWithLinkedExercises
+    let card = NavigationStack {
+      ZStack {
+        PaperBackground()
+        RelatedExercisesCard(
+          item: item, editing: .constant(editing), onAdd: {}, onShowSuggestions: {}
+        )
+        .padding(16)
+      }
+    }
+    return host(card, store: Store(bridge: PreviewBridge(items: [item])))
+  }
+
   // #1363: linked to pieces it has never been practised with: every row shows
   // the ring's unrated rest, so a fresh link never reads as a bad score.
   func testExerciseDetailUsedInLinkedOnly() {
@@ -165,97 +189,6 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  // #2247: the piece's sections, one a tricky spot with its own tempo.
-  func testPieceDetailWithSections() {
-    assertSnapshot(of: sectionsScreen(), as: config)
-  }
-
-  func testSectionsReordering() {
-    let card = ZStack {
-      PaperBackground()
-      SectionsSection(
-        item: .previewPieceWithSections, startReordering: true, onAdd: {}, onEdit: { _ in }
-      )
-      .padding(16)
-    }
-    assertSnapshot(of: host(card), as: config)
-  }
-
-  func testSectionSheetEditingATrickySpot() {
-    assertSnapshot(of: sectionSheet(), as: config)
-  }
-
-  func testSectionSheetRefused() {
-    assertSnapshot(
-      of: host(
-        SectionSheet(
-          item: .previewPieceWithSections, target: .new,
-          previewError: "Bars run from the lower bar to the higher")),
-      as: config)
-  }
-
-  // #2248: drills aimed at a piece's sections, read on the piece's card,
-  // chosen in edit mode, and read back on the exercise's Used in card.
-  func testRelatedExercisesWithSectionLinks() {
-    assertSnapshot(of: relatedExercisesCard(editing: false), as: config)
-  }
-
-  func testRelatedExercisesSectionLinksEditing() {
-    assertSnapshot(of: relatedExercisesCard(editing: true), as: config)
-  }
-
-  func testLinkSectionsSheet() {
-    assertSnapshot(of: linkSectionsSheet(), as: config)
-  }
-
-  func testUsedInWithSections() {
-    let card = NavigationStack {
-      ZStack {
-        PaperBackground()
-        UsedInCard(
-          usage: LibraryItemView.previewExerciseUsedInSections.usedIn,
-          locale: Locale(identifier: "en_GB"), calendar: .current,
-          onLink: { _ in }, onLinkAPiece: {}
-        )
-        .padding(16)
-      }
-    }
-    assertSnapshot(of: host(card), as: config)
-  }
-
-  private func relatedExercisesCard(editing: Bool) -> UIViewController {
-    let item = LibraryItemView.previewPieceWithSectionLinks
-    let card = NavigationStack {
-      ZStack {
-        PaperBackground()
-        RelatedExercisesCard(
-          item: item, editing: .constant(editing), onAdd: {}, onShowSuggestions: {},
-          onChooseSections: { _ in }
-        )
-        .padding(16)
-      }
-    }
-    return host(card, store: Store(bridge: PreviewBridge(items: [item])))
-  }
-
-  private func linkSectionsSheet() -> UIViewController {
-    let item = LibraryItemView.previewPieceWithSectionLinks
-    return host(LinkSectionsSheet(piece: item, exercise: item.linkedExercises[0]))
-  }
-
-  private func sectionsScreen() -> UIViewController {
-    let store = Store(bridge: PreviewBridge(items: [.previewPieceWithSections]))
-    let pushed = NavigationStack(
-      path: .constant([LibraryItemView.previewPieceWithSections.id])
-    ) { LibraryScreen() }
-    return host(pushed, store: store)
-  }
-
-  private func sectionSheet() -> UIViewController {
-    let item = LibraryItemView.previewPieceWithSections
-    return host(SectionSheet(item: item, target: .existing(item.sections[2])))
-  }
-
   // #2247: a scale exercise in twelve keys, three of them played, with its
   // Choose actions on Keys and Variations.
   func testExerciseDetailWithKeys() {
@@ -302,7 +235,8 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   }
 
   private func variationsSheet(query: String) -> UIViewController {
-    var item = LibraryItemView.previewPieceWithSections
+    var item = LibraryItemView.previewPiece
+    item.linkedExercises = []
     item.variations = [
       VariationView(
         id: "v1", label: "Hands separately", latestScore: 8, scoreHistory: [],

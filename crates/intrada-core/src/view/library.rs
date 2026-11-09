@@ -46,7 +46,6 @@ pub(super) fn build_library_item_views(
                                 })
                                 .and_then(|r| r.latest_score)
                         });
-                    let (whole_piece, sections, link_caption) = link_summary(item, &ex.id);
                     let (tempo_line, tempo_line_spoken) = TempoWords::split(
                         tempo_words::tempo_line(ex.tempo.as_ref(), ex.metre.as_ref()),
                     );
@@ -61,9 +60,6 @@ pub(super) fn build_library_item_views(
                         tempo_line_spoken,
                         practice: model.practice_summaries.get(&ex.id).cloned(),
                         piece_context_score,
-                        whole_piece,
-                        sections,
-                        link_caption,
                     })
                 })
                 .collect()
@@ -166,7 +162,6 @@ pub(super) fn build_library_item_views(
                 .key
                 .as_ref()
                 .and_then(crate::domain::key::wheel_selection),
-            sections: build_section_views(item, plays),
         });
     }
 
@@ -382,13 +377,6 @@ pub(crate) fn build_exercise_usage(
         let piece_removed = piece.as_ref().is_some_and(|(_, removed)| *removed);
         let piece_in_library = piece.is_some() && !piece_removed;
         let offers_link = piece_in_library && !record.linked;
-        let (whole_piece, sections, link_caption) = match (&piece, record.linked) {
-            (Some((p, false)), true) => item_index
-                .get(p.id.as_str())
-                .map(|live| link_summary(live, &exercise_id))
-                .unwrap_or_default(),
-            _ => (false, Vec::new(), None),
-        };
         by_exercise
             .entry(exercise_id)
             .or_default()
@@ -401,9 +389,6 @@ pub(crate) fn build_exercise_usage(
                 piece_removed,
                 piece_in_library,
                 offers_link,
-                whole_piece,
-                sections,
-                link_caption,
             });
     }
 
@@ -458,7 +443,7 @@ pub(crate) fn build_scored_plays(
         }
     }
     for plays in index.values_mut() {
-        // Play start too, so a section replayed in one session reads its
+        // Play start too, so a variation replayed in one session reads its
         // later mark (#2250).
         plays.sort_by_key(|p| std::cmp::Reverse((p.session.started_at, p.play.started_at)));
     }
@@ -533,120 +518,6 @@ pub(crate) fn build_key_views(
             }
         })
         .collect()
-}
-
-/// How `exercise_id` is linked to `piece`: as a whole, and to which live
-/// sections, in score order (#2248), and the caption that names them.
-fn link_summary(
-    piece: &crate::domain::item::Item,
-    exercise_id: &str,
-) -> (bool, Vec<crate::model::LinkedSectionView>, Option<String>) {
-    let links: Vec<_> = piece
-        .live_links()
-        .into_iter()
-        .filter(|l| l.exercise_id == exercise_id)
-        .collect();
-    let whole_piece = links.iter().any(|l| l.section_id.is_none());
-    let mut sections: Vec<_> = piece
-        .sections
-        .iter()
-        .filter(|s| s.deleted_at.is_none())
-        .filter(|s| {
-            links
-                .iter()
-                .any(|l| l.section_id.as_deref() == Some(s.id.as_str()))
-        })
-        .collect();
-    sections.sort_by_key(|s| s.position);
-    let sections: Vec<_> = sections
-        .into_iter()
-        .map(|s| crate::model::LinkedSectionView {
-            id: s.id.clone(),
-            label: s.label(),
-            label_in_text: s.label_in_text(),
-        })
-        .collect();
-    let caption = link_caption(whole_piece, &sections);
-    (whole_piece, sections, caption)
-}
-
-/// "For A2 and Coda", or "For the whole piece and bars 19 to 20"; `None` for a
-/// whole-piece link alone, which is how every link read before sections.
-fn link_caption(whole_piece: bool, sections: &[crate::model::LinkedSectionView]) -> Option<String> {
-    if sections.is_empty() {
-        return None;
-    }
-    let mut parts: Vec<&str> = whole_piece
-        .then_some("the whole piece")
-        .into_iter()
-        .collect();
-    parts.extend(sections.iter().map(|s| s.label_in_text.as_str()));
-    let (last, rest) = parts.split_last()?;
-    Some(if rest.is_empty() {
-        format!("For {last}")
-    } else {
-        format!("For {} and {last}", rest.join(", "))
-    })
-}
-
-/// The item's live sections in score order, each with the marks of the plays
-/// on it with no variations, any key (#2250).
-pub(crate) fn build_section_views(
-    item: &crate::domain::item::Item,
-    plays: &[ScoredPlay],
-) -> Vec<crate::model::SectionView> {
-    let mut live: Vec<_> = item
-        .sections
-        .iter()
-        .filter(|s| s.deleted_at.is_none())
-        .collect();
-    live.sort_by_key(|s| s.position);
-    let mut views: Vec<_> = live
-        .into_iter()
-        .map(|s| {
-            let score_history = history(plays, |p| {
-                p.section_id.as_deref() == Some(s.id.as_str()) && p.variation_ids.is_empty()
-            });
-            let latest_score = score_history.first().map(|e| e.score);
-            let (target_tempo, target_tempo_spoken) = crate::domain::tempo_words::TempoWords::split(
-                s.target_bpm.map(crate::domain::tempo_words::section_target),
-            );
-            crate::model::SectionView {
-                id: s.id.clone(),
-                name: s.name.clone(),
-                kind: s.kind,
-                target_bpm: s.target_bpm,
-                first_bar: s.bars.map(|b| b.first),
-                last_bar: s.bars.map(|b| b.last),
-                label: s.label(),
-                bars_caption: s.bars.filter(|_| !s.name.is_empty()).map(|b| b.caption()),
-                bars_field_text: s.bars.map(|b| b.field_text()).unwrap_or_default(),
-                latest_score,
-                score_history,
-                caption: crate::model::saved_mark_caption(latest_score),
-                is_weakest: false,
-                target_tempo,
-                target_tempo_spoken,
-            }
-        })
-        .collect();
-    if let Some(index) = weakest_section(&views) {
-        views[index].is_weakest = true;
-    }
-    views
-}
-
-/// The marked section with the lowest latest mark, once two or more are
-/// marked; a tie goes to the earlier section, and none when all tie (#2250).
-fn weakest_section(views: &[crate::model::SectionView]) -> Option<usize> {
-    let marked: Vec<(usize, u8)> = views
-        .iter()
-        .enumerate()
-        .filter_map(|(i, v)| Some((i, v.latest_score?)))
-        .collect();
-    let lowest = marked.iter().min_by_key(|&&(i, mark)| (mark, i))?;
-    let highest = marked.iter().map(|&(_, mark)| mark).max()?;
-    (highest > lowest.1).then_some(lowest.0)
 }
 
 /// Accents folded onto their base letter, then case removed, so "Étude" files
@@ -914,7 +785,7 @@ mod tests {
         };
         let piece = Item {
             tempo,
-            exercise_links: crate::domain::link::whole_piece_links(&["ex-1"], exercise.created_at),
+            exercise_links: crate::domain::link::links_to(&["ex-1"], exercise.created_at),
             ..Item::fixture("p1")
         };
         let model = Model {
