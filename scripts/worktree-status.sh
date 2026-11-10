@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Print every worktree beside the main checkout with its issue, its PR, CI on
 # the PR's last commit, review state, local state and whose move it is (#2783).
-# `just status` is direction and `just worktrees` is who holds what; neither
-# said which of 19 idle worktrees were finished and which needed Jon.
 #
 # Reports only: it never removes, fetches or writes anything. GitHub is read in
 # one GraphQL call with an alias per branch, which answered 19 branches in
@@ -25,6 +23,7 @@ done
 
 # The first block of the porcelain list is the main checkout, which is never
 # removable, so it is dropped. A folder that has gone is git's to prune.
+main_name="$(basename "$(git worktree list --porcelain | sed -n '1s/^worktree //p')")"
 paths=()
 branches=()
 while IFS="$sep" read -r path branch; do
@@ -90,10 +89,18 @@ if [ -n "$fields" ]; then
   fi
 fi
 
+# A missing lease script means a machine with no session tracking. One that is
+# there but lists no row for the main checkout failed or changed its wording,
+# so a held worktree could read as free: nothing is then called safe.
 lease_out=""
 lease_note=""
+lease_broken=""
 if [ -x "$lease" ]; then
   lease_out="$("$lease" list "$PWD" 2>/dev/null || true)"
+  if ! printf '%s\n' "$lease_out" | awk -v n="$main_name" '$1 == n { f = 1 } END { exit !f }'; then
+    lease_broken=1
+    lease_note="    The session list did not answer, so nothing is called safe to remove."
+  fi
 else
   lease_note="    (no worktree-lease.sh on this machine, so sessions are not shown)"
 fi
@@ -141,8 +148,6 @@ for i in "${!paths[@]}"; do
        ($pr.closingIssuesReferences.nodes[0].title // ""),
        ($r[$is].title // "")] | map(tostring) | join($s)') || true
 
-  # The issue: the PR's closing reference, then the branch or folder number,
-  # then a "(#N)" at the end of the PR title, as `just status` reads it.
   if [ -n "$closing_n" ]; then
     issue="#$closing_n $closing_t"
   elif [ -n "$issue_t" ]; then
@@ -221,6 +226,8 @@ for i in "${!paths[@]}"; do
     fi
   elif [ -n "$on_main" ]; then
     group=done move="finished, safe to remove"
+  elif [ -z "$has_main" ] && [ -z "$number" ]; then
+    group=unknown move="unknown: no $main_ref here to compare against"
   elif [ -n "$gh_error" ]; then
     group=unknown move="unknown: GitHub did not answer, so whose move is not known"
   elif [ "$state" = MERGED ]; then
@@ -231,6 +238,9 @@ for i in "${!paths[@]}"; do
     group=you move="you: no PR for $(plural "$ahead" "commit"); open one, or remove it and its branch"
   fi
 
+  if [ "$group" = done ] && [ -n "$lease_broken" ]; then
+    group=unknown move="unknown: the session list did not answer, so a session may be in it"
+  fi
   groups+=("$group")
   blocks+=("- $name
     $issue
@@ -253,11 +263,12 @@ section() {
   if [ -n "$out" ]; then printf '%s' "$out"; else echo "    nothing"; fi
 }
 
-echo "Worktrees of $repo, read from GitHub and git just now."
 if [ -n "$gh_error" ]; then
+  echo "Worktrees of $repo, read from git just now."
   echo "    GitHub did not answer, so PR, CI and review are unknown:"
   echo "    $gh_error"
 fi
+[ -n "$gh_error" ] || echo "Worktrees of $repo, read from GitHub and git just now."
 [ -z "$lease_note" ] || echo "$lease_note"
 [ -n "$has_main" ] || echo "    No $main_ref here, so nothing is judged to be on main."
 

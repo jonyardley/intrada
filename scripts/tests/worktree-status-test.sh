@@ -48,15 +48,16 @@ chmod +x "$tmp/bin/gh"
 
 cat >"$tmp/bin/lease" <<'FAKE'
 #!/usr/bin/env bash
-printf '%-42s %-28s %s\n' main main "in use by aaaaaaaa (main, never blocks)"
+printf '%-42s %-28s %s\n' "$MAIN_NAME" main "in use by aaaaaaaa (main, never blocks)"
 printf '%-42s %-28s %s\n' held-1005 held-1005 "LEASED by 3f2a91c0 (pid 42) since today"
-printf '%-42s %-28s %s\n' merged-1001 merged-1001 "free (stale lease from bbbbbbbb)"
+printf '%-42s %-28s %s\n' merged-1001 merged-1001 "free (stale lease by bbbbbbbb)"
 FAKE
 chmod +x "$tmp/bin/lease"
 
 export FIXTURES="$tmp/fixtures"
 export PATH="$tmp/bin:$PATH"
 export WORKTREE_LEASE="$tmp/bin/lease"
+export MAIN_NAME=main
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
 
 # ── A repo with a remote main and one worktree per state ────────────────────
@@ -85,13 +86,24 @@ commit unpushed-1007 "not pushed"
 wt closed-1008 && commit closed-1008 work
 wt atmain
 git worktree add -q --detach "$tmp/detached-1010" main
+wt extended-1011 && commit extended-1011 merged
+merged_oid="$(head_of extended-1011)"
+commit extended-1011 "after the merge"
+wt greendraft-1012 && commit greendraft-1012 work
+wt changes-1013 && commit changes-1013 work
+wt behind-1014 && commit behind-1014 one
+behind_base="$(head_of behind-1014)"
+commit behind-1014 two
+behind_oid="$(head_of behind-1014)"
+git -C "$tmp/behind-1014" reset -q --hard "$behind_base"
+wt titled
 
-pr() { # branch number state isDraft rollup review oid [closingIssue]
+pr() { # branch number state isDraft rollup review oid [closingIssue] [title]
   local closing='[]'
   [ -n "${8:-}" ] && closing="[{\"number\":$8,\"title\":\"Issue $8 title\"}]"
   jq -c --arg b "$1" --argjson n "$2" --arg s "$3" --argjson d "$4" --arg r "$5" \
-    --arg rv "$6" --arg o "$7" --argjson c "$closing" \
-    '. + {($b): {number: $n, title: "PR \($n) title", state: $s, isDraft: $d,
+    --arg rv "$6" --arg o "$7" --argjson c "$closing" --arg t "${9:-PR $2 title}" \
+    '. + {($b): {number: $n, title: $t, state: $s, isDraft: $d,
       reviewDecision: (if $rv == "" then null else $rv end), headRefOid: $o,
       closingIssuesReferences: {nodes: $c},
       commits: {nodes: [{commit: {statusCheckRollup:
@@ -108,6 +120,11 @@ pr dirty-1004 2004 MERGED false SUCCESS "" "$(head_of dirty-1004)"
 pr held-1005 2005 OPEN true PENDING "" "$(head_of held-1005)"
 pr unpushed-1007 2007 OPEN true SUCCESS "" "$pushed_oid"
 pr closed-1008 2008 CLOSED false FAILURE "" "$(head_of closed-1008)"
+pr extended-1011 2011 MERGED false SUCCESS "" "$merged_oid"
+pr greendraft-1012 2012 OPEN true SUCCESS "" "$(head_of greendraft-1012)"
+pr changes-1013 2013 OPEN false SUCCESS CHANGES_REQUESTED "$(head_of changes-1013)"
+pr behind-1014 2014 OPEN false SUCCESS "" "$behind_oid"
+pr titled 2015 MERGED false SUCCESS "" "$(head_of titled)" "" "Fix the thing (#1015)"
 cat >"$FIXTURES/issues.json" <<'JSON'
 {"1002":{"title":"Issue 1002 title"},"1003":{"title":"Issue 1003 title"},
  "1010":{"title":"Issue 1010 title"}}
@@ -148,7 +165,9 @@ row() {
 
 : >"$FIXTURES/calls.txt"
 out="$("$script")"
-check "$(wc -l <"$FIXTURES/calls.txt" | tr -d ' ')" "reads GitHub in one call" "1"
+calls="$(wc -l <"$FIXTURES/calls.txt" | tr -d ' ')"
+if [ "$calls" -eq 1 ]; then pass=$((pass + 1)); else
+  fail=$((fail + 1)); printf '✗ reads GitHub in one call, made %s\n' "$calls" >&2; fi
 check "$(cat "$FIXTURES/query.txt")" "asks by branch name" "headRefName"
 refute "$out" "leaves the main checkout out" "- main"
 
@@ -165,7 +184,7 @@ check "$r" "a commit on neither the PR nor main is yours" "you: 1 commit not on 
 r="$(row "$out" merged-1001)"
 check "$r" "a merged PR with a clean tree is finished" "finished, safe to remove"
 check "$r" "takes the issue from the PR's closing reference" "#1001 Issue 1001 title"
-check "$r" "a stale lease is not a session" "PR #2001 merged, CI passed, no review"
+refute "$r" "a stale lease is not a session" "session bbbbbbbb"
 
 r="$(row "$out" atmain)"
 check "$r" "no PR and nothing beyond main is finished" "finished, safe to remove"
@@ -191,10 +210,25 @@ r="$(row "$out" draft-1002)"
 check "$r" "a draft with failing CI is an agent's" "an agent: CI failed on the last commit"
 check "$r" "says it is a draft" "PR #2002 draft, CI failed"
 
-check "$out" "counts what is safe to remove" "3 of 10 worktrees are safe to remove."
+r="$(row "$out" extended-1011)"
+check "$r" "a commit after a merged PR is yours, not safe to remove" "you: 1 commit not on the PR or main"
+
+r="$(row "$out" greendraft-1012)"
+check "$r" "a green draft is an agent's, not ready to merge" "an agent: draft, waiting on review"
+
+r="$(row "$out" changes-1013)"
+check "$r" "changes requested is an agent's, even when green" "an agent: changes requested"
+
+r="$(row "$out" behind-1014)"
+check "$r" "a worktree behind its PR counts as on the PR" "you: ready to merge"
+
+r="$(row "$out" titled)"
+check "$r" "takes the issue from a (#N) at the end of the PR title" "#1015 Fix the thing"
+
+check "$out" "counts what is safe to remove" "4 of 15 worktrees are safe to remove."
 check "$out" "says it removed nothing" "This removed nothing"
-check "$out" "groups your moves" "Your move (5)"
-check "$out" "groups agents' moves" "An agent's move (2)"
+check "$out" "groups your moves" "Your move (7)"
+check "$out" "groups agents' moves" "An agent's move (4)"
 
 # ── GitHub refusing the read ────────────────────────────────────────────────
 
@@ -205,7 +239,17 @@ check "$(row "$out" held-1005)" "a held worktree still reads from the lease" "an
 check "$(row "$out" dirty-1004)" "uncommitted work still reads from git" "you: 1 uncommitted file"
 check "$(row "$out" draft-1002)" "a PR state it could not read is unknown" "unknown: GitHub did not answer"
 check "$(row "$out" atmain)" "a tree at main is finished on git alone" "finished, safe to remove"
-check "$out" "counts only what git alone proves" "3 of 10 worktrees are safe to remove, on git alone."
+check "$out" "counts only what git alone proves" "4 of 15 worktrees are safe to remove, on git alone."
+refute "$out" "never claims GitHub was read when it was not" "read from GitHub"
+
+# ── A lease script that answers nothing ─────────────────────────────────────
+
+out="$(WORKTREE_LEASE=/usr/bin/false "$script")"
+check "$out" "says the session list did not answer" "The session list did not answer"
+check "$out" "calls nothing safe when sessions are unknown" "0 of 15 worktrees are safe to remove."
+check "$(row "$out" atmain)" "a tree at main is unknown, not finished" "unknown: the session list did not answer"
+out="$(MAIN_NAME=elsewhere "$script")"
+check "$out" "a list with no row for the main checkout is not trusted" "0 of 15 worktrees are safe to remove."
 
 # ── No lease script on this machine ─────────────────────────────────────────
 
