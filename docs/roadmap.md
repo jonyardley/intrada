@@ -38,11 +38,12 @@ Each release's write-up is its
 on.
 
 - **The design audit** already running (#2599), with one component catalogue
-  for both apps (#2620), its fixes (#2607, #2608, #2610, #2611, #2201) and the
-  design tool (#2603).
+  for both apps (#2620), its fixes (#2607, #2608, #2610, #2611, #2201, #2237) and
+  the design tool (#2603).
 - **Android polish** that makes the second app feel native (#2605, #2606,
   #2613 to #2619, #2547).
-- **One database change**: the time zone a session was played in (#1379).
+- **One database change per release**: this one carries the time zone a
+  session was played in (#1379).
 
 ### Next, in order
 
