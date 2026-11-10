@@ -84,9 +84,8 @@ heredoc bodies are data. The read-only list is a list, so expect a tool that
 reads and is denied anyway. It allows the usual file and text commands, `sed`
 without `-i`, `find` without `-delete` or `-exec`, read-only `git`, `rtk read`,
 `just` limited to `worktrees`, `worktree-status`, `status`, `worktree-new` and
-`--list`, `wt`
-limited to `switch` and `list`, and `gh` limited to `view`, `list`, `checks`
-and `status`.
+`--list`, `wt` limited to `switch` and `list`, and `gh` limited to `view`,
+`list`, `checks` and `status`.
 
 The guarantee is on the file tools. Shell coverage is best effort, aimed at
 redirection, `sed -i`, `cp`, `mv`, `rm`, `tee`, `patch` and mutating `git`. A
