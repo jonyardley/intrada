@@ -92,6 +92,7 @@ hygiene:
         "pr-visuals-test:bash scripts/tests/pr-visuals-test.sh"
         "status-release-test:bash scripts/tests/status-release-test.sh"
         "status-epics-test:bash scripts/tests/status-epics-test.sh"
+        "worktree-status-test:bash scripts/tests/worktree-status-test.sh"
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
@@ -377,6 +378,14 @@ worktrees:
         git worktree list
         echo "  (no worktree-lease.sh on this machine, so no session holders shown)"
     fi
+
+# Every worktree with its issue, PR, CI, review, local state and whose move it
+# is (#2783): `worktrees` says who holds each one, this says which are finished.
+# Reports only; one GitHub call.
+[doc("Show each worktree's issue, PR, CI and review, and whose move it is")]
+[group('Worktrees')]
+worktree-status:
+    ./scripts/worktree-status.sh
 
 # ─────────────────────────────────────────────
 # Diagnostics & cleanup

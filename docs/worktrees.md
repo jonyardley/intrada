@@ -28,6 +28,10 @@ with another worktree's. Worktrunk's machine-local config
 checkout, main included, pays about 13 s once to fill it at its first core
 change, and the folder takes about 0.9 GB of disk.
 
+`just worktree-status` says which worktrees are finished: each one's issue,
+PR, CI, review, local changes and whose move it is, ending with a count of
+those safe to remove. It reads GitHub once and removes nothing.
+
 Remove one with `wt remove` from inside it, or `just worktree-rm <name>`, which
 also cleans its simulator. Claude Code's own subagent worktrees stay in
 `.claude/worktrees`.

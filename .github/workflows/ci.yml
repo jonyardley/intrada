@@ -1033,6 +1033,8 @@ jobs:
         run: bash scripts/tests/status-epics-test.sh
       - name: just epic-add still attaches sub-issues
         run: bash scripts/tests/epic-add-test.sh
+      - name: just worktree-status still says whose move each worktree is
+        run: bash scripts/tests/worktree-status-test.sh
       - name: The handover opener still carries its facts
         run: bash scripts/tests/handover-test.sh
       # A regenerated file with the same bytes must keep its date, or Xcode
