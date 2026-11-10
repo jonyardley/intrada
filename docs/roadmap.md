@@ -17,9 +17,9 @@ Capturing material is done, and v0.16.0 to v0.18.0 put pieces in sections and
 variations and showed their marks back (#50); sections were removed in v0.19.0
 (#2767). **The goal from 2026-10-13 is
 1.0: intrada public on the App Store and Google Play, used daily by musicians
-who have never met its maker.** The order: make the data model sound, give both
-apps one look, build Progress, Plan and reflection, get every tab to where it
-is used daily in anger, then sync and release. Sync comes after everything that
+who have never met its maker.** The order: make the data model sound, simplify
+practice, give both apps one look, build Progress, Plan and reflection, get
+every tab to where it is used daily in anger, then sync and release. Sync comes after everything that
 adds to the record, because every change to the record after it ships has to be
 migrated on every device.
 
@@ -30,45 +30,57 @@ every milestone ships on iPhone and Android together. Where this list and an
 issue's [horizon label](how-the-work-runs.md#horizons) disagree, this list
 wins.
 
-### Now: v0.20.0, one look on both apps
+### Now: v0.20.0, simpler practice
 
 Which release is out is not written here; `gh release list` marks it (#1932).
 Each release's write-up is its
 [GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
 on.
 
-- **The design audit** already running (#2599), with one component catalogue
-  for both apps (#2620), its fixes (#2607, #2608, #2610, #2611, #2201, #2237) and
-  the design tool (#2603).
-- **Android polish** that makes the second app feel native (#2605, #2606,
-  #2613 to #2619, #2547).
-- **One database change per release**: this one carries the time zone a
-  session was played in (#1379).
+- **From Jon's UX teardown** of 10 November 2026: the practice clock counts
+  down from the session length (#2789), the length is split between items by
+  weight, designed with Jon as one piece with customise item (#2790), and a
+  key chip appears while practising a piece with more than one key (#2788).
+- **Taken out**: focus, repetitions and the Add detail choices, so intent and
+  reflection are free text (#2791), and the reading of pieces from photos,
+  keeping score photos (#2792).
+- **Confidence in place of mark** everywhere (#2793), and the confidence
+  control redesigned with Jon (#2794).
+- **Two ideas to explore**, not to build yet: warm-ups (#2795) and a
+  checklist for starting a new piece (#2796).
+- **One database change per release**: this one removes focus, repetitions
+  and the Add detail choices.
 
 ### Next, in order
 
-1. **v0.21.0 Progress, redesigned**: the four-week look back decided on
+1. **v0.21.0 One look on both apps**: the design audit already running
+   (#2599), with one component catalogue for both apps (#2620), its fixes
+   (#2607, #2608, #2610, #2611, #2201, #2237), the design tool (#2603), and
+   the Android polish that makes the second app feel native (#2605, #2606,
+   #2613 to #2619, #2547). Its one database change is the time zone a session
+   was played in (#1379).
+2. **v0.22.0 Progress, redesigned**: the four-week look back decided on
    2026-10-04 (#1787), core first (#2375), then the screen (#2376), with
    variation coverage on the exercise (#2377), per-variation trends (#1793,
    #1794) and history showing an item's current name (#2583).
-2. **v0.22.0 Plan, in place of Routines**: the fourth tab becomes Plan, the
+3. **v0.23.0 Plan, in place of Routines**: the fourth tab becomes Plan, the
    week's practice set, and a routine becomes a saved plan (#2579, specified in
    #2622). The week is set by hand or captured from a lesson (#2621, #1926),
    and today's plan starts from it (#2180, #2185). The lesson trial (#1927) and
    research note (#1928) feed the spec.
-3. **v0.23.0 Intentions and reflections**: the aim set before playing and the
+4. **v0.24.0 Intentions and reflections**: the aim set before playing and the
    note made after, typed or recorded (#2623, #69), with Session complete
    redesigned around them (#1976, #1369, #1728).
-4. **v0.24.0 Every tab in daily use**: a written bar per tab, met (#2578), fed
+5. **v0.25.0 Every tab in daily use**: a written bar per tab, met (#2578), fed
    by three new musicians trying the first run (#2120), the welcome's next pass
    (#2296) and example content (#2115), with the player basics (#1000, #1002)
    and Library housekeeping (#45, #1811).
-5. **v0.25.0 Sync and safe keeping**: iCloud sync between iPhone and iPad
+6. **v0.26.0 Sync and safe keeping**: iCloud sync between iPhone and iPad
    (#2353) on the settled record, and export and restore on both apps (#2624).
-6. **v0.26.0 Release candidate**: a build a tester can trust on both stores
+7. **v0.27.0 Release candidate**: a build a tester can trust on both stores
    (#1982, #2499, #2566, #2517), a way to reach Jon (#2369, #2625), and the
    privacy policy and store listings (#2626, #2627).
-7. **1.0.0 Public on both stores** (#2628).
+8. **1.0.0 Public on both stores** (#2628).
 
 ### Off the milestones
 
@@ -102,7 +114,7 @@ iPhone and Compose on Android
 on the phone, and every new feature ships on both. There is no web app and no
 sync yet: the server that once carried sync was removed (#1746), and iCloud
 sync between iPhone and iPad (#2353) with export and restore for both apps
-(#2624) is planned for v0.25.0.
+(#2624) is planned for v0.26.0.
 
 ## Open questions
 
