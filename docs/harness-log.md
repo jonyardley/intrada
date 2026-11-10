@@ -115,6 +115,7 @@ documented it, or by the file's own date where no PR did.
 | 2026-10-14 | #2668 (#2632) | The path rules, agent briefs, `/ship` and the shipping and streams skills cut to the rule and its reason, every hook and `paths:` list unchanged. A rule that moved files leaves a one-line pointer where it used to load, so it still fires on the paths it protects | None: a trim inside the #2595 trial, read with its numbers; `reviewer` Important findings that cite a cut rule are counted at each read | 2026-10-19; the verdict on 2026-10-26 | |
 | 2026-10-15 | #2697 (#2696) | `just issue-open` refuses an issue without a horizon and a kind label; bug reports name the app, build and device; the PR checklist drops the three lines CI already proves; the style guide, sentence caps included, binds every technical and design document | Rework: issues opened with no horizon label, 8 of the 30 to 2026-10-15 (not in the report) | 2026-10-26 | |
 | 2026-11-10 | #2784 (#2783) | `just worktree-status` shows each worktree's issue, PR, CI, review, local changes and whose move it is, with a count of those safe to remove; one GitHub call | None: a measure, so finished worktrees stop piling up; 19 sat idle on 2026-11-10, all removable (not in the report) | 2026-11-16 | |
+| 2026-11-10 | machine-local (#2783) | `guard-worktree.sh` lets a session in the main checkout run `just worktree-status`, as it does `just worktrees`; two cases added to `guard-worktree.test.sh` | None: a correction, so an agent asked what is in flight can answer from main | 2026-11-16 | |
 
 ## Later levers
 
