@@ -69,7 +69,7 @@ file path for a file tool, the working directory for a shell command.
 |                        | main checkout | your worktree | someone else's |
 | ---------------------- | ------------- | ------------- | -------------- |
 | Read a file            | yes           | yes           | yes            |
-| `just worktrees`, `gh pr view` | yes   | yes           | yes            |
+| `just worktrees`, `just worktree-status`, `gh pr view` | yes | yes | yes |
 | `just worktree-new`, `wt switch`, `wt list` | yes | yes      | yes            |
 | Any other `wt` subcommand | no         | yes           | no             |
 | Build, test, `just check` | yes        | yes           | no             |
@@ -83,9 +83,9 @@ must be read-only, and any redirection makes it a write. Quoted text and
 heredoc bodies are data. The read-only list is a list, so expect a tool that
 reads and is denied anyway. It allows the usual file and text commands, `sed`
 without `-i`, `find` without `-delete` or `-exec`, read-only `git`, `rtk read`,
-`just` limited to `worktrees`, `status`, `worktree-new` and `--list`, `wt`
-limited to `switch` and `list`, and `gh` limited to `view`, `list`, `checks`
-and `status`.
+`just` limited to `worktrees`, `worktree-status`, `status`, `worktree-new` and
+`--list`, `wt` limited to `switch` and `list`, and `gh` limited to `view`,
+`list`, `checks` and `status`.
 
 The guarantee is on the file tools. Shell coverage is best effort, aimed at
 redirection, `sed -i`, `cp`, `mv`, `rm`, `tee`, `patch` and mutating `git`. A
