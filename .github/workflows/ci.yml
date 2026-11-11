@@ -1031,6 +1031,8 @@ jobs:
         run: bash scripts/tests/session-claims-test.sh
       - name: just status still shows each epic's next child
         run: bash scripts/tests/status-epics-test.sh
+      - name: just status still lists the ready queue in priority order
+        run: bash scripts/tests/status-ready-test.sh
       - name: just epic-add still attaches sub-issues
         run: bash scripts/tests/epic-add-test.sh
       - name: just worktree-status still says whose move each worktree is

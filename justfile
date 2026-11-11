@@ -92,6 +92,7 @@ hygiene:
         "pr-visuals-test:bash scripts/tests/pr-visuals-test.sh"
         "status-release-test:bash scripts/tests/status-release-test.sh"
         "status-epics-test:bash scripts/tests/status-epics-test.sh"
+        "status-ready-test:bash scripts/tests/status-ready-test.sh"
         "worktree-status-test:bash scripts/tests/worktree-status-test.sh"
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
