@@ -63,3 +63,8 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - Components: one spec per component in the repo, pictures from snapshot tests, a check in just check; the design page is a view (#2603).
 - August 2026 audit of the restored builder: fix and trim first, then the tone of voice doc and one copy sweep (#1344, #1359).
 - September 2026 audit: silent data loss first, then wrong on screen, then drag (#1967).
+- Agents take a ready issue to a draft PR; sign-off on plan, mockup, screenshots and merge stays with a person (#2799).
+- Pencil (pen.dev) is trialled beside Claude Design on the next new screen, then one is chosen (#2799).
+- The agent crew builds on this repo's own harness: claim, leased worktrees, task, reviewer and test agents, guards (#2799).
+- Claude models only; a one-evening bake-off picks the harness from today's setup, a Claude Code workflow and Archon without auto-merge (#2799).
+- Agent knowledge stays in the repo and on GitHub: hand-offs as issue comments, one pruned lessons file, no wiki or memory database (#2799).
