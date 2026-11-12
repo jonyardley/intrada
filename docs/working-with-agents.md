@@ -226,6 +226,8 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | Read denied as "already in context" after `/clear` | The guard reads the transcript (#1866); range-read |
 | Edit denied in the main checkout | No worktree, or the prefix is missing with more than one lease held; see `worktrees.md` |
 | `gh pr merge` or a push to main refused | Merging is Jon's, on GitHub |
+| Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it, and a crew session never does (#2812) |
+| A crew session refused `gh pr ready`, `just pr-ready` or a `gh api` merge | Leave the PR as a draft and notify; ready and merge are Jon's (#2812) |
 | `xcodebuild` refused | Use the `just` recipe |
 | Waiting on the simulator lock | Another run holds it; it queues |
 | A dash on a changed line | Fix the line |
