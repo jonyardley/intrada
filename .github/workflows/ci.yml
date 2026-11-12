@@ -1023,6 +1023,10 @@ jobs:
       # The claim tooling is what stops one issue being built twice (#1702).
       - name: just claim still refuses a claimed issue
         run: bash scripts/tests/claim-issue-test.sh
+      # A judge that stops asserting would qualify the crew's harness on
+      # nothing (#2802).
+      - name: The crew qualification still judges each check
+        run: bash scripts/tests/crew-qualify-test.sh
       - name: just pr-open still refuses an unclaimed issue
         run: bash scripts/tests/pr-open-test.sh
       - name: just issue-open still refuses an unlabelled issue
