@@ -2,7 +2,7 @@
 name: test-runner
 description: Runs the repo's test gates (just check, just ios-test[-full], just ios-test-ui-class, or a scoped cargo test) and reports a concise pass/fail summary with only the failing output. Use to keep noisy test logs out of the lead session's context. Runs in the worktree the brief names, so it tests the uncommitted changes there.
 tools: Bash, Read, Grep, Glob
-model: haiku
+model: sonnet
 effort: low
 ---
 

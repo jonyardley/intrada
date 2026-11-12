@@ -57,8 +57,8 @@ then refuses every git command.
 | Handing work down | Settled work goes to a subagent (step 5); a new chat only frees the session (#1836) |
 
 Nothing with judgement runs below Opus: the lower rungs cost more in
-corrections than they saved (#1893). Haiku runs `test-runner` and `Explore`
-only; pins live in `.claude/agents/` and `.claude/settings.json`.
+corrections than they saved (#1893). `test-runner` runs on Sonnet and
+`Explore` on Haiku; pins live in `.claude/agents/` and `.claude/settings.json`.
 
 `/effort` saves to settings unless you choose session-only, which is why a
 `high` stretch ends with `/effort medium`. Fast mode costs twice the standard

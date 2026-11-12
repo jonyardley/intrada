@@ -1,8 +1,7 @@
 # intrada Development Guidelines
 
 <!-- Loads into every session: invariants, gotchas, commands, about 430 words. Everything
-else lives in the path-scoped rules, the skills and the docs below. Trial from 2026-10-13
-(#2595); the undo rule is in docs/harness-log.md. -->
+else lives in the path-scoped rules, the skills and the docs below. -->
 
 intrada is a **practice notebook** for musicians: plan a session, play it, score it
 (Plan, Practice, Track). Two native shells on one Rust core: SwiftUI in `ios/`, Compose

@@ -24,7 +24,7 @@ wired from the first build.
   add one. A fixed-size glyph beside text scales with `@ScaledMetric`, capped so
   the row still fits (`WeekStrip`).
 
-## Principles from the 2026-06 review
+## Principles
 
 - **Surface, don't swallow. Every `ViewModel.error` has a UI surface.** Never
   fire a success haptic or dismiss a sheet before the core confirms (re-read
