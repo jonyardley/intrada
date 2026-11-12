@@ -1103,6 +1103,29 @@ cd "$repo_root"
 expect 0 "the hygiene recipe text names the scope helper on its checks (a text check)" \
   grep -q 'diff_scope_select_checks "${checks\[@\]}"' justfile
 
+# ── The lessons cap ────────────────────────────────────────────────────────
+
+lessons="$work/lessons.md"
+lessons_check() {
+  LESSONS_FILE="$lessons" bash "$repo_root/scripts/check-lessons.sh"
+}
+write_lessons() {
+  { printf '# Lessons\n\n- a rule above the heading\n- another rule\n\n## Lessons\n\n'
+    for i in $(seq 1 "$1"); do printf -- '- 2026-11-12, #1: lesson %s\n' "$i"; done; } >"$lessons"
+}
+write_lessons 30
+expect 0 "30 lessons, with rules above the heading not counted" lessons_check
+write_lessons 31
+expect 1 "31 lessons" lessons_check
+{ printf '## Lessons\n\n'; for i in $(seq 1 25); do printf -- '- a: %s\n' "$i"; done
+  printf '\n## Older\n\n'; for i in $(seq 1 25); do printf -- '- b: %s\n' "$i"; done; } >"$lessons"
+expect 1 "50 lessons under two headings, all of which the hook prints" lessons_check
+printf '# Lessons\n\n## Lessons \n\n- trailing space on the heading\n' >"$lessons"
+expect 1 "no exact Lessons heading" lessons_check
+rm "$lessons"
+lessons_missing() { { lessons_check 2>&1 || true; } | grep -q "no $lessons to read"; }
+expect 0 "no lessons file, named in the message" lessons_missing
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then

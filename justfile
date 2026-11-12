@@ -63,7 +63,7 @@ coverage:
 # justfile or .github/ (scripts/lib/diff-scope.sh, #2734); CI runs its own list directly.
 # A check whose tool is absent prints a line starting "skipped:" and passes;
 # those lines are echoed on a green run so a skip never reads as a pass.
-[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests when tooling changed, and the release-name, app-version, faint-ink, theme-value, design-token, sketch-kit, haptics and bridge-test checks")]
+[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests when tooling changed, and the release-name, app-version, faint-ink, theme-value, design-token, sketch-kit, haptics, lessons and bridge-test checks")]
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -82,6 +82,7 @@ hygiene:
         "check-components:bash scripts/check-components.sh"
         "check-sketch-kit:python3 scripts/sketch-kit.py --check"
         "check-haptics:bash scripts/check-haptics.sh"
+        "check-lessons:bash scripts/check-lessons.sh"
         "check-bridge-tests:bash scripts/check-bridge-tests.sh"
         "comment-density:bash scripts/check-comment-density.sh"
         "dash-check:bash scripts/check-dashes.sh"

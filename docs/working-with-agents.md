@@ -170,6 +170,7 @@ summary verbatim at PR creation, naming the agent.
 | You are | Do |
 |---|---|
 | About to open or update a PR | `/ship`: gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
+| Opening the PR | Two or three lessons to [`lessons.md`](lessons.md) before the gates, the `/ship` retro step; every session start prints the file (#2801) |
 | The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone and Android screenshots |
 | Jon, reviewing | Read the body and the self-review; merge when green |
 | The unit has shipped | `/clear` in the same sitting, after `just worktree-rm` |
@@ -193,6 +194,7 @@ CI is green, local pty errors were host-only.
 |---|---|
 | Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, change, the number it should move, first read |
 | It is Monday | Read `just usage 7 --quality` against the log; a lever unmoved after two reads is reverted, not patched |
+| It is the first Monday of the month | The session doing the usage read puts lessons seen again three times to the owner as rules and moves stale ones from [`lessons.md`](lessons.md) to [`lessons-archive.md`](lessons-archive.md) |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |
 | Wanting session costs | `just usage`, or `just usage 14` for a fortnight |
 | Switching a user hook off or on | Delete its line from `hooks` in `~/.claude/settings.json`, leaving the script; restore it from the dated backup in `~/.claude/backups/` (#1990) |
