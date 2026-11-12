@@ -61,6 +61,32 @@ if ! epics=$(gh api graphql -f query="$epics_query" -f owner="${repo%%/*}" \
   epics='[]'
 fi
 
+# The ready queue (#2800). A claimed issue is left out: CLAIMED or IN FLIGHT already shows it.
+ready_limit=50
+ready_error=""
+ready_query='query($owner: String!, $name: String!, $limit: Int!) {
+  repository(owner: $owner, name: $name) {
+    issues(labels: ["ready"], states: OPEN, first: $limit,
+           orderBy: {field: CREATED_AT, direction: ASC}) {
+      nodes {
+        number title
+        labels(first: 30) { nodes { name } }
+        projectItems(first: 10) { nodes {
+          project { number }
+          priority: fieldValueByName(name: "Priority") {
+            ... on ProjectV2ItemFieldSingleSelectValue { name }
+          }
+        } }
+      }
+    }
+  }
+}'
+if ! ready=$(gh api graphql -f query="$ready_query" -f owner="${repo%%/*}" \
+  -f name="${repo#*/}" -F limit="$ready_limit" --jq '.data.repository.issues.nodes' 2>&1); then
+  ready_error=$(printf '%s' "$ready" | head -1)
+  ready='[]'
+fi
+
 last_tag=""
 tags_error=""
 if tags=$(gh api "repos/$repo/tags?per_page=100" --jq '.[].name' 2>&1); then
@@ -157,6 +183,21 @@ epic_lines=$(printf '%s\n%s' "$epics" "$claimed" | jq -rs '
      end)
 ')
 
+ready_lines=$(printf '%s\n%s' "$ready" "$claimed" | jq -rs '
+  .[0] as $ready | [.[1][].number] as $flying |
+  {"horizon:now": 0, "horizon:next": 1, "horizon:later": 2} as $horizons |
+  {"P0": 0, "P1": 1, "P2": 2} as $priorities |
+  $ready | map(select([.number] | inside($flying) | not)
+    | ([(.labels.nodes // [])[].name | select(startswith("horizon:"))] | first) as $h
+    | ([(.projectItems.nodes // [])[] | select(.project.number == 2) | .priority.name
+        | select(. != null)] | first) as $p
+    | . + {h: $h, p: $p, hr: ($horizons[$h // ""] // 3), pr: ($priorities[$p // ""] // 3)})
+  | sort_by(.hr, .pr, .number) | .[] |
+  "- #\(.number) \(.title)\n    "
+  + (if .h then (.h | ltrimstr("horizon:")) else "no horizon" end)
+  + ", " + (.p // "no priority")
+')
+
 landed_lines=$(printf '%s' "$merged_prs" | jq -r "
   sort_by(.mergedAt) | reverse | .[:$landed_limit] | .[] |
   \"- #\(.number) — \(.title) (merged \(.mergedAt | split(\"T\")[0]))\"
@@ -221,6 +262,17 @@ fi
 capped "$epics" "$epics_limit"
 echo "    Pick the next slice from an epic. An open issue under none is a"
 echo "    one-off, or a sign a new epic is due (how-the-work-runs.md, Epics)."
+
+section "READY (the owner's sign-off, top first)" "$ready_lines"
+echo
+if [ -n "$ready_error" ]; then
+  echo "    GitHub did not answer, so this section is not an answer either:"
+  echo "    $ready_error"
+fi
+capped "$ready" "$ready_limit"
+echo "    Only the owner adds the ready label: the plan, and any mockup, are approved."
+echo "    Order: horizon, then the board's Priority, then oldest first. Build from"
+echo "    here first; an epic's next child waits until the owner marks it ready."
 
 section "IN FLIGHT (open PRs)" "$pr_lines"
 capped "$open_prs" "$open_limit"

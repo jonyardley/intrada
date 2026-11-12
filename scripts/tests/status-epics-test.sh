@@ -25,6 +25,12 @@ done
 body='[]'
 case "$1 ${2:-}" in
   "api graphql")
+    # The ready queue has its own read and its own self-test.
+    if printf '%s' "$*" | grep -qF 'labels: ["ready"]'; then
+      body='{"data":{"repository":{"issues":{"nodes":[]}}}}'
+      [ -n "$jq_expr" ] && printf '%s' "$body" | jq -r "$jq_expr" || printf '%s' "$body"
+      exit 0
+    fi
     if [ -n "${FAIL_EPICS:-}" ]; then
       echo "gh: Something went wrong while executing your query." >&2
       exit 1
@@ -122,21 +128,21 @@ refute "$out" "never prints zero of zero" "0 of 0 done"
 
 epics '[]'
 out="$("$script")"
-section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^IN FLIGHT/p')"
+section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^READY/p')"
 check "$section" "an empty section says nothing, not blank" "    nothing"
 
 # ── More epics than the read fetches ────────────────────────────────────────
 
 epics "$(jq -nc '[range(30) | {number: ., title: "Epic", subIssues: {nodes: []}}]')"
 out="$("$script")"
-section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^IN FLIGHT/p')"
+section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^READY/p')"
 check "$section" "says when the cap bit" "showing the first 30; there are more"
 
 # ── GitHub refusing the read ────────────────────────────────────────────────
 
 epics '[{"number":7,"title":"Work the audit","subIssues":{"nodes":[]}}]'
 out="$(FAIL_EPICS=1 "$script")"
-section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^IN FLIGHT/p')"
+section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^READY/p')"
 check "$section" "names the outage rather than showing an empty section" "GitHub did not answer"
 check "$section" "carries GitHub's own words" "Something went wrong"
 check "$out" "keeps the rest of the report" "RECENTLY LANDED"
