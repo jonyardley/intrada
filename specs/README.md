@@ -11,6 +11,7 @@ The specs that remain:
 - [`android-shell.md`](android-shell.md): the Android app on the shared core
 - [`background-audio-plugin.md`](background-audio-plugin.md): the click in the background, prior art for #1600
 - [`chart-to-scaffold.md`](chart-to-scaffold.md): exercises from a chord chart
+- [`crew-loop.md`](crew-loop.md): the overnight crew that builds ready issues to a draft
 - [`exercise-variations.md`](exercise-variations.md): variations, keys and plays
 - [`getting-cold-signal.md`](getting-cold-signal.md): "not practised lately"
 - [`icloud-sync.md`](icloud-sync.md): iPhone and iPad sync
