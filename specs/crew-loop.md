@@ -55,9 +55,11 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 5. **Watch.** The script polls `claude agents --json` for the session's state
    and checks the caps.
 6. **Lessons.** The retro posts its lessons as an issue comment headed
-   Lessons, never into `docs/lessons.md`, so two drafts never conflict. The
-   next brief carries `docs/lessons.md` from main plus the Lessons comments on
-   open crew drafts.
+   Lessons and labels the issue `lessons-pending`, never writing
+   `docs/lessons.md`, so two drafts never conflict. The next brief carries
+   `docs/lessons.md` from main plus every Lessons comment under that label,
+   open or closed, so a merged draft's lessons are not lost; the monthly prune
+   folds them into the file and removes the label.
 7. **Push.** The owner's phone is told the outcome, then the next issue
    starts.
 
@@ -139,13 +141,35 @@ a prompt; the loop takes the next issue.
 
 ## The session side (slice 2, #2820)
 
+- `.claude/commands/crew.md` is the brief: the loop starts the session with
+  `/crew N`. Whether a background session expands a command in its first
+  prompt is proved in #2821; if not, the prompt names the file instead.
 - `.claude/agents/qa.md` on Opus, since ticking a criterion against a
-  screenshot is judgement. Read-only on code: it runs `just ios-run` and
-  `just android-run`, leaves the gates to `test-runner`, and posts one line
-  per criterion with its evidence.
-- Loop mode in `.claude/commands/ship.md`: the gates, `reviewer`, then the
-  draft, and stop.
-- The `docs/lessons.md` header says crew lessons arrive as Lessons comments.
+  screenshot is judgement. Read-only on code: it launches both apps with
+  `just ios-run` and `just android-run`, each screenshot kept in the
+  worktree, leaves the gates to `test-runner`, and reports one line per
+  criterion with its evidence; the session posts it. It never uses Xcode's
+  tool server, which asks for approval once per new worktree; taps are
+  proved by UI tests.
+- Loop mode in `.claude/commands/ship.md` (`/ship loop`): the retro as a
+  Lessons comment, the gates, `reviewer`, `qa`, the park step on the diff,
+  the draft and the CI watch, and stop.
+
+### Notes on the issue
+
+Every step ends with one comment headed `**Crew: <step>**`, the record a
+restart and the loop read: the newest such comment is the last step done.
+
+| Heading | Posted when |
+|---|---|
+| `**Crew: brief**` | Before building: the plan it follows, the slices, the criteria |
+| `**Crew: built**` | The slices are committed |
+| `**Crew: reviewed**` | The self-review is clean: rounds and verdict |
+| `**Crew: QA**` | The `qa` report, one line per criterion |
+| `**Crew: draft**` | The draft is open and CI has a conclusion |
+| `**Crew: parked**` | The issue parks: what is done, and one question |
+
+The Lessons comment is headed `**Lessons**`, outside this sequence.
 
 ## Rabbit hole
 

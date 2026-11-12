@@ -16,6 +16,7 @@ enforce loses its prose in the same change.
 | Starting a unit of work | `just claim N`. It refuses, naming the other branch, when the issue is claimed or an open PR references it; otherwise it labels the issue and moves the board to In progress |
 | Asked "what's next" or "what can run in parallel" | Answer from `just status` and the session-start claims list, with no further reads (#1836) |
 | Jon, losing track of the worktrees | `just worktree-status`: whose move each one is, and how many are safe to remove (#2783) |
+| A crew session, started by the crew loop (#2803) | `/crew N` (`.claude/commands/crew.md`): the `ready` label is the go, `just claim N` runs inside the worktree the loop made, and a note on the issue ends every step |
 | About to start a third fix on one issue | Stop: two corrections on one point mean asking whether the approach is wrong, and `just claim` refuses a third claim at two merged PRs titled with the issue (#1890, #2593) |
 
 A claim is the check that the work is not already in flight:
@@ -33,6 +34,7 @@ branch (#1702).
 | You are | Do |
 |---|---|
 | About to edit anything | `just worktree-new <name>` from the main checkout, `cd <worktree> && ` before every shell command, and read the `.claude/rules/` files for the surfaces you touch by hand |
+| A crew session | Work only in the worktree the loop started you in; make no other |
 | Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one, and paste it into a new chat in the main checkout. Never a worktree command for Jon |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
 | Spawning a subagent | Name the worktree by absolute path in the brief, or its edits land in main and `reviewer` diffs the wrong tree (#1861) |
@@ -170,6 +172,7 @@ summary verbatim at PR creation, naming the agent.
 | You are | Do |
 |---|---|
 | About to open or update a PR | `/ship`: two or three lessons to [`lessons.md`](lessons.md) before the PR first opens, gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
+| A crew session about to open its PR | `/ship loop`: the same gates and review, then `qa`, the park step on the diff, the draft and the CI watch, and stop; ready and merge are Jon's, and the guards refuse them |
 | The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone and Android screenshots |
 | Jon, reviewing | Read the body and the self-review; merge when green |
 | The unit has shipped | `/clear` in the same sitting, after `just worktree-rm` |

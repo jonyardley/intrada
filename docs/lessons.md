@@ -26,9 +26,16 @@
 - A worktree prints its own copy, so one behind main misses newer lessons.
 - Two branches adding lessons at once conflict at the end of the file; keep
   both sides.
+- **A crew session never edits this file** (#2820), since a night's drafts
+  would conflict here. Its retro posts the lessons as one issue comment
+  headed **Lessons** and adds the `lessons-pending` label; every crew brief
+  reads those comments beside this file, whatever the issue's state. The
+  monthly prune folds them in here and removes the label.
 
 ## Lessons
 
-- 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives.
+- 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives (seen again 1).
 - 2026-11-12, #2801: rebasing a branch of several commits onto a main that changed the same lines conflicts once per commit; squash it to one commit first and resolve once.
 - 2026-11-12, #2801: in auto mode, the rtk hook (this machine only) rewrites some commands after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it.
+- 2026-11-12, #2820: a GitHub label description holds at most 100 characters, and `gh label create` refuses a longer one with a 422; count before sending.
+- 2026-11-12, #2820: the #2803 plan page numbers the session side slice 3 and the spec calls it slice 2; name a slice by its issue number, never its position.

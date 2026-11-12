@@ -56,7 +56,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 
 ## Process
 
-- Agent teams retired: one agent per vertical slice (#1223).
+- Agent teams retired: one agent per vertical slice (#1239).
 - Mutation-test by deleting a line, not inverting it (#1423).
 - Rented macOS runners replaced by the self-hosted Mac (#1577, #1962).
 - Harness changes are judged on speed, rework and spend; a lever unmoved after two reads is reverted (#1897, #1898).
@@ -64,7 +64,8 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - August 2026 audit of the restored builder: fix and trim first, then the tone of voice doc and one copy sweep (#1344, #1359).
 - September 2026 audit: silent data loss first, then wrong on screen, then drag (#1967).
 - Agents take a ready issue to a draft PR; sign-off on plan, mockup, screenshots and merge stays with a person (#2799).
-- Pencil (pen.dev) is trialled beside Claude Design on the next new screen, then one is chosen (#2799).
+- Pencil (pen.dev) is trialled beside Claude Design on the next new screen, then one is chosen; the trial moved to the design tooling epic on 2026-11-12 (#2698).
 - The agent crew builds on this repo's own harness: claim, leased worktrees, task, reviewer and test agents, guards (#2799).
-- Claude models only; a one-evening bake-off picks the harness from today's setup, a Claude Code workflow and Archon without auto-merge (#2799).
+- Claude models only. The crew loop is a script that starts one Claude Code background session per issue, qualified by seven checks; the one-evening bake-off was dropped on 2026-11-12, since one run per candidate could not separate them (#2799, #2802).
+- The crew shares the owner's GitHub login, held by local guards (#2812); its own login is #2811. Agents merge nothing, whatever the risk (#2799).
 - Agent knowledge stays in the repo and on GitHub: hand-offs as issue comments, one pruned lessons file, no wiki or memory database (#2799).
