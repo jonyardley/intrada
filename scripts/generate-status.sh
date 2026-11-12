@@ -62,6 +62,7 @@ if ! epics=$(gh api graphql -f query="$epics_query" -f owner="${repo%%/*}" \
 fi
 
 # The ready queue (#2800). A claimed issue is left out: CLAIMED or IN FLIGHT already shows it.
+# An epic is left out too: it is approved through its issues, not built (#2808).
 ready_limit=50
 ready_error=""
 ready_query='query($owner: String!, $name: String!, $limit: Int!) {
@@ -188,6 +189,7 @@ ready_lines=$(printf '%s\n%s' "$ready" "$claimed" | jq -rs '
   {"horizon:now": 0, "horizon:next": 1, "horizon:later": 2} as $horizons |
   {"P0": 0, "P1": 1, "P2": 2} as $priorities |
   $ready | map(select([.number] | inside($flying) | not)
+    | select([(.labels.nodes // [])[].name] | index("epic") | not)
     | ([(.labels.nodes // [])[].name | select(startswith("horizon:"))] | first) as $h
     | ([(.projectItems.nodes // [])[] | select(.project.number == 2) | .priority.name
         | select(. != null)] | first) as $p

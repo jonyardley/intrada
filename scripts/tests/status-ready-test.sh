@@ -119,6 +119,15 @@ ready "[{\"number\":80,\"title\":\"Other board\",
 out="$("$script")"
 check "$(section_of "$out")" "reads Priority from intrada's board only" "now, no priority"
 
+# ── An epic marked ready stays out; its issues stand on their own label ─────
+
+ready "[{\"number\":90,\"title\":\"A whole epic\",
+  \"labels\":{\"nodes\":[{\"name\":\"ready\"},{\"name\":\"epic\"},{\"name\":\"horizon:now\"}]},
+  \"projectItems\":{\"nodes\":[]}}, $(issue 91 "One of its issues" horizon:now P1)]"
+out="$("$script")"
+refute "$(section_of "$out")" "never offers an epic" "- #90"
+check "$(section_of "$out")" "keeps an issue carrying the label itself" "- #91 One of its issues"
+
 # ── A claimed ready issue leaves the queue ──────────────────────────────────
 
 cat >"$FIXTURES/claimed.json" <<'JSON'

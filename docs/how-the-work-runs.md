@@ -20,7 +20,7 @@ Every issue a person or an agent opens carries a horizon and a kind (`bug`,
 | `security` | Security-relevant |
 | `ios` / `android` | The app the work touches |
 | `epic` | A body of work whose issues are its sub-issues ([Epics](#epics)) |
-| `ready` | The owner has approved the plan and, for a new or changed screen, the mockup; an agent may build it. Only the owner adds it |
+| `ready` | The owner has approved the plan and, for a new or changed screen, the mockup; an agent may build it. Only the owner adds it, and to an epic's issues, never the epic |
 
 ### Horizons
 
