@@ -169,8 +169,7 @@ summary verbatim at PR creation, naming the agent.
 
 | You are | Do |
 |---|---|
-| About to open or update a PR | `/ship`: gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
-| Opening the PR | Two or three lessons to [`lessons.md`](lessons.md) before the gates, the `/ship` retro step; every session start prints the file (#2801) |
+| About to open or update a PR | `/ship`: two or three lessons to [`lessons.md`](lessons.md) before the PR first opens, gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
 | The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone and Android screenshots |
 | Jon, reviewing | Read the body and the self-review; merge when green |
 | The unit has shipped | `/clear` in the same sitting, after `just worktree-rm` |

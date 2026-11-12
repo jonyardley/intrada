@@ -18,9 +18,8 @@ if [ ! -f "$file" ]; then
   exit 2
 fi
 
-# Lessons are the list items from the "## Lessons" heading to the end of the
-# file, which is what the session start hook prints; the rules above it are
-# list items too and do not count. No heading means the hook prints nothing.
+# Count list items from "## Lessons" to the end, the span the session start
+# hook prints; no heading means it prints nothing (#2801).
 count=$(awk '/^## Lessons$/ { seen = 1; next } seen && /^- / { n++ } END { print (seen ? n + 0 : -1) }' "$file")
 
 if [ "$count" -lt 0 ]; then
