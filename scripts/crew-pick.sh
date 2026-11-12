@@ -14,7 +14,9 @@ set -uo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO=${CREW_REPO:-jonyardley/intrada}
-SCREEN_PATHS='ios/Intrada/Views/|android/app/src/main/kotlin/com/intrada/android/ui/'
+# Abbreviated as plans write them (Views/LibraryView.swift, ui/library/): erring
+# towards a screen only asks for a mockup.
+SCREEN_PATHS='(^|[^[:alnum:]_.-])(Views|ui)/'
 
 if [ $# -ne 1 ] || ! [[ $1 =~ ^[0-9]+$ ]]; then
   echo "usage: $0 <issue-number>" >&2
@@ -54,18 +56,30 @@ reasons=""
 fail() { reasons="$reasons- $1"$'\n'; }
 
 body=$(get '.body')
-plan=$(get '[.comments.nodes[] | select((.body | contains("**Done looks like**")) and (.body | contains("**Files**")))] | last // empty')
+plan=$(get '[.comments.nodes[] | select((.body | test("\\*\\*Done looks like:?\\*\\*")) and (.body | test("\\*\\*Files:?\\*\\*")))] | last // empty')
 plan_body=$(printf '%s' "$plan" | jq -r '.body // empty' 2>/dev/null | tr -d '\r')
 plan_edit=$(printf '%s' "$plan" | jq -r '.lastEditedAt // .createdAt // empty' 2>/dev/null)
 ready_at=$(get '[.timelineItems.nodes[] | select(.label.name == "ready") | .createdAt] | max // empty')
-plan_line() { printf '%s\n' "$plan_body" | grep -m1 "^\*\*$1\*\*:" | sed "s/^\*\*$1\*\*: *//"; }
+# A heading's text: written **H**: or **H:**, on its own line or not, with any
+# list items under it, since a long Files line becomes a list.
+plan_line() {
+  printf '%s\n' "$plan_body" | awk -v h="$1" '
+    on && /^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]/ { sub(/^[[:space:]]*([-*]|[0-9]+\.)[[:space:]]+/, ""); print; items = 1; next }
+    on && /^[[:space:]]*$/ && !items { next }
+    on { exit }
+    index($0, "**" h "**") == 1 || index($0, "**" h ":**") == 1 {
+      rest = substr($0, length(h) + 5); sub(/^:?\**:?[[:space:]]*/, "", rest)
+      if (rest != "") print rest
+      on = 1
+    }'
+}
 
 # Every issue needs a plan, whatever its tier: a tier guessed from the body
 # would let an unplanned issue through.
 if [ -z "$plan" ]; then
   fail "No plan comment in the shipping skill's skeleton: the crew builds only a plan with a Done looks like line and a Files line."
 else
-  for h in Tests Routing; do
+  for h in Files Tests Routing; do
     [ -n "$(plan_line "$h")" ] || fail "The plan comment has no $h line."
   done
   if [[ ! $ready_at > $plan_edit ]]; then
@@ -76,10 +90,12 @@ fi
 done_lines=$(printf '%s\n' "$body" | awk '
   /^#+ *Done looks like/ { on = 1; next }
   on && /^#/ { on = 0 }
-  on && /^[-*] / { sub(/^[-*] +/, ""); print }
+  on && /^([-*]|[0-9]+\.) / { sub(/^([-*]|[0-9]+\.) +/, ""); print }
 ')
 plan_done=$(plan_line 'Done looks like')
-if [ -z "$done_lines" ] && [ -n "$plan_done" ]; then
+if printf '%s\n' "$body" | grep -qE '^#+ *Done looks like'; then
+  [ -n "$done_lines" ] || fail "The body's Done looks like heading has no list items under it."
+elif [ -n "$plan_done" ]; then
   done_lines=$(printf '%s\n' "$plan_done" | tr ';' '\n' | sed 's/^ *//; /^$/d')
 fi
 if [ -z "$done_lines" ]; then
@@ -87,7 +103,7 @@ if [ -z "$done_lines" ]; then
 fi
 while IFS= read -r line; do
   [ -n "$line" ] || continue
-  printf '%s' "$line" | grep -qiE 'test|snapshot|screenshot' ||
+  printf '%s' "$line" | grep -qiE '(^|[^[:alnum:]])(self-test|tests?|snapshots?|screenshots?)([^[:alnum:]-]|$)' ||
     fail "A Done looks like line names no test, snapshot or screenshot as its evidence: \"$line\""
 done <<<"$done_lines"
 if printf '%s\n%s\n' "$done_lines" "$plan_done" | grep -qi 'needs your call'; then
@@ -98,17 +114,21 @@ files=$(plan_line Files)
 if printf '%s' "$files" | grep -qE "$SCREEN_PATHS"; then
   mockup=$(plan_line Mockup)
   if ! printf '%s' "$mockup" | grep -q 'https://claude\.ai/' ||
-    ! printf '%s' "$mockup" | grep -qiE 'approved[^0-9]*[0-9]{4}-[0-9]{2}-[0-9]{2}'; then
-    fail "A screen issue needs a Mockup line with the canvas link and the owner's dated approval."
+    ! printf '%s' "$mockup" | grep -qiE '(^|[^[:alnum:]])approved( the mockup)? on [0-9]{4}-[0-9]{2}-[0-9]{2}' ||
+    printf '%s' "$mockup" | grep -qi 'not approved'; then
+    fail "A screen issue needs a Mockup line with the canvas link and the owner's word, \"approved the mockup on\" a date."
   fi
 fi
 
-blockers=$(get '[.blockedBy.nodes[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")')
+blockers=$(printf '%s' "$issue" | jq -er '[(.blockedBy.nodes // error("no blockedBy")) [] | select(.state == "OPEN") | "#\(.number)"] | join(", ")' 2>/dev/null) || {
+  echo "crew-pick: no blocked-by list for #$n in the reply" >&2
+  exit 2
+}
 [ -z "$blockers" ] || fail "Blocked by $blockers, still open."
 
 if [ -n "$plan" ]; then
   park_in=$tmp/park-input
-  printf '%s\n' "$files" >"$park_in"
+  printf '%s\n' "$plan_body" >"$park_in"
   park_out=$("$root/scripts/crew-park.sh" "$park_in" 2>&1)
   case $? in
     0) ;;
@@ -131,7 +151,7 @@ if [ "$said" != 0 ]; then
   echo "Already said on #$n since the plan or the label last changed; no new comment."
   exit 1
 fi
-comment="**Crew skipped**: the crew passes over this issue until the plan is edited or the ready label is added again.
+comment="**Crew skipped**: the crew passes over this issue while any reason below holds, and says so once until the plan is edited or the ready label is added again.
 
 $reasons"
 if gh api "repos/$REPO/issues/$n/comments" -f body="$comment" >/dev/null 2>&1; then

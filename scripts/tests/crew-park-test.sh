@@ -36,6 +36,12 @@ plan store-swift '**Files**: ios/Intrada/Core/SharedItemStore.swift'
 plan plain '**Files**: `docs/roadmap.md`, ios/Intrada/Views/LibraryView.swift, crates/intrada-core/src/app.rs'
 plan near-miss '**Files**: crates/intrada-ffi-tools/src/main.rs, ios/generatedish/x.swift, crates/intrada-storefront'
 plan empty ''
+plan abbrev-ffi '**Files**: intrada-ffi/src/lib.rs'
+plan abbrev-session '**Files**: `domain/session/active.rs`'
+plan crate-prose 'Decisions: the intrada-store migrations stay as they are.'
+plan abbrev-store-swift '**Files**: Core/SharedItemStore.swift'
+plan wider-glob '**Files**: every file under crates/**'
+plan abbrev-miss '**Files**: session/active.rs, src/lib.rs, intrada-core/src/app.rs, ios/Intrada/Views/*.swift, **Tests**: none'
 printf 'diff --git a/docs/x.md b/docs/x.md\n--- a/docs/x.md\n+++ b/docs/x.md\n@@ -1 +1 @@\n+A plan naming crates/intrada-ffi/ exits 3.\n' >"$work/diff-mentions"
 printf 'diff --git a/crates/intrada-ffi/src/lib.rs b/crates/intrada-ffi/src/lib.rs\nindex 1..2 100644\n--- a/crates/intrada-ffi/src/lib.rs\n+++ b/crates/intrada-ffi/src/lib.rs\n' >"$work/diff-ffi"
 printf 'diff --git a/x b/crates/intrada-store/src/lib.rs\nnew file mode 100644\n--- /dev/null\n+++ b/crates/intrada-store/src/lib.rs\n' >"$work/diff-new-store"
@@ -50,6 +56,12 @@ expect 3 store "crates/intrada-store/src/migrations.rs matches" park store
 expect 3 bridge-name "CoreBridge.kt matches android/app/src/main/kotlin/com/intrada/android/core/CoreBridge.kt" park bridge-name
 expect 3 store-swift "ios/Intrada/Core/SharedItemStore.swift matches" park store-swift
 expect 0 plain "" park plain
+expect 3 abbrev-ffi "intrada-ffi/src/lib.rs matches crates/intrada-ffi/**" park abbrev-ffi
+expect 3 abbrev-session "domain/session/active.rs matches crates/intrada-core/src/domain/session/**" park abbrev-session
+expect 3 crate-prose "intrada-store matches crates/intrada-store/**" park crate-prose
+expect 3 abbrev-store-swift "Core/SharedItemStore.swift matches" park abbrev-store-swift
+expect 3 wider-glob "crates/** matches crates/intrada-ffi/**" park wider-glob
+expect 0 abbrev-miss "" park abbrev-miss
 expect 0 near-miss "" park near-miss
 expect 0 empty "" park empty
 expect 0 diff-mentions "" park diff-mentions

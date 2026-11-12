@@ -36,8 +36,9 @@ turn limit:
 | Issues per night | 3 | The loop ends |
 | Daily spend | the day's `just usage` total past $150 | The loop ends before the next issue |
 
-The silence limit is longer than the simulator queue, so a session waiting
-its turn for the simulator is not mistaken for a stalled one.
+The silence limit is longer than the simulator queue, which waits up to 1800
+seconds (`IOS_SIM_LOCK_TIMEOUT` in `scripts/ios-sim-lock.sh`), so a session
+waiting its turn for the simulator is not mistaken for a stalled one.
 
 ## One issue, start to finish
 
@@ -72,23 +73,29 @@ the issue, its labels, comments, label events and blockers.
   over in silence: it is not in the queue.
 - **Plan.** Every issue, whatever its tier, has a plan comment: the newest
   comment with both the `**Done looks like**` and `**Files**` headings of the
-  shipping skill's skeleton, and `**Tests**` and `**Routing**` lines too. No
-  tier is guessed from the body, so an unplanned issue never qualifies.
+  shipping skill's skeleton, and non-empty Files, Tests and Routing too. A
+  heading may read `**Files**:` or `**Files:**`, or stand alone with a list
+  under it. No tier is guessed from the body, so an unplanned issue never
+  qualifies.
 - **Approved after the last edit.** The newest `ready` label event is later
   than the plan comment's last edit, so an edited plan needs the label again.
-- **Evidence.** Every line under the body's "Done looks like" heading names a
-  test, snapshot or screenshot. With no such heading, the plan's
-  `**Done looks like**` line is read instead, split at semicolons.
+- **Evidence.** Every item, bulleted or numbered, under the body's "Done looks
+  like" heading names a test, self-test, snapshot or screenshot as a whole
+  word. A heading with no items skips the issue. With no such heading, the
+  plan's `**Done looks like**` line is read instead, split at semicolons.
 - **No open call.** No "Done looks like" line, in the body or the plan, reads
   "needs your call".
-- **Mockup.** A screen issue, one whose `**Files**` line names a path under
-  `ios/Intrada/Views/` or the Android `ui/` package, has a `**Mockup**` line
-  with a claude.ai canvas link and "approved" with a date.
+- **Mockup.** A screen issue, one whose Files name a path in a `Views/` or
+  `ui/` folder, however shortened, has a `**Mockup**` line with a claude.ai
+  canvas link and "approved the mockup on" a date, never "not approved".
 - **No blocker.** No open issue in GitHub's "blocked by" relation.
-- **Not sensitive.** `crew-park.sh` exits 0 on the plan's `**Files**` line.
+- **Not sensitive.** `crew-park.sh` exits 0 on the whole plan comment.
+- **A reply it can trust.** A reply missing the blocked-by list exits 2, as a
+  failed read does, rather than reading as no blocker.
 
 On a skip, `crew-pick.sh` exits 1 and posts one comment headed
-**Crew skipped** listing every rule that failed. It posts none when a Crew
+**Crew skipped** listing every rule that failed; the issue stays skipped
+while any of them holds. It posts none when a Crew
 skipped comment already exists newer than both the last `ready` label event
 and the plan's last edit, so a skipped issue costs one comment until the owner
 edits the plan or re-adds the label. A failed GitHub read exits 2 and posts
@@ -102,9 +109,11 @@ paths. It exits 3, printing each match, when the file names a matching path;
 0 when it names none; 2 when the file or the list cannot be read, which the
 loop treats as a park.
 
-- A plan is read in full. A path counts when it matches a glob, names the
-  folder of a `/**` glob without its slash, or is the bare file name of a
-  glob with no wildcard.
+- A plan is read in full. Plans shorten paths, so a path counts when it
+  matches a glob, is the tail of a glob's fixed part two folders or longer
+  (`domain/session/active.rs`), names a crate's own folder (`intrada-ffi`),
+  is the file name of a glob with no wildcard, or is a wider glob of its own
+  (`crates/**`). Each errs towards parking.
 - A diff (a file with `diff --git` lines) is read by its changed-file headers
   only, so a test or document that merely mentions a sensitive path does not
   park the diff.

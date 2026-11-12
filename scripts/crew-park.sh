@@ -44,12 +44,36 @@ fi
 
 tokens=$(printf '%s\n' "$text" | grep -oE '[A-Za-z0-9_./*@-]+' | sed -E 's#^\./##; s#^-+##; s#^[ab]/##; s#\.+$##' | sort -u)
 
+# A plan abbreviates paths, so a token also counts when it is the tail of a
+# glob's literal prefix two segments or longer (domain/session/active.rs), a
+# crate's own folder (intrada-ffi), a literal glob's file name, or a wider glob
+# of its own (crates/**): each errs towards parking, never past it.
+names() {
+  local t=$1 glob=$2 prefix tail
+  # shellcheck disable=SC2053 # the glob is meant to match as a pattern
+  [[ $t == $glob ]] && return 0
+  prefix=${glob%%[*?[]*}
+  prefix=${prefix%/}
+  if [[ $t == *[*?]* ]]; then
+    tail=${t%%[*?]*}
+    [[ $tail == */* && "$prefix/" == "$tail"* ]]
+    return
+  fi
+  tail=$prefix
+  while [[ $tail == */* ]]; do
+    if [ "$t" = "$tail" ] || [[ $t == "$tail"/* ]]; then return 0; fi
+    tail=${tail#*/}
+  done
+  if [[ $prefix == crates/* && $prefix != crates/*/* ]] && { [ "$t" = "$tail" ] || [[ $t == "$tail"/* ]]; }; then
+    return 0
+  fi
+  [[ $glob != *[*?[]* ]] && [ "$t" = "$tail" ]
+}
+
 matched=0
 while IFS= read -r glob; do
   while IFS= read -r t; do
-    # shellcheck disable=SC2053 # the glob is meant to match as a pattern
-    if [[ $t == $glob ]] || { [[ $glob == */\*\* ]] && [ "$t" = "${glob%/\*\*}" ]; } ||
-      { [[ $glob != *[*?[]* ]] && [ "$t" = "${glob##*/}" ]; }; then
+    if names "$t" "$glob"; then
       echo "park: $t matches $glob in ${rules#"$root"/}"
       matched=1
     fi

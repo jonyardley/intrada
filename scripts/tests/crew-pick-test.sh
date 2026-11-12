@@ -173,8 +173,44 @@ fixture blocked "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}, {number
 expect 1 blocked "Blocked by #2810, #2811, still open." 1
 fixture sensitive "$PLAN.body = \$p" --arg p "$(plan_text "crates/intrada-ffi/src/lib.rs and its tests.")"
 expect 1 sensitive "sensitive surface, which the lead builds: crates/intrada-ffi/src/lib.rs matches crates/intrada-ffi/**" 1
-fixture sensitive-only-outside-files "$PLAN.body |= sub(\"one list\"; \"crates/intrada-ffi stays alone, one list\")"
-expect 0 sensitive-only-outside-files "qualifies" 0
+fixture sensitive-in-prose "$PLAN.body |= sub(\"one list\"; \"crates/intrada-ffi stays alone, one list\")"
+expect 1 sensitive-in-prose "crates/intrada-ffi matches crates/intrada-ffi/**" 1
+fixture sensitive-in-files-list "$PLAN.body |= sub(\"\\\\*\\\\*Files\\\\*\\\\*: [^\\r]*\"; \"**Files**:\\r\\n- docs/roadmap.md\\r\\n- intrada-store/src/lib.rs\")"
+expect 1 sensitive-in-files-list "intrada-store/src/lib.rs matches crates/intrada-store/**" 1
+
+# ── the review of 7da627e5: each case fails open without its fix ────────────
+fixture files-empty "$PLAN.body |= sub(\"\\\\*\\\\*Files\\\\*\\\\*: [^\\r]*\"; \"**Files**:\")"
+expect 1 files-empty "no Files line" 1
+fixture colon-inside "$PLAN.body |= (gsub(\"\\\\*\\\\*(?<h>[A-Za-z ]+)\\\\*\\\\*:\"; \"**\\(.h):**\"))"
+expect 0 colon-inside "qualifies" 0
+fixture files-list-screen "$PLAN.body |= sub(\"\\\\*\\\\*Files\\\\*\\\\*: [^\\r]*\"; \"**Files**\\r\\n\\r\\n- docs/roadmap.md\\r\\n- Views/LibraryView.swift\")"
+expect 1 files-list-screen "needs a Mockup line" 1
+fixture files-list-ends "$PLAN.body |= (sub(\"\\\\*\\\\*Files\\\\*\\\\*: [^\\r]*\"; \"**Files**\\r\\n- docs/roadmap.md\") | sub(\"\\\\*\\\\*Out of scope\\\\*\\\\*: [^\\r]*\"; \"**Out of scope**:\\r\\n- Views/LibraryView.swift, left alone\"))"
+expect 0 files-list-ends "qualifies" 0
+fixture screen-not-approved "$PLAN.body = \$p" --arg p "$(plan_text "ios/Intrada/Views/LibraryView.swift" "https://claude.ai/design/p/abc, not approved, sent 2026-11-02.")"
+expect 1 screen-not-approved "needs a Mockup line" 1
+fixture screen-not-approved-on "$PLAN.body = \$p" --arg p "$(plan_text "ios/Intrada/Views/LibraryView.swift" "https://claude.ai/design/p/abc, not approved on 2026-11-02.")"
+expect 1 screen-not-approved-on "needs a Mockup line" 1
+fixture evidence-substring "$I.body = \$b" --arg b "${BODY/
+## Where/- The latest view loads.
+- Testers see the new list.
+
+## Where}"
+expect 1 evidence-substring "evidence: \"The latest view loads.\"" 1
+n=$((n + 1))
+if ! grep -q 'evidence: "Testers see the new list."' "$work/evidence-substring/posted"; then
+  echo "✗ evidence-substring: Testers is not a test" >&2
+  fails=$((fails + 1))
+fi
+fixture numbered "$I.body = \$b" --arg b "${BODY/- Each/2. Each qualifying rule holds.
+- Each}"
+expect 1 numbered "evidence: \"Each qualifying rule holds.\"" 1
+fixture heading-no-items "$I.body = \"## Done looks like\n\nSee the plan.\n\n## Where it lives\n\nEpic #2799.\""
+expect 1 heading-no-items "Done looks like heading has no list items" 1
+fixture no-blocked-by "del($I.blockedBy)"
+expect 2 no-blocked-by "no blocked-by list" 0
+fixture null-blocked-by "$I.blockedBy = null"
+expect 2 null-blocked-by "no blocked-by list" 0
 fixture park-broken
 n=$((n + 1))
 out=$(CREW_PARK_RULES="$work/nowhere.md" FAKE="$work/park-broken" PATH="$work/bin:$PATH" bash "$script" 4242 2>&1) && rc=0 || rc=$?
