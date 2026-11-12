@@ -1,5 +1,5 @@
 ---
-description: Run the retro, the pre-push gates and the self-review before opening or updating a PR. The mechanics live in the intrada-shipping skill; this fixes the order.
+description: Run the retro, the pre-push gates and the self-review before opening or updating a PR; `/ship loop` is a crew session's mode, which stops at the draft. The mechanics live in the intrada-shipping skill; this fixes the order.
 ---
 
 Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.md` first: it holds the why and the body templates; this file holds the order.
@@ -11,5 +11,13 @@ Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.
 5. **Open** with `just pr-open ... --draft` and the body template from the skill, and post the review summary naming the agent.
 6. **Watch CI** to a conclusion in the same turn and read the PR's mergeability, not just the jobs. Reproduce a red UI test with `just ios-test-ui-class <Class>`, not the full tier.
 7. **Ready** with `just pr-ready PR ISSUE` only once every check is green on the last commit and each review finding is fixed or answered in the PR. A screen change also waits for the owner's yes on its screenshot.
+
+**Loop mode**, when the arguments say `loop`: a crew session (`.claude/commands/crew.md`), the same steps with five changes.
+
+- Retro: post the lessons as one issue comment headed `**Lessons**` and add the `lessons-pending` label to the issue; never edit `docs/lessons.md`, so the night's drafts never conflict.
+- After step 3, the `qa` agent, briefed with the worktree, the issue and the latest `test-runner` report. A failing criterion is fixed like a blocker, then the gates and `qa` run again.
+- Before step 5, the park step on the diff: `git diff origin/main...HEAD > "$TMPDIR/crew-diff-N"`, then `scripts/crew-park.sh` on that file. Exit 3 (a sensitive path) or 2 (unreadable) parks the issue.
+- Notes on the issue, each only on success: `**Crew: reviewed**` once step 3 leaves no blocker, `**Crew: QA**` with the `qa` report once every criterion passes, `**Crew: draft**` with the PR link once CI is green on the last commit. A failure is fixed and rerun, or parks the issue at its second failed round.
+- Stop after step 6. Step 7 is the owner's, and the guards refuse it.
 
 $ARGUMENTS

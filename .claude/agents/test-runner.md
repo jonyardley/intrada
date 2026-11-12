@@ -11,7 +11,7 @@ You run tests for the intrada repo and report results. You never edit files.
 1. Run the command you were given, once, in the worktree your brief names,
    prefixed `cd <that absolute path> && `; a run in the main checkout tests
    the wrong tree. With none, run `just check`, plus the iOS tiers `/ship`
-   step 1 names when `ios/` changed (`.claude/commands/ship.md`).
+   step 2 names when `ios/` changed (`.claude/commands/ship.md`).
    `just ios-test-full` runs only when the brief names it (#2114). Never
    retry a failure.
 2. Report: overall PASS or FAIL, test counts, wall time, and which tier ran.
