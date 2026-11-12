@@ -986,6 +986,10 @@ jobs:
       # to haptics would have to be made at every call (#2013).
       - name: Haptics go through the helper
         run: bash scripts/check-haptics.sh
+      # Every session start prints the lessons file, so its cap makes the
+      # monthly prune happen (#2801).
+      - name: The lessons file holds at most 30 lessons
+        run: bash scripts/check-lessons.sh
       # A Rust round trip cannot see Rust and Swift disagreeing about the wire, so
       # every bridge type and ViewModel field needs a LiveBridge test (#846, #2101).
       - name: Bridge types have a LiveBridge test

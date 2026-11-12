@@ -140,6 +140,10 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/session-claims.sh 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "sed -n '/^## Lessons$/,$p' \"$CLAUDE_PROJECT_DIR\"/docs/lessons.md 2>/dev/null || true"
           }
         ]
       }

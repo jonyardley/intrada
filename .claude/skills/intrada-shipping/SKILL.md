@@ -69,6 +69,14 @@ a PR description is not tracking. The comment ends `Deferred items tracked:
 its epic with `just epic-add EPIC N`; a genuine one-off stays single
 (`docs/how-the-work-runs.md`, Epics).
 
+## Retro
+
+Before the gates, the session adds two or three lessons to
+`docs/lessons.md`, so they ride in the first push and the next session reads
+them at its start (#2801). A repeat marks the old line rather than adding one,
+so the file keeps what recurs; a lesson seen again three times becomes a rule
+only with the owner's yes.
+
 ## PR bodies and issues
 
 Both are read cold, months later. The headings in
