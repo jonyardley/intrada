@@ -1027,6 +1027,12 @@ jobs:
       # nothing (#2802).
       - name: The crew qualification still judges each check
         run: bash scripts/tests/crew-qualify-test.sh
+      # A park step that lets a sensitive plan through, or a pick that comments
+      # every night, would cost the owner a silent bug or a noisy issue (#2819).
+      - name: The crew still parks a sensitive plan
+        run: bash scripts/tests/crew-park-test.sh
+      - name: The crew still skips an issue that does not qualify, once
+        run: bash scripts/tests/crew-pick-test.sh
       - name: just pr-open still refuses an unclaimed issue
         run: bash scripts/tests/pr-open-test.sh
       - name: just issue-open still refuses an unlabelled issue

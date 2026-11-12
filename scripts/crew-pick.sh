@@ -33,8 +33,10 @@ query='query($owner: String!, $name: String!, $n: Int!) {
     }
   }
 }'
-raw=$(gh api graphql -f query="$query" -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F n="$n" 2>&1) || {
-  echo "crew-pick: could not read #$n: $(printf '%s' "$raw" | tail -1)" >&2
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/crew-pick.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
+raw=$(gh api graphql -f query="$query" -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F n="$n" 2>"$tmp/err") || {
+  echo "crew-pick: could not read #$n: $(tail -1 "$tmp/err")" >&2
   exit 2
 }
 issue=$(printf '%s' "$raw" | jq -ce '.data.repository.issue // empty' 2>/dev/null) || {
@@ -105,8 +107,7 @@ fi
 blockers=$(get '[.blockedBy.nodes[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")')
 [ -z "$blockers" ] || fail "Blocked by $blockers, still open."
 
-park_in=$(mktemp)
-trap 'rm -f "$park_in"' EXIT
+park_in=$tmp/park-input
 if [ "$tier" = 1 ]; then printf '%s\n' "$body" >"$park_in"; else printf '%s\n' "$files" >"$park_in"; fi
 if [ "$tier" = 1 ] || [ -n "$plan" ]; then
   park_out=$("$root/scripts/crew-park.sh" "$park_in" 2>&1)

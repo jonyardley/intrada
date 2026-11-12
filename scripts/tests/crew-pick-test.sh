@@ -86,7 +86,12 @@ PLAN="$I.comments.nodes[1]"
 expect() {
   local want=$1 name=$2 needle=$3 posts=$4 out rc=0 got
   n=$((n + 1))
-  out=$(FAKE="$work/$name" PATH="$work/bin:$PATH" bash "$script" 4242 2>&1) || rc=$?
+  mkdir -p "$work/$name/tmp"
+  out=$(TMPDIR="$work/$name/tmp" FAKE="$work/$name" PATH="$work/bin:$PATH" bash "$script" 4242 2>&1) || rc=$?
+  if [ -n "$(ls -A "$work/$name/tmp")" ]; then
+    echo "✗ $name: left temporary files behind" >&2
+    fails=$((fails + 1))
+  fi
   got=$(grep -c '^\*\*Crew skipped\*\*' "$work/$name/posted" 2>/dev/null || true)
   if [ "$rc" -ne "$want" ] || [[ "$out" != *"$needle"* ]] || [ "${got:-0}" -ne "$posts" ]; then
     echo "✗ $name: wanted exit $want, '$needle' and $posts comments; got exit $rc, ${got:-0} comments: $out" >&2
@@ -147,6 +152,11 @@ fixture plan-done-no-evidence "$I.body = \"Tier 2.\" | $PLAN.body = \$p" --arg p
 expect 1 plan-done-no-evidence "evidence: \"a second pass adds none\"" 1
 fixture no-done-lines "$I.body = \"Tier 1.\" | $I.comments.nodes = [$I.comments.nodes[0]]"
 expect 1 no-done-lines "No Done looks like lines" 1
+n=$((n + 1))
+if grep -q 'evidence: ""' "$work/no-done-lines/posted"; then
+  echo "✗ no-done-lines: an empty line was judged as a Done looks like line" >&2
+  fails=$((fails + 1))
+fi
 fixture call-in-body "$I.body = \$b" --arg b "${BODY/(self-test)./(self-test), but the wording needs your call.}"
 expect 1 call-in-body "still needs your call" 1
 fixture call-in-plan "$PLAN.body = \$p" --arg p "$(plan_text "" "" "the park step exits 3 (self-test); Needs your call on the wording")"
