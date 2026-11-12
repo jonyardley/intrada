@@ -30,3 +30,5 @@
 - 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever the handover's order says.
 - 2026-11-12, #2801: `gh issue view N --comments` can print nothing; `--json body,comments` reads the same issue reliably.
 - 2026-11-12, #2801: an epic has no plan comment of its own; the brief is its next open child's issue, so read that before planning.
+- 2026-11-12, #2801: rebasing a branch of several commits onto a main that changed the same lines conflicts once per commit; squash it to one commit first and resolve once.
+- 2026-11-12, #2801: in auto mode, the rtk hook rewrites some `gh` calls after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it.
