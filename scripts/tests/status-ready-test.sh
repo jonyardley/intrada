@@ -2,7 +2,7 @@
 # Self-test for the READY block of scripts/generate-status.sh (#2800). A fake
 # `gh` on PATH serves real-shaped payloads and honours --jq, so the script's
 # own jq programs are what the assertions exercise: only labelled issues, the
-# order by horizon then Priority then age, claimed ones dropped, and the read
+# order by horizon then Priority then age, claimed ones dropped, epics left out, and the read
 # failing.
 set -euo pipefail
 
@@ -118,6 +118,15 @@ ready "[{\"number\":80,\"title\":\"Other board\",
   \"projectItems\":{\"nodes\":[{\"project\":{\"number\":9},\"priority\":{\"name\":\"P0\"}}]}}]"
 out="$("$script")"
 check "$(section_of "$out")" "reads Priority from intrada's board only" "now, no priority"
+
+# ── An epic marked ready stays out; its issues stand on their own label ─────
+
+ready "[{\"number\":90,\"title\":\"A whole epic\",
+  \"labels\":{\"nodes\":[{\"name\":\"ready\"},{\"name\":\"epic\"},{\"name\":\"horizon:now\"}]},
+  \"projectItems\":{\"nodes\":[]}}, $(issue 91 "One of its issues" horizon:now P1)]"
+out="$("$script")"
+refute "$(section_of "$out")" "never offers an epic" "- #90"
+check "$(section_of "$out")" "keeps an issue carrying the label itself" "- #91 One of its issues"
 
 # ── A claimed ready issue leaves the queue ──────────────────────────────────
 
