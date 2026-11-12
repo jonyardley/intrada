@@ -2,7 +2,7 @@
 # Self-test for the READY block of scripts/generate-status.sh (#2800). A fake
 # `gh` on PATH serves real-shaped payloads and honours --jq, so the script's
 # own jq programs are what the assertions exercise: only labelled issues, the
-# order by horizon then Priority then age, claimed ones dropped, and the read
+# order by horizon then Priority then age, claimed ones dropped, epics left out, and the read
 # failing.
 set -euo pipefail
 
