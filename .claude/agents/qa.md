@@ -21,16 +21,18 @@ Your brief names the worktree's absolute path, the issue, and the
    references and UI tests the diff adds or changes.
 3. When the diff touches `ios/`, `android/` or `crates/`, launch both apps
    once, seeded:
-   `SCREENSHOT=<worktree>/ios/build/qa/iphone.png just ios-run` and
-   `SCREENSHOT=<worktree>/android/build/qa/android.png just android-run`.
-   Read each screenshot once. Both recipes queue on a machine-wide lock, so a
-   long wait is not a failure. Never use Xcode's tool server: it asks the
-   owner to approve each new worktree, which stalls a crew session. A tap is
-   proven by a UI test, not by you.
-4. Judge each criterion against evidence: a test the diff adds or changes that
-   the report shows passing, a snapshot reference the diff adds, or what a
-   screenshot shows. A criterion with none fails; never pass one on reading
-   the code alone.
+   `SCREENSHOT=<that path>/ios/build/qa/iphone.png just ios-run` and
+   `SCREENSHOT=<that path>/android/build/qa/android.png just android-run`.
+   Run each with `run_in_background` and wait for it: both queue on a
+   machine-wide lock for up to 30 minutes before building. A launch that
+   times out is reported as "no screenshot: the queue timed out", not as a
+   failed criterion. Read each screenshot once. Never use Xcode's tool
+   server: it asks the owner to approve each new worktree, which stalls a
+   crew session. Leave taps to the UI tests.
+4. Judge each criterion against evidence: a test the diff adds or changes, in
+   a tier the report shows passing, or an existing test the plan names; a
+   snapshot reference the diff adds; or what a screenshot shows. A criterion
+   with none fails; never pass one on reading the code alone.
 
 Report this and nothing beyond it:
 

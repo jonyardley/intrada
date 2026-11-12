@@ -16,8 +16,14 @@ the `ready` label or start a second issue; the guards refuse the first three.
 
 1. Read where things stand: `git status`, `git log --oneline origin/main..HEAD`
    and `gh issue view N --comments`. The newest comment headed `**Crew:` is
-   the last step done; carry on from the step after it and never redo one its
-   note records.
+   the last step done:
+   - `draft`, or `parked` with the `needs-owner` label still on: end the
+     turn, as there is nothing for you to do.
+   - `parked` with the label removed: the owner has answered below it; carry
+     on from the step that parked, with that answer.
+   - Anything else: carry on from the step after it, and never redo one its
+     note records. Resuming at the self-review or later reruns the gates
+     first, so `qa` gets a fresh `test-runner` report.
 2. `just claim N`. A repeat on this branch is safe; a refusal naming another
    branch parks.
 3. Read the lessons: the session start printed `docs/lessons.md`; add the
@@ -39,11 +45,16 @@ restart and the loop can read where you are.
    Core commits first, then iOS, then Android; commit each slice.
 3. **Ship** with `/ship loop`: the retro as a Lessons comment, the gates, the
    self-review, `qa`, the park step on the diff, the draft and the CI watch.
-   It adds three notes: `**Crew: reviewed**` (the rounds and the verdict),
-   `**Crew: QA**` (the `qa` report verbatim, naming the agent) and
-   `**Crew: draft**` (the PR link and CI's conclusion).
+   It adds three notes, each only on success: `**Crew: reviewed**` (the
+   rounds and the verdict, once no blocker is left), `**Crew: QA**` (the
+   `qa` report verbatim, naming the agent, once every criterion passes) and
+   `**Crew: draft**` (the PR link, once CI is green on the last commit).
 
 Then end the turn, with no question.
+
+Never use Xcode's tool server: it asks the owner to approve each new
+worktree, which stalls the session. `qa` takes the screenshots, and UI tests
+prove taps.
 
 ## Parking
 

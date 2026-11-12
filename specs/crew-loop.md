@@ -120,8 +120,8 @@ loop treats as a park.
   only, so a test or document that merely mentions a sensitive path does not
   park the diff.
 
-The loop runs it twice: on the plan before the session starts, and on the
-diff before the draft opens.
+It runs twice: the loop runs it on the plan before the session starts, and
+the session runs it on its diff before the draft opens (`/ship loop`).
 
 ## Parking (slices 2 and 3)
 
@@ -131,7 +131,8 @@ An issue parks on any of:
 - a turn that ends in a question (blocked and idle);
 - a session shown working with no process behind it;
 - any cap above;
-- two failed review or QA rounds;
+- two failed review, QA or CI rounds;
+- a plan that needs a choice the owner has not made;
 - a sensitive path in the diff (`crew-park.sh` exit 3).
 
 Parking stops the session and kills its whole process tree, adds the
@@ -157,16 +158,19 @@ a prompt; the loop takes the next issue.
 
 ### Notes on the issue
 
-Every step ends with one comment headed `**Crew: <step>**`, the record a
-restart and the loop read: the newest such comment is the last step done.
+Every step ends with one comment headed `**Crew: <step>**`, posted only on
+success, the record a restart and the loop read: the newest such comment is
+the last step done. A restart finding `draft`, or `parked` with `needs-owner`
+still on, does nothing; `parked` with the label removed carries on from the
+step that parked, with the owner's answer.
 
 | Heading | Posted when |
 |---|---|
 | `**Crew: brief**` | Before building: the plan it follows, the slices, the criteria |
 | `**Crew: built**` | The slices are committed |
-| `**Crew: reviewed**` | The self-review is clean: rounds and verdict |
-| `**Crew: QA**` | The `qa` report, one line per criterion |
-| `**Crew: draft**` | The draft is open and CI has a conclusion |
+| `**Crew: reviewed**` | The self-review leaves no blocker: rounds and verdict |
+| `**Crew: QA**` | Every criterion passes: the `qa` report, one line each |
+| `**Crew: draft**` | The draft is open and CI is green on the last commit |
 | `**Crew: parked**` | The issue parks: what is done, and one question |
 
 The Lessons comment is headed `**Lessons**`, outside this sequence.
