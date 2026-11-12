@@ -54,23 +54,22 @@ reasons=""
 fail() { reasons="$reasons- $1"$'\n'; }
 
 body=$(get '.body')
-tier=$(printf '%s\n' "$body" | grep -oE 'Tier [123]' | head -1 | tr -dc 1-3)
 plan=$(get '[.comments.nodes[] | select((.body | contains("**Done looks like**")) and (.body | contains("**Files**")))] | last // empty')
 plan_body=$(printf '%s' "$plan" | jq -r '.body // empty' 2>/dev/null | tr -d '\r')
 plan_edit=$(printf '%s' "$plan" | jq -r '.lastEditedAt // .createdAt // empty' 2>/dev/null)
 ready_at=$(get '[.timelineItems.nodes[] | select(.label.name == "ready") | .createdAt] | max // empty')
 plan_line() { printf '%s\n' "$plan_body" | grep -m1 "^\*\*$1\*\*:" | sed "s/^\*\*$1\*\*: *//"; }
 
-if [ "$tier" != 1 ]; then
-  if [ -z "$plan" ]; then
-    fail "No plan comment in the shipping skill's skeleton: a Tier ${tier:-2} issue needs one with a Done looks like line and a Files line."
-  else
-    for h in Tests Routing; do
-      [ -n "$(plan_line "$h")" ] || fail "The plan comment has no $h line."
-    done
-    if [[ ! $ready_at > $plan_edit ]]; then
-      fail "The ready label (added ${ready_at:-never}) is older than the plan's last edit ($plan_edit): approve the plan as it now reads by adding the label again."
-    fi
+# Every issue needs a plan, whatever its tier: a tier guessed from the body
+# would let an unplanned issue through.
+if [ -z "$plan" ]; then
+  fail "No plan comment in the shipping skill's skeleton: the crew builds only a plan with a Done looks like line and a Files line."
+else
+  for h in Tests Routing; do
+    [ -n "$(plan_line "$h")" ] || fail "The plan comment has no $h line."
+  done
+  if [[ ! $ready_at > $plan_edit ]]; then
+    fail "The ready label (added ${ready_at:-never}) is older than the plan's last edit ($plan_edit): approve the plan as it now reads by adding the label again."
   fi
 fi
 
@@ -107,9 +106,9 @@ fi
 blockers=$(get '[.blockedBy.nodes[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")')
 [ -z "$blockers" ] || fail "Blocked by $blockers, still open."
 
-park_in=$tmp/park-input
-if [ "$tier" = 1 ]; then printf '%s\n' "$body" >"$park_in"; else printf '%s\n' "$files" >"$park_in"; fi
-if [ "$tier" = 1 ] || [ -n "$plan" ]; then
+if [ -n "$plan" ]; then
+  park_in=$tmp/park-input
+  printf '%s\n' "$files" >"$park_in"
   park_out=$("$root/scripts/crew-park.sh" "$park_in" 2>&1)
   case $? in
     0) ;;

@@ -102,9 +102,6 @@ expect() {
 # ── qualifies ───────────────────────────────────────────────────────────────
 fixture pass
 expect 0 pass "#4242 qualifies" 0
-# A Tier 1 issue is parked on its whole body, so this one names no sensitive path.
-fixture tier1-no-plan "$I.body = (\$b | sub(\"Tier 2\"; \"Tier 1\") | sub(\"crates/intrada-ffi/\"; \"a sensitive path\")) | $I.comments.nodes = [$I.comments.nodes[0]]" --arg b "$BODY"
-expect 0 tier1-no-plan "qualifies" 0
 fixture plan-done-split "$I.body = \"Tier 2.\" | $PLAN.body = \$p" --arg p "$(plan_text "" "" "the park step exits 3 (self-test); a second pass adds none (snapshot)")"
 expect 0 plan-done-split "qualifies" 0
 fixture screen-approved "$PLAN.body = \$p" --arg p "$(plan_text "ios/Intrada/Views/LibraryView.swift" "https://claude.ai/design/p/abc, the owner approved the mockup on 2026-11-02.")"
@@ -129,7 +126,10 @@ expect 1 no-plan "No plan comment" 1
 fixture no-tier "$I.body = \$b" --arg b "${BODY%Tier 2*}"
 expect 0 no-tier "qualifies" 0
 fixture no-tier-no-plan "$I.body = \$b | $I.comments.nodes = [$I.comments.nodes[0]]" --arg b "${BODY%Tier 2*}"
-expect 1 no-tier-no-plan "a Tier 2 issue needs one" 1
+expect 1 no-tier-no-plan "No plan comment" 1
+# A tier is never guessed from the body: Tier 1 with no plan is skipped too.
+fixture tier1-no-plan "$I.body = (\$b | sub(\"Tier 2\"; \"Tier 1\")) | $I.comments.nodes = [$I.comments.nodes[0]]" --arg b "$BODY"
+expect 1 tier1-no-plan "No plan comment" 1
 fixture no-tests "$PLAN.body |= sub(\"\\\\*\\\\*Tests\\\\*\\\\*\"; \"Tests\")"
 expect 1 no-tests "no Tests line" 1
 fixture no-routing "$PLAN.body |= sub(\"\\\\*\\\\*Routing\\\\*\\\\*\"; \"Routing\")"
@@ -173,8 +173,6 @@ fixture blocked "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}, {number
 expect 1 blocked "Blocked by #2810, #2811, still open." 1
 fixture sensitive "$PLAN.body = \$p" --arg p "$(plan_text "crates/intrada-ffi/src/lib.rs and its tests.")"
 expect 1 sensitive "sensitive surface, which the lead builds: crates/intrada-ffi/src/lib.rs matches crates/intrada-ffi/**" 1
-fixture tier1-sensitive "$I.body = (\$b | sub(\"Tier 2\"; \"Tier 1, in crates/intrada-store/src/lib.rs\")) | $I.comments.nodes = [$I.comments.nodes[0]]" --arg b "$BODY"
-expect 1 tier1-sensitive "crates/intrada-store/src/lib.rs matches" 1
 fixture sensitive-only-outside-files "$PLAN.body |= sub(\"one list\"; \"crates/intrada-ffi stays alone, one list\")"
 expect 0 sensitive-only-outside-files "qualifies" 0
 fixture park-broken

@@ -44,8 +44,8 @@ its turn for the simulator is not mistaken for a stalled one.
 1. **Pick.** Read the ready queue (`just status`, the READY section, ordered
    by horizon, Priority, then age) and take the first issue for which
    `scripts/crew-pick.sh <issue>` exits 0.
-2. **Worktree.** The script makes the worktree and claims the issue, so a
-   restart finds both and never claims twice.
+2. **Worktree.** The script makes the worktree; the session runs
+   `just claim` inside it, so a restart finds both and never claims twice.
 3. **Session.** One `INTRADA_CREW=1 claude --bg` session on Opus at high
    effort, started inside the worktree. No session handles two issues.
 4. **Build.** The session posts its brief on the issue, builds with `task`,
@@ -70,10 +70,10 @@ the issue, its labels, comments, label events and blockers.
 
 - **Ready.** It is open and carries `ready`. An issue without it is passed
   over in silence: it is not in the queue.
-- **Plan.** A Tier 2 or 3 issue (the body's "Tier N"; unstated counts as 2)
-  has a plan comment, the newest comment with both the `**Done looks like**`
-  and `**Files**` headings of the shipping skill's skeleton. It also has
-  `**Tests**` and `**Routing**` lines. A Tier 1 issue needs no plan.
+- **Plan.** Every issue, whatever its tier, has a plan comment: the newest
+  comment with both the `**Done looks like**` and `**Files**` headings of the
+  shipping skill's skeleton, and `**Tests**` and `**Routing**` lines too. No
+  tier is guessed from the body, so an unplanned issue never qualifies.
 - **Approved after the last edit.** The newest `ready` label event is later
   than the plan comment's last edit, so an edited plan needs the label again.
 - **Evidence.** Every line under the body's "Done looks like" heading names a
@@ -85,8 +85,7 @@ the issue, its labels, comments, label events and blockers.
   `ios/Intrada/Views/` or the Android `ui/` package, has a `**Mockup**` line
   with a claude.ai canvas link and "approved" with a date.
 - **No blocker.** No open issue in GitHub's "blocked by" relation.
-- **Not sensitive.** `crew-park.sh` exits 0 on the plan's `**Files**` line (on
-  the body, for Tier 1).
+- **Not sensitive.** `crew-park.sh` exits 0 on the plan's `**Files**` line.
 
 On a skip, `crew-pick.sh` exits 1 and posts one comment headed
 **Crew skipped** listing every rule that failed. It posts none when a Crew
