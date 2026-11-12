@@ -24,7 +24,7 @@ crash-recovery blob, any type under a wire-pinned settings key (library sort,
 profile, practice defaults: bincode on the device, like the blob), store
 migrations, auth, and any bridge change that is not additive.
 
-1. **Lead-only work runs Opus 5.5 at `high`** (#2044, #2052), set with
+1. **Lead-only work runs on Opus at `high` effort** (#2044, #2052), set with
    `/effort` before the first edit. An additive change stays on the lead's
    usual effort.
 2. **Pair the `reviewer` agent on the core diff before the screens**, whoever

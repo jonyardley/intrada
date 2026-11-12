@@ -26,9 +26,9 @@ runs before the push, because a review left until after it gets skipped
   it runs.
 - **Open through `just pr-open "Title (#N)" "Body" --draft`**, never a bare
   `gh pr create`: it refuses an issue number with no claim naming this branch
-  (#1702). Once the review is posted, its blockers fixed and the deferred
-  issues open, `just pr-ready PR ISSUE` marks it ready and moves the board
-  (#1659). `Closes #N` in the body closes the issue on merge.
+  (#1702). Once the review is posted, its blockers fixed, the deferred
+  issues open and every check green on the last commit, `just pr-ready PR
+  ISSUE` marks it ready and moves the board (#1659). `Closes #N` in the body closes the issue on merge.
 
 ## Verifying a change on the simulator and the emulator
 
