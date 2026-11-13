@@ -312,6 +312,12 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
     // Sections and trouble spots were removed (#2767): a link to a live section
     // becomes the piece's, one per exercise, and every other trace goes.
     ("v22_remove_sections", Step::Code(remove_sections)),
+    // Focus, repetitions, "Aim met?", the note chips and the Add detail
+    // choices were removed (#2791).
+    (
+        "v23_remove_focus_and_repetitions",
+        Step::Code(remove_focus_and_repetitions),
+    ),
 ];
 
 pub(crate) fn latest() -> &'static str {
@@ -450,6 +456,51 @@ fn remove_sections(tx: &Transaction, unreadable: &mut Unreadable) -> rusqlite::R
                  UNION ALL
                  SELECT fullkey FROM json_tree(?1)
                  WHERE key IN ('segments', 'plannedSectionIds', 'sectionId')",
+            )?
+            .query_map([&entries], |row| row.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        for path in paths {
+            tx.execute(
+                "UPDATE session SET entries = json_remove(entries, ?1) WHERE id = ?2",
+                [&path, &id],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// JSON surgery in SQL, never through the session codec (#1947), by path, so a
+/// key of the same name inside a value that stays is never touched. A parent
+/// path of `$[N]` is an entry, `$[N].plays[M]` a play; the legacy entry keys
+/// are from rows written before #1739.
+fn remove_focus_and_repetitions(
+    tx: &Transaction,
+    unreadable: &mut Unreadable,
+) -> rusqlite::Result<()> {
+    let rows: Vec<(String, String, Option<bool>)> = tx
+        .prepare(
+            "SELECT id, entries,
+               CASE WHEN json_valid(entries) THEN json_type(entries) END = 'array' AS readable
+             FROM session",
+        )?
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    for (id, entries, readable) in rows {
+        if readable != Some(true) {
+            unreadable.push(format!("v23_remove_focus_and_repetitions skipped row {id}"));
+            continue;
+        }
+        let paths: Vec<String> = tx
+            .prepare(
+                "SELECT fullkey FROM json_tree(?1)
+                 WHERE path GLOB '$[[][0-9]*]' AND path NOT GLOB '*.*'
+                   AND key IN ('focus', 'plannedRepTarget', 'intentionMet', 'felt',
+                     'gotInTheWay', 'notePoints', 'repTarget', 'repCount',
+                     'repTargetReached', 'repHistory')
+                 UNION ALL
+                 SELECT fullkey FROM json_tree(?1)
+                 WHERE path GLOB '$[[][0-9]*].plays[[][0-9]*]' AND path NOT GLOB '*.*.*'
+                   AND key IN ('repTarget', 'repCount', 'repTargetReached', 'repHistory')",
             )?
             .query_map([&entries], |row| row.get(0))?
             .collect::<rusqlite::Result<_>>()?;
