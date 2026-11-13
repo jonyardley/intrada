@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Under pipefail, a pipe into grep -q reads a match as a miss: grep exits on
 # its first match and the writer still writing dies of a closed pipe (#2847).
-# A here-string has no writer to kill, so grep -q pattern <<<"$text" is the
-# shape. Every .sh under scripts/ is read, sourced helpers included, since a
-# file sourced from a pipefail recipe runs under it too.
+# Every .sh under scripts/ is read, sourced helpers included, since a file
+# sourced from a pipefail recipe runs under it too. The justfile and CI's
+# workflow steps are left to review: their few pipes into grep feed it small
+# outputs (the #2847 plan's scope).
 #
 # The root is overridable so the self-test can point it at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
@@ -18,7 +19,7 @@ if [ ! -d "$root" ]; then
   exit 2
 fi
 
-hits=$(find "$root" -name '*.sh' -type f -print0 | sort -z | xargs -0 perl -ne '
+hits=$(find "$root" -name '*.sh' -type f -exec perl -ne '
   BEGIN { $buf = "" }
   chomp;
   unless ($buf eq "" && /^\s*#/) {
@@ -28,12 +29,12 @@ hits=$(find "$root" -name '*.sh' -type f -print0 | sort -z | xargs -0 perl -ne '
     } else {
       $buf .= $_;
       print "$ARGV:$at: $buf\n"
-        if $buf =~ /(?<!\|)\|(?!\|)&?\s*(?:command\s+|!\s*)?[ef]?grep(?:\s+-\S+)*?\s+(?:-[A-Za-z]*q[A-Za-z]*|--quiet|--silent)(?=\s|;|$)/;
+        if $buf =~ /(?<!\|)\|(?!\|)&?\s*(?:command\s+|!\s*)?(?:\S*\/)?[ef]?grep(?:\s+-\S+)*?\s+(?:-[A-Za-z]*q[A-Za-z]*|--quiet|--silent)(?=\s|;|$)/;
       $buf = "";
     }
   }
   close ARGV if eof
-')
+' {} +)
 if [ -n "$hits" ]; then
   echo "✗ a pipe into grep -q, which under pipefail can read a match as a miss (#2847):" >&2
   printf '%s\n' "$hits" | sed 's/^/    /' >&2
