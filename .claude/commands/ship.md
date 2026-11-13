@@ -14,7 +14,7 @@ Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.
 
 **Loop mode**, when the arguments say `loop`: a crew session (`.claude/commands/crew.md`), the same steps with five changes.
 
-- Retro: post the lessons as one issue comment headed `**Lessons**` and add the `lessons-pending` label to the issue; never edit `docs/lessons.md`, so the night's drafts never conflict.
+- Retro: post the lessons as one issue comment headed `**Lessons**` and add the `lessons-pending` label to the issue; never edit `docs/lessons.md`, so one run's drafts never conflict.
 - After step 3, the `qa` agent, briefed with the worktree, the issue and the latest `test-runner` report. A failing criterion is fixed like a blocker, then the gates and `qa` run again.
 - Before step 5, the park step on the diff: `git diff origin/main...HEAD > "$TMPDIR/crew-diff-N"`, then `scripts/crew-park.sh` on that file. Exit 3 (a sensitive path) or 2 (unreadable) parks the issue.
 - Notes on the issue, each only on success: `**Crew: reviewed**` once step 3 leaves no blocker, `**Crew: QA**` with the `qa` report once every criterion passes, `**Crew: draft**` with the PR link once CI is green on the last commit. A failure is fixed and rerun, or parks the issue at its second failed round.
