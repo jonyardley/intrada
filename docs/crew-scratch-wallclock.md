@@ -1,0 +1,63 @@
+# Just recipes
+
+A scratch list for the crew loop's wallclock parking test (#2841): every recipe in the justfile, with what it does.
+
+- `default`: Show the available recipes
+- `check-fast`: Type-check the workspace without codegen, the fastest compile check
+- `test`: Run the Rust tests with nextest, as CI's test job does
+- `lint`: Run clippy with warnings as errors, as CI's clippy job does
+- `fmt`: Format the Rust code
+- `fmt-check`: Check Rust formatting, as CI's fmt job does
+- `msrv`: Check the workspace against the minimum supported Rust version, as CI does
+- `coverage`: Write a Rust coverage report to codecov.json, as CI's coverage job does
+- `hygiene`: Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests when tooling changed, and the release-name, app-version, faint-ink, theme-value, design-token, sketch-kit, haptics, lessons and bridge-test checks
+- `deny`: Check dependencies with cargo-deny, as CI does; skips when it is not installed
+- `gitleaks`: Scan this branch's commits for leaked secrets with Gitleaks; skips when it is not installed
+- `audit-sweep`: The audit's mechanical counts, written to docs/audit-metrics and compared with the last sweep (docs/audit.md)
+- `sketch-kit`: Regenerate the sketch kit in design/sketch-kit from Theme.swift and the Android icons
+- `status`: Show what is in flight: open PRs, claimed issues, epics and recent merges
+- `project-status`: Move an issue on the project board, e.g. just project-status 1565 "In progress"
+- `pr-visuals`: Print before-and-after markdown for the snapshot references this branch changed
+- `claim`: Claim an issue before building it, refusing if someone already has
+- `handover`: Print the opener for the next session
+- `epic-add`: Put issues under an epic as sub-issues, in working order
+- `epic-move`: Move issues under an epic from whichever epic holds them now
+- `pr-open`: Open a PR, refusing an unclaimed issue in the title or an over-long Tier 1 or 2 body
+- `issue-open`: Open an issue, refusing one without a horizon and a kind label
+- `pr-ready`: Mark a reviewed PR ready and move its issue to In review, e.g. just pr-ready 2600 2593
+- `check`: Run the Rust gate: fmt, lint, test and hygiene; skips an unchanged green HEAD
+- `pre-push`: Alias for check
+- `check-all`: Run check plus the fast iOS tier (unit and snapshot tests, no XCUITests)
+- `usage`: Report Claude Code usage from this machine's transcripts at API prices
+- `lsp-setup`: Set up the Rust, Swift and Kotlin language servers, once per machine and worktree
+- `worktree-new`: Create a worktree from fresh origin/main with worktrunk (wt switch -c)
+- `worktree-rm`: Remove a worktree and its snapshot simulator, keeping the branch
+- `worktrees`: List this repo's worktrees with branch, uncommitted files and lease holder
+- `worktree-status`: Show each worktree's issue, PR, CI and review, and whose move it is
+- `ios`: Open the app in Xcode, regenerating bindings if the core changed
+- `ios-run`: Build, launch on a simulator and screenshot, regenerating bindings if the core changed
+- `ios-logs`: Stream the app's own logs from the booted simulator
+- `ios-gen`: Force a full regenerate of both Swift packages and refresh the change stamp
+- `testflight`: Build a signed Release app and upload it to TestFlight
+- `ios-snapshots-optimize`: Losslessly shrink snapshot references before committing
+- `ios-snapshots-record`: Re-record the snapshot references matching a test filter, then optimise and check
+- `ios-snapshots-check`: Check snapshot references for orphans and size, as CI does
+- `ios-fmt`: Format the hand-written Swift in place
+- `ios-fmt-check`: Check Swift formatting, as CI does; run before pushing ios changes
+- `ios-test`: Run the fast iOS tier: unit and snapshot tests, no XCUITests
+- `ios-test-full`: Run the full iOS tier with XCUITests, for debugging a UI failure
+- `ios-test-ui-class`: Rebuild and run one XCUITest class
+- `ios-test-class`: Rebuild and run one unit or snapshot test class or suite
+- `ios-build-release`: Compile a Release build without signing or tests, to catch Debug-only code
+- `ios-test-sim-clean`: Delete this worktree's snapshot simulator, and only that one
+- `ios-typegen`: Generate the Swift types into ios/generated/SharedTypes with facet
+- `ios-package`: Build the Rust core into ios/generated/IntradaCoreFFI with cargo-swift
+- `android-typegen`: Generate the Kotlin types into android/generated/kotlin with facet
+- `android-package`: Build the core for Android and the host, then generate the Kotlin bridge
+- `android-gen`: Regenerate the Kotlin types, the Kotlin bridge and the native libraries
+- `android-run`: Build, launch on the intrada-api36 emulator and screenshot (SEED=0 for an empty library)
+- `android-test`: Run the Android JVM unit and snapshot tests and print the counts
+- `android-test-ui`: Run the Android UI tests on the intrada-api36 emulator and print the counts (class= runs one)
+- `android-check`: Run CI's Android gates: ktfmt, the build with warnings as errors, Android lint and detekt
+- `android-lock`: Rewrite the Gradle lockfiles after an Android dependency change
+- `android-fmt`: Format the Android Kotlin sources and build scripts with ktfmt
