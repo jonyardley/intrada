@@ -394,11 +394,10 @@ class BridgeRoundTripTest {
                 )
             )
         )
-        val active = bridge.view().activeSession
-        assertEquals(
-            active?.entries?.first()?.plays?.map { it.id },
-            active?.record?.finish?.rows?.map { it.playId },
-        )
+        val active = checkNotNull(bridge.view().activeSession)
+        val rows = checkNotNull(active.record.finish).rows.map { it.playId }
+        assertTrue(rows.isNotEmpty())
+        assertEquals(active.entries.first().plays.map { it.id }, rows)
     }
 
     // Real version 2 device bytes: a skewed Vec<u8> would carry nothing and raise nothing (#2791).

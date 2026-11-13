@@ -70,7 +70,7 @@ enum IntradaColor {
   static let dialTrack = Color(hex: 0xEDE8DC)
   static let timerTrack = Color(hex: 0xEDE8DC)
   static let consistencyTrack = Color(hex: 0xEDE8DC)
-  /// An empty slot's ring: the mark selector and the click's silent beats.
+  /// An empty outline: the mark selector, the click's silent beats, an empty day.
   static let slotOutline = Color(hex: 0xDDD7CA)
   /// Dashed outline on full-width "+ Add …" rows.
   static let addDashOutline = Color(hex: 0xC9BFB0)

@@ -103,9 +103,6 @@ final class VariationPickerUITests: XCTestCase {
   }
 }
 
-extension VariationPickerUITests {
-}
-
 extension XCUIApplication {
   /// Each play's mark shares one identifier, so its spoken label is the whole match.
   fileprivate func mark(_ identifier: String, _ label: String) -> XCUIElement {

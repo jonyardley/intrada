@@ -94,8 +94,8 @@ you see, and check the camera on the phone either way.
 | 4.1 | Tap the **Practice** tab. | The top card. | Either the round play button under "First session" or "Last practised", or an "Up next" card ("Today's plan" when a session length is set) with a "Start · " minutes button, **Change it first** and **Build my own instead**. | Neither shows. | |
 | 4.2 | Tap the round play button (or **Build my own instead**). | The builder. | "Build session", **Cancel**, "Add pieces and exercises to build the session.", a Today's length switch and **Add piece or exercise**. | It opens straight into a session. | |
 | 4.3 | Tap **Add piece or exercise**, tick the piece, tap **Done**. | The builder list. | A card with the piece's title and "1 related, then piece" under it, "C major scale" beneath marked "Related", and a **Start session** bar at the bottom. | The related exercise is missing, or no start bar. | |
-| 4.4 | Tap the three dots on the piece's card, then **Piece settings**. | The settings screen. | The piece's title at the top with **Done**, then Aim, Key, **Track repetitions** and **Planned duration**. | A blank screen, or "This item is no longer in the session." | |
-| 4.5 | Turn on **Track repetitions** and **Planned duration**, set a short duration, tap **Done**. | The builder. | The row shows the planned time, and the start bar reads "Start session · " with the total. | The settings are lost. | |
+| 4.4 | Tap the three dots on the piece's card, then **Piece settings**. | The settings screen. | The piece's title at the top with **Done**, then Aim, Key and **Planned duration**. | A blank screen, or "This item is no longer in the session." | |
+| 4.5 | Turn on **Planned duration**, set a short duration, tap **Done**. | The builder. | The row shows the planned time, and the start bar reads "Start session · " with the total. | The settings are lost. | |
 | 4.6 | Turn on **Today's length** and step it up and down. | The length card. | The minutes change by a step each tap and stop at the ends. | The value jumps or goes negative. | |
 | 4.7 | Tap **Cancel**. | The dialog. | "Discard session plan?" with **Discard**. Dismiss it and the plan is still there. | The plan clears without asking. | |
 
@@ -103,7 +103,7 @@ you see, and check the camera on the phone either way.
 
 | Step | Do | Look at | Right | Wrong | Result |
 | --- | --- | --- | --- | --- | --- |
-| 5.1 | Tap **Start session**. | The player. | "Focus · 1 of 2" at the top and "C major scale" (related exercises play before their piece), a timer ring counting up, "Metronome" or the item's tempo, Repetitions with **Not quite** and **Got it**, **Next item**, **Skip this item** and "Next · " the next item. | The tab bar still shows, or the timer does not move. | |
+| 5.1 | Tap **Start session**. | The player. | "Focus · 1 of 2" at the top and "C major scale" (related exercises play before their piece), a timer ring counting up, "Metronome" or the item's tempo, **Next item**, **Skip this item** and "Next · " the next item. | The tab bar still shows, or the timer does not move. | |
 | 5.2 | Leave it for a minute without touching it. | The screen. | It stays on. | The screen dims or locks. | |
 | 5.3 | Tap the metronome readout. | Listen, then look under it. | A steady click starts within a moment, the readout shows the beats per minute, **Slower** and **Faster** appear either side, and a bar of beat dots appears underneath with a ring moving along the beat being heard. | No sound, a late or uneven click, or the ring out of step with what you hear. | |
 | 5.4 | Tap **Faster** three times, then **Slower** once. Then drag up and down on the readout. | The readout and the sound. | The number and the click change together. | The number changes and the click does not. | |
@@ -112,9 +112,8 @@ you see, and check the camera on the phone either way.
 | 5.7 | Turn the phone sideways and back. | Listen. | The click keeps going without a stumble. | It stops or restarts. | |
 | 5.8 | Turn the volume down and up with the side buttons. | Listen. | The click follows the media volume. | The buttons change the ringer and the click stays loud. | |
 | 5.9 | Tap the readout again. | Listen. | The click stops and **Slower**, **Faster** and the bar go. | It keeps clicking. | |
-| 5.10 | Tap **Got it** twice and **Not quite** once, then **Undo**. | Repetitions. | The count follows each tap and **Undo** takes the last one back. | Counts out of step with the taps. | |
-| 5.11 | Tap the menu at the top right. | The options. | **Skip this item**, **End session early** in red, **Keep practising**. Tap **Keep practising** and nothing changes. | The session ends. | |
-| 5.12 | Press the phone's Back. | The screen. | The same options appear; the session is not lost. | The player closes. | |
+| 5.10 | Tap the menu at the top right. | The options. | **Skip this item**, **End session early** in red, **Keep practising**. Tap **Keep practising** and nothing changes. | The session ends. | |
+| 5.11 | Press the phone's Back. | The screen. | The same options appear; the session is not lost. | The player closes. | |
 
 ## 6. Item complete
 
@@ -122,7 +121,7 @@ you see, and check the camera on the phone either way.
 | --- | --- | --- | --- | --- | --- |
 | 6.1 | With the metronome running, tap **Next item**. | The screen and the sound. | "Item complete · " with the time, "How did it go?", the item's title, numbered marks, "Tempo reached" with the tempo you finished on, "Reflection · optional", **Save & continue** and **Skip rating**. The click keeps sounding while you mark. | The click cuts out, or the tempo shown is not the one you played. | |
 | 6.2 | Press the phone's Back. | The sheet. | It stays. | You lose the sheet or the item. | |
-| 6.3 | Tap a mark, type a note, tap **Save & continue**. | The player. | "Focus · 2 of 2" on the piece, the timer back at zero and showing the planned time from 4.5, Repetitions out of the target from 4.5, and the click silent until you start it again. | The first item again, the old item's click still sounding, or "Couldn't save. Try again." | |
+| 6.3 | Tap a mark, type a note, tap **Save & continue**. | The player. | "Focus · 2 of 2" on the piece, the timer back at zero and showing the planned time from 4.5, and the click silent until you start it again. | The first item again, the old item's click still sounding, or "Couldn't save. Try again." | |
 
 ## 7. Close the app mid-session and resume
 

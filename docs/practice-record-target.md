@@ -3,6 +3,10 @@
 > Sections and trouble spots are removed from v0.19.0 with their saved data
 > (#2767). What this page says about sections, segments and spots no longer
 > applies; #2768 holds the way back.
+>
+> Focus, repetitions, "Aim met?", the note chips and the Add detail choices
+> are removed from v0.20.0 with their saved data (#2791). What this page says
+> about them no longer applies.
 
 What intrada keeps about each practice once sections, variations and the capture rules are in, agreed on 2026-10-03 and recorded on epic #50; #2353 builds on it. The visual version is the [practice record target](https://claude.ai/artifact/D8eT5UVKMnKZ99hxNjkhZ3). Delete when #50 and #2353 close.
 

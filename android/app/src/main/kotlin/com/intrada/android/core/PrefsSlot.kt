@@ -109,16 +109,16 @@ class Settings(
         )
 
     /**
-     * The core reads the old shape and saves the new one, so the old key goes once its bytes are
-     * sent, and is never read again (#2791).
+     * The version 2 bytes, for the core to carry once, unless version 3 is already saved (#2791).
      */
-    private fun carriedPracticeDefaults(): Event? {
-        val bytes = previousPracticeDefaults.read() ?: return null
-        previousPracticeDefaults.clear()
-        return bytes
-            .takeIf { practiceDefaults.read() == null }
+    private fun carriedPracticeDefaults(): Event? =
+        previousPracticeDefaults
+            .read()
+            ?.takeIf { practiceDefaults.read() == null }
             ?.let { Event.PracticeDefaults(PracticeDefaultsEvent.Carried(it.map(Byte::toUByte))) }
-    }
+
+    /** Called once the restored events are sent, so the old key outlives no carry. */
+    fun forgetPreviousPracticeDefaults() = previousPracticeDefaults.clear()
 
     fun pendingSessionInProgress(): ActiveSession? =
         decoded(sessionInProgress) { ActiveSession.bincodeDeserialize(it) }

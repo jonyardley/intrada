@@ -73,23 +73,21 @@ class SettingsTest {
     }
 
     @Test
-    fun versionTwoDefaultsAreHandedToTheCoreOnceAndTheirKeyCleared() {
+    fun versionTwoDefaultsAreHandedToTheCoreAndKeptUntilSent() {
         val settings = Settings(prefs, practice)
         settings.previousPracticeDefaults.write(VERSION_TWO_DEFAULTS)
 
-        val first = settings.restored().filterIsInstance<Event.PracticeDefaults>()
-        val second = settings.restored().filterIsInstance<Event.PracticeDefaults>()
+        val restored = settings.restored().filterIsInstance<Event.PracticeDefaults>()
 
         assertEquals(
             listOf(PracticeDefaultsEvent.Carried(VERSION_TWO_DEFAULTS.map { it.toUByte() })),
-            first.map { it.value },
+            restored.map { it.value },
         )
-        assertNull(settings.previousPracticeDefaults.read())
-        assertEquals(emptyList<Event>(), second)
+        assertNotNull("cleared only after the send", settings.previousPracticeDefaults.read())
     }
 
     @Test
-    fun versionTwoDefaultsAreClearedUncarriedOnceVersionThreeIsSaved() {
+    fun versionTwoDefaultsAreNotCarriedOnceVersionThreeIsSaved() {
         val settings = Settings(prefs, practice)
         val kept = PracticeDefaults(ClickStart.EVERYBEAT, 30.toUShort())
         settings.practiceDefaults.write(kept.bincodeSerialize())
@@ -98,11 +96,10 @@ class SettingsTest {
         val restored = settings.restored().filterIsInstance<Event.PracticeDefaults>()
 
         assertEquals(listOf(PracticeDefaultsEvent.Loaded(kept)), restored.map { it.value })
-        assertNull(settings.previousPracticeDefaults.read())
     }
 
     @Test
-    fun carriedDefaultsAreSavedUnderTheNewKey() = runTest {
+    fun carriedDefaultsAreSavedUnderTheNewKeyAndTheOldKeyGoes() = runTest {
         val settings = Settings(prefs, practice)
         settings.previousPracticeDefaults.write(VERSION_TWO_DEFAULTS)
 
@@ -111,6 +108,7 @@ class SettingsTest {
         val saved =
             PracticeDefaults.bincodeDeserialize(checkNotNull(settings.practiceDefaults.read()))
         assertEquals(PracticeDefaults(ClickStart.TWOANDFOUR, 25.toUShort()), saved)
+        assertNull(settings.previousPracticeDefaults.read())
     }
 
     @Test

@@ -261,6 +261,8 @@ final class Store {
   func forgetPersistedProfileDefaultsAndFirstRun() {
     profileSlot.clear()
     practiceDefaultsSlot.clear()
+    DefaultsSlot(key: Self.previousPracticeDefaultsKey, defaults: practiceDefaultsSlot.defaults)
+      .clear()
     firstRunSlot.clear()
   }
 
@@ -288,6 +290,7 @@ final class Store {
     if practiceDefaultsSlot.read() == nil {
       send(.practiceDefaults(.carried(bytes)))
     }
+    // Cleared after the send: the core's save has written version 3 by now.
     previous.clear()
   }
 

@@ -167,7 +167,7 @@ struct EntrySettingsSheet: View {
   }
 
   @ViewBuilder private func settingToggle(
-    _ title: String, isOn: Binding<Bool>, identifier: String? = nil
+    _ title: String, isOn: Binding<Bool>, identifier: String
   ) -> some View {
     if typeSize.isAccessibilitySize {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
@@ -176,14 +176,14 @@ struct EntrySettingsSheet: View {
         Toggle(title, isOn: isOn)
           .labelsHidden()
           .tint(IntradaColor.accent)
-          .accessibilityIdentifier(identifier ?? "")
+          .accessibilityIdentifier(identifier)
       }
     } else {
       Toggle(isOn: isOn) {
         FieldLabel(title)
       }
       .tint(IntradaColor.accent)
-      .accessibilityIdentifier(identifier ?? "")
+      .accessibilityIdentifier(identifier)
     }
   }
 

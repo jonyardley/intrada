@@ -241,15 +241,6 @@ and target stay one or two layers down.
   bar and keeps every cell a real tap target.
 - **A travelling ring on the dots, not a flash**, driven by the audio's clock,
   never a view timer that drifts.
-- **A displayed target is not a recorded one**: `rep_count` and `rep_history`
-  stay unset until the first tap.
-- **Reaching the pass target is not congratulated** (V1). The dots fill,
-  `Got it` greys out, and the count drops its "to go" clause.
-- **`Repetitions`, `Got it`, `Not quite`** (#1938). `Not quite` reads
-  `Not quite right` at accessibility sizes where the pair stacks. The two
-  halves are deliberately equal in length and register: a pair weighted toward
-  the gentle option biases the tap and skews the count low, which is the same
-  concern behind the coach-era ruling that a miss must be equally hittable.
 
 ### T20: The starred route is a text action under the hero, never a second button
 

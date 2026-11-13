@@ -156,7 +156,9 @@ class Store(
     }
 
     fun restoreSettings() {
-        settings?.restored()?.forEach(::send)
+        val saved = settings ?: return
+        saved.restored().forEach(::send)
+        saved.forgetPreviousPracticeDefaults()
     }
 
     fun pendingSessionInProgress(): ActiveSession? = settings?.pendingSessionInProgress()

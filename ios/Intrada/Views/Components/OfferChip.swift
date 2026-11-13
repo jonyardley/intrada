@@ -4,21 +4,17 @@ import SwiftUI
 /// suggestion rather than something already set ("Last time: B · Dotted").
 struct OfferChip: View {
   let title: String
-  var systemImage = "arrow.counterclockwise"
   let action: () -> Void
 
-  init(
-    _ title: String, systemImage: String = "arrow.counterclockwise", action: @escaping () -> Void
-  ) {
+  init(_ title: String, action: @escaping () -> Void) {
     self.title = title
-    self.systemImage = systemImage
     self.action = action
   }
 
   var body: some View {
     Button(action: action) {
       HStack(spacing: 6) {
-        Image(systemName: systemImage)
+        Image(systemName: "arrow.counterclockwise")
           .iconSize(.badge, weight: .semibold)
           .accessibilityHidden(true)
         Text(title)
@@ -44,7 +40,6 @@ struct OfferChip: View {
   #Preview("Offer chip") {
     VStack(alignment: .leading, spacing: 16) {
       OfferChip("Last time: B · Dotted rhythms") {}
-      OfferChip("Focus: At 84", systemImage: "plus") {}
     }
     .padding()
     .background(IntradaColor.paperTop)
