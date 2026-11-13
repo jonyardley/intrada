@@ -8,7 +8,7 @@
 #
 # A skip posts one comment headed Crew skipped, and no second one until the
 # owner edits the plan or adds the ready label again: the loop re-reads the
-# queue every night and must not repeat itself.
+# queue every run and must not repeat itself.
 
 set -uo pipefail
 

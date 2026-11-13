@@ -1,6 +1,6 @@
 # The crew loop
 
-A script that builds ready issues overnight, one at a time, each in its own
+A script that builds ready issues unattended, one at a time, each in its own
 Claude Code background session, and leaves a draft pull request for the
 owner. Epic #2799, parent issue #2803, built in three slices: #2819 (park and
 pick), #2820 (the session side) and #2821 (the loop itself). The full plan is
@@ -8,7 +8,7 @@ a private page linked from #2803.
 
 ## What the owner sees
 
-The owner approves a plan by adding the `ready` label. Next morning the issue
+The owner approves a plan by adding the `ready` label. After a run the issue
 has either a draft pull request with both apps' screenshots and one evidence
 line per "Done looks like" criterion, or a `needs-owner` label and one
 question as a comment. Their phone tells them which. Nothing is ever marked
@@ -17,11 +17,11 @@ ready or merged by the crew: every merge stays the owner's.
 ## Starting and stopping
 
 - Started by hand with `just crew`. There is no launchd job: the owner decides
-  each night whether the crew runs.
+  each time whether the crew runs.
 - At each start the loop runs harness check 1 from `scripts/crew-qualify.sh`
   (a crew session's hooks see the crew marker and refuse `gh pr ready`). A
   failure stops the loop before any issue is touched.
-- A stop file, checked before each issue, ends the night cleanly.
+- A stop file, checked before each issue, ends the run cleanly.
 
 ## Caps
 
@@ -33,7 +33,7 @@ turn limit:
 |---|---|---|
 | Wall clock per session | 3 hours | Stop the session and its process tree, park |
 | Silence limit | 45 minutes with no new transcript line | Stop, park |
-| Issues per night | 3 | The loop ends |
+| Issues per run | 3 | The loop ends |
 | Daily spend | the day's `just usage` total past $150 | The loop ends before the next issue |
 
 The silence limit is longer than the simulator queue, which waits up to 1800
