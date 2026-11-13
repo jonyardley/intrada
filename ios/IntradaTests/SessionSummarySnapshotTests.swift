@@ -69,9 +69,9 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
         tempoRows: [.preview("p1"), .preview("p2"), .preview("p3")],
         plays: [
-          .preview("p1", "C major", "4:10", 8, 10),
-          .preview("p2", "G major", "3:20", 10, 10),
-          .preview("p3", "D major", "5:10", 4, 10),
+          .preview("p1", "C major", "4:10"),
+          .preview("p2", "G major", "3:20"),
+          .preview("p3", "D major", "5:10"),
         ],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
@@ -86,7 +86,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         itemTitle: "Major Scales", elapsedDisplay: "4:12", tempoTarget: nil,
         tempoRows: [.preview("p1")],
         plays: [
-          .preview("p1", "C major", "4:10", 8, 10),
+          .preview("p1", "C major", "4:10"),
           .preview("p2", "G major", "0:02", isMarkable: false),
         ],
         limits: .preview,
@@ -116,8 +116,8 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
         tempoRows: [.preview("p1"), .preview("p2")],
         plays: [
-          .preview("p1", "C major", "4:10", 8, 10),
-          .preview("p2", "G major", "3:20", 10, 10),
+          .preview("p1", "C major", "4:10"),
+          .preview("p2", "G major", "3:20"),
         ],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
@@ -138,8 +138,8 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
           .preview("p2"),
         ],
         plays: [
-          .preview("p1", "C major", "4:10", 8, 10),
-          .preview("p2", "G major", "3:20", 10, 10),
+          .preview("p1", "C major", "4:10"),
+          .preview("p2", "G major", "3:20"),
         ],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
@@ -158,32 +158,13 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
           .preview("p2"),
         ],
         plays: [
-          .preview("p1", "C major", "4:10", 8, 10),
-          .preview("p2", "G major", "3:20", 10, 10),
+          .preview("p1", "C major", "4:10"),
+          .preview("p2", "G major", "3:20"),
         ],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     .dynamicTypeSize(.accessibility1)
-    assertSnapshot(of: host(sheet), as: config)
-  }
-
-  // The aim asked, two points read from the note (one kept), detail open (#2303, #2307, #2308).
-  func testReflectionSheetWithFinishAnswers() {
-    assertSnapshot(of: host(finishSheet), as: config)
-  }
-
-  func testReflectionSheetWithTheAimReadFromThePlays() {
-    let sheet = ZStack(alignment: .bottom) {
-      PaperBackground()
-      ReflectionSheet(
-        itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
-        tempoRows: [.preview("p1"), .preview("p2")],
-        plays: [.preview("p1", "No variation", "4:10"), .preview("p2", "Dotted rhythms", "4:00")],
-        limits: .preview, finish: .preview(asksIntention: false, read: .yes), aim: "At 84",
-        seed: ReflectionAnswers.preview(note: "Left hand rushed in bar 12, got it at 84"),
-        onSave: { _ in }, onSkip: {})
-    }
     assertSnapshot(of: host(sheet), as: config)
   }
 
@@ -210,22 +191,6 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         seed: ReflectionAnswers.preview(
           ways: [DraftWay(playId: "p1", key: g, variationIds: [])]),
         onSave: { _ in }, onSkip: {}, changingPlayId: "p1")
-    }
-  }
-
-  private var finishSheet: some View {
-    ZStack(alignment: .bottom) {
-      PaperBackground()
-      ReflectionSheet(
-        itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
-        tempoRows: [.preview("p1")],
-        plays: [.preview("p1", nil, "12:00")],
-        limits: .preview, finish: .preview(asksIntention: true), aim: "From memory",
-        seed: ReflectionAnswers.preview(
-          note: "Left hand rushed in bar 12, got it at 84", felt: .strained,
-          gotInTheWay: [.rhythm, .tension], notePoints: [NoteSpan(start: 38, end: 40)],
-          intentionMet: .partly),
-        onSave: { _ in }, onSkip: {})
     }
   }
 }

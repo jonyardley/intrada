@@ -13,7 +13,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
         buildingSetlist: BuildingSetlistView(
           entries: [], itemCount: 0, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-          lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+          lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
           summary: "0 items", startTitle: "Start session")))
     assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
   }
@@ -53,7 +53,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
         buildingSetlist: BuildingSetlistView(
           entries: [.previewExercise], itemCount: 1, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-          lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+          lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
           summary: "1 item", startTitle: "Start session")))
     assertSnapshot(
       of: host(AddToSessionSheet(), store: store),
@@ -107,19 +107,11 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
-  func testEntrySettingsSheetWithFocus() throws {
+  func testEntrySettingsSheetWithAnAim() throws {
     let store = Store.previewBuildingPlanned()
     let limits = try XCTUnwrap(store.viewModel?.limits)
     assertSnapshot(
       of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
-      as: config)
-  }
-
-  func testEntrySettingsSheetSuggestsAFocus() throws {
-    let store = Store.previewBuildingPlanned(.previewSuggestingPiece)
-    let limits = try XCTUnwrap(store.viewModel?.limits)
-    assertSnapshot(
-      of: host(EntrySettingsSheet(entry: .previewSuggestingPiece, limits: limits), store: store),
       as: config)
   }
 

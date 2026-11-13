@@ -9,13 +9,12 @@ struct VariationScreenTests {
 
   private func play(
     _ id: String, _ label: String?, seconds: UInt64, tempo: UInt16? = nil,
-    repCount: UInt8? = nil, repTarget: UInt8? = nil, isMarkable: Bool = true
+    isMarkable: Bool = true
   ) -> PlayView {
     PlayView(
       id: id, key: nil, variationIds: label.map { ["v-\($0)"] } ?? [],
       label: label, seconds: seconds,
-      durationDisplay: "4m 10s", metaParts: [], repTarget: repTarget, repCount: repCount,
-      repTargetReached: nil, repHistory: nil, achievedTempo: tempo, clickPattern: nil,
+      durationDisplay: "4m 10s", metaParts: [], achievedTempo: tempo, clickPattern: nil,
       tempoDisplay: tempo,
       score: nil, isMarkable: isMarkable)
   }
@@ -53,24 +52,6 @@ struct VariationScreenTests {
       [play("p1", "C major", seconds: 0), play("p2", nil, seconds: 0)])
 
     #expect(rows.map(\.title) == ["C major", "No variation"])
-  }
-
-  @Test("a row shows repetitions only when the entry set a target")
-  func rowMetaShowsRepetitionsOnlyAgainstATarget() {
-    let withTarget = ReflectionPlay.rows(
-      [play("p1", "C", seconds: 250, repCount: 8, repTarget: 10)])
-    let without = ReflectionPlay.rows(
-      [play("p1", "C", seconds: 250, repCount: 8)])
-
-    #expect(withTarget.first?.meta == "04:10 · 8 of 10")
-    #expect(without.first?.meta == "04:10")
-  }
-
-  @Test("a target with no repetitions banked reads as none of the target, not blank")
-  func rowMetaCountsZeroAgainstTheTarget() {
-    let rows = ReflectionPlay.rows([play("p1", "C", seconds: 250, repTarget: 10)])
-
-    #expect(rows.first?.meta == "04:10 · 0 of 10")
   }
 
   // ── The read-only label ──

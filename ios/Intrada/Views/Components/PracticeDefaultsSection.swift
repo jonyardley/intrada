@@ -5,45 +5,11 @@ struct PracticeDefaultsSection: View {
   let defaults: PracticeDefaults
   let limits: LimitsView
   let onSave: (PracticeDefaults) -> Void
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionTitle("Practice defaults")
       VStack(alignment: .leading, spacing: 0) {
-        let rowLayout =
-          typeSize.isAccessibilitySize
-          ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.controlGap))
-          : AnyLayout(HStackLayout(spacing: IntradaSpacing.cardCompact))
-        rowLayout {
-          VStack(alignment: .leading, spacing: 2) {
-            FieldLabel("Repetitions")
-            Text("\(defaults.repTarget) per item")
-              .font(IntradaFont.body)
-              .foregroundStyle(IntradaColor.ink)
-          }
-          .accessibilityHidden(true)
-          if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
-          Stepper(
-            "Repetitions, \(defaults.repTarget) per item",
-            value: Binding(
-              get: { Int(defaults.repTarget) },
-              set: {
-                save(
-                  PracticeDefaults(
-                    repTarget: UInt8($0), click: defaults.click,
-                    sessionLengthMins: defaults.sessionLengthMins))
-              }),
-            in: Int(limits.repTargetMin)...Int(limits.repTargetMax)
-          )
-          .labelsHidden()
-          .fixedSize()
-          .accessibilityIdentifier("profile.repTarget")
-        }
-        .padding(.vertical, IntradaSpacing.cardCompact)
-        .padding(.horizontal, IntradaSpacing.card)
-        HairlineDivider()
-          .padding(.leading, IntradaSpacing.card)
         VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
           FieldLabel("Metronome starts on")
           SegmentedPills(
@@ -52,9 +18,7 @@ struct PracticeDefaultsSection: View {
               get: { defaults.click },
               set: {
                 save(
-                  PracticeDefaults(
-                    repTarget: defaults.repTarget, click: $0,
-                    sessionLengthMins: defaults.sessionLengthMins))
+                  PracticeDefaults(click: $0, sessionLengthMins: defaults.sessionLengthMins))
               }),
             label: \.title,
             identifier: { "profile.click.\($0.identifierSuffix)" },
@@ -73,8 +37,7 @@ struct PracticeDefaultsSection: View {
           identifier: "profile.sessionLength"
         ) {
           save(
-            PracticeDefaults(
-              repTarget: defaults.repTarget, click: defaults.click, sessionLengthMins: $0))
+            PracticeDefaults(click: defaults.click, sessionLengthMins: $0))
         }
         .padding(IntradaSpacing.card)
       }

@@ -109,37 +109,6 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(entry.plannedLabel, "C")
   }
 
-  /// Got it counts past the target, and undo takes the last tap back without
-  /// calling it a miss (#2107).
-  func testUndoAndThePushPastTheTargetOverTheRealBridge() throws {
-    let bridge = RowsBridge()
-    let itemId = try exerciseWithTwoVariations(bridge)
-
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
-    _ = try bridge.update(.session(.setRepTarget(entryId: entryId, target: 3)))
-    _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
-    let sounding = TempoReading(bpm: 96, clickSounding: true, click: nil)
-    for second in 10...13 {
-      _ = try bridge.update(
-        .session(.repGotIt(now: "2026-09-01T10:00:\(second)Z", reading: sounding)))
-    }
-    let past = try XCTUnwrap(try bridge.rendered().activeSession)
-    XCTAssertEqual(past.currentRepCount, 4)
-    XCTAssertEqual(past.currentRepsPastTarget, 1)
-    XCTAssertTrue(past.currentCanUndo)
-    XCTAssertEqual(past.currentRepHistory?.last?.tempo, 96)
-    XCTAssertEqual(past.currentRepHistory?.last?.clickSounding, true)
-
-    _ = try bridge.update(
-      .session(.repUndo(now: "2026-09-01T10:00:20Z", reading: sounding)))
-    XCTAssertNil(try bridge.rendered().error)
-    let undone = try XCTUnwrap(try bridge.rendered().activeSession)
-    XCTAssertEqual(undone.currentRepCount, 3)
-    XCTAssertEqual(undone.currentRepHistory?.last?.action, .undo)
-  }
-
   func testATempoChangeIsKeptOverTheRealBridge() throws {
     let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
@@ -165,8 +134,8 @@ final class VariationPlayBridgeTests: XCTestCase {
       "the change is kept on the open play, in the practice in progress")
   }
 
-  /// Moved from `VariationPickerUITests` (#1825): switching variation restarts the rep count.
-  func testSwitchingVariationRestartsTheRepetitionCountOverTheRealBridge() throws {
+  /// Moved from `VariationPickerUITests` (#1825): switching variation moves the chip.
+  func testSwitchingVariationMovesTheChipOverTheRealBridge() throws {
     let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inD = try variationId(bridge, label: "D")
@@ -176,10 +145,7 @@ final class VariationPlayBridgeTests: XCTestCase {
     let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
 
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-01T10:00:30Z", reading: .silent)))
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-01T10:00:40Z", reading: .silent)))
-    let beforeSwitch = try XCTUnwrap(try bridge.rendered().activeSession)
-    XCTAssertEqual(beforeSwitch.currentRepCount, 2, "two repetitions banked on the plain play")
+    XCTAssertNil(try bridge.rendered().activeSession?.currentPlayLabel, "the plain play")
 
     _ = try bridge.update(
       .session(
@@ -189,8 +155,6 @@ final class VariationPlayBridgeTests: XCTestCase {
 
     let afterSwitch = try XCTUnwrap(try bridge.rendered().activeSession)
     XCTAssertEqual(afterSwitch.currentPlayLabel, "D", "the chip follows the switch")
-    XCTAssertNil(
-      afterSwitch.currentRepCount, "D's fresh play starts untouched rather than carrying the 2")
   }
 
   /// A tempo lands on the play it was played on (#1761): the switch stamps the

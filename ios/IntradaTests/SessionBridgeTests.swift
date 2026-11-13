@@ -173,19 +173,18 @@ final class SessionBridgeTests: XCTestCase {
       "a grouping the bars table does not list still gets its patterns")
   }
 
-  /// The saved defaults reach the counter, the click and the item sheet across
-  /// the bincode wire; a u8 beside an enum tag misdecodes on a field-order mismatch (#846, #1915).
-  func testRealBridgePracticeDefaultsReachTheCounterTheClickAndTheSheet() throws {
+  /// The saved defaults reach the click across the bincode wire; an optional
+  /// u16 after an enum tag misdecodes on a field-order mismatch (#846, #1915).
+  func testRealBridgePracticeDefaultsReachTheClick() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: nil)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil)
     let requests = try bridge.update(.practiceDefaults(.save(saved)))
     XCTAssertTrue(
       requests.contains {
         if case .app(.savePracticeDefaults(saved)) = $0.effect { return true } else { return false }
       }, "the save effect decodes with the saved value")
     XCTAssertEqual(try bridge.rendered().practiceDefaults, saved)
-    XCTAssertEqual(try bridge.rendered().limits.repTargetDefault, 5)
 
     _ = try bridge.update(
       .item(
@@ -199,16 +198,37 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.startSession(now: "2026-09-30T09:00:00Z")))
 
     let active = try XCTUnwrap(try bridge.rendered().activeSession)
-    XCTAssertEqual(active.currentRepSlots, 5)
     XCTAssertEqual(
       active.currentClickSounding, 0b1010, "2 and 4 in the 4/4 an item with no metre gets")
+  }
+
+  /// The version 2 bytes a device holds cross the bridge and come back as the
+  /// version 3 save, keeping the click start and the session length (#2791).
+  func testRealBridgeAVersion2BlobIsCarriedIntoTheCurrentShape() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let version2: [UInt8] = [0x05, 0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00]
+    let carried = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25)
+
+    let requests = try bridge.update(.practiceDefaults(.carried(version2)))
+
+    XCTAssertTrue(
+      requests.contains {
+        if case .app(.savePracticeDefaults(carried)) = $0.effect {
+          return true
+        } else {
+          return false
+        }
+      }, "the carry saves the new shape")
+    XCTAssertEqual(try bridge.rendered().practiceDefaults, carried)
+    XCTAssertNil(try bridge.rendered().error)
   }
 
   /// An optional u16 after an enum tag misdecodes on a field-order mismatch (#846, #1736).
   func testRealBridgeSessionLengthReachesTheBuilder() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: 25)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25)
     _ = try bridge.update(.practiceDefaults(.save(saved)))
     XCTAssertEqual(try bridge.rendered().practiceDefaults, saved)
     XCTAssertEqual(try bridge.rendered().limits.sessionLengthDefaultMins, 30)
@@ -271,76 +291,6 @@ final class SessionBridgeTests: XCTestCase {
     let playId = try XCTUnwrap(
       entry.plays.last?.id, "a completed entry records the stretch it was practised as")
     return (bridge, entry.id, playId)
-  }
-
-  /// Real-bridge wire pin for the pass counter (#1367): the timestamped tap
-  /// events and the drawn-slots projection cross the bincode wire, and the
-  /// core's rule holds end to end: an untouched entry records nothing, and the
-  /// first tap writes the target along with itself.
-  func testRealBridgeFirstTapWritesTheTargetAndItsTime() throws {
-    let bridge = RowsBridge()
-    _ = try bridge.update(.startApp)
-    _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
-    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
-    _ = try bridge.update(.session(.startSession(now: "2026-09-03T09:00:00Z")))
-
-    let untouched = try XCTUnwrap(try bridge.rendered().activeSession)
-    XCTAssertNil(untouched.currentRepTarget, "nothing is recorded before the first tap")
-    XCTAssertNil(untouched.currentRepCount)
-    XCTAssertNil(untouched.currentRepHistory)
-    XCTAssertEqual(untouched.currentRepSlots, 10, "the counter still has slots to draw")
-
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-03T09:01:00Z", reading: .silent)))
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-03T09:01:40Z", reading: .silent)))
-
-    let tapped = try XCTUnwrap(try bridge.rendered().activeSession)
-    XCTAssertNil(try bridge.rendered().error)
-    XCTAssertEqual(tapped.currentRepTarget, 10, "the first tap wrote the default target")
-    XCTAssertEqual(tapped.currentRepCount, 0)
-    let history = try XCTUnwrap(tapped.currentRepHistory)
-    XCTAssertEqual(history.map(\.action), [.success, .missed])
-    XCTAssertEqual(
-      history.map { SessionClock.parseRFC3339($0.at) },
-      [
-        SessionClock.parseRFC3339("2026-09-03T09:01:00Z"),
-        SessionClock.parseRFC3339("2026-09-03T09:01:40Z"),
-      ], "each tap keeps the time the shell gave it")
-  }
-
-  /// Moved from `RepetitionCounterUITests` (#1825): a miss at zero floors rather than going negative.
-  func testRealBridgeAMissAtZeroHoldsTheFloor() throws {
-    let bridge = RowsBridge()
-    _ = try bridge.update(.startApp)
-    _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
-    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
-    _ = try bridge.update(.session(.startSession(now: "2026-09-14T09:00:00Z")))
-
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-14T09:00:05Z", reading: .silent)))
-    XCTAssertEqual(
-      try bridge.rendered().activeSession?.currentRepCount, 1, "a bank moves the counter up")
-
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:10Z", reading: .silent)))
-    XCTAssertEqual(
-      try bridge.rendered().activeSession?.currentRepCount, 0, "a miss steps the banked count back")
-
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:20Z", reading: .silent)))
-    XCTAssertEqual(
-      try bridge.rendered().activeSession?.currentRepCount, 0,
-      "a second miss at zero stays on the floor, never negative")
   }
 
   /// Real-bridge wire pin for the manual path (#1499, #1761): a row set by hand
@@ -432,8 +382,7 @@ final class SessionBridgeTests: XCTestCase {
     let playId = try XCTUnwrap(try bridge.rendered().activeSession?.entries.first?.plays.last?.id)
     let answers = ReflectionAnswers(
       marks: [DraftMark(playId: playId, score: 7)], note: "bar 12 rushed",
-      tempos: [DraftTempo(playId: playId, tempo: 160, click: click)], felt: nil, gotInTheWay: [],
-      notePoints: [], intentionMet: nil, ways: [])
+      tempos: [DraftTempo(playId: playId, tempo: 160, click: click)], ways: [])
     let requests = try bridge.update(.session(.updateReflectionDraft(answers: answers)))
 
     let open = try XCTUnwrap(try bridge.rendered().activeSession?.reflection)
@@ -526,7 +475,7 @@ final class SessionBridgeTests: XCTestCase {
   func testRealBridgeOneTapStartPlaysTodaysPlan() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: 25)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25)
     _ = try bridge.update(.practiceDefaults(.save(saved)))
 
     for (title, kind) in [
@@ -674,11 +623,10 @@ final class SessionBridgeTests: XCTestCase {
     let blobEntry = SetlistEntry(
       id: "re1",
       plan: PlannedItem(
-        itemId: "i1", itemType: .exercise, intention: nil, focus: nil, durationSecs: nil,
-        groupId: nil, variationIds: [], repTarget: nil, key: nil),
+        itemId: "i1", itemType: .exercise, intention: nil, durationSecs: nil,
+        groupId: nil, variationIds: [], key: nil),
       itemTitle: "Recovered Scales", position: 0, durationSecs: 0, status: .notAttempted,
-      notes: nil, plays: [], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []
-    )
+      notes: nil, plays: [])
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
       currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
@@ -917,16 +865,11 @@ final class SessionBridgeTests: XCTestCase {
 
     _ = try bridge.update(
       .session(.setEntryIntention(entryId: entryId, intention: "Warm up before the Prelude")))
-    _ = try bridge.update(.session(.setRepTarget(entryId: entryId, target: 3)))
     _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: 300)))
     _ = try bridge.update(
       .session(.setEntryVariations(entryId: entryId, variationIds: [variantId])))
 
     _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-04T09:01:00Z", reading: .silent)))
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:02:00Z", reading: .silent)))
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:00Z", reading: .silent)))
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:30Z", reading: .silent)))
     let click = ClickState(metre: Metre(beats: 4, unit: 8, groups: [2, 2]), sounding: 0b0101)
     _ = try bridge.update(
       .session(
@@ -966,7 +909,6 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(final.groupId, groupId)
     XCTAssertEqual(final.plannedVariationIds, [variantId])
     XCTAssertEqual(final.plannedLabel, "Slow")
-    XCTAssertEqual(final.plannedRepTarget, 3)
     XCTAssertEqual(final.scoreSummary, 6, "one play's mark is the whole entry's")
 
     XCTAssertEqual(final.plays.count, 1, "one stretch of practice, never switched")
@@ -976,14 +918,9 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNil(play.label)
     XCTAssertFalse(play.durationDisplay.isEmpty)
     XCTAssertEqual(play.score, 6)
-    XCTAssertEqual(play.repTarget, 3)
-    XCTAssertEqual(play.repCount, 3, "missed then three got-its: 0, 1, 2, 3")
-    XCTAssertEqual(play.repTargetReached, true)
     XCTAssertEqual(
-      play.metaParts, [play.durationDisplay, "176 bpm", "3 of 3 reps"],
+      play.metaParts, [play.durationDisplay, "176 bpm"],
       "read in the quavers the metronome counted (#2543)")
-    let history = try XCTUnwrap(play.repHistory)
-    XCTAssertEqual(history.map(\.action), [.missed, .success, .success, .success])
     XCTAssertEqual(play.achievedTempo, 88, "176 quavers halves to 88 crotchets")
     XCTAssertEqual(play.tempoDisplay, 176, "and reads back in the click's quavers")
     XCTAssertEqual(play.clickPattern, click)

@@ -93,15 +93,10 @@ final class ProfileUITests: XCTestCase {
 
     app.tabBars.buttons["Practice"].tap()
     app.control("practice.profile", spoken: "Profile", timeout: 10).tap()
-    XCTAssertTrue(
-      app.repTargetStepper(saying: "10 per item").waitForExistence(timeout: 5), "the reset default")
-    // The stepper's identifier overrides its buttons' own; decrement is first.
-    app.steppers["profile.repTarget"].buttons.element(boundBy: 0).tap()
     let twoAndFour = app.control("profile.click.twoAndFour", spoken: "2 and 4")
+    XCTAssertFalse(twoAndFour.isSelected, "the reset default starts on every beat")
     twoAndFour.tap()
     XCTAssertTrue(twoAndFour.isSelected, "the metronome start saved before the relaunch")
-    XCTAssertTrue(
-      app.repTargetStepper(saying: "9 per item").waitForExistence(timeout: 5), "the saved target")
 
     app.terminate()
     app.launchArguments = ["--disable-animations"]
@@ -109,24 +104,12 @@ final class ProfileUITests: XCTestCase {
     app.tabBars.buttons["Practice"].tap()
     app.control("practice.profile", spoken: "Profile", timeout: 10).tap()
     XCTAssertTrue(
-      app.repTargetStepper(saying: "9 per item").waitForExistence(timeout: 5), "the target survived"
-    )
-    XCTAssertTrue(
       app.control("profile.click.twoAndFour", spoken: "2 and 4").isSelected,
       "the metronome start survived")
   }
 }
 
 extension XCUIApplication {
-  /// The stepper speaks its value, "Repetitions, 9 per item"; the text beside
-  /// it is hidden from VoiceOver so it is not read twice.
-  fileprivate func repTargetStepper(saying value: String) -> XCUIElement {
-    steppers.matching(
-      NSPredicate(
-        format: "identifier == %@ AND label == %@", "profile.repTarget", "Repetitions, \(value)")
-    ).firstMatch
-  }
-
   /// The profile's highlighter row reads as one element, "Highlighter, Coral".
   fileprivate func highlighterRow(_ colour: String) -> XCUIElement {
     descendants(matching: .any).matching(

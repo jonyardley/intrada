@@ -34,7 +34,6 @@ final class ComponentSnapshotTests: SnapshotTestCase {
   func testScoreRingFollowsTheCoreLimits() {
     let limits = LimitsView(
       metreBeatsMin: 1, metreBeatsMax: 12, metreUnits: [4],
-      repTargetMin: 1, repTargetMax: 10, repTargetDefault: 3,
       plannedDurationMinSecs: 60, plannedDurationMaxSecs: 3600, plannedDurationDefaultSecs: 300,
       sessionLengthMinMins: 5, sessionLengthMaxMins: 120, sessionLengthStepMins: 5,
       sessionLengthDefaultMins: 30,

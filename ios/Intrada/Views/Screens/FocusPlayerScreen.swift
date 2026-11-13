@@ -49,7 +49,7 @@ struct FocusPlayerScreen: View {
           tempoTarget: target.tempoTarget, tempoRows: target.tempos, plays: target.plays,
           limits: limits, finish: target.finish,
           variations: target.variations, plannedLabel: target.plannedLabel,
-          aim: target.aim, refusal: reflectionRefusal, seed: target.seed,
+          refusal: reflectionRefusal, seed: target.seed,
           onSave: { answers in handleReflection(answers) },
           onSkip: { handleSkipRating(target) },
           onDraft: { answers in store.send(.session(.updateReflectionDraft(answers: answers))) }
@@ -109,9 +109,8 @@ struct FocusPlayerScreen: View {
       if click.isRunning {
         barLine.padding(.top, IntradaSpacing.controlGap)
       }
-      repCounter(active).fadeUp(3).padding(.top, IntradaSpacing.section)
       Spacer(minLength: IntradaSpacing.card)
-      controls(active).fadeUp(4)
+      controls(active).fadeUp(3)
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.card)
@@ -368,26 +367,6 @@ struct FocusPlayerScreen: View {
       onTap: { configuringClick = true })
   }
 
-  // ── Repetitions (resident; the core records nothing until the first tap) ──
-
-  private func repCounter(_ active: ActiveSessionView) -> some View {
-    RepCounter(
-      count: Int(active.currentRepCount ?? 0),
-      slots: Int(active.currentRepSlots),
-      touched: active.currentRepCount != nil,
-      reached: active.currentRepTargetReached ?? false,
-      extra: Int(active.currentRepsPastTarget), canUndo: active.currentCanUndo,
-      onGotIt: {
-        store.send(.session(.repGotIt(now: SessionClock.nowRFC3339(), reading: tempoReading)))
-      },
-      onNotQuite: {
-        store.send(.session(.repMissed(now: SessionClock.nowRFC3339(), reading: tempoReading)))
-      },
-      onUndo: {
-        store.send(.session(.repUndo(now: SessionClock.nowRFC3339(), reading: tempoReading)))
-      })
-  }
-
   // ── Bottom: transport (advance + skip-forward) + next-item hint ──
 
   private func controls(_ active: ActiveSessionView) -> some View {
@@ -461,8 +440,6 @@ struct FocusPlayerScreen: View {
     let plays: [ReflectionPlay]
     let seed: ReflectionAnswers
     let finish: FinishSheetView?
-    /// The focus the aim is asked against, or the musician's own words for it.
-    let aim: String?
     let variations: [PickerVariationView]
     let plannedLabel: String?
   }
@@ -478,7 +455,6 @@ struct FocusPlayerScreen: View {
       tempoTarget: ReflectionSheet.tempoTarget(for: active), reading: draft.reading,
       tempos: draft.tempos, plays: ReflectionPlay.rows(entry.plays), seed: draft.answers,
       finish: active.record.finish,
-      aim: entry.record.focus?.label ?? active.currentItemIntention,
       variations: active.currentVariations, plannedLabel: entry.plannedLabel)
   }
 
@@ -584,10 +560,6 @@ private struct TimerRing: View {
 #if DEBUG
   #Preview("Untouched") {
     FocusPlayerScreen().environment(Store.previewActive)
-  }
-
-  #Preview("Reps") {
-    FocusPlayerScreen().environment(Store.previewActiveReps)
   }
 
   #Preview("Variations") {

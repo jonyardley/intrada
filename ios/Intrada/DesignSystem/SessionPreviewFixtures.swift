@@ -2,41 +2,13 @@
   import Foundation
   import SharedTypes
 
-  func previewMetaParts(
-    _ duration: String, tempo: UInt16? = nil, repTarget: UInt8? = nil, repCount: UInt8? = nil
-  ) -> [String] {
-    [duration]
-      + [tempo.map { "\($0) bpm" }, repTarget.map { "\(repCount ?? 0) of \($0) reps" }]
-      .compactMap { $0 }
-  }
-
-  extension EntryRecordView {
-    static var empty: EntryRecordView {
-      EntryRecordView(
-        focus: nil, suggestedFocus: nil,
-        intentionMet: nil,
-        intentionMetRead: false,
-        felt: nil, gotInTheWay: [], notePoints: [])
-    }
+  func previewMetaParts(_ duration: String, tempo: UInt16? = nil) -> [String] {
+    [duration] + [tempo.map { "\($0) bpm" }].compactMap { $0 }
   }
 
   extension ActiveRecordView {
     static var empty: ActiveRecordView {
       ActiveRecordView(awayOffer: nil, finish: nil, lastTime: nil)
-    }
-  }
-
-  extension FocusChoiceView {
-    static var previewChoices: [FocusChoiceView] {
-      [
-        FocusChoiceView(
-          kind: .tempo, label: "Tempo", target: FocusTargetView(min: 40, max: 208, step: 2)),
-        FocusChoiceView(
-          kind: .cleanReps, label: "Clean in a row",
-          target: FocusTargetView(min: 1, max: 100, step: 1)),
-        FocusChoiceView(kind: .fromMemory, label: "From memory", target: nil),
-        FocusChoiceView(kind: .evenness, label: "Evenness", target: nil),
-      ]
     }
   }
 
@@ -193,26 +165,13 @@
       building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
     }
 
-    /// Twelve minutes with a tempo focus (#2303).
+    /// Twelve minutes with an aim.
     static var previewPlannedPiece: SetlistEntryView {
       var e = building(
         id: "plan-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 0)
       e.intention = "Get it up to 84 with the click"
       e.plannedDurationSecs = 720
       e.plannedDurationDisplay = "12 min"
-      e.record.focus = FocusView(
-        focus: IntentionFocus(kind: .tempo, target: 84), label: "At 84",
-        targetCaption: "\u{2669} = 84")
-      e.planTags = ["Focus: At 84"]
-      return e
-    }
-
-    /// Nothing planned yet, with a typed aim the core reads a focus from.
-    static var previewSuggestingPiece: SetlistEntryView {
-      var e = previewPlannedPiece
-      e.record = .empty
-      e.record.suggestedFocus = previewPlannedPiece.record.focus
-      e.planTags = []
       return e
     }
 
@@ -228,7 +187,6 @@
     static var previewGroupedScalesConfigured: SetlistEntryView {
       var e = previewGroupedScales
       e.intention = "Even RH over the LH arpeggios"
-      e.plannedRepTarget = 7
       e.plannedDurationSecs = 360
       e.plannedDurationDisplay = "6 min"
       return e
@@ -242,8 +200,7 @@
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
         durationDisplay: "0s", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group, removable: removable,
-        plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
-        plays: [], scoreSummary: nil, record: .empty, plannedKey: nil,
+        plannedVariationIds: [], plannedLabel: nil, plays: [], scoreSummary: nil, plannedKey: nil,
         planTags: [])
     }
   }
@@ -374,7 +331,7 @@
             1, "Gymnopédie No. 1", .piece, score: 8,
             notes: "Pedal changes cleaner than last week."),
           previewEntry(
-            2, "Nocturne Op. 9 No. 2", .piece, score: 6, tempo: 54, repTarget: 5, repCount: 5),
+            2, "Nocturne Op. 9 No. 2", .piece, score: 6, tempo: 54),
         ],
         sessionScore: 7,
         playedSummary: "Clair de Lune · Gymnopédie No. 1 · Nocturne Op. 9 No. 2",
@@ -413,7 +370,7 @@
         totalDurationDisplay: "14m 0s", totalDurationSummary: "14m",
         completionStatus: .endedEarly, notes: nil,
         entries: [
-          previewEntry(0, "Hanon No. 1", .exercise, score: 5, repTarget: 10, repCount: 4),
+          previewEntry(0, "Hanon No. 1", .exercise, score: 5),
           previewEntry(1, "Major Scales", .exercise, status: .notAttempted),
         ], sessionScore: nil, playedSummary: "Hanon No. 1",
         dayLabel: "Thu 28 May", itemCountDisplay: "2 exercises")
@@ -422,7 +379,7 @@
     private static func previewEntry(
       _ position: UInt64, _ title: String, _ type: ItemKind,
       status: EntryStatus = .completed, score: UInt8? = nil, tempo: UInt16? = nil,
-      repTarget: UInt8? = nil, repCount: UInt8? = nil, notes: String? = nil
+      notes: String? = nil
     ) -> SetlistEntryView {
       let plays =
         status == .completed
@@ -431,10 +388,7 @@
             id: "entry-\(position)-p1", key: nil, variationIds: [], label: nil,
             seconds: 600,
             durationDisplay: "10 min",
-            metaParts: previewMetaParts(
-              "10 min", tempo: tempo, repTarget: repTarget, repCount: repCount),
-            repTarget: repTarget, repCount: repCount,
-            repTargetReached: repTarget.map { repCount ?? 0 >= $0 }, repHistory: nil,
+            metaParts: previewMetaParts("10 min", tempo: tempo),
             achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score,
             isMarkable: true)
         ] : []
@@ -442,9 +396,8 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: status, notes: notes,
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
-        removable: true, plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
-        plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil,
+        removable: true, plannedVariationIds: [], plannedLabel: nil, plays: plays,
+        scoreSummary: plays.isEmpty ? nil : score, plannedKey: nil,
         planTags: [])
     }
   }
@@ -476,16 +429,14 @@
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
         groupId: groupId, removable: removable, plannedVariationIds: [],
         plannedLabel: nil,
-        plannedRepTarget: nil,
         plays: [
           PlayView(
             id: "entry-\(position)-p1", key: nil, variationIds: [], label: nil,
             seconds: 600,
-            durationDisplay: "10 min", metaParts: ["10 min"], repTarget: nil, repCount: nil,
-            repTargetReached: nil,
-            repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
+            durationDisplay: "10 min", metaParts: ["10 min"], achievedTempo: nil, clickPattern: nil,
+            tempoDisplay: nil, score: nil,
             isMarkable: true)
-        ], scoreSummary: nil, record: .empty, plannedKey: nil,
+        ], scoreSummary: nil, plannedKey: nil,
         planTags: [])
     }
 
@@ -501,8 +452,7 @@
           previewEntry(3, "Gymnopédie No. 1", .piece),
           previewEntry(4, "Czerny Op. 299", .exercise),
         ],
-        currentRepTarget: nil, currentRepCount: nil, currentRepTargetReached: nil,
-        currentRepHistory: nil, currentRepSlots: 10, currentKey: nil, currentVariationIds: [],
+        currentKey: nil, currentVariationIds: [],
         currentPlayLabel: nil,
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Hanon No. 1",
@@ -517,7 +467,7 @@
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
           for: Metre(beats: 4, unit: 4, groups: nil)),
-        currentRepsPastTarget: 0, currentCanUndo: false, record: .empty)
+        record: .empty)
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -528,9 +478,6 @@
         currentPosition: base.currentPosition, totalItems: base.totalItems,
         startedAt: previewLongSessionStartedAt, currentItemStartedAt: base.currentItemStartedAt,
         entries: base.entries,
-        currentRepTarget: base.currentRepTarget, currentRepCount: base.currentRepCount,
-        currentRepTargetReached: base.currentRepTargetReached,
-        currentRepHistory: base.currentRepHistory, currentRepSlots: 10,
         currentKey: base.currentKey,
         currentVariationIds: base.currentVariationIds, currentPlayLabel: base.currentPlayLabel,
         currentPlannedDurationSecs: base.currentPlannedDurationSecs,
@@ -545,7 +492,6 @@
         currentVariations: [], reflection: nil,
         clickSeedMetre: base.clickSeedMetre, clickSeedBpm: base.clickSeedBpm,
         clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets,
-        currentRepsPastTarget: base.currentRepsPastTarget, currentCanUndo: base.currentCanUndo,
         record: .empty)
     }
 
@@ -561,8 +507,7 @@
           variationEntry(), previewEntry(1, "Clair de Lune", .piece),
           previewEntry(2, "Czerny Op. 299", .exercise),
         ],
-        currentRepTarget: 10, currentRepCount: 4, currentRepTargetReached: false,
-        currentRepHistory: nil, currentRepSlots: 10, currentKey: nil,
+        currentKey: nil,
         currentVariationIds: ["variation-f"],
         currentPlayLabel: "F",
         currentPlannedDurationSecs: 480,
@@ -586,7 +531,7 @@
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
           for: Metre(beats: 4, unit: 4, groups: nil)),
-        currentRepsPastTarget: 0, currentCanUndo: false, record: .empty)
+        record: .empty)
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -598,56 +543,22 @@
         itemType: .exercise, position: 0, durationDisplay: "10 min", status: .notAttempted,
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
         groupId: nil, removable: true, plannedVariationIds: ["variation-c"],
-        plannedLabel: "C", plannedRepTarget: 10,
+        plannedLabel: "C",
         plays: [
           PlayView(
             id: "entry-0-p1", key: nil, variationIds: ["variation-c"], label: "C",
             seconds: 190,
             durationDisplay: "3m 10s", metaParts: ["3m 10s", "10 of 10 reps"],
-            repTarget: 10, repCount: 10, repTargetReached: true,
-            repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
+            achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
           PlayView(
             id: "entry-0-p2", key: nil, variationIds: ["variation-f"], label: "F",
             seconds: 0,
             durationDisplay: "0s", metaParts: ["0s", "4 of 10 reps"],
-            repTarget: 10, repCount: 4, repTargetReached: false,
-            repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
+            achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
-        ], scoreSummary: nil, record: .empty, plannedKey: nil,
+        ], scoreSummary: nil, plannedKey: nil,
         planTags: [])
-    }
-
-    static var previewActiveReps: ActiveSessionView {
-      ActiveSessionView(
-        currentItemTitle: "Hanon No. 1", currentItemType: .exercise,
-        currentPosition: 2, totalItems: 5,
-        startedAt: previewSessionStartedAt, currentItemStartedAt: previewStartedAt,
-        entries: [
-          previewEntry(0, "Warm-up Scales", .exercise),
-          previewEntry(1, "Etude No. 3", .exercise),
-          previewEntry(2, "Hanon No. 1", .exercise, groupId: "g1"),
-          previewEntry(3, "Moonlight Sonata", .piece, groupId: "g1", removable: false),
-          previewEntry(4, "Czerny Op. 299", .exercise),
-        ],
-        currentRepTarget: 10, currentRepCount: 7, currentRepTargetReached: false,
-        currentRepHistory: nil, currentRepSlots: 10, currentKey: nil, currentVariationIds: [],
-        currentPlayLabel: nil,
-        currentPlannedDurationSecs: nil,
-        nextItemTitle: "Czerny Op. 299",
-        currentItemIntention: "Land each finger evenly",
-        currentItemNotes: nil,
-        currentRelatedPieceTitle: "Moonlight Sonata",
-        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132,
-        currentItemTempoLine: "Allegro · ♩ = 132",
-        currentItemTempoLineSpoken: "Allegro, 132 beats per minute",
-        currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil,
-        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 132,
-        clickSeedSoundsTarget: true,
-        clickSeedPresets: LimitsView.preview.clickPresets(
-          for: Metre(beats: 4, unit: 4, groups: nil)),
-        currentRepsPastTarget: 0, currentCanUndo: false, record: .empty)
     }
   }
 
@@ -704,8 +615,7 @@
             id: "\(id)-p1", key: nil, variationIds: [], label: nil,
             seconds: seconds,
             durationDisplay: duration, metaParts: previewMetaParts(duration, tempo: tempo),
-            repTarget: nil, repCount: nil, repTargetReached: nil,
-            repHistory: nil, achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo,
+            achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo,
             score: score, isMarkable: true
           )
         ] : []
@@ -713,21 +623,18 @@
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
         durationDisplay: duration, status: status, notes: notes, intention: intention,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil, removable: true,
-        plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
-        plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil,
+        plannedVariationIds: [], plannedLabel: nil, plays: plays,
+        scoreSummary: plays.isEmpty ? nil : score, plannedKey: nil,
         planTags: [])
     }
   }
 
   extension ReflectionPlay {
     static func preview(
-      _ id: String, _ label: String?, _ duration: String, _ repCount: UInt8? = nil,
-      _ repTarget: UInt8? = nil, isMarkable: Bool = true
+      _ id: String, _ label: String?, _ duration: String, isMarkable: Bool = true
     ) -> ReflectionPlay {
       ReflectionPlay(
-        id: id, variationLabel: label, durationDisplay: duration, repCount: repCount,
-        repTarget: repTarget, isMarkable: isMarkable)
+        id: id, variationLabel: label, durationDisplay: duration, isMarkable: isMarkable)
     }
   }
 
@@ -749,13 +656,10 @@
 
   extension ReflectionAnswers {
     static func preview(
-      marks: [DraftMark] = [], note: String = "", tempos: [DraftTempo] = [], felt: Felt? = nil,
-      gotInTheWay: [Obstacle] = [], notePoints: [NoteSpan] = [],
-      intentionMet: IntentionMet? = nil, ways: [DraftWay] = []
+      marks: [DraftMark] = [], note: String = "", tempos: [DraftTempo] = [],
+      ways: [DraftWay] = []
     ) -> ReflectionAnswers {
-      ReflectionAnswers(
-        marks: marks, note: note, tempos: tempos, felt: felt, gotInTheWay: gotInTheWay,
-        notePoints: notePoints, intentionMet: intentionMet, ways: ways)
+      ReflectionAnswers(marks: marks, note: note, tempos: tempos, ways: ways)
     }
   }
 
@@ -764,17 +668,13 @@
     /// detail read them (#1739).
     static func preview(
       _ id: String, _ variationLabel: String?, seconds: UInt64, duration: String,
-      score: UInt8? = nil, tempo: UInt16? = nil, repCount: UInt8? = nil,
-      repTarget: UInt8? = nil
+      score: UInt8? = nil, tempo: UInt16? = nil
     ) -> PlayView {
       PlayView(
         id: id, key: nil, variationIds: variationLabel.map { ["v-\($0)"] } ?? [],
         label: variationLabel,
         seconds: seconds, durationDisplay: duration,
-        metaParts: previewMetaParts(
-          duration, tempo: tempo, repTarget: repTarget, repCount: repCount),
-        repTarget: repTarget, repCount: repCount,
-        repTargetReached: repTarget.map { (repCount ?? 0) >= $0 }, repHistory: nil,
+        metaParts: previewMetaParts(duration, tempo: tempo),
         achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score, isMarkable: true
       )
     }
@@ -785,20 +685,18 @@
     static var previewThreeVariations: SetlistEntryView {
       let plays = [
         PlayView.preview(
-          "p1", "C major", seconds: 250, duration: "4m 10s", score: 7, repCount: 8, repTarget: 10),
+          "p1", "C major", seconds: 250, duration: "4m 10s", score: 7),
         PlayView.preview(
-          "p2", "G major", seconds: 200, duration: "3m 20s", score: 9, tempo: 104, repCount: 10,
-          repTarget: 10),
-        PlayView.preview(
-          "p3", "D major", seconds: 310, duration: "5m 10s", repCount: 4, repTarget: 10),
+          "p2", "G major", seconds: 200, duration: "3m 20s", score: 9, tempo: 104),
+        PlayView.preview("p3", "D major", seconds: 310, duration: "5m 10s"),
       ]
       return SetlistEntryView(
         id: "entry-variations", itemId: "exercise-2", itemTitle: "Major Scales",
         itemType: .exercise, position: 0, durationDisplay: "12m 40s", status: .completed,
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
         plannedDurationDisplay: nil, groupId: nil, removable: true,
-        plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
-        plays: plays, scoreSummary: 8, record: .empty, plannedKey: nil,
+        plannedVariationIds: ["v-C major"], plannedLabel: "C major", plays: plays, scoreSummary: 8,
+        plannedKey: nil,
         planTags: [])
     }
 
@@ -815,8 +713,7 @@
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
         groupId: nil, removable: true,
         plannedVariationIds: ["v-E\u{266d} major"],
-        plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
-        plays: plays, scoreSummary: nil, record: .empty, plannedKey: nil,
+        plannedLabel: "E\u{266d} major", plays: plays, scoreSummary: nil, plannedKey: nil,
         planTags: [])
     }
   }
@@ -840,37 +737,9 @@
   }
 
   extension FinishSheetView {
-    /// The core's words for the choices, copied for previews only.
-    static func preview(asksIntention: Bool, read: IntentionMet? = nil) -> FinishSheetView {
-      FinishSheetView(
-        noteOffers: [
-          NotePointView(
-            span: NoteSpan(start: 23, end: 29), label: "Bar 12",
-            confirmed: false),
-          NotePointView(
-            span: NoteSpan(start: 38, end: 40), label: "\u{2669} = 84",
-            confirmed: true),
-        ],
-        asksIntention: asksIntention, intentionMetRead: read,
-        feltChoices: [
-          FeltChoiceView(felt: .comfortable, label: "Comfortable"),
-          FeltChoiceView(felt: .hardWork, label: "Hard work"),
-          FeltChoiceView(felt: .strained, label: "Strained"),
-        ],
-        obstacleChoices: [
-          ObstacleChoiceView(obstacle: .notes, label: "Notes"),
-          ObstacleChoiceView(obstacle: .rhythm, label: "Rhythm"),
-          ObstacleChoiceView(obstacle: .fingering, label: "Fingering"),
-          ObstacleChoiceView(obstacle: .memory, label: "Memory"),
-          ObstacleChoiceView(obstacle: .tone, label: "Tone"),
-          ObstacleChoiceView(obstacle: .tension, label: "Tension"),
-        ], rows: [], keys: [])
-    }
-
     /// Clair de Lune's keys, for changing what a row says was played (#2249).
     static var previewWayChoices: FinishSheetView {
-      var finish = preview(asksIntention: false)
-      finish.noteOffers = []
+      var finish = FinishSheetView(rows: [], keys: [])
       finish.keys = [
         KeyChoiceView(key: nil, label: "Written key", caption: "D\u{266d} major"),
         KeyChoiceView(

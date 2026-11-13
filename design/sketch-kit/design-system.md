@@ -53,7 +53,6 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 | Actions | SegmentedPills | Choosing one of two to five options in place |
 | Actions | ScoreSelector | Giving an item, a play or a session its mark |
 | Actions | WeekStrip | Picking a day of the week on the Practice home |
-| Actions | RepCounter | Counting repetitions in the player |
 | Actions | AddRowButton | The full-width row that adds something to a list |
 | Text and labels | SectionHeader | A section's title with an optional action |
 | Text and labels | SectionTitle | The secondary-ink label above a section |

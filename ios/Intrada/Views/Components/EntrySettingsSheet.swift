@@ -1,8 +1,8 @@
 import SharedTypes
 import SwiftUI
 
-/// Per-entry session-builder settings: an "Aim" note, a rep-target counter, and
-/// a planned duration — opened by tapping a builder row. Every field pushes on
+/// Per-entry session-builder settings: an "Aim" note, the key and variation,
+/// and a planned duration, opened by tapping a builder row. Every field pushes on
 /// change (no separate Save), matching the `SessionSummaryScreen` notes idiom.
 struct EntrySettingsSheet: View {
   let entry: SetlistEntryView
@@ -12,8 +12,6 @@ struct EntrySettingsSheet: View {
   @Environment(\.dynamicTypeSize) private var typeSize
 
   @State private var intention: String
-  @State private var tracksReps: Bool
-  @State private var repTarget: Int
   @State private var hasPlannedDuration: Bool
   @State private var plannedMinutes: Int
   @State private var variantId: String?
@@ -30,14 +28,8 @@ struct EntrySettingsSheet: View {
     store.viewModel?.buildingSetlist?.entries.first { $0.id == entry.id } ?? entry
   }
 
-  var repTargetRange: ClosedRange<Int> { Int(limits.repTargetMin)...Int(limits.repTargetMax) }
-
   var durationRange: ClosedRange<Int> {
     Int(limits.plannedDurationMinMins)...Int(limits.plannedDurationMaxMins)
-  }
-
-  static func initialRepTarget(for entry: SetlistEntryView, limits: LimitsView) -> Int {
-    Int(entry.plannedRepTarget ?? limits.repTargetDefault)
   }
 
   static func initialPlannedMinutes(for entry: SetlistEntryView, limits: LimitsView) -> Int {
@@ -48,8 +40,6 @@ struct EntrySettingsSheet: View {
     self.entry = entry
     self.limits = limits
     _intention = State(initialValue: entry.intention ?? "")
-    _tracksReps = State(initialValue: entry.plannedRepTarget != nil)
-    _repTarget = State(initialValue: Self.initialRepTarget(for: entry, limits: limits))
     _hasPlannedDuration = State(initialValue: entry.plannedDurationSecs != nil)
     _plannedMinutes = State(initialValue: Self.initialPlannedMinutes(for: entry, limits: limits))
     _variantId = State(initialValue: entry.plannedVariationIds.first)
@@ -60,14 +50,12 @@ struct EntrySettingsSheet: View {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           aimSection
-          focusSection
           if let keys {
             keySection(keys)
           }
           if !variants.isEmpty {
             stepSection
           }
-          repsSection
           durationSection
           if live.removable {
             removeButton
@@ -87,24 +75,7 @@ struct EntrySettingsSheet: View {
         .onChange(of: intention) { _, value in
           store.send(.session(.setEntryIntention(entryId: entry.id, intention: value)))
         }
-      if let suggested = live.record.suggestedFocus {
-        OfferChip("Focus: \(suggested.label)", systemImage: "plus") {
-          setFocus(suggested.focus)
-        }
-        .accessibilityIdentifier("entrySettings.suggestedFocus")
-      }
     }
-  }
-
-  private var focusSection: some View {
-    EntryFocusCard(
-      current: live.record.focus,
-      choices: store.viewModel?.buildingSetlist?.focusChoices ?? [],
-      send: setFocus)
-  }
-
-  private func setFocus(_ focus: IntentionFocus?) {
-    store.send(.session(.setFocus(entryId: entry.id, focus: focus)))
   }
 
   private func keySection(_ keys: EntryKeysView) -> some View {
@@ -169,36 +140,18 @@ struct EntrySettingsSheet: View {
       .session(.setEntryVariations(entryId: entry.id, variationIds: id.map { [$0] } ?? [])))
   }
 
-  private var repsSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      settingToggle("Track repetitions", isOn: $tracksReps, identifier: "entrySettings.trackReps")
-        .onChange(of: tracksReps) { _, on in
-          store.send(
-            .session(.setRepTarget(entryId: entry.id, target: on ? UInt8(repTarget) : nil)))
-        }
-      if tracksReps {
-        Stepper(value: $repTarget, in: repTargetRange) {
-          Text("Target: \(repTarget) repetitions")
-            .font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
-        }
-        .onChange(of: repTarget) { _, value in
-          guard tracksReps else { return }
-          store.send(.session(.setRepTarget(entryId: entry.id, target: UInt8(value))))
-        }
-      }
-    }
-    .fieldCardSurface()
-  }
-
   private var durationSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      settingToggle("Planned duration", isOn: $hasPlannedDuration)
-        .onChange(of: hasPlannedDuration) { _, on in
-          store.send(
-            .session(
-              .setEntryDuration(
-                entryId: entry.id, durationSecs: on ? UInt32(plannedMinutes * 60) : nil)))
-        }
+      settingToggle(
+        "Planned duration", isOn: $hasPlannedDuration,
+        identifier: "entrySettings.plannedDuration"
+      )
+      .onChange(of: hasPlannedDuration) { _, on in
+        store.send(
+          .session(
+            .setEntryDuration(
+              entryId: entry.id, durationSecs: on ? UInt32(plannedMinutes * 60) : nil)))
+      }
       if hasPlannedDuration {
         Stepper(value: $plannedMinutes, in: durationRange) {
           Text("\(plannedMinutes) min").font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
