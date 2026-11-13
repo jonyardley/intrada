@@ -43,8 +43,8 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 ## One issue, start to finish
 
 1. **Pick.** First any crew worktree left by an earlier run whose issue is
-   open, has no draft note and no `needs-owner` label, skipping any issue
-   GitHub cannot read; then the ready queue
+   open, has no draft note, no `needs-owner` label and no park note without a
+   later comment, skipping any issue GitHub cannot read; then the ready queue
    (`scripts/generate-status.sh --ready-json`, the READY section's order:
    horizon, Priority, then age), less any issue labelled `needs-owner`. Take
    the first for which `scripts/crew-pick.sh <issue>` exits 0; an issue is
@@ -59,7 +59,7 @@ waiting its turn for the simulator is not mistaken for a stalled one.
    reviews with `reviewer`, runs the QA agent, and opens the draft with
    `just pr-open --draft`. `/ship` in loop mode ends at the draft.
 5. **Watch.** The script polls `claude agents --json` each minute. Two polls
-   in a row reading blocked, done or idle mean the turn ended, whatever the
+   in a row reading blocked, done, stopped or idle mean the turn ended, whatever the
    pid, since a finished session reads blocked with no pid. Then the newest
    `**Crew:` note since the session started decides: draft, parked, or the
    loop parks it. The session counts as having no process only when it reads
@@ -156,7 +156,9 @@ it as `CREW_PARK_STEP`. The issue half then adds the
 `needs-owner` label, posts the question as a comment, keeps the claim and
 pushes to the owner's phone. Nothing waits on
 a prompt; the loop takes the next issue. When the label cannot be added the
-run ends, so the issue is not taken again.
+run ends, and a later run passes the issue over until a comment follows the
+park note. When GitHub cannot be read for the outcome, twice, the run ends
+with the issue neither announced nor parked.
 
 ## The session side (slice 2, #2820)
 
@@ -200,8 +202,8 @@ Every outcome raises a Mac notification, then a short print-mode session sends
 it with Claude's own push tool, the only route found to the phone without an
 outside service. That tool holds a push back while the owner is active at a
 terminal (the #2821 row of `docs/harness-log.md`), so it reaches the phone when
-they are away, which is when the loop runs. Whether it lands is the owner's to
-confirm on the first run with the owner away.
+they are away. Whether it lands is the owner's to confirm on the first run
+with the owner away.
 
 ## Out of scope
 

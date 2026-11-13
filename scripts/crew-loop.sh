@@ -30,7 +30,7 @@ POLL=${CREW_POLL:-60}
 STOP_FILE=${CREW_STOP_FILE:-$HOME/.intrada-crew-stop}
 SIM_LOCK=${IOS_SIM_LOCK_DIR:-/tmp/intrada-ios-test.lock}
 LOG=${CREW_LOG:-$HOME/.claude/crew-loop.log}
-WATCHED=""  # the session the loop is watching, stopped on INT or TERM
+CURRENT_N=""  # the issue being started or watched; INT or TERM stops its session
 STARTED_ID=""
 OUTCOME=""
 
@@ -80,6 +80,11 @@ descendants() {
 stop_session() {
   local id=$1 pid tree p left=0 lock_pid
   pid=$(agent_record "$id" | jq -r '.pid // empty')
+  # A record's pid may have been reused by another process since.
+  if [ -n "$pid" ] && ! ps -o command= -p "$pid" 2>/dev/null | grep -q claude; then
+    echo "pid $pid of $id is not a claude process, so its tree is left alone"
+    pid=""
+  fi
   tree=""
   [ -n "$pid" ] && tree=$(printf '%s\n%s\n' "$pid" "$(descendants "$pid")" | sed '/^$/d')
   claude stop "$id" >/dev/null 2>&1
@@ -105,10 +110,20 @@ stop_session() {
 stop_live_in() {
   local id pid
   claude agents --json --all 2>/dev/null |
-    jq -r --arg c "$1" '.[] | select(.cwd == $c and .pid != null) | "\(.id) \(.pid)"' |
+    jq -r --arg c "$1" '.[] | select(.kind == "background" and .id != null and .cwd == $c and .pid != null)
+      | "\(.id) \(.pid)"' |
     while read -r id pid; do
       kill -0 "$pid" 2>/dev/null && log "a live session was already in $1: $(stop_session "$id")"
     done
+}
+
+# Every session named crew-$1 that is not stopped yet.
+stop_named() {
+  local id
+  for id in $(claude agents --json --all 2>/dev/null |
+    jq -r --arg m "crew-$1" '.[] | select(.name == $m and .state != "stopped") | .id'); do
+    log "#$1: $(stop_session "$id")"
+  done
 }
 
 # Sets STARTED_ID. An output it cannot read may still have started a session
@@ -120,10 +135,7 @@ start_session() {
   STARTED_ID=$(printf '%s' "$out" | grep -oE 'backgrounded[^0-9a-f]+[0-9a-f]{8}' | grep -oE '[0-9a-f]{8}$' | head -1)
   if [ -z "$STARTED_ID" ]; then
     log "could not start a session for #$n: $(printf '%s' "$out" | tail -1)"
-    for id in $(claude agents --json --all 2>/dev/null |
-      jq -r --arg m "crew-$n" '.[] | select(.name == $m and .state != "stopped") | .id'); do
-      log "#$n: $(stop_session "$id")"
-    done
+    stop_named "$n"
     return 1
   fi
 }
@@ -215,7 +227,12 @@ notify() {
 bound() {
   local i=0
   while kill -0 "$1" 2>/dev/null; do
-    [ "$i" -ge "$2" ] && { kill "$1" 2>/dev/null; break; }
+    if [ "$i" -ge "$2" ]; then
+      kill "$1" 2>/dev/null
+      sleep 1
+      kill -KILL "$1" 2>/dev/null
+      break
+    fi
     sleep 1
     i=$((i + 1))
   done
@@ -251,17 +268,19 @@ queue() {
 }
 
 # Crew worktrees left by an earlier run, open, with no draft and not waiting on
-# the owner; the queue leaves out a claimed issue. An unreadable issue is
-# skipped, so a GitHub fault never restarts one (#2821).
+# the owner: no needs-owner label, and no park note without a later comment,
+# the owner's answer. An unreadable issue is skipped (#2821).
 unfinished() {
   local n ok
   find "$(worktrees)" -maxdepth 1 -type d -name 'crew-[0-9]*' 2>/dev/null |
     sed -n 's#.*/crew-\([0-9][0-9]*\)$#\1#p' | sort -n |
     while IFS= read -r n; do
       ok=$(gh issue view "$n" -R "$REPO" --json state,labels,comments --jq '
-        select(.state == "OPEN" and ([.labels[].name] | index("needs-owner") | not)
-          and ([.comments[].body | select(startswith("**Crew: "))
-            | capture("^\\*\\*Crew: (?<s>[A-Za-z]+)\\*\\*").s] | last) != "draft") | "yes"' 2>/dev/null) || {
+        select(.state == "OPEN" and ([.labels[].name] | index("needs-owner") | not))
+        | ([.comments[].body | startswith("**Crew: ")] | indices(true) | last) as $i
+        | (if $i == null then "" else (.comments[$i].body
+            | capture("^\\*\\*Crew: (?<s>[A-Za-z]+)\\*\\*").s) // "" end) as $s
+        | select($s != "draft" and ($s != "parked" or $i < (.comments | length) - 1)) | "yes"' 2>/dev/null) || {
         log "could not read #$n from GitHub, so it is skipped" >&2
       }
       [ "$ok" = yes ] && echo "$n"
@@ -296,9 +315,12 @@ check_guards() {
 
 # ── One issue ────────────────────────────────────────────────────────────────
 
-# The newest note decides a turn that ended; $3 when there is none.
+# The newest note decides a turn that ended; $3 when there is none, and
+# unread when GitHub fails twice, so a blip never parks a draft (#2821).
 note_outcome() {
-  case "$(last_note "$1" "$2")" in draft) echo draft ;; parked) echo parked ;; *) echo "$3" ;; esac
+  local note
+  note=$(last_note "$1" "$2") || note=$(last_note "$1" "$2") || { echo unread; return; }
+  case "$note" in draft) echo draft ;; parked) echo parked ;; *) echo "$3" ;; esac
 }
 
 # Watches one session to its end and sets OUTCOME: draft, parked, or the reason
@@ -322,7 +344,7 @@ watch() {
       return
     fi
     # State before pid: a finished session reads blocked with no pid (#2821).
-    if [ "$state" = blocked ] || [ "$state" = done ] || [ "$status" = idle ]; then
+    if [ "$state" = blocked ] || [ "$state" = done ] || [ "$state" = stopped ] || [ "$status" = idle ]; then
       ended=$((ended + 1))
       gone=0
     elif [ "$state" = working ] || [ "$status" = busy ]; then
@@ -355,7 +377,7 @@ watch() {
 }
 
 # Exit 0 to go on; 1 when a park could not label the issue; 2 when no session
-# started. Either of those ends the run.
+# started; 3 when the notes could not be read. All but 0 end the run.
 run_issue() {
   local n=$1 wt id sid said since
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -364,16 +386,20 @@ run_issue() {
     return
   }
   stop_live_in "$wt"
-  start_session "$wt" "$n" || return 2
+  CURRENT_N=$n
+  start_session "$wt" "$n" || { CURRENT_N=""; return 2; }
   id=$STARTED_ID
-  WATCHED=$id
   log "#$n: session $id in $wt"
   watch "$id" "$wt" "$n" "$since"
   sid=$(agent_record "$id" | jq -r '.sessionId // empty')
   said=$(last_words "$wt" "$sid")
   log "#$n: $(stop_session "$id")"
-  WATCHED=""
+  CURRENT_N=""
   case "$OUTCOME" in
+    unread)
+      log "could not read the notes on #$n, so it is neither announced nor parked"
+      return 3
+      ;;
     draft) notify "Crew: draft ready for your review on #$n" ;;
     parked) notify "Crew parked #$n with a question" ;;
     permission) park_issue "$n" "it stopped at a permission prompt" \
@@ -394,9 +420,11 @@ run_issue() {
 on_signal() {
   trap - INT TERM
   log "interrupted"
-  [ -n "$WATCHED" ] && log "$(stop_session "$WATCHED")"
+  [ -n "$CURRENT_N" ] && stop_named "$CURRENT_N"
   exit "$1"
 }
+
+issues() { if [ "$1" -eq 1 ]; then echo "1 issue"; else echo "$1 issues"; fi; }
 
 main() {
   local count=0 tried=" " n cand candidates q qrc prc pickfail dollars rc
@@ -468,18 +496,22 @@ $q"
 
     run_issue "$n"
     rc=$?
+    if [ "$rc" -eq 2 ]; then
+      log "ending the run: no session started for #$n"
+      break
+    fi
     count=$((count + 1))
     if [ "$rc" -eq 1 ]; then
       log "ending the run: #$n is parked without its needs-owner label"
       break
     fi
-    if [ "$rc" -eq 2 ]; then
-      log "ending the run: no session started for #$n"
+    if [ "$rc" -eq 3 ]; then
+      log "ending the run: GitHub could not be read for #$n's outcome"
       break
     fi
   done
-  log "run over: $count issues run"
-  [ "$count" -gt 0 ] && notify "Crew finished: $count issues run, details on each issue"
+  log "run over: $(issues "$count") run"
+  [ "$count" -gt 0 ] && notify "Crew finished: $(issues "$count") run, details on each issue"
   exit 0
 }
 

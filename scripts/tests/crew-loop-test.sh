@@ -33,11 +33,13 @@ case "$1" in
     id=$(printf 'c%07d' "$issue")
     printf '%s %s %s\n' "$id" "$issue" "$PWD" >>"$FAKE/sessions"
     [ -f "$FAKE/stop-on-start" ] && touch "$(cat "$FAKE/stop-on-start")"
+    [ -f "$FAKE/down-on-start" ] && cp "$FAKE/down-on-start" "$FAKE/gh-down-$issue"
+    [ -f "$FAKE/slow-start" ] && sleep 2
     scenario=$(cat "$FAKE/scenario-$issue" 2>/dev/null || echo busy)
     case $scenario in
-      noproc | done-*) ;;
+      noproc | done-* | stopped) ;;
       *)
-        nohup sleep 300 >/dev/null 2>&1 &
+        nohup bash -c 'exec -a claude-session sleep 300' >/dev/null 2>&1 &
         echo $! >"$FAKE/pid-$issue"
         ;;
     esac
@@ -82,19 +84,22 @@ case "$1" in
       esac
       case $scenario in
         done-*) st='"state":"blocked","status":null,"waitingFor":null'; pid=null ;;
+        stopped) st='"state":"stopped","status":null,"waitingFor":null'; pid=null ;;
         draft | parked | ended) st='"state":"done","status":"idle","waitingFor":null' ;;
         permission) st='"state":"blocked","status":"idle","waitingFor":"permission prompt"' ;;
         *) st='"state":"working","status":"busy","waitingFor":null' ;;
       esac
       [ -f "$FAKE/stopped-$id" ] && st='"state":"stopped","status":"idle","waitingFor":null'
-      printf '{"id":"%s","pid":%s,"sessionId":"sess-%s","name":"crew-%s","cwd":"%s",%s}\n' \
-        "$id" "$pid" "$issue" "$issue" "$cwd" "$st"
+      kind=$(cat "$FAKE/kind-$issue" 2>/dev/null || echo background)
+      printf '{"id":"%s","kind":"%s","pid":%s,"sessionId":"sess-%s","name":"crew-%s","cwd":"%s",%s}\n' \
+        "$id" "$kind" "$pid" "$issue" "$issue" "$cwd" "$st"
     done <"$FAKE/sessions" | jq -s .
     ;;
   stop) : >"$FAKE/stopped-$2" ;;
   -p)
     printf '%s\n' "${*: -1}" >>"$FAKE/pushed"
     echo $$ >"$FAKE/push-pid"
+    trap "" TERM
     exec sleep 300
     ;;
   *) echo "stand-in claude: unexpected call: $*" >&2; exit 9 ;;
@@ -117,7 +122,12 @@ for i in "${!args[@]}"; do
 done
 case "$1 $2" in
   "issue view")
-    [ -f "$FAKE/gh-down-$n" ] && exit 1
+    # $FAKE/gh-down-N: empty fails every read, a number fails that many.
+    if [ -f "$FAKE/gh-down-$n" ]; then
+      left=$(cat "$FAKE/gh-down-$n")
+      [ -z "$left" ] && exit 1
+      [ "$left" -gt 0 ] && { echo $((left - 1)) >"$FAKE/gh-down-$n"; exit 1; }
+    fi
     jq -r "${jqx:-.}" "$f"
     ;;
   "issue edit")
@@ -318,6 +328,13 @@ ok "a restart leaves a worktree whose draft is open" '! grep -qx 203 "$FAKE/pick
 ok "a restart leaves a worktree whose issue is closed" '! grep -qx 202 "$FAKE/picked"'
 
 setup
+echo '{"state":"OPEN","labels":[{"name":"ready"}],"comments":[{"body":"**Crew: parked**: a question","createdAt":"2026-11-01T00:00:00Z"}]}' >"$FAKE/issue-208.json"
+mkdir -p "$work/wt/crew-208"
+run_loop
+ok "a restart leaves a parked issue with no later comment, even without its label" \
+  '[ -z "$(started)" ] && ! grep -qsx 208 "$FAKE/picked"'
+
+setup
 echo '{"state":"OPEN","labels":[{"name":"ready"}],"comments":[]}' >"$FAKE/issue-206.json"
 touch "$FAKE/gh-down-206"
 mkdir -p "$work/wt/crew-206"
@@ -339,7 +356,7 @@ setup 101
 echo draft >"$FAKE/scenario-101"
 run_loop
 ok "a draft is announced, with no park" \
-  'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && grep -q "run over: 1 issues run" "$work/out"'
+  'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && grep -q "run over: 1 issue run" "$work/out"'
 ok "the session is started as the crew, on Opus at high effort, with the brief" \
   'grep -qE -- "--bg --model opus --effort high --permission-mode auto -n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
@@ -403,16 +420,51 @@ run_loop
 ok "a session that cannot be started ends the run without parking" \
   '[ "$(started)" = 101 ] && ! labels 101 | grep -qx needs-owner && [ -z "$(notes 101)" ] && grep -q "could not start a session for #101" "$work/out" && grep -q "no session started for #101" "$work/out"'
 ok "a start whose output cannot be read stops any session of that name" '[ -f "$FAKE/stopped-c0000101" ] && ! alive 101'
+ok "a failed start does not count as an issue run" '! grep -qs "Crew finished" "$FAKE/notified"'
+
+setup 101 102
+echo draft >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+: >"$FAKE/down-on-start"
+run_loop
+ok "a draft whose notes cannot be read ends the run, neither announced nor parked" \
+  '[ "$(started)" = 101 ] && ! grep -qs "draft ready" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && [ "$(notes 101 | grep -c "Crew: parked")" = 0 ] && grep -q "could not read the notes on #101" "$work/out"'
 
 setup 101
 echo draft >"$FAKE/scenario-101"
-nohup sleep 304 >/dev/null 2>&1 &
+echo 1 >"$FAKE/down-on-start"
+run_loop
+ok "one failed read of the notes is tried again" 'grep -q "draft ready for your review on #101" "$FAKE/notified"'
+
+setup 101
+echo stopped >"$FAKE/scenario-101"
+run_loop
+ok "a session that reads stopped lets the notes decide" 'notes 101 | grep -q "without a draft or a park note"'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+touch "$FAKE/slow-start"
+BG=1 run_loop
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$FAKE/sessions" ] && break; sleep 0.2; done
+kill -TERM "$LOOP_PID"
+wait "$LOOP_PID" 2>/dev/null || :
+ok "TERM during a start stops the session it started" '[ -f "$FAKE/stopped-c0000101" ] && ! alive 101'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+nohup bash -c 'exec -a claude-old sleep 304' >/dev/null 2>&1 &
 echo $! >"$FAKE/pid-777"
 disown "$!"
-printf 'c0000777 777 %s\nc0000778 778 %s\n' "$work/wt/crew-101" "$work/wt/crew-101" >"$FAKE/sessions"
+nohup bash -c 'exec -a claude-term sleep 306' >/dev/null 2>&1 &
+echo $! >"$FAKE/pid-779"
+disown "$!"
+echo interactive >"$FAKE/kind-779"
+printf 'c0000777 777 %s\nc0000778 778 %s\nc0000779 779 %s\n' "$work/wt/crew-101" "$work/wt/crew-101" "$work/wt/crew-101" >"$FAKE/sessions"
 run_loop
 ok "a live session already in the worktree is stopped before a new one starts" \
   '[ -f "$FAKE/stopped-c0000777" ] && ! kill -0 "$(cat "$FAKE/pid-777")" 2>/dev/null && [ ! -f "$FAKE/stopped-c0000778" ]'
+ok "a session in the worktree that is not a background one is left alone" \
+  '[ ! -f "$FAKE/stopped-c0000779" ] && kill -0 "$(cat "$FAKE/pid-779")"'
 
 setup 101
 POLL=5 BG=1 run_loop
@@ -441,7 +493,7 @@ echo draft >"$FAKE/scenario-101"
 t0=$(date +%s)
 NOTIFY= run_loop
 t1=$(date +%s)
-ok "a notification passes the text whole and the push is cut off at its limit" \
+ok "a notification passes the text whole and a push that ignores TERM is killed at its limit" \
   'grep -qx "Crew: draft ready for your review on #101" "$FAKE/osascript" && grep -q "then stop: Crew: draft ready" "$FAKE/pushed" && ! kill -0 "$(cat "$FAKE/push-pid")" 2>/dev/null && [ $((t1 - t0)) -lt 15 ]'
 
 setup 101
@@ -485,7 +537,7 @@ ok "a background task's output keeps a quiet lead from the silence limit" 'notes
 # ── stop-session, the park step check 7 calls ────────────────────────────────
 
 setup
-nohup bash -c 'sleep 301 & sleep 302 & wait' >/dev/null 2>&1 &
+nohup bash -c 'sleep 301 & sleep 302 & wait' claude-tree >/dev/null 2>&1 &
 parent=$!
 disown "$parent"
 sleep 1
@@ -513,7 +565,7 @@ run_loop stop-session c0000998
 ok "stop-session leaves a simulator lock another process holds" '[ -d "$work/simlock" ]'
 
 setup
-nohup bash -c 'trap "" TERM; exec sleep 305' >/dev/null 2>&1 &
+nohup bash -c 'trap "" TERM; exec -a claude-stubborn sleep 305' >/dev/null 2>&1 &
 stubborn=$!
 disown "$stubborn"
 sleep 0.5
@@ -522,6 +574,17 @@ echo "$stubborn" >"$FAKE/pid-997"
 run_loop stop-session c0000997
 ok "stop-session kills with -9 a process that ignores TERM" \
   '! kill -0 "$stubborn" 2>/dev/null && grep -q "stopped c0000997 and 1 processes (1 needed kill -9)" "$work/out"'
+
+setup
+nohup sleep 307 >/dev/null 2>&1 &
+stranger=$!
+disown "$stranger"
+bgpids="$bgpids $stranger"
+printf 'c0000996 996 %s\n' "$work" >"$FAKE/sessions"
+echo "$stranger" >"$FAKE/pid-996"
+run_loop stop-session c0000996
+ok "stop-session leaves a pid that is not a claude process" \
+  'kill -0 "$stranger" && grep -q "pid $stranger of c0000996 is not a claude process" "$work/out"'
 
 # ── never a ready or merge ───────────────────────────────────────────────────
 

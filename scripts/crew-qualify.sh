@@ -496,7 +496,7 @@ collect_7() {
     agent_state "$id" >"$d/state_after_park"
   fi
   end_session "$id"
-  # Read after the stop: since Claude Code 2.1.323 a call waiting on permission
+  # Read after the stop: on Claude Code 2.1.323 a call waiting on permission
   # reaches the transcript only when the session stops.
   session_calls "$wt" "$sid" >"$d/calls.jsonl"
 }
