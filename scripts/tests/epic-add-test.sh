@@ -3,6 +3,7 @@
 # fixture per issue and logs every mutation, so each refusal is proved to
 # write nothing at all, not merely to print a message.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/epic-add.sh"
@@ -79,7 +80,7 @@ expect_refusal() {
   if [ "$run_status" -eq 0 ]; then
     fail=$((fail + 1))
     printf '✗ %s: expected a refusal, script exited 0\n    output: %s\n' "$desc" "$out" >&2
-  elif ! grep -qF -- "$needle" <<<"$out"; then
+  elif ! contains "$needle" "$out"; then
     fail=$((fail + 1))
     printf '✗ %s: refused, but the message is missing %s\n    output: %s\n' "$desc" "$needle" "$out" >&2
   elif [ "$(mutations)" != "0" ]; then
@@ -102,7 +103,7 @@ equals() {
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if grep -qF -- "$needle" <<<"$haystack"; then
+  if contains "$needle" "$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))

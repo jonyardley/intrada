@@ -1166,6 +1166,18 @@ expect 0 "a refusal names the here-string shape" pipes_names_shape
 pipes_root="$work/no-such-root"
 expect 2 "no root to read" pipes_check
 
+# ── The self-tests' shared text match ──────────────────────────────────────
+
+contains_run() { bash -c 'source "$1"; contains "$2" "$3"' _ "$repo_root/scripts/lib/contains.sh" "$@"; }
+expect 0 "contains finds a needle in its haystack" contains_run "b" $'a\nb\nc'
+expect 1 "contains misses a needle the haystack lacks" contains_run "d" $'a\nb\nc'
+expect 2 "contains stops on an empty needle" contains_run "" "text"
+expect 2 "contains stops on an empty needle in an empty haystack" contains_run "" ""
+contains_names_needle() { grep -q "empty needle" <<<"$(contains_run "" "" 2>&1 || true)"; }
+expect 0 "an empty needle is named in the message" contains_names_needle
+expect 1 "no self-test helper matches its needle with a bare grep (a text check)" \
+  grep -rqE 'grep -qF (-- )?"\$(needle|want_text)" <<<' "$repo_root/scripts/tests"
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then

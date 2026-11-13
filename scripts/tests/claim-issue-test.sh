@@ -6,6 +6,7 @@
 # and a superseded Claimed comment so the "^Claimed" filter and "last wins"
 # behaviour are both actually exercised, not just assumed.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/claim-issue.sh"
@@ -113,7 +114,7 @@ expect_fail() {
     printf '✗ %s: expected refusal, script exited 0\n    output: %s\n' "$desc" "$out" >&2
     return
   fi
-  if grep -qF -- "$needle" <<<"$out"; then
+  if contains "$needle" "$out"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))

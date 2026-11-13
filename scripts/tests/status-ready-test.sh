@@ -5,6 +5,7 @@
 # order by horizon then Priority then age, claimed ones dropped, epics left out, and the read
 # failing.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/generate-status.sh"
@@ -55,7 +56,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if grep -qF -- "$needle" <<<"$haystack"; then
+  if contains "$needle" "$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -65,7 +66,7 @@ check() {
 
 refute() {
   local haystack="$1" desc="$2" needle="$3"
-  if grep -qF -- "$needle" <<<"$haystack"; then
+  if contains "$needle" "$haystack"; then
     fail=$((fail + 1))
     printf '✗ %s\n    did not expect: %s\n' "$desc" "$needle" >&2
   else

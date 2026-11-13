@@ -4,6 +4,7 @@
 # the recipe reports each shape correctly, plus the no-change case, without
 # touching the network.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/pr-visuals.sh"
@@ -40,7 +41,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if grep -qF "$needle" <<<"$haystack"; then
+  if contains "$needle" "$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
