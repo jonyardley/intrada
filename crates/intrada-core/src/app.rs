@@ -127,8 +127,8 @@ pub enum AppEffect {
     /// Persist the musician's profile (UserDefaults, key versioned per
     /// #1691). Fire-and-forget; output is `()`.
     SaveProfile(Profile),
-    /// Persist the practice defaults (UserDefaults, key versioned per
-    /// `specs/practice-defaults.md`). Fire-and-forget; output is `()`.
+    /// Persist the practice defaults (UserDefaults, key versioned per #2216).
+    /// Fire-and-forget; output is `()`.
     SavePracticeDefaults(PracticeDefaults),
     /// Persist whether the welcome was dismissed (UserDefaults, key versioned
     /// per #2116). Fire-and-forget; output is `()`.

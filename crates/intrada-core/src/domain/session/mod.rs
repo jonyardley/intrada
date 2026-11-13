@@ -108,18 +108,13 @@ impl Play {
         same_key && sorted(&self.variation_ids) == sorted(&way.variation_ids)
     }
 
-    /// A mark. Time alone is not a record: the clock runs whether or not the
-    /// musician played anything.
-    pub fn recorded_something(&self) -> bool {
-        self.score.is_some()
-    }
-
-    /// A play nobody practised: no mark and under five seconds.
+    /// A play nobody practised: no mark and under five seconds. Time alone is
+    /// not a record: the clock runs whether or not the musician played anything.
     /// A terminal transition drops these so a stray tap on the picker leaves no
     /// trace. The time bound is what separates a stray tap from a stretch that
     /// was genuinely played and simply not marked.
     pub fn is_incidental(&self) -> bool {
-        !self.recorded_something() && self.seconds < validation::MIN_PLAY_SECONDS
+        self.score.is_none() && self.seconds < validation::MIN_PLAY_SECONDS
     }
 }
 
@@ -286,7 +281,7 @@ pub struct PracticeSession {
     pub capture_version: Option<u32>,
 }
 
-/// 1: plays carry a section, a key and variations, taps their tempo (#2246).
+/// 1: plays carry a key and variations (#2246).
 pub const CAPTURE_VERSION: u32 = 1;
 
 /// What the click was doing at the instant a play closed. Facts only: the

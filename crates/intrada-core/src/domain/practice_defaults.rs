@@ -310,7 +310,8 @@ mod tests {
 
     #[test]
     fn bytes_that_are_not_a_version_2_blob_change_and_write_nothing() {
-        for hex in ["", "05", "0509000000"] {
+        // The last two are version 3 blobs sent by mistake.
+        for hex in ["", "05", "0509000000", "01000000011900", "0000000000"] {
             let mut model = Model::default();
             let mut cmd = send(&mut model, PracticeDefaultsEvent::Carried(bytes(hex)));
             assert_eq!(

@@ -493,13 +493,14 @@ fn remove_focus_and_repetitions(
         let paths: Vec<String> = tx
             .prepare(
                 "SELECT fullkey FROM json_tree(?1)
-                 WHERE path GLOB '$[[][0-9]*]' AND path NOT GLOB '*.*'
+                 WHERE path GLOB '$[[][0-9]*]' AND path NOT GLOB '*.*' AND path NOT GLOB '*][*'
                    AND key IN ('focus', 'plannedRepTarget', 'intentionMet', 'felt',
                      'gotInTheWay', 'notePoints', 'repTarget', 'repCount',
                      'repTargetReached', 'repHistory')
                  UNION ALL
                  SELECT fullkey FROM json_tree(?1)
                  WHERE path GLOB '$[[][0-9]*].plays[[][0-9]*]' AND path NOT GLOB '*.*.*'
+                   AND path NOT GLOB '*][*'
                    AND key IN ('repTarget', 'repCount', 'repTargetReached', 'repHistory')",
             )?
             .query_map([&entries], |row| row.get(0))?

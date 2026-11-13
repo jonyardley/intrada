@@ -2,15 +2,15 @@
 
 > Tier 3 (store migration, crash recovery blob, practice defaults blob,
 > bridge reshape). Rides as the first commit of the PR for #2791. Both apps.
-> Decisions taken by Jon on 10 November 2026, in the plan on #2791.
+> Decisions taken by the owner on 10 November 2026, in the plan on #2791.
 
 ## Problem
 
 Build session asks for a focus and a repetition target on each item, the
 practice screen counts plays, and Session complete asks whether the aim was
 met, offers chips read from the note and a folded "Add detail" with set
-choices for how it felt and what got in the way. Jon ruled that all of these
-add weight without paying for it. The aim before playing and the note after
+choices for how it felt and what got in the way. The owner ruled that all of
+these add weight without paying for it. The aim before playing and the note after
 stay, as plain free text.
 
 ## What goes
@@ -45,8 +45,8 @@ From the core, both apps and saved data:
 `ActiveSession::BLOB_VERSION` goes from 10 to 11 before any shape changes
 (#1345), and the pin is re-taken. A practice left open across the update is
 retired with the notice the app already shows. The pinned fixtures fill every
-optional and list that remains (tempo changes, time away, click pattern, key)
-so the pin still tells shapes apart.
+play optional and list that remains (tempo changes, time away, click
+pattern, key) so the pin still tells shapes apart.
 
 ### The practice defaults blob (decision 4)
 
@@ -67,8 +67,9 @@ The musician's choices carry across once:
   they start.
 - `Loaded` is unchanged and still never re-saves.
 
-The test reads the two version 2 blobs pinned today (`0501000000011900`,
-`0a0000000000`) as real device bytes.
+The test reads the two version 2 blobs pinned before #2791
+(`0501000000011900`, `0a0000000000`) as real device bytes, and refuses both
+version 3 pins sent by mistake.
 
 ### Saved sessions (store step v23)
 
@@ -78,13 +79,14 @@ v22. It removes, by path rather than bare key name:
 
 - on each entry: `focus`, `plannedRepTarget`, `intentionMet`, `felt`,
   `gotInTheWay`, `notePoints`, and the legacy entry level `repTarget`,
-  `repCount` and `repHistory` (rows from before #1739);
-- on each play: `repTarget`, `repCount`, `repHistory`.
+  `repCount`, `repTargetReached` and `repHistory` (rows from before #1739);
+- on each play: `repTarget`, `repCount`, `repTargetReached`, `repHistory`.
 
 Every other value stays byte for byte, `updated_at` included. A row whose
 entries are not a JSON array is named and skipped, as v22 does. The test
 asserts on the raw `entries` text, since the new reader ignores unknown keys
-and a test through the codec would pass with the step deleted.
+and a test through the codec would pass with the step deleted. Decoys of the
+same names inside values that stay must survive it.
 
 **Old rows with banked repetitions and no mark.** The reader folds an entry
 from before #1739 into one play when it was completed, or when it carried a

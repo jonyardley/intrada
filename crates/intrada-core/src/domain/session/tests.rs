@@ -4894,8 +4894,6 @@ fn set_entry_duration_none_clears_the_plan() {
     assert_eq!(building_entries(&model)[0].plan.duration_secs, None);
 }
 
-// --- Rep History Tests (US1) ---
-
 #[test]
 fn test_update_session_score_sets_and_validates() {
     let mut model = model_with_summary();

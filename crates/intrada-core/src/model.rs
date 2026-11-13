@@ -56,7 +56,7 @@ pub struct Model {
     pub practice_summaries: Tracked<HashMap<String, ItemPracticeSummary>>,
     /// Device data, not account data (#1691).
     pub profile: Profile,
-    /// Device data, like the profile (`specs/practice-defaults.md`).
+    /// Device data, like the profile (#1915).
     pub practice_defaults: PracticeDefaults,
     /// Device data, never synced (#2116).
     pub first_run: FirstRun,
@@ -925,7 +925,7 @@ pub struct ActiveSessionView {
     pub current_item_tempo_line: Option<String>,
     pub current_item_tempo_line_spoken: Option<String>,
     /// The beats the click starts on for this item: the musician's default,
-    /// fitted to the item's metre or 4/4 (`specs/practice-defaults.md`).
+    /// fitted to the item's metre or 4/4 (#1915).
     pub current_click_sounding: u16,
     /// The current item's variations with the picker's caption for each (#1784).
     pub current_variations: Vec<PickerVariationView>,
