@@ -179,7 +179,7 @@ if [ -n "$removed" ]; then
       case "$seen" in
         *"|$f:$lineno|"*) continue ;;
       esac
-      if printf '%s\n' "$removed_names" | grep -qxF "${resolved##*/}"; then
+      if grep -qxF "${resolved##*/}" <<<"$removed_names"; then
         found=1
         stale_report="$stale_report"$'\n'"  $f:$lineno points at $target"
       fi

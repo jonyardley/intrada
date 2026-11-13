@@ -51,10 +51,10 @@ android_emu_lock_release() {
 
 android_emu_boot() {
     local avd="$ANDROID_EMU_AVD" avdmanager
-    if adb devices | grep -q '^emulator-.*device$'; then
+    if grep -q '^emulator-.*device$' <<<"$(adb devices)"; then
         return 0
     fi
-    if ! "$ANDROID_HOME/emulator/emulator" -list-avds | grep -qx "$avd"; then
+    if ! grep -qx "$avd" <<<"$("$ANDROID_HOME/emulator/emulator" -list-avds)"; then
         avdmanager="$(command -v avdmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager")"
         echo "↻ creating the $avd emulator"
         # A Homebrew avdmanager looks for system images beside itself unless told where the SDK is.

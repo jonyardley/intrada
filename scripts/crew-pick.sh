@@ -47,7 +47,7 @@ issue=$(printf '%s' "$raw" | jq -ce '.data.repository.issue // empty' 2>/dev/nul
 }
 get() { printf '%s' "$issue" | jq -r "$1" | tr -d '\r'; }
 
-if [ "$(get '.state')" != OPEN ] || ! get '.labels.nodes[].name' | grep -qx ready; then
+if [ "$(get '.state')" != OPEN ] || ! grep -qx ready <<<"$(get '.labels.nodes[].name')"; then
   echo "#$n is not open with the ready label: not in the crew's queue"
   exit 1
 fi
@@ -93,7 +93,7 @@ done_lines=$(printf '%s\n' "$body" | awk '
   on && /^([-*]|[0-9]+\.) / { sub(/^([-*]|[0-9]+\.) +/, ""); print }
 ')
 plan_done=$(plan_line 'Done looks like')
-if printf '%s\n' "$body" | grep -qE '^#+ *Done looks like'; then
+if grep -qE '^#+ *Done looks like' <<<"$body"; then
   [ -n "$done_lines" ] || fail "The body's Done looks like heading has no list items under it."
 elif [ -n "$plan_done" ]; then
   done_lines=$(printf '%s\n' "$plan_done" | tr ';' '\n' | sed 's/^ *//; /^$/d')
@@ -103,19 +103,19 @@ if [ -z "$done_lines" ]; then
 fi
 while IFS= read -r line; do
   [ -n "$line" ] || continue
-  printf '%s' "$line" | grep -qiE '(^|[^[:alnum:]])(self-test|tests?|snapshots?|screenshots?)([^[:alnum:]-]|$)' ||
+  grep -qiE '(^|[^[:alnum:]])(self-test|tests?|snapshots?|screenshots?)([^[:alnum:]-]|$)' <<<"$line" ||
     fail "A Done looks like line names no test, snapshot or screenshot as its evidence: \"$line\""
 done <<<"$done_lines"
-if printf '%s\n%s\n' "$done_lines" "$plan_done" | grep -qi 'needs your call'; then
+if grep -qi 'needs your call' <<<"$done_lines"$'\n'"$plan_done"; then
   fail "A Done looks like line still needs your call."
 fi
 
 files=$(plan_line Files)
-if printf '%s' "$files" | grep -qE "$SCREEN_PATHS"; then
+if grep -qE "$SCREEN_PATHS" <<<"$files"; then
   mockup=$(plan_line Mockup)
-  if ! printf '%s' "$mockup" | grep -q 'https://claude\.ai/' ||
-    ! printf '%s' "$mockup" | grep -qiE '(^|[^[:alnum:]])approved( the mockup)? on [0-9]{4}-[0-9]{2}-[0-9]{2}' ||
-    printf '%s' "$mockup" | grep -qi 'not approved'; then
+  if ! grep -q 'https://claude\.ai/' <<<"$mockup" ||
+    ! grep -qiE '(^|[^[:alnum:]])approved( the mockup)? on [0-9]{4}-[0-9]{2}-[0-9]{2}' <<<"$mockup" ||
+    grep -qi 'not approved' <<<"$mockup"; then
     fail "A screen issue needs a Mockup line with the canvas link and the owner's word, \"approved the mockup on\" a date."
   fi
 fi

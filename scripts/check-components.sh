@@ -43,7 +43,7 @@ rows=$(awk -F'|' '/^\|/ && !/^\|[ :|-]*$/ {
 names=$(printf '%s\n' "$rows" | cut -d' ' -f1)
 
 is_pending() { case " $pending " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
-in_index() { printf '%s\n' "$names" | grep -qx "$1"; }
+in_index() { grep -qx "$1" <<<"$names"; }
 
 # A key from the page's leading `---` block, or nothing.
 key() {

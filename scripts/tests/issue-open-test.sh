@@ -2,6 +2,7 @@
 # Self-test for scripts/issue-open.sh (#2696): an issue opens only with a
 # horizon label and a kind label, and the refusal names the fix.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/issue-open.sh"
@@ -36,7 +37,7 @@ check() {
   [ -f "$CALLS" ] || opened=0
   [ "$want_status" -eq 0 ] && want_opened=1
   if [ "$status" -eq "$want_status" ] && [ "$opened" -eq "$want_opened" ] &&
-    printf '%s' "$out" | grep -qF -- "$want_text"; then
+    contains "$want_text" "$out"; then
     echo "✓ $name"
     pass=$((pass + 1))
   else

@@ -77,7 +77,7 @@ set +e
 out="$(run "Fix the thing (#42)" 2>&1)"
 run_status=$?
 set -e
-if [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "no claim comment" && [ ! -f "$CALLS/pr_create.log" ]; then
+if [ "$run_status" -ne 0 ] && grep -qF "no claim comment" <<<"$out" && [ ! -f "$CALLS/pr_create.log" ]; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -94,7 +94,7 @@ set +e
 out="$(run "Fix the thing (#42)" 2>&1)"
 run_status=$?
 set -e
-if [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "claimed on \`other-branch\`" && [ ! -f "$CALLS/pr_create.log" ]; then
+if [ "$run_status" -ne 0 ] && grep -qF "claimed on \`other-branch\`" <<<"$out" && [ ! -f "$CALLS/pr_create.log" ]; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -162,7 +162,7 @@ set +e
 out="$(run "Fix the thing (#42)" 2>&1)"
 run_status=$?
 set -e
-if [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "claimed on \`first-branch\`, \`second-branch\`" && [ ! -f "$CALLS/pr_create.log" ]; then
+if [ "$run_status" -ne 0 ] && grep -qF "claimed on \`first-branch\`, \`second-branch\`" <<<"$out" && [ ! -f "$CALLS/pr_create.log" ]; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -185,7 +185,7 @@ body_run() {
 }
 
 expect_refused() {
-  if [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "350" && [ ! -f "$CALLS/pr_create.log" ]; then
+  if [ "$run_status" -ne 0 ] && grep -qF "350" <<<"$out" && [ ! -f "$CALLS/pr_create.log" ]; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -258,7 +258,7 @@ expect_refused "--body-file is counted too"
 body_run "## What this fixes
 Short one. $(words 30 word) end."
 expect_opened "a long sentence still opens"
-if printf '%s' "$out" | grep -qF "over 25 words"; then
+if grep -qF "over 25 words" <<<"$out"; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -266,7 +266,7 @@ else
 fi
 
 expect_no_warning() {
-  if printf '%s' "$out" | grep -qF "over 25 words"; then
+  if grep -qF "over 25 words" <<<"$out"; then
     fail=$((fail + 1))
     printf '✗ %s: expected no warning\n    output=%s\n' "$1" "$out" >&2
   else

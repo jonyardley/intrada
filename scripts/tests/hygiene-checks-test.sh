@@ -1117,7 +1117,7 @@ write_lessons 30
 expect 0 "30 lessons, with rules above the heading not counted" lessons_check
 write_lessons 31
 expect 1 "31 lessons" lessons_check
-lessons_over_names_archive() { { lessons_check 2>&1 || true; } | grep -q "lessons-archive.md"; }
+lessons_over_names_archive() { grep -q "lessons-archive.md" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "31 lessons, the message naming the archive" lessons_over_names_archive
 { printf '## Lessons\n\n'; for i in $(seq 1 25); do printf -- '- a: %s\n' "$i"; done
   printf '\n## Older\n\n'; for i in $(seq 1 25); do printf -- '- b: %s\n' "$i"; done; } >"$lessons"
@@ -1125,8 +1125,58 @@ expect 1 "50 lessons under two headings, all of which the hook prints" lessons_c
 printf '# Lessons\n\n## Lessons \n\n- trailing space on the heading\n' >"$lessons"
 expect 1 "no exact Lessons heading" lessons_check
 rm "$lessons"
-lessons_missing() { { lessons_check 2>&1 || true; } | grep -q "no $lessons to read"; }
+lessons_missing() { grep -q "no $lessons to read" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "no lessons file, named in the message" lessons_missing
+
+# ── The grep pipe check ────────────────────────────────────────────────────
+# Each fixture's pipe arrives through %s, so this file's own text never holds
+# one for the check to refuse.
+
+pipes_root="$work/grep-pipes"
+pipes_check() {
+  GREP_PIPES_ROOT="$pipes_root" bash "$repo_root/scripts/check-grep-pipes.sh"
+}
+pipes_case() {
+  local want="$1" name="$2" body="$3"
+  mkdir -p "$pipes_root/lib"
+  : >"$pipes_root/clean.sh"
+  : >"$pipes_root/lib/helper.sh"
+  # shellcheck disable=SC2059 # the body is the format, its %s the pipe
+  printf "$body" '|' '|' >"$pipes_root/${4:-clean.sh}"
+  expect "$want" "$name" pipes_check
+}
+pipes_case 1 "a pipe into grep -q on one line" 'set -o pipefail\nprintf x %s grep -q x\n'
+pipes_case 1 "a pipe split after the bar" 'printf x %s\n  grep -q x\n'
+pipes_case 1 "a pipe split by a backslash" 'printf x %s \\\n  grep -q x\n'
+pipes_case 1 "a pipe into grep -E -q" 'printf x %s grep -E -q x\n'
+pipes_case 1 "a pipe into grep --quiet" 'printf x %s grep --quiet x\n'
+pipes_case 1 "a pipe into grep --silent" 'printf x %s grep --silent x\n'
+pipes_case 1 "a pipe and standard error into grep -q" 'printf x %s& grep -q x\n'
+pipes_case 1 "a pipe into egrep -q" 'printf x %s egrep -q x\n'
+pipes_case 1 "a pipe into command grep -q" 'printf x %s command grep -q x\n'
+pipes_case 1 "a pipe into grep -q by its path" 'printf x %s /usr/bin/grep -q x\n'
+pipes_case 1 "a pipe in a sourced helper under lib/" 'printf x %s grep -qF x\n' lib/helper.sh
+pipes_case 0 "a here-string" 'grep -q x <<<"$text"\n'
+pipes_case 0 "an or before grep -q" 'false %s%s grep -q x file\n'
+pipes_case 0 "a commented pipe" '# printf x %s grep -q x\n'
+pipes_case 0 "a pipe into a grep that prints" 'printf x %s grep -c x\n'
+pipes_names_shape() { grep -q "here-string" <<<"$(pipes_check 2>&1 || true)"; }
+printf 'printf x %s grep -q x\n' '|' >"$pipes_root/clean.sh"
+expect 0 "a refusal names the here-string shape" pipes_names_shape
+pipes_root="$work/no-such-root"
+expect 2 "no root to read" pipes_check
+
+# ── The self-tests' shared text match ──────────────────────────────────────
+
+contains_run() { bash -c 'source "$1"; contains "$2" "$3"' _ "$repo_root/scripts/lib/contains.sh" "$@"; }
+expect 0 "contains finds a needle in its haystack" contains_run "b" $'a\nb\nc'
+expect 1 "contains misses a needle the haystack lacks" contains_run "d" $'a\nb\nc'
+expect 2 "contains stops on an empty needle" contains_run "" "text"
+expect 2 "contains stops on an empty needle in an empty haystack" contains_run "" ""
+contains_names_needle() { grep -q "empty needle" <<<"$(contains_run "" "" 2>&1 || true)"; }
+expect 0 "an empty needle is named in the message" contains_names_needle
+expect 1 "no self-test helper matches its needle with a bare grep (a text check)" \
+  grep -rqE 'grep -qF (-- )?"\$(needle|want_text)" <<<' "$repo_root/scripts/tests"
 
 # ── Result ──────────────────────────────────────────────────────────────────
 

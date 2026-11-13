@@ -6,6 +6,7 @@
 # and a superseded Claimed comment so the "^Claimed" filter and "last wins"
 # behaviour are both actually exercised, not just assumed.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/claim-issue.sh"
@@ -113,7 +114,7 @@ expect_fail() {
     printf '✗ %s: expected refusal, script exited 0\n    output: %s\n' "$desc" "$out" >&2
     return
   fi
-  if printf '%s' "$out" | grep -qF -- "$needle"; then
+  if contains "$needle" "$out"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -137,7 +138,7 @@ echo 0 >"$FIXTURES/closers_count.txt"
 echo '{"labels":[],"comments":[]}' >"$FIXTURES/issue.json"
 rm -rf "$CALLS" && mkdir -p "$CALLS"
 out="$(run)"
-if printf '%s' "$out" | grep -qF "claimed #42 on my-branch"; then
+if grep -qF "claimed #42 on my-branch" <<<"$out"; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -202,7 +203,7 @@ if [ -f "$CALLS/issue_edit.log" ] || [ -f "$CALLS/issue_comment.log" ]; then
 else
   pass=$((pass + 1))
 fi
-if printf '%s' "$out" | grep -qF "already claimed on my-branch"; then
+if grep -qF "already claimed on my-branch" <<<"$out"; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -249,7 +250,7 @@ else
   fail=$((fail + 1))
   printf '✗ free issue: expected the in-flight label to be added\n' >&2
 fi
-if printf '%s' "$out" | grep -qF "claimed #42 on my-branch"; then
+if grep -qF "claimed #42 on my-branch" <<<"$out"; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -283,7 +284,7 @@ else
   printf '✗ issue under an epic: expected the claim comment to name it\n    comment: %s\n' \
     "$(cat "$CALLS/issue_comment.log" 2>/dev/null)" >&2
 fi
-if printf '%s' "$out" | grep -qF "claimed #42 on my-branch (epic #1967: Work the audit)"; then
+if grep -qF "claimed #42 on my-branch (epic #1967: Work the audit)" <<<"$out"; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -299,7 +300,7 @@ if grep -qF "Epic" "$CALLS/issue_comment.log" 2>/dev/null; then
 else
   pass=$((pass + 1))
 fi
-if printf '%s' "$out" | grep -qF "claimed #42 on my-branch (no epic)"; then
+if grep -qF "claimed #42 on my-branch (no epic)" <<<"$out"; then
   pass=$((pass + 1))
 else
   fail=$((fail + 1))
@@ -321,7 +322,7 @@ third_fix() {
   out="$(cd "$work/repo" && "$script" 42 "$@" 2>&1)"
   run_status=$?
   set -e
-  if { [ "$expect" = refuse ] && [ "$run_status" -ne 0 ] && printf '%s' "$out" | grep -qF "third fix"; } ||
+  if { [ "$expect" = refuse ] && [ "$run_status" -ne 0 ] && grep -qF "third fix" <<<"$out"; } ||
     { [ "$expect" = claim ] && [ "$run_status" -eq 0 ]; }; then
     pass=$((pass + 1))
   else

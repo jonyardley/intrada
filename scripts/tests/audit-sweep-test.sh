@@ -3,6 +3,7 @@
 # instance of each probe, runs the sweep twice with a change between, and
 # asserts the counts, the exclusions and the comparison table.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/audit-sweep.sh"
@@ -62,7 +63,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if contains "$needle" "$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -124,7 +125,7 @@ check "$second" "a second run compares with the first" "Against $tmp/metrics/202
 check "$second" "a changed metric shows before and now" "| accessibility.swift_buttons | 1 | 2 |"
 check_exact "$(jq -r '.metrics["activity.commits_since_last"]' "$tmp/metrics/2026-02-01.json")" \
   "commits are counted from the previous sweep's commit, not its date" 1
-if printf '%s' "$second" | grep -qF "| tests.rust_tests |"; then
+if grep -qF "| tests.rust_tests |" <<<"$second"; then
   fail=$((fail + 1))
   echo "FAIL: an unchanged metric is left out of the table" >&2
 else

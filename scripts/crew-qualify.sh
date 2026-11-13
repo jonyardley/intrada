@@ -386,7 +386,7 @@ collect_4() {
   while [ "$waited" -lt 150 ]; do
     rec_a=$(agent_record "$a")
     pid_a=$(printf '%s' "$rec_a" | jq -r '.pid // empty')
-    if [ -n "$pid_a" ] && describe_pids < <(descendants "$pid_a") | grep -q 'sleep 600'; then break; fi
+    if [ -n "$pid_a" ] && grep -q 'sleep 600' <<<"$(describe_pids < <(descendants "$pid_a"))"; then break; fi
     sleep 5
     waited=$((waited + 5))
   done

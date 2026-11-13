@@ -5,6 +5,7 @@
 # session holds. Each rule of whose move it is gets a row, then the count and
 # GitHub failing.
 set -euo pipefail
+source "$(dirname "$0")/../lib/contains.sh"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/worktree-status.sh"
@@ -135,7 +136,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if contains "$needle" "$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -145,7 +146,7 @@ check() {
 
 refute() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if contains "$needle" "$haystack"; then
     fail=$((fail + 1))
     printf '✗ %s\n    did not expect: %s\n' "$desc" "$needle" >&2
   else
