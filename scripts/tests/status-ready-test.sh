@@ -27,7 +27,7 @@ body='[]'
 case "$1 ${2:-}" in
   "api graphql")
     body='{"data":{"repository":{"issues":{"nodes":[]}}}}'
-    if printf '%s' "$*" | grep -qF 'labels: ["ready"]'; then
+    if [[ "$*" == *'labels: ["ready"]'* ]]; then
       if [ -n "${FAIL_READY:-}" ]; then
         printf '%s' '{"errors":[{"type":"INSUFFICIENT_SCOPES","message":"Your token has not been granted the required scopes."}]}'
         echo "gh: Your token has not been granted the required scopes." >&2

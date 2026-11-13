@@ -26,7 +26,7 @@ body='[]'
 case "$1 ${2:-}" in
   "api graphql")
     # The ready queue has its own read and its own self-test.
-    if printf '%s' "$*" | grep -qF 'labels: ["ready"]'; then
+    if [[ "$*" == *'labels: ["ready"]'* ]]; then
       body='{"data":{"repository":{"issues":{"nodes":[]}}}}'
       [ -n "$jq_expr" ] && printf '%s' "$body" | jq -r "$jq_expr" || printf '%s' "$body"
       exit 0
