@@ -67,5 +67,6 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - Pencil (pen.dev) is trialled beside Claude Design on the next new screen, then one is chosen; the trial moved to the design tooling epic on 2026-11-12 (#2804, #2698).
 - The agent crew builds on this repo's own harness: claim, leased worktrees, task, reviewer and test agents, guards (#2799).
 - Claude models only. The crew loop is a script that starts one Claude Code background session per issue, once it passes seven checks; the one-evening bake-off was dropped on 2026-11-12, since one run per candidate could not separate them (#2799, #2802).
+- The crew loop is started by hand with `just crew`, never a launchd job, and runs one issue at a time, capped at 3 hours a session, 45 minutes of silence, 3 issues a night and $150 of spend over 24 hours (#2803, #2821).
 - The crew shares the owner's GitHub login, held by local guards (#2812); its own login is #2811. Agents merge nothing, whatever the risk (#2799).
 - Agent knowledge stays in the repo and on GitHub: hand-offs as issue comments, one pruned lessons file, no wiki or memory database (#2799).

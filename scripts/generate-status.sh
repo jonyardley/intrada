@@ -19,6 +19,51 @@ for tool in gh jq; do
   }
 done
 
+# The ready queue (#2800), in one place because the crew loop takes its issues
+# from it too (#2821). A claimed issue is left out: CLAIMED or IN FLIGHT
+# already shows it. An epic is left out too: it is approved through its
+# issues, not built (#2808). Order: horizon, the board's Priority, then oldest.
+ready_limit=50
+ready_query='query($owner: String!, $name: String!, $limit: Int!) {
+  repository(owner: $owner, name: $name) {
+    issues(labels: ["ready"], states: OPEN, first: $limit,
+           orderBy: {field: CREATED_AT, direction: ASC}) {
+      nodes {
+        number title
+        labels(first: 30) { nodes { name } }
+        projectItems(first: 10) { nodes {
+          project { number }
+          priority: fieldValueByName(name: "Priority") {
+            ... on ProjectV2ItemFieldSingleSelectValue { name }
+          }
+        } }
+      }
+    }
+  }
+}'
+ready_order='
+  .[0] as $ready | [.[1][].number] as $flying |
+  {"horizon:now": 0, "horizon:next": 1, "horizon:later": 2} as $horizons |
+  {"P0": 0, "P1": 1, "P2": 2} as $priorities |
+  $ready | map(select([.number] | inside($flying) | not)
+    | select([(.labels.nodes // [])[].name] | index("epic") | not)
+    | ([(.labels.nodes // [])[].name | select(startswith("horizon:"))] | first) as $h
+    | ([(.projectItems.nodes // [])[] | select(.project.number == 2) | .priority.name
+        | select(. != null)] | first) as $p
+    | . + {h: $h, p: $p, hr: ($horizons[$h // ""] // 3), pr: ($priorities[$p // ""] // 3)})
+  | sort_by(.hr, .pr, .number)'
+
+# --ready-json: the queue alone, one JSON array in order, for the crew loop.
+# Exits 2 when GitHub cannot be read, so an outage never reads as empty.
+if [ "${1:-}" = --ready-json ]; then
+  claimed=$(gh issue list --repo "$repo" --label in-flight --state open \
+    --limit "$claimed_limit" --json number,title,updatedAt) || exit 2
+  ready=$(gh api graphql -f query="$ready_query" -f owner="${repo%%/*}" \
+    -f name="${repo#*/}" -F limit="$ready_limit" --jq '.data.repository.issues.nodes') || exit 2
+  printf '%s\n%s' "$ready" "$claimed" | jq -cs "$ready_order"
+  exit
+fi
+
 open_prs=$(gh pr list --repo "$repo" --state open --limit "$open_limit" \
   --json number,title,isDraft,updatedAt,headRefName,closingIssuesReferences)
 # --state merged sorts by creation, so a long-lived branch merged today can
@@ -70,27 +115,7 @@ if ! epics=$(gh api graphql -f query="$epics_query" -f owner="${repo%%/*}" \
   epics='[]'
 fi
 
-# The ready queue (#2800). A claimed issue is left out: CLAIMED or IN FLIGHT already shows it.
-# An epic is left out too: it is approved through its issues, not built (#2808).
-ready_limit=50
 ready_error=""
-ready_query='query($owner: String!, $name: String!, $limit: Int!) {
-  repository(owner: $owner, name: $name) {
-    issues(labels: ["ready"], states: OPEN, first: $limit,
-           orderBy: {field: CREATED_AT, direction: ASC}) {
-      nodes {
-        number title
-        labels(first: 30) { nodes { name } }
-        projectItems(first: 10) { nodes {
-          project { number }
-          priority: fieldValueByName(name: "Priority") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name }
-          }
-        } }
-      }
-    }
-  }
-}'
 if ! ready=$(gh api graphql -f query="$ready_query" -f owner="${repo%%/*}" \
   -f name="${repo#*/}" -F limit="$ready_limit" --jq '.data.repository.issues.nodes' 2>&1); then
   ready_error=$(gh_reason "$ready")
@@ -193,17 +218,7 @@ epic_lines=$(printf '%s\n%s' "$epics" "$claimed" | jq -rs '
      end)
 ')
 
-ready_lines=$(printf '%s\n%s' "$ready" "$claimed" | jq -rs '
-  .[0] as $ready | [.[1][].number] as $flying |
-  {"horizon:now": 0, "horizon:next": 1, "horizon:later": 2} as $horizons |
-  {"P0": 0, "P1": 1, "P2": 2} as $priorities |
-  $ready | map(select([.number] | inside($flying) | not)
-    | select([(.labels.nodes // [])[].name] | index("epic") | not)
-    | ([(.labels.nodes // [])[].name | select(startswith("horizon:"))] | first) as $h
-    | ([(.projectItems.nodes // [])[] | select(.project.number == 2) | .priority.name
-        | select(. != null)] | first) as $p
-    | . + {h: $h, p: $p, hr: ($horizons[$h // ""] // 3), pr: ($priorities[$p // ""] // 3)})
-  | sort_by(.hr, .pr, .number) | .[] |
+ready_lines=$(printf '%s\n%s' "$ready" "$claimed" | jq -rs "$ready_order"' | .[] |
   "- #\(.number) \(.title)\n    "
   + (if .h then (.h | ltrimstr("horizon:")) else "no horizon" end)
   + ", " + (.p // "no priority")

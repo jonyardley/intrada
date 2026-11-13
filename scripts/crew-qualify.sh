@@ -490,13 +490,15 @@ collect_7() {
     waited=$((waited + 5))
   done
   sid=$(printf '%s' "$rec" | jq -r '.sessionId')
-  session_calls "$wt" "$sid" >"$d/calls.jsonl"
   if [ -n "${CREW_PARK_STEP:-}" ]; then
     $CREW_PARK_STEP "$id" >"$d/parked" 2>&1 || : >"$d/parked"
     sleep 5
     agent_state "$id" >"$d/state_after_park"
   fi
   end_session "$id"
+  # Read after the stop: since Claude Code 2.1.323 a call waiting on permission
+  # reaches the transcript only when the session stops.
+  session_calls "$wt" "$sid" >"$d/calls.jsonl"
 }
 
 # ── leaks and cleanup ───────────────────────────────────────────────────────

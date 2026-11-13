@@ -34,7 +34,7 @@ turn limit:
 | Wall clock per session | 3 hours | Stop the session and its process tree, park |
 | Silence limit | 45 minutes with no new transcript line | Stop, park |
 | Issues per run | 3 | The loop ends |
-| Daily spend | the day's `just usage` total past $150 | The loop ends before the next issue |
+| Daily spend | the last 24 hours of `just usage` past $150; an unreadable report counts as past | The loop ends before the next issue |
 
 The silence limit is longer than the simulator queue, which waits up to 1800
 seconds (`IOS_SIM_LOCK_TIMEOUT` in `scripts/ios-sim-lock.sh`), so a session
@@ -42,9 +42,12 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 
 ## One issue, start to finish
 
-1. **Pick.** Read the ready queue (`just status`, the READY section, ordered
-   by horizon, Priority, then age) and take the first issue for which
-   `scripts/crew-pick.sh <issue>` exits 0.
+1. **Pick.** First any crew worktree left by an earlier night whose issue is
+   open, has no draft note and no `needs-owner` label; then the ready queue
+   (`scripts/generate-status.sh --ready-json`, the READY section's order:
+   horizon, Priority, then age), less any issue labelled `needs-owner`. Take
+   the first for which `scripts/crew-pick.sh <issue>` exits 0; an issue is
+   tried once a night.
 2. **Worktree.** The script makes the worktree; the session runs
    `just claim` inside it, so a restart finds both and never claims twice.
 3. **Session.** One `INTRADA_CREW=1 claude --bg` session on Opus at high
@@ -52,8 +55,11 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 4. **Build.** The session posts its brief on the issue, builds with `task`,
    reviews with `reviewer`, runs the QA agent, and opens the draft with
    `just pr-open --draft`. `/ship` in loop mode ends at the draft.
-5. **Watch.** The script polls `claude agents --json` for the session's state
-   and checks the caps.
+5. **Watch.** The script polls `claude agents --json` each minute. Two idle
+   polls in a row mean the turn ended, and the newest `**Crew:` note since the
+   session started decides: draft, parked, or the loop parks it. Silence is
+   read from the newest write to the session's transcript or any of its
+   subagents', since a lead waiting on `task` writes nothing itself.
 6. **Lessons.** The retro posts its lessons as an issue comment headed
    Lessons and labels the issue `lessons-pending`, never writing
    `docs/lessons.md`, so two drafts never conflict. The next brief carries
@@ -135,16 +141,19 @@ An issue parks on any of:
 - a plan that needs a choice the owner has not made;
 - a sensitive path in the diff (`crew-park.sh` exit 3).
 
-Parking stops the session and kills its whole process tree, adds the
-`needs-owner` label, posts the question as a comment, keeps the claim,
-releases the simulator lock and pushes to the owner's phone. Nothing waits on
+Parking has two halves in `scripts/crew-loop.sh`. `stop-session <id>` reads
+the session's process tree, stops it, kills what is left and releases the
+simulator lock only when one of those processes held it; harness check 7 calls
+it as `CREW_PARK_STEP`. The issue half then adds the
+`needs-owner` label, posts the question as a comment, keeps the claim and
+pushes to the owner's phone. Nothing waits on
 a prompt; the loop takes the next issue.
 
 ## The session side (slice 2, #2820)
 
 - `.claude/commands/crew.md` is the brief: the loop starts the session with
-  `/crew N`. Whether a background session expands a command in its first
-  prompt is proved in #2821; if not, the prompt names the file instead.
+  `/crew N`. A background session expands a command in its first prompt
+  (proved on 2026-11-13 with a stand-in command).
 - `.claude/agents/qa.md` on Opus, since ticking a criterion against a
   screenshot is judgement. Read-only on code: it launches both apps with
   `just ios-run` and `just android-run`, each screenshot kept in the
@@ -175,10 +184,13 @@ step that parked, with the owner's answer.
 
 The Lessons comment is headed `**Lessons**`, outside this sequence.
 
-## Rabbit hole
+## The owner's phone
 
-How a script pushes to the phone. It is proved first, in #2821, before the
-loop depends on it; until then the outcome is only on the issue.
+Every outcome raises a Mac notification, then a short print-mode session sends
+it with Claude's own push tool, the only route to the phone without an outside
+service. That tool holds a push back while the owner is active at a terminal
+(seen on 2026-11-13), so it reaches the phone when they are away, which is when
+the loop runs. Whether it lands is the owner's to confirm on the first night.
 
 ## Out of scope
 

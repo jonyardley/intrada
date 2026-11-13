@@ -101,6 +101,7 @@ hygiene:
         "crew-qualify-test:bash scripts/tests/crew-qualify-test.sh"
         "crew-park-test:bash scripts/tests/crew-park-test.sh"
         "crew-pick-test:bash scripts/tests/crew-pick-test.sh"
+        "crew-loop-test:bash scripts/tests/crew-loop-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
         "issue-open-test:bash scripts/tests/issue-open-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
@@ -200,6 +201,12 @@ pr-visuals:
 # or an open PR already references it (#1702). Two or more merged PRs already
 # referencing the issue refuses a third fix without a named decision:
 # just claim 1650 "the approach is wrong because X" (#1890).
+# The crew loop (#2821, specs/crew-loop.md): ready issues to draft PRs, one at
+# a time, until the queue is empty, a cap is hit or ~/.intrada-crew-stop exists.
+[doc("Run the crew loop: ready issues to draft PRs, one at a time, until a cap or the stop file")]
+crew:
+    bash scripts/crew-loop.sh
+
 [doc("Claim an issue before building it, refusing if someone already has")]
 claim number decision="":
     bash scripts/claim-issue.sh "{{number}}" "{{decision}}"
