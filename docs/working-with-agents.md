@@ -16,7 +16,7 @@ enforce loses its prose in the same change.
 | Starting a unit of work | `just claim N`. It refuses, naming the other branch, when the issue is claimed or an open PR references it; otherwise it labels the issue and moves the board to In progress |
 | Asked "what's next" or "what can run in parallel" | Answer from `just status` and the session-start claims list, with no further reads (#1836) |
 | Jon, losing track of the worktrees | `just worktree-status`: whose move each one is, and how many are safe to remove (#2783) |
-| Jon, handing the ready queue to the crew | `just crew`: one issue at a time to a draft or a parked question, until the queue is empty, a cap is hit or `~/.intrada-crew-stop` exists (`specs/crew-loop.md`) |
+| The owner, handing the ready queue to the crew | `just crew`: one issue at a time to a draft or a parked question, until the queue is empty, a cap is hit or `~/.intrada-crew-stop` exists (`specs/crew-loop.md`) |
 | A crew session, started by the crew loop (#2803) | `/crew N` (`.claude/commands/crew.md`): the `ready` label is the go, `just claim N` runs inside the worktree the loop made, and a note on the issue ends every step |
 | About to start a third fix on one issue | Stop: two corrections on one point mean asking whether the approach is wrong, and `just claim` refuses a third claim at two merged PRs titled with the issue (#1890, #2593) |
 

@@ -21,45 +21,82 @@ n=0
 
 mkdir -p "$work/bin"
 
-# The session's scenario for issue N is in $FAKE/scenario-N: draft, parked,
-# ended, permission, noproc or busy.
+# Issue N's session plays $FAKE/scenario-N (#2821): draft, parked, ended, permission,
+# noproc, busy, broken (unreadable start), done-draft or done-quiet (no pid).
 cat >"$work/bin/claude" <<'CLAUDE'
 #!/usr/bin/env bash
 printf 'claude %s\n' "$*" >>"$FAKE/calls"
 case "$1" in
   --bg)
+    printf 'INTRADA_CREW=%s\n' "${INTRADA_CREW:-unset}" >>"$FAKE/calls"
     issue=${*: -1}; issue=${issue#/crew }
     id=$(printf 'c%07d' "$issue")
     printf '%s %s %s\n' "$id" "$issue" "$PWD" >>"$FAKE/sessions"
+    [ -f "$FAKE/stop-on-start" ] && touch "$(cat "$FAKE/stop-on-start")"
     scenario=$(cat "$FAKE/scenario-$issue" 2>/dev/null || echo busy)
-    if [ "$scenario" != noproc ]; then
-      nohup sleep 300 >/dev/null 2>&1 &
-      echo $! >"$FAKE/pid-$issue"
-    fi
     case $scenario in
-      draft | parked)
-        word=$scenario
+      noproc | done-*) ;;
+      *)
+        nohup sleep 300 >/dev/null 2>&1 &
+        echo $! >"$FAKE/pid-$issue"
+        ;;
+    esac
+    case $scenario in
+      draft | parked | done-draft)
+        word=${scenario#done-}
         jq --arg b "**Crew: $word**: done" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           '.comments += [{body: $b, createdAt: $t}]' "$FAKE/issue-$issue.json" >"$FAKE/next" &&
           mv "$FAKE/next" "$FAKE/issue-$issue.json"
         ;;
     esac
-    echo "backgrounded · $id · crew-$issue"
+    if [ "$scenario" = broken ]; then
+      echo "error: something went wrong"
+    else
+      echo "backgrounded · $id · crew-$issue"
+    fi
     ;;
   agents)
+    # $FAKE/empty-reads holds how many reads come back empty first.
+    left=$(cat "$FAKE/empty-reads" 2>/dev/null || echo 0)
+    if [ "$left" -gt 0 ]; then
+      echo $((left - 1)) >"$FAKE/empty-reads"
+      echo '[]'
+      exit 0
+    fi
+    # $FAKE/cycle holds states the watched session takes in turn, one a read:
+    # alive, dead (working, its pid gone), blocked (no pid) or empty.
+    if [ -s "$FAKE/cycle" ]; then
+      set -- $(cat "$FAKE/cycle")
+      i=$(cat "$FAKE/cycle-at" 2>/dev/null || echo 0)
+      echo $((i + 1)) >"$FAKE/cycle-at"
+      shift $((i % $#))
+      cyc=$1
+      [ "$cyc" = empty ] && { echo '[]'; exit 0; }
+    fi
     while read -r id issue cwd; do
       scenario=$(cat "$FAKE/scenario-$issue" 2>/dev/null || echo busy)
       pid=$(cat "$FAKE/pid-$issue" 2>/dev/null || echo 999999)
+      case ${cyc:-} in
+        dead) scenario=busy; pid=999999 ;;
+        blocked) scenario=done-quiet ;;
+      esac
       case $scenario in
+        done-*) st='"state":"blocked","status":null,"waitingFor":null'; pid=null ;;
         draft | parked | ended) st='"state":"done","status":"idle","waitingFor":null' ;;
         permission) st='"state":"blocked","status":"idle","waitingFor":"permission prompt"' ;;
         *) st='"state":"working","status":"busy","waitingFor":null' ;;
       esac
       [ -f "$FAKE/stopped-$id" ] && st='"state":"stopped","status":"idle","waitingFor":null'
-      printf '{"id":"%s","pid":%s,"sessionId":"sess-%s","cwd":"%s",%s}\n' "$id" "$pid" "$issue" "$cwd" "$st"
+      printf '{"id":"%s","pid":%s,"sessionId":"sess-%s","name":"crew-%s","cwd":"%s",%s}\n' \
+        "$id" "$pid" "$issue" "$issue" "$cwd" "$st"
     done <"$FAKE/sessions" | jq -s .
     ;;
   stop) : >"$FAKE/stopped-$2" ;;
+  -p)
+    printf '%s\n' "${*: -1}" >>"$FAKE/pushed"
+    echo $$ >"$FAKE/push-pid"
+    exec sleep 300
+    ;;
   *) echo "stand-in claude: unexpected call: $*" >&2; exit 9 ;;
 esac
 CLAUDE
@@ -79,8 +116,12 @@ for i in "${!args[@]}"; do
   esac
 done
 case "$1 $2" in
-  "issue view") jq -r "${jqx:-.}" "$f" ;;
+  "issue view")
+    [ -f "$FAKE/gh-down-$n" ] && exit 1
+    jq -r "${jqx:-.}" "$f"
+    ;;
   "issue edit")
+    [ -f "$FAKE/label-fails-$n" ] && exit 1
     jq --arg l "$label" '.labels += [{name: $l}]' "$f" >"$FAKE/next" && mv "$FAKE/next" "$f" ;;
   "issue comment")
     jq --arg b "$body" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -97,6 +138,7 @@ Q
 cat >"$work/bin/pick" <<'P'
 #!/usr/bin/env bash
 printf '%s\n' "$1" >>"$FAKE/picked"
+[ -f "$FAKE/pick-down-$1" ] && exit 2
 [ ! -f "$FAKE/skip-$1" ]
 P
 cat >"$work/bin/spend" <<'S'
@@ -111,6 +153,16 @@ cat >"$work/bin/notify" <<'N'
 #!/usr/bin/env bash
 printf '%s\n' "$1" >>"$FAKE/notified"
 N
+cat >"$work/bin/osascript" <<'O'
+#!/usr/bin/env bash
+printf '%s\n' "${*: -1}" >>"$FAKE/osascript"
+O
+# Harness check 1: writes a result, as crew-qualify.sh does, and keeps its folder.
+cat >"$work/bin/qualify" <<'C'
+#!/usr/bin/env bash
+echo "$2" >"$FAKE/check1-dir"
+echo "${CHECK1:-PASS} 1: refused" >"$2/results.txt"
+C
 chmod +x "$work/bin/"*
 
 # A fresh fake world: queue holds the given issues, each open and ready.
@@ -118,8 +170,8 @@ setup() {
   export FAKE="$work/fake"
   for p in $(cat "$FAKE"/pid-* 2>/dev/null); do kill "$p" 2>/dev/null || :; done
   cat "$FAKE/gh.log" >>"$work/gh-all.log" 2>/dev/null || :
-  rm -rf "$FAKE" "$work/home" "$work/wt"
-  mkdir -p "$FAKE" "$work/home" "$work/wt"
+  rm -rf "$FAKE" "$work/home" "$work/wt" "$work/tasks" "$work/stop"
+  mkdir -p "$FAKE" "$work/home" "$work/wt" "$work/tmp"
   : >"$FAKE/sessions"
   : >"$FAKE/gh.log"
   echo 'Claude usage, last 1d: $40 at API prices; opus 90%' >"$FAKE/spend"
@@ -131,14 +183,23 @@ setup() {
   printf '%s' "$q" >"$FAKE/queue.json"
 }
 
+# "$BASH", so a run of this file under /bin/bash runs the loop under it too.
+# BG=1 leaves the loop running, its pid in LOOP_PID.
 run_loop() {
-  env -u CI PATH="$work/bin:$PATH" HOME="$work/home" \
+  set -- env -u CI PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp" \
     CREW_QUEUE="$work/bin/queue" CREW_PICK="$work/bin/pick" CREW_SPEND="$work/bin/spend" \
-    CREW_WORKTREE="$work/bin/mkwt" CREW_WORKTREES="$work/wt" CREW_NOTIFY="$work/bin/notify" \
-    CREW_CHECK1="${CHECK1:-true}" CREW_STOP_FILE="$work/stop" CREW_LOG="$work/log" \
+    CREW_WORKTREE="$work/bin/mkwt" CREW_WORKTREES="$work/wt" CREW_NOTIFY="${NOTIFY-$work/bin/notify}" \
+    CREW_QUALIFY="$work/bin/qualify" CHECK1="${CHECK1:-PASS}" CREW_STOP_FILE="$work/stop" \
+    CREW_LOG="$work/log" CREW_TASKS_ROOT="$work/tasks" CREW_PUSH_LIMIT=1 \
     CREW_POLL="${POLL:-0}" CREW_KILL_GRACE=0 IOS_SIM_LOCK_DIR="$work/simlock" \
     CREW_WALL_CLOCK="${WALL:-5}" CREW_SILENCE="${SILENCE:-600}" CREW_MAX_ISSUES="${MAX:-3}" \
-    bash "$script" "$@" >"$work/out" 2>&1 || :
+    "$BASH" "$script" "$@"
+  if [ -n "${BG:-}" ]; then
+    "$@" >"$work/out" 2>&1 &
+    LOOP_PID=$!
+  else
+    "$@" >"$work/out" 2>&1 || :
+  fi
 }
 
 ok() {
@@ -163,14 +224,31 @@ alive() { kill -0 "$(cat "$FAKE/pid-$1")" 2>/dev/null; }
 # ── before any issue ─────────────────────────────────────────────────────────
 
 setup 101
-CHECK1=false run_loop
+CHECK1=FAIL run_loop
 ok "a failed harness check 1 starts no session" '[ -z "$(started)" ] && grep -q "check 1 failed" "$work/out"'
+ok "harness check 1's folder is removed after it is read" '[ -s "$FAKE/check1-dir" ] && [ ! -e "$(cat "$FAKE/check1-dir")" ]'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+run_loop
+ok "a passing harness check 1 lets the run start, and its folder is removed" \
+  '[ "$(started)" = 101 ] && [ ! -e "$(cat "$FAKE/check1-dir")" ]'
 
 setup 101
 touch "$work/stop"
 run_loop
 rm -f "$work/stop"
-ok "the stop file starts no session" '[ -z "$(started)" ]'
+ok "the stop file starts no session, nor harness check 1" \
+  '[ -z "$(started)" ] && [ ! -e "$FAKE/check1-dir" ] && grep -q "remove it to run the crew" "$work/out"'
+
+setup 101 102
+echo draft >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+echo "$work/stop" >"$FAKE/stop-on-start"
+run_loop
+rm -f "$work/stop"
+ok "a stop file that appears during an issue starts no further issue" \
+  '[ "$(started)" = 101 ] && grep -q "stop file found; ending the run" "$work/out"'
 
 setup 101
 echo 'Claude usage, last 1d: $151 at API prices' >"$FAKE/spend"
@@ -193,6 +271,17 @@ touch "$FAKE/queue-down"
 run_loop
 ok "a failed queue read starts no session and says so" '[ -z "$(started)" ] && grep -q "could not read the ready queue" "$work/out"'
 
+setup 101
+touch "$FAKE/pick-down-101"
+run_loop
+ok "a pick that cannot read GitHub is logged as a pick failure" \
+  '[ -z "$(started)" ] && grep -q "the pick could not read #101" "$work/out" && grep -q "the pick failed on at least one" "$work/out" && ! grep -q "no qualifying ready issue left" "$work/out"'
+
+setup 101
+touch "$FAKE/skip-101"
+run_loop
+ok "a queue with nothing that qualifies says so" '[ -z "$(started)" ] && grep -q "no qualifying ready issue left" "$work/out"'
+
 # ── the queue ────────────────────────────────────────────────────────────────
 
 setup 101 102 103
@@ -201,7 +290,7 @@ echo draft >"$FAKE/scenario-103"
 jq '.[0].labels.nodes += [{name: "needs-owner"}]' "$FAKE/queue.json" >"$FAKE/q" && mv "$FAKE/q" "$FAKE/queue.json"
 MAX=1 run_loop
 ok "an issue labelled needs-owner is never picked" '! grep -qx 101 "$FAKE/picked"'
-ok "the first remaining ready issue runs, and the nightly cap stops the next" '[ "$(started)" = 102 ]'
+ok "the first remaining ready issue runs, and the cap for a run stops the next" '[ "$(started)" = 102 ]'
 
 setup 101 102
 touch "$FAKE/skip-101"
@@ -212,7 +301,7 @@ ok "an issue that does not qualify is passed over for the next" '[ "$(started)" 
 setup 101 102 103
 for i in 101 102 103; do echo draft >"$FAKE/scenario-$i"; done
 MAX=2 run_loop
-ok "the nightly cap of issues ends the loop" '[ "$(started)" = "101 102" ] && grep -q "nightly cap" "$work/out"'
+ok "the cap of issues a run ends the loop" '[ "$(started)" = "101 102" ] && grep -q "the cap for a run" "$work/out"'
 
 setup 101
 echo '{"state":"OPEN","labels":[{"name":"ready"},{"name":"in-flight"}],"comments":[{"body":"**Crew: built**: two commits","createdAt":"2026-11-01T00:00:00Z"}]}' >"$FAKE/issue-205.json"
@@ -228,12 +317,20 @@ ok "a restart leaves a worktree still waiting on the owner" '! grep -qx 204 "$FA
 ok "a restart leaves a worktree whose draft is open" '! grep -qx 203 "$FAKE/picked"'
 ok "a restart leaves a worktree whose issue is closed" '! grep -qx 202 "$FAKE/picked"'
 
+setup
+echo '{"state":"OPEN","labels":[{"name":"ready"}],"comments":[]}' >"$FAKE/issue-206.json"
+touch "$FAKE/gh-down-206"
+mkdir -p "$work/wt/crew-206"
+run_loop
+ok "a restart skips a worktree whose issue cannot be read" \
+  '[ -z "$(started)" ] && ! grep -qsx 206 "$FAKE/picked" && grep -q "could not read #206" "$work/out"'
+
 setup 101
 echo '{"state":"OPEN","labels":[{"name":"ready"}],"comments":[{"body":"**Crew: parked**: a question","createdAt":"2026-11-01T00:00:00Z"},{"body":"Do it the second way.","createdAt":"2026-11-01T01:00:00Z"}]}' >"$FAKE/issue-207.json"
 mkdir -p "$work/wt/crew-207"
 echo ended >"$FAKE/scenario-207"
 MAX=1 run_loop
-ok "an issue the owner answered resumes, and last night's park note is not tonight's outcome" \
+ok "an issue the owner answered resumes, and an earlier run's park note is not this run's outcome" \
   '[ "$(started)" = 207 ] && [ "$(notes 207 | grep -c "^\*\*Crew: parked")" = 2 ] && notes 207 | grep -q "without a draft or a park note"'
 
 # ── one issue's outcomes ─────────────────────────────────────────────────────
@@ -241,9 +338,10 @@ ok "an issue the owner answered resumes, and last night's park note is not tonig
 setup 101
 echo draft >"$FAKE/scenario-101"
 run_loop
-ok "a draft is announced, with no park" 'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner'
+ok "a draft is announced, with no park" \
+  'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && grep -q "run over: 1 issues run" "$work/out"'
 ok "the session is started as the crew, on Opus at high effort, with the brief" \
-  'grep -qE -- "--bg --model opus --effort high --permission-mode auto -n crew-101 /crew 101" "$FAKE/calls"'
+  'grep -qE -- "--bg --model opus --effort high --permission-mode auto -n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
 
 setup 101
@@ -266,6 +364,87 @@ run_loop
 ok "a session working with no process behind it parks" 'notes 101 | grep -q "no process behind it" && labels 101 | grep -qx needs-owner'
 
 setup 101
+echo done-draft >"$FAKE/scenario-101"
+run_loop
+ok "a finished turn with no pid and a draft note is a draft" \
+  'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner'
+
+setup 101
+echo done-quiet >"$FAKE/scenario-101"
+run_loop
+ok "a finished turn with no pid and no note is an ended turn, not a missing process" \
+  'notes 101 | grep -q "without a draft or a park note" && ! notes 101 | grep -q "no process"'
+
+setup 101
+echo 1 >"$FAKE/empty-reads"
+WALL=1 run_loop
+ok "a single empty read of the sessions never parks" 'notes 101 | grep -q "wall clock" && ! notes 101 | grep -q "no process"'
+
+# Reads that alternate never make two in a row, so only the wall clock ends these.
+for cycle in "blocked alive" "dead blocked" "dead empty" "blocked empty"; do
+  setup 101
+  echo "$cycle" >"$FAKE/cycle"
+  WALL=1 run_loop
+  ok "reads alternating $cycle never decide the turn" 'notes 101 | grep -q "wall clock"'
+done
+
+setup 101 102
+echo permission >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+touch "$FAKE/label-fails-101"
+run_loop
+ok "a park that cannot add needs-owner ends the run" \
+  '[ "$(started)" = 101 ] && grep -q "could not add needs-owner to #101" "$work/out" && grep -q "parked without its needs-owner label" "$work/out"'
+
+setup 101 102
+echo broken >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+run_loop
+ok "a session that cannot be started ends the run without parking" \
+  '[ "$(started)" = 101 ] && ! labels 101 | grep -qx needs-owner && [ -z "$(notes 101)" ] && grep -q "could not start a session for #101" "$work/out" && grep -q "no session started for #101" "$work/out"'
+ok "a start whose output cannot be read stops any session of that name" '[ -f "$FAKE/stopped-c0000101" ] && ! alive 101'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+nohup sleep 304 >/dev/null 2>&1 &
+echo $! >"$FAKE/pid-777"
+disown "$!"
+printf 'c0000777 777 %s\nc0000778 778 %s\n' "$work/wt/crew-101" "$work/wt/crew-101" >"$FAKE/sessions"
+run_loop
+ok "a live session already in the worktree is stopped before a new one starts" \
+  '[ -f "$FAKE/stopped-c0000777" ] && ! kill -0 "$(cat "$FAKE/pid-777")" 2>/dev/null && [ ! -f "$FAKE/stopped-c0000778" ]'
+
+setup 101
+POLL=5 BG=1 run_loop
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$FAKE/sessions" ] && break; sleep 0.5; done
+sleep 1
+t0=$(date +%s)
+kill -TERM "$LOOP_PID"
+wait "$LOOP_PID" 2>/dev/null || :
+t1=$(date +%s)
+ok "TERM stops the session being watched, at once" \
+  '[ -f "$FAKE/stopped-c0000101" ] && ! alive 101 && [ $((t1 - t0)) -le 2 ] && grep -q interrupted "$work/out"'
+ok "the watch waits between polls" '[ "$(grep -c "^claude agents" "$FAKE/calls")" -le 4 ]'
+
+setup 101
+proj="$work/home/.claude/projects/$(printf '%s' "$work/wt/crew-101" | sed 's/[^A-Za-z0-9]/-/g')"
+mkdir -p "$proj"
+long="START$(printf 'x%.0s' $(seq 1 400)) ask @someone about \`\`\`this\`\`\`"
+jq -cn --arg t "$long" '{type: "assistant", message: {content: [{type: "text", text: $t}]}}' >"$proj/sess-101.jsonl"
+echo permission >"$FAKE/scenario-101"
+run_loop
+ok "the park note keeps the last 300 characters inside one closed fence" \
+  'body=$(notes 101) && printf "%s" "$body" | grep -q "@someone" && ! printf "%s" "$body" | grep -q START && [ "$(printf "%s\n" "$body" | grep -c "^\`\`\`")" = 2 ]'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+t0=$(date +%s)
+NOTIFY= run_loop
+t1=$(date +%s)
+ok "a notification passes the text whole and the push is cut off at its limit" \
+  'grep -qx "Crew: draft ready for your review on #101" "$FAKE/osascript" && grep -q "then stop: Crew: draft ready" "$FAKE/pushed" && ! kill -0 "$(cat "$FAKE/push-pid")" 2>/dev/null && [ $((t1 - t0)) -lt 15 ]'
+
+setup 101
 echo ended >"$FAKE/scenario-101"
 run_loop
 ok "a turn that ends with no draft or park note parks with a question" 'notes 101 | grep -q "without a draft or a park note"'
@@ -282,12 +461,26 @@ setup 101
 proj="$work/home/.claude/projects/$(printf '%s' "$work/wt/crew-101" | sed 's/[^A-Za-z0-9]/-/g')"
 mkdir -p "$proj/sess-101/subagents"
 touch -t 202601010000 "$proj/sess-101.jsonl"
+touch "$proj/sess-101/subagents/agent-a.jsonl"
 (while sleep 1; do touch "$proj/sess-101/subagents/agent-a.jsonl"; done) &
 bgpids="$bgpids $!"
 disown "$!"
 POLL=1 SILENCE=3 WALL=5 run_loop
 kill "${bgpids##* }" 2>/dev/null || :
 ok "a subagent's writes keep a quiet lead from the silence limit" 'notes 101 | grep -q "wall clock" && ! notes 101 | grep -q "nothing was written"'
+
+setup 101
+proj="$work/home/.claude/projects/$(printf '%s' "$work/wt/crew-101" | sed 's/[^A-Za-z0-9]/-/g')"
+tasks="$work/tasks/$(printf '%s' "$work/wt/crew-101" | sed 's/[^A-Za-z0-9]/-/g')/sess-101/tasks"
+mkdir -p "$proj" "$tasks"
+touch -t 202601010000 "$proj/sess-101.jsonl"
+touch "$tasks/b1.output"
+(while sleep 1; do touch "$tasks/b1.output"; done) &
+bgpids="$bgpids $!"
+disown "$!"
+POLL=1 SILENCE=3 WALL=5 run_loop
+kill "${bgpids##* }" 2>/dev/null || :
+ok "a background task's output keeps a quiet lead from the silence limit" 'notes 101 | grep -q "wall clock" && ! notes 101 | grep -q "nothing was written"'
 
 # ── stop-session, the park step check 7 calls ────────────────────────────────
 
@@ -318,6 +511,17 @@ mkdir -p "$work/simlock"
 echo "$other" >"$work/simlock/pid"
 run_loop stop-session c0000998
 ok "stop-session leaves a simulator lock another process holds" '[ -d "$work/simlock" ]'
+
+setup
+nohup bash -c 'trap "" TERM; exec sleep 305' >/dev/null 2>&1 &
+stubborn=$!
+disown "$stubborn"
+sleep 0.5
+printf 'c0000997 997 %s\n' "$work" >"$FAKE/sessions"
+echo "$stubborn" >"$FAKE/pid-997"
+run_loop stop-session c0000997
+ok "stop-session kills with -9 a process that ignores TERM" \
+  '! kill -0 "$stubborn" 2>/dev/null && grep -q "stopped c0000997 and 1 processes (1 needed kill -9)" "$work/out"'
 
 # ── never a ready or merge ───────────────────────────────────────────────────
 

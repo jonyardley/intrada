@@ -32,7 +32,7 @@ turn limit:
 | Cap | Figure | On reaching it |
 |---|---|---|
 | Wall clock per session | 3 hours | Stop the session and its process tree, park |
-| Silence limit | 45 minutes with no new transcript line | Stop, park |
+| Silence limit | 45 minutes with no write to the session's transcript, its subagents' or its background tasks' output | Stop, park |
 | Issues per run | 3 | The loop ends |
 | Daily spend | the last 24 hours of `just usage` past $150; an unreadable report counts as past | The loop ends before the next issue |
 
@@ -42,24 +42,32 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 
 ## One issue, start to finish
 
-1. **Pick.** First any crew worktree left by an earlier night whose issue is
-   open, has no draft note and no `needs-owner` label; then the ready queue
+1. **Pick.** First any crew worktree left by an earlier run whose issue is
+   open, has no draft note and no `needs-owner` label, skipping any issue
+   GitHub cannot read; then the ready queue
    (`scripts/generate-status.sh --ready-json`, the READY section's order:
    horizon, Priority, then age), less any issue labelled `needs-owner`. Take
    the first for which `scripts/crew-pick.sh <issue>` exits 0; an issue is
-   tried once a night.
+   tried once a run.
 2. **Worktree.** The script makes the worktree; the session runs
    `just claim` inside it, so a restart finds both and never claims twice.
 3. **Session.** One `INTRADA_CREW=1 claude --bg` session on Opus at high
-   effort, started inside the worktree. No session handles two issues.
+   effort, started inside the worktree, after stopping any live session
+   already there. No session handles two issues. A start the loop cannot read
+   stops any session named `crew-N` and ends the run without parking.
 4. **Build.** The session posts its brief on the issue, builds with `task`,
    reviews with `reviewer`, runs the QA agent, and opens the draft with
    `just pr-open --draft`. `/ship` in loop mode ends at the draft.
-5. **Watch.** The script polls `claude agents --json` each minute. Two idle
-   polls in a row mean the turn ended, and the newest `**Crew:` note since the
-   session started decides: draft, parked, or the loop parks it. Silence is
-   read from the newest write to the session's transcript or any of its
-   subagents', since a lead waiting on `task` writes nothing itself.
+5. **Watch.** The script polls `claude agents --json` each minute. Two polls
+   in a row reading blocked, done or idle mean the turn ended, whatever the
+   pid, since a finished session reads blocked with no pid. Then the newest
+   `**Crew:` note since the session started decides: draft, parked, or the
+   loop parks it. The session counts as having no process only when it reads
+   working with a missing or dead pid on two polls in a row. Silence is read
+   from the newest write to the session's transcript, its subagents' or its
+   background tasks' output, since a lead waiting on `task` writes nothing
+   itself. Stopping the loop with Ctrl-C or TERM stops the session it is
+   watching.
 6. **Lessons.** The retro posts its lessons as an issue comment headed
    Lessons and labels the issue `lessons-pending`, never writing
    `docs/lessons.md`, so two drafts never conflict. The next brief carries
@@ -147,13 +155,15 @@ simulator lock only when one of those processes held it; harness check 7 calls
 it as `CREW_PARK_STEP`. The issue half then adds the
 `needs-owner` label, posts the question as a comment, keeps the claim and
 pushes to the owner's phone. Nothing waits on
-a prompt; the loop takes the next issue.
+a prompt; the loop takes the next issue. When the label cannot be added the
+run ends, so the issue is not taken again.
 
 ## The session side (slice 2, #2820)
 
 - `.claude/commands/crew.md` is the brief: the loop starts the session with
   `/crew N`. A background session expands a command in its first prompt
-  (proved on 2026-11-13 with a stand-in command).
+  (proved by hand with a stand-in command; the #2821 row of
+  `docs/harness-log.md`).
 - `.claude/agents/qa.md` on Opus, since ticking a criterion against a
   screenshot is judgement. Read-only on code: it launches both apps with
   `just ios-run` and `just android-run`, each screenshot kept in the
@@ -187,10 +197,11 @@ The Lessons comment is headed `**Lessons**`, outside this sequence.
 ## The owner's phone
 
 Every outcome raises a Mac notification, then a short print-mode session sends
-it with Claude's own push tool, the only route to the phone without an outside
-service. That tool holds a push back while the owner is active at a terminal
-(seen on 2026-11-13), so it reaches the phone when they are away, which is when
-the loop runs. Whether it lands is the owner's to confirm on the first night.
+it with Claude's own push tool, the only route found to the phone without an
+outside service. That tool holds a push back while the owner is active at a
+terminal (the #2821 row of `docs/harness-log.md`), so it reaches the phone when
+they are away, which is when the loop runs. Whether it lands is the owner's to
+confirm on the first run with the owner away.
 
 ## Out of scope
 
