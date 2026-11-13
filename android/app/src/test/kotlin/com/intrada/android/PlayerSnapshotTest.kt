@@ -60,9 +60,6 @@ class PlayerSnapshotTest {
     fun player() = runTest {
         val store = openedStore()
         store.startTwoItems()
-        store.send(
-            Event.Session(SessionEvent.RepGotIt("2026-10-07T09:01:00Z", PlayerFixtures.silent))
-        )
         val view = store.viewModel.value ?: error("no view")
         val active = store.active()
         // Seeded before composition, or the row reads whatever frame the looper reached (#2503).
@@ -249,7 +246,6 @@ class PlayerSnapshotTest {
                 reflection,
                 entry.plays,
                 finish,
-                null,
                 view.limits,
                 finish?.let {
                     PlayWayChoices(
@@ -333,8 +329,6 @@ private suspend fun TestScope.scalesReflection(): Store {
             marks = emptyList(),
             note = "left hand rushed in bar 12, got it at 84",
             tempos = emptyList(),
-            gotInTheWay = emptyList(),
-            notePoints = emptyList(),
             ways = emptyList(),
         )
     store.send(Event.Session(SessionEvent.UpdateReflectionDraft(draft)))

@@ -2,7 +2,6 @@ package com.intrada.android
 
 import com.intrada.android.ui.PracticeModel
 import com.intrada.shared.CompletionStatus
-import com.intrada.shared.EntryRecordView
 import com.intrada.shared.EntryStatus
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LastPractisedView
@@ -23,8 +22,6 @@ object PracticeFixtures {
         duration: String = "8m",
         score: UByte? = null,
         tempo: UShort? = null,
-        repTarget: UByte? = null,
-        repCount: UByte? = null,
     ) =
         PlayView(
             id = id,
@@ -32,14 +29,7 @@ object PracticeFixtures {
             label = label,
             seconds = 480uL,
             durationDisplay = duration,
-            metaParts =
-                listOfNotNull(
-                    duration,
-                    tempo?.let { "$it bpm" },
-                    repTarget?.let { "${repCount ?: 0u} of $it reps" },
-                ),
-            repTarget = repTarget,
-            repCount = repCount,
+            metaParts = listOfNotNull(duration, tempo?.let { "$it bpm" }),
             achievedTempo = tempo,
             score = score,
             isMarkable = true,
@@ -67,12 +57,6 @@ object PracticeFixtures {
             plannedVariationIds = emptyList(),
             plays = plays,
             scoreSummary = score,
-            record =
-                EntryRecordView(
-                    intentionMetRead = false,
-                    gotInTheWay = emptyList(),
-                    notePoints = emptyList(),
-                ),
             planTags = emptyList(),
         )
 
@@ -90,7 +74,7 @@ object PracticeFixtures {
                         "e2",
                         "Hanon No. 1",
                         ItemKind.EXERCISE,
-                        plays = listOf(play(score = 3u, repTarget = 5u, repCount = 5u)),
+                        plays = listOf(play(score = 3u)),
                     ),
                     entry(
                         "e3",

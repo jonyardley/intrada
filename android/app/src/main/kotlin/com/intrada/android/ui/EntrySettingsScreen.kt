@@ -88,11 +88,6 @@ private fun ColumnScope.EntrySettingsBody(
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
     ) {
         AimCard(entry, send)
-        EntryFocusCard(
-            entry.record.focus,
-            setlist.focusChoices,
-            send = { send(SessionEvent.SetFocus(entry.id, it)) },
-        )
         setlist.lastTimes
             .firstOrNull { it.entryId == entry.id }
             ?.let { offer ->
@@ -107,7 +102,6 @@ private fun ColumnScope.EntrySettingsBody(
         setlist.entryKeys.firstOrNull { it.entryId == entry.id }?.let { KeyCard(it, send) }
         val variations = plannable?.variations.orEmpty()
         if (variations.isNotEmpty()) VariationCard(entry, variations, send)
-        RepsCard(entry, limits, send)
         DurationCard(entry, limits, send)
         if (entry.removable) {
             DeleteButton(
@@ -164,14 +158,6 @@ private fun AimCard(entry: SetlistEntryView, send: (SessionEvent) -> Boolean) {
             placeholder = "What are you aiming for on this one?",
             singleLine = false,
         )
-        entry.record.suggestedFocus?.let { suggested ->
-            AddRow(
-                "Focus: ${suggested.label}",
-                "Make ${suggested.label} the focus",
-                "entrySettings.suggestedFocus",
-                { send(SessionEvent.SetFocus(entry.id, suggested.focus)) },
-            )
-        }
     }
 }
 
@@ -210,37 +196,6 @@ private fun KeyCard(keys: EntryKeysView, send: (SessionEvent) -> Boolean) {
 }
 
 @Composable
-private fun RepsCard(entry: SetlistEntryView, limits: LimitsView, send: (SessionEvent) -> Boolean) {
-    val target = entry.plannedRepTarget
-    Column(
-        Modifier.fillMaxWidth()
-            .cardSurface()
-            .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.controlGap)
-    ) {
-        ToggleRow(
-            "Track repetitions",
-            on = target != null,
-            tag = "entrySettings.trackReps",
-            onChange = { on ->
-                send(SessionEvent.SetRepTarget(entry.id, if (on) limits.repTargetDefault else null))
-            },
-        )
-        if (target != null) {
-            StepperRow(
-                "Target: $target repetitions",
-                "repetitions",
-                "entrySettings.repTarget",
-                onStep = {
-                    send(SessionEvent.SetRepTarget(entry.id, (target.toInt() + it).toUByte()))
-                },
-                canDecrease = target > limits.repTargetMin,
-                canIncrease = target < limits.repTargetMax,
-            )
-        }
-    }
-}
-
-@Composable
 private fun DurationCard(
     entry: SetlistEntryView,
     limits: LimitsView,
@@ -257,7 +212,7 @@ private fun DurationCard(
         ToggleRow(
             "Planned duration",
             on = secs != null,
-            tag = "entrySettings.duration",
+            tag = "entrySettings.plannedDuration",
             onChange = { on ->
                 val minutes = limits.plannedDurationDefaultMins.toInt()
                 send(

@@ -8,9 +8,12 @@ import com.intrada.android.core.Store
 import com.intrada.ffi.sessionBlobVersion
 import com.intrada.shared.ActiveSession
 import com.intrada.shared.AppEffect
+import com.intrada.shared.ClickStart
 import com.intrada.shared.Event
 import com.intrada.shared.FirstRunEvent
 import com.intrada.shared.LibrarySort
+import com.intrada.shared.PracticeDefaults
+import com.intrada.shared.PracticeDefaultsEvent
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.SortDirection
 import com.intrada.shared.SortField
@@ -61,11 +64,53 @@ class SettingsTest {
         assertNotNull(store.viewModel.value?.activeSession)
     }
 
-    // The core owns the version, and the key a saved set of defaults lives under stays the same
-    // (#2216).
+    // The core owns both versions, and the keys are the iPhone's (#2216, #2791).
     @Test
-    fun thePracticeDefaultsKeyIsUnchanged() {
-        assertEquals("intrada.practice-defaults.v2", Settings(prefs, practice).practiceDefaults.key)
+    fun thePracticeDefaultsKeysFollowTheCore() {
+        val settings = Settings(prefs, practice)
+        assertEquals("intrada.practice-defaults.v3", settings.practiceDefaults.key)
+        assertEquals("intrada.practice-defaults.v2", settings.previousPracticeDefaults.key)
+    }
+
+    @Test
+    fun versionTwoDefaultsAreHandedToTheCoreOnceAndTheirKeyCleared() {
+        val settings = Settings(prefs, practice)
+        settings.previousPracticeDefaults.write(VERSION_TWO_DEFAULTS)
+
+        val first = settings.restored().filterIsInstance<Event.PracticeDefaults>()
+        val second = settings.restored().filterIsInstance<Event.PracticeDefaults>()
+
+        assertEquals(
+            listOf(PracticeDefaultsEvent.Carried(VERSION_TWO_DEFAULTS.map { it.toUByte() })),
+            first.map { it.value },
+        )
+        assertNull(settings.previousPracticeDefaults.read())
+        assertEquals(emptyList<Event>(), second)
+    }
+
+    @Test
+    fun versionTwoDefaultsAreClearedUncarriedOnceVersionThreeIsSaved() {
+        val settings = Settings(prefs, practice)
+        val kept = PracticeDefaults(ClickStart.EVERYBEAT, 30.toUShort())
+        settings.practiceDefaults.write(kept.bincodeSerialize())
+        settings.previousPracticeDefaults.write(VERSION_TWO_DEFAULTS)
+
+        val restored = settings.restored().filterIsInstance<Event.PracticeDefaults>()
+
+        assertEquals(listOf(PracticeDefaultsEvent.Loaded(kept)), restored.map { it.value })
+        assertNull(settings.previousPracticeDefaults.read())
+    }
+
+    @Test
+    fun carriedDefaultsAreSavedUnderTheNewKey() = runTest {
+        val settings = Settings(prefs, practice)
+        settings.previousPracticeDefaults.write(VERSION_TWO_DEFAULTS)
+
+        store(settings).restoreSettings()
+
+        val saved =
+            PracticeDefaults.bincodeDeserialize(checkNotNull(settings.practiceDefaults.read()))
+        assertEquals(PracticeDefaults(ClickStart.TWOANDFOUR, 25.toUShort()), saved)
     }
 
     @Test
@@ -152,5 +197,10 @@ class SettingsTest {
         val hex = Regex("\"([0-9a-f]*)\"").findAll(body).joinToString("") { it.groupValues[1] }
         val bytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         return version.toUInt() to bytes
+    }
+
+    private companion object {
+        // Repetition target 5, the click on 2 and 4, 25 minutes: the core's version 2 pin.
+        val VERSION_TWO_DEFAULTS = byteArrayOf(0x05, 0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00)
     }
 }

@@ -20,7 +20,6 @@ import com.intrada.shared.ActiveSessionView
 import com.intrada.shared.EntryStatus
 import com.intrada.shared.Event
 import com.intrada.shared.LastTimeView
-import com.intrada.shared.ReflectionAnswers
 import com.intrada.shared.SessionEvent
 import java.time.Instant
 import kotlinx.coroutines.test.TestScope
@@ -100,38 +99,6 @@ class PlayerRecordFlowTest {
         assertEquals(listOf(swung), sentOf<SessionEvent.SwitchPlay>().single().variationIds)
         assertEquals(listOf(swung), store.active().currentVariationIds)
         compose.onAllNodesWithTag("variationPicker.row").assertCountEquals(0)
-    }
-
-    @Test
-    fun aPointKeptFromTheNoteGoesInTheDraft() = runTest {
-        val store = openedStore()
-        store.startTwoItems()
-        val reading = PlayerFixtures.silent
-        store.send(Event.Session(SessionEvent.PrepareReflection("2026-10-07T09:04:00Z", reading)))
-        store.send(
-            Event.Session(
-                SessionEvent.UpdateReflectionDraft(
-                    ReflectionAnswers(
-                        marks = emptyList(),
-                        note = "left hand rushed in bar 12, got it at 84",
-                        tempos = emptyList(),
-                        gotInTheWay = emptyList(),
-                        notePoints = emptyList(),
-                        ways = emptyList(),
-                    )
-                )
-            )
-        )
-        showPlayer(store)
-
-        compose.onAllNodesWithTag("reflection.noteOffer")[0].performScrollTo().performClick()
-
-        val draft = sentOf<SessionEvent.UpdateReflectionDraft>().last().answers
-        assertEquals(1, draft.notePoints.size)
-        assertEquals(
-            1,
-            store.active().record.finish?.noteOffers?.count { it.confirmed },
-        )
     }
 
     @Test

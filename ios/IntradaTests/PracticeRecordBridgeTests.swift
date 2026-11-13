@@ -107,6 +107,31 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertEqual(first.seconds, 1000 - 360, "six minutes left out")
   }
 
+  /// The finish sheet's rows and a way changed on one cross the bridge both
+  /// ways: the row names the play, and the drafted way lands on it (#2249).
+  func testRealBridgeAWayChangedOnTheFinishSheetLandsOnThePlay() throws {
+    let (bridge, entryId, dotted) = try practising()
+    _ = try bridge.update(
+      .session(.prepareReflection(now: at(300), reading: TempoReading.silent)))
+    let sheet: FinishSheetView = try XCTUnwrap(
+      try bridge.rendered().activeSession?.record.finish)
+    let row: FinishRowView = try XCTUnwrap(sheet.rows.first)
+    XCTAssertEqual(sheet.rows.count, 1)
+
+    let way = DraftWay(playId: row.playId, key: nil, variationIds: [dotted])
+    _ = try bridge.update(
+      .session(
+        .submitReflection(
+          nextItemStartedAt: at(301),
+          answers: ReflectionAnswers(marks: [], note: "steady", tempos: [], ways: [way]))))
+
+    XCTAssertNil(try bridge.rendered().error)
+    let entry = try XCTUnwrap(try bridge.rendered().summary?.entries.first { $0.id == entryId })
+    XCTAssertEqual(
+      entry.plays.first?.variationIds, [dotted], "the confirmed way is what was played")
+    XCTAssertEqual(entry.notes, "steady")
+  }
+
   /// A practice in progress with every field set crosses Swift to Rust on
   /// resume and comes back in the next saved copy, unchanged.
   func testRealBridgeAPracticeInProgressRoundTripsWithEveryFieldSet() throws {

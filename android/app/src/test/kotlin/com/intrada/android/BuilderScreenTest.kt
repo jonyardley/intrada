@@ -9,11 +9,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
-import com.intrada.android.core.Store
 import com.intrada.android.ui.AddToSessionRoute
 import com.intrada.android.ui.BuilderNavigation
 import com.intrada.android.ui.BuilderRoute
@@ -91,25 +89,6 @@ class BuilderScreenTest {
     }
 
     @Test
-    fun aFocusChosenInSettingsIsPlannedAndItsTargetSteps() = runTest {
-        val store = buildingStore()
-        val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
-        val numbered = store.setlist().focusChoices.first { it.target != null }
-        val range = numbered.target ?: error("no target")
-        compose.setContent { EntrySettingsRoute(store, piece.id, onDone = {}) }
-
-        compose.onNodeWithText(numbered.label).performScrollTo().performClick()
-        assertEquals(numbered.kind, store.focus(piece.id)?.kind)
-        val start = (store.focus(piece.id)?.target ?: range.min).toInt()
-
-        compose.onNodeWithContentDescription("More target").performScrollTo().performClick()
-        assertEquals((start + range.step.toInt()).toUShort(), store.focus(piece.id)?.target)
-
-        compose.onNodeWithTag("entrySettings.focusClear").performScrollTo().performClick()
-        assertNull(store.focus(piece.id))
-    }
-
-    @Test
     fun aKeyChosenInSettingsIsPlannedOnThePiece() = runTest {
         val store = plannedPieceStore()
         val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
@@ -158,20 +137,6 @@ class BuilderScreenTest {
 
         assertEquals("hanon", store.viewModel.value?.activeQuery?.text)
         compose.onAllNodesWithTag("addToSession.row").assertCountEquals(1)
-    }
-
-    @Test
-    fun trackingRepetitionsStartsAtTheDefaultAndStepsDown() = runTest {
-        val store = buildingStore()
-        val satie = store.setlist().entries.single { it.itemId == BuilderFixtures.SATIE }
-        compose.setContent { EntrySettingsRoute(store, satie.id, onDone = {}) }
-        val default = store.viewModel.value?.limits?.repTargetDefault
-
-        compose.onNodeWithTag("entrySettings.trackReps").performScrollTo().performClick()
-        assertEquals(default, store.repTarget(satie.id))
-
-        compose.onNodeWithContentDescription("Less repetitions").performScrollTo().performClick()
-        assertEquals(default?.minus(1u)?.toUByte(), store.repTarget(satie.id))
     }
 
     @Test
@@ -234,10 +199,4 @@ class BuilderScreenTest {
     private companion object {
         const val TOO_LONG_AIM = 501
     }
-
-    private fun Store.focus(entryId: String) =
-        setlist().entries.single { it.id == entryId }.record.focus?.focus
-
-    private fun Store.repTarget(entryId: String) =
-        setlist().entries.single { it.id == entryId }.plannedRepTarget
 }

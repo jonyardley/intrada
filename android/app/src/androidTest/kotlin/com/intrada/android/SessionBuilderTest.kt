@@ -99,7 +99,7 @@ class SessionBuilderTest {
 
         app.await(builderRow("Major Scales", "Related"))
         app.await(builderRow("Hanon No. 1", "Related")).scrolledTo().performClick()
-        app.control("entrySettings.trackReps")
+        app.control("entrySettings.plannedDuration")
     }
 
     private fun queueHanonAndScales() {

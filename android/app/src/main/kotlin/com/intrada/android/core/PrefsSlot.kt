@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import com.intrada.ffi.firstRunBlobVersion
 import com.intrada.ffi.librarySortBlobVersion
 import com.intrada.ffi.practiceDefaultsBlobVersion
+import com.intrada.ffi.practiceDefaultsPreviousBlobVersion
 import com.intrada.ffi.profileBlobVersion
 import com.intrada.ffi.sessionBlobVersion
 import com.intrada.shared.ActiveSession
@@ -64,6 +65,9 @@ class Settings(
     // Its own blob, never fields on the profile, so no profile is lost to a failed decode (#1915).
     val practiceDefaults =
         PrefsSlot("intrada.practice-defaults.v${practiceDefaultsBlobVersion()}", prefs, log)
+    // The shape before the repetition target went (#2791), carried across once.
+    val previousPracticeDefaults =
+        PrefsSlot("intrada.practice-defaults.v${practiceDefaultsPreviousBlobVersion()}", prefs, log)
     val firstRun = PrefsSlot("intrada.first-run.v${firstRunBlobVersion()}", prefs, log)
 
     /** Practices saved by older builds, whose shape this one cannot read (#2246). */
@@ -94,6 +98,7 @@ class Settings(
     /** What was saved, as the events that hand it back to the core at launch. */
     fun restored(): List<Event> =
         listOfNotNull(
+            carriedPracticeDefaults(),
             decoded(librarySort) { LibrarySort.bincodeDeserialize(it) }?.let { Event.SetSort(it) },
             decoded(profile) { Profile.bincodeDeserialize(it) }
                 ?.let { Event.Profile(ProfileEvent.Loaded(it)) },
@@ -102,6 +107,18 @@ class Settings(
             decoded(firstRun) { FirstRun.bincodeDeserialize(it) }
                 ?.let { Event.FirstRun(FirstRunEvent.Loaded(it)) },
         )
+
+    /**
+     * The core reads the old shape and saves the new one, so the old key goes once its bytes are
+     * sent, and is never read again (#2791).
+     */
+    private fun carriedPracticeDefaults(): Event? {
+        val bytes = previousPracticeDefaults.read() ?: return null
+        previousPracticeDefaults.clear()
+        return bytes
+            .takeIf { practiceDefaults.read() == null }
+            ?.let { Event.PracticeDefaults(PracticeDefaultsEvent.Carried(it.map(Byte::toUByte))) }
+    }
 
     fun pendingSessionInProgress(): ActiveSession? =
         decoded(sessionInProgress) { ActiveSession.bincodeDeserialize(it) }

@@ -186,22 +186,6 @@ private fun ColumnScope.PlayerBody(
             )
         }
         PlayerClick(active, limits, click, changed)
-        RepCounter(
-            RepState(
-                count = active.currentRepCount?.toInt() ?: 0,
-                slots = active.currentRepSlots.toInt(),
-                touched = active.currentRepCount != null,
-                reached = active.currentRepTargetReached ?: false,
-                extra = active.currentRepsPastTarget.toInt(),
-                canUndo = active.currentCanUndo,
-            ),
-            RepActions(
-                onGotIt = { stamped(SessionEvent::RepGotIt) },
-                onNotQuite = { stamped(SessionEvent::RepMissed) },
-                onUndo = { stamped(SessionEvent::RepUndo) },
-            ),
-            Modifier.padding(top = IntradaSpacing.section),
-        )
         Spacer(Modifier.heightIn(min = IntradaSpacing.card))
     }
 }

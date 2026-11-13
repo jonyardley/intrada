@@ -84,11 +84,6 @@ object IntradaColor {
     val dialTrack = Color(0xFFEDE8DC)
     val timerTrack = Color(0xFFEDE8DC)
     val consistencyTrack = Color(0xFFEDE8DC)
-    val repMissedFg = Color(0xFF756A5C)
-    val repMissedBg = Color(0xFFF3EFE8)
-    val repCleanFg = success
-    val repCleanBg = Color(0xFFEDF1EA)
-    val repCleanBorder = Color(0xFFD3DDCC)
     val slotOutline = Color(0xFFDDD7CA)
     val addDashOutline = Color(0xFFC9BFB0)
     val inkFainter = Color(0xFFC2B8AA)

@@ -29,10 +29,6 @@ ios/Intrada/Views/Components/ConsistencyBars.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/ConsistencyBars.swift	spacing: 9	1	#2706
 ios/Intrada/Views/Components/DraftItemRow.swift	.padding(.leading, 20)	1	#2706
 ios/Intrada/Views/Components/DraftItemRow.swift	spacing: 3	1	#2706
-ios/Intrada/Views/Components/EntryFocusCard.swift	spacing: 2	1	#2706
-ios/Intrada/Views/Components/FinishRecordSections.swift	.padding(.vertical, 6)	1	#2706
-ios/Intrada/Views/Components/FinishRecordSections.swift	spacing: 2	2	#2706
-ios/Intrada/Views/Components/FinishRecordSections.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/FormField.swift	.padding(.vertical, 10)	1	#2706
 ios/Intrada/Views/Components/FormField.swift	spacing: 4	1	#2706
 ios/Intrada/Views/Components/InlineSuggestionList.swift	.padding(.vertical, 10)	1	#2706
@@ -70,12 +66,8 @@ ios/Intrada/Views/Components/MasteryHeroCard.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/OfferChip.swift	spacing: 16	1	#2706
 ios/Intrada/Views/Components/OfferChip.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/PickerRow.swift	spacing: 2	1	#2706
-ios/Intrada/Views/Components/PracticeDefaultsSection.swift	spacing: 2	1	#2706
 ios/Intrada/Views/Components/ProfileFields.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/RecentSessions.swift	spacing: 4	1	#2706
-ios/Intrada/Views/Components/RepCounter.swift	.padding(.vertical, 13)	1	#2706
-ios/Intrada/Views/Components/RepCounter.swift	spacing: 5	1	#2706
-ios/Intrada/Views/Components/RepCounter.swift	spacing: 7	1	#2706
 ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift	.padding(.horizontal, 6)	1	#2706
 ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift	.padding(.leading, 20)	1	#2706
 ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift	.padding(.vertical, 2)	1	#2706
@@ -193,7 +185,6 @@ android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(5.d
 android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(6.dp)	2	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(9.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/ProgressScreen.kt	padding(32.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ReflectionWayParts.kt	spacedBy(6.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt	spacedBy(10.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt	spacedBy(2.dp)	1	#2706
 android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt	spacedBy(5.dp)	1	#2706

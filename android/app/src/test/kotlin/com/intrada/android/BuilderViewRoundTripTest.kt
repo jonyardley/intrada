@@ -4,8 +4,6 @@ import com.intrada.android.core.LiveBridge
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
-import com.intrada.shared.FocusKind
-import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.PersistenceOperation
@@ -30,14 +28,11 @@ class BuilderViewRoundTripTest {
         val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
         bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 600u)))
         bridge.update(Event.Session(SessionEvent.SetEntryVariations(entryId, listOf(dotted))))
-        bridge.update(
-            Event.Session(SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.FROMMEMORY)))
-        )
         bridge.update(Event.Session(SessionEvent.SetEntryIntention(entryId, "  Even quavers \n")))
 
         val building = bridge.view().buildingSetlist
         val entry = building?.entries?.firstOrNull()
-        assertEquals(listOf("Dotted", "Focus: From memory"), entry?.planTags)
+        assertEquals(listOf("Dotted"), entry?.planTags)
         assertEquals("Even quavers", entry?.intention)
         val block = building?.blocks?.firstOrNull()
         assertEquals("Piece · 10 min", block?.caption)

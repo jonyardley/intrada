@@ -41,12 +41,9 @@ import com.intrada.ffi.clickTempoWords
 import com.intrada.shared.DraftMark
 import com.intrada.shared.DraftTempo
 import com.intrada.shared.Event
-import com.intrada.shared.Felt
 import com.intrada.shared.FinishSheetView
-import com.intrada.shared.IntentionMet
 import com.intrada.shared.KeyChoiceView
 import com.intrada.shared.LimitsView
-import com.intrada.shared.Obstacle
 import com.intrada.shared.PickerVariationView
 import com.intrada.shared.PlayView
 import com.intrada.shared.ReflectionAnswers
@@ -79,11 +76,6 @@ class ReflectionState(seed: ReflectionAnswers, rows: List<com.intrada.shared.Ref
                 }
             )
         }
-    var felt by mutableStateOf(seed.felt)
-    var obstacles by mutableStateOf(seed.gotInTheWay)
-    var intentionMet by mutableStateOf(seed.intentionMet)
-    var detailOpen by mutableStateOf(seed.felt != null || seed.gotInTheWay.isNotEmpty())
-    var notePoints by mutableStateOf(seed.notePoints)
     var ways by mutableStateOf(seed.ways)
     var changingPlayId by mutableStateOf<String?>(null)
 
@@ -100,10 +92,6 @@ class ReflectionState(seed: ReflectionAnswers, rows: List<com.intrada.shared.Ref
                         ?.takeIf { it.second }
                         ?.let { DraftTempo(row.playId, it.first.toUShort(), row.click) }
                 },
-            felt = felt,
-            gotInTheWay = obstacles,
-            notePoints = notePoints,
-            intentionMet = intentionMet,
             ways = ways,
         )
 }
@@ -119,7 +107,6 @@ class ReflectionModel(
     val reflection: ReflectionView,
     val plays: List<PlayView>,
     val finish: FinishSheetView?,
-    val aim: String?,
     val limits: LimitsView,
     val wayChoices: PlayWayChoices? = null,
 ) {
@@ -153,7 +140,6 @@ internal fun ReflectionRoute(
             reflection = reflection,
             plays = entry?.plays.orEmpty(),
             finish = active.record.finish,
-            aim = entry?.record?.focus?.label ?: active.currentItemIntention,
             limits = model.limits,
             wayChoices =
                 active.record.finish?.let {
@@ -222,7 +208,6 @@ fun ReflectionSheet(
             .padding(bottom = IntradaSpacing.section)
     ) {
         Heading(model)
-        AimSection(model, state, draft)
         MarkSection(model, state, draft)
         FieldLabel("Reflection · optional", Modifier.padding(top = IntradaSpacing.card))
         FormField(
@@ -234,8 +219,6 @@ fun ReflectionSheet(
             placeholder = "What went well? What to fix next time?",
             singleLine = false,
         )
-        model.finish?.let { ReflectionNoteOffers(state, it.noteOffers, draft) }
-        model.finish?.let { DetailSection(it, state, draft) }
         refusal?.let {
             FormErrorBanner(
                 it,
@@ -280,57 +263,6 @@ private fun Heading(model: ReflectionModel) {
         )
     }
 }
-
-@Composable
-private fun AimSection(model: ReflectionModel, state: ReflectionState, draft: () -> Unit) {
-    val finish = model.finish
-    val aim = model.aim
-    val read = finish?.intentionMetRead
-    if (finish == null || aim == null || !finish.hasAim) return
-    Column(
-        Modifier.padding(top = IntradaSpacing.section),
-        verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-    ) {
-        FieldLabel(if (finish.asksIntention) "Aim met? · optional" else "Aim")
-        BasicText(aim, style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
-        if (finish.asksIntention) {
-            ChoicePills(
-                IntentionMet.entries,
-                chosen = { it == state.intentionMet },
-                label = { it.answer },
-                tag = { "reflection.aim.${it.name.lowercase()}" },
-                onTap = {
-                    state.intentionMet = if (state.intentionMet == it) null else it
-                    draft()
-                },
-            )
-        } else if (read != null) {
-            BasicText(
-                read.readLabel,
-                style = IntradaFont.secondary.copy(color = IntradaColor.success),
-            )
-        }
-    }
-}
-
-private val FinishSheetView.hasAim: Boolean
-    get() = asksIntention || intentionMetRead != null
-
-private val IntentionMet.answer: String
-    get() =
-        when (this) {
-            IntentionMet.YES -> "Yes"
-            IntentionMet.PARTLY -> "Partly"
-            IntentionMet.NOTYET -> "Not yet"
-        }
-
-private val IntentionMet.readLabel: String
-    get() =
-        when (this) {
-            IntentionMet.YES -> "Met, from your plays"
-            IntentionMet.PARTLY -> "Partly met, from your plays"
-            IntentionMet.NOTYET -> "Not met yet, from your plays"
-        }
 
 @Composable
 private fun MarkSection(model: ReflectionModel, state: ReflectionState, draft: () -> Unit) {
@@ -450,49 +382,4 @@ private fun ReflectionModel.rowTitle(play: PlayView): String =
     finish?.rows?.firstOrNull { it.playId == play.id }?.label ?: play.label ?: "No variation"
 
 private val PlayView.meta: String
-    get() =
-        listOfNotNull(
-                SessionClock.clockDisplay(seconds.toLong()),
-                repTarget?.let { "${repCount ?: 0u} of $it" },
-            )
-            .joinToString(" · ")
-
-@Composable
-private fun DetailSection(finish: FinishSheetView, state: ReflectionState, draft: () -> Unit) {
-    Column(
-        Modifier.padding(top = IntradaSpacing.card),
-        verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-    ) {
-        ToggleRow(
-            "Add detail",
-            on = state.detailOpen,
-            tag = "reflection.addDetail",
-            onChange = { state.detailOpen = it },
-        )
-        if (!state.detailOpen) return@Column
-        FieldLabel("How it felt")
-        ChoicePills(
-            finish.feltChoices.map { it.felt },
-            chosen = { it == state.felt },
-            label = { felt -> finish.feltChoices.first { it.felt == felt }.label },
-            tag = { "reflection.felt.${it.name.lowercase()}" },
-            onTap = { felt: Felt ->
-                state.felt = if (state.felt == felt) null else felt
-                draft()
-            },
-        )
-        FieldLabel("What got in the way", Modifier.padding(top = IntradaSpacing.controlGap))
-        ChoicePills(
-            finish.obstacleChoices.map { it.obstacle },
-            chosen = { it in state.obstacles },
-            label = { obstacle -> finish.obstacleChoices.first { it.obstacle == obstacle }.label },
-            tag = { "reflection.obstacle.${it.name.lowercase()}" },
-            onTap = { obstacle: Obstacle ->
-                state.obstacles =
-                    if (obstacle in state.obstacles) state.obstacles - obstacle
-                    else state.obstacles + obstacle
-                draft()
-            },
-        )
-    }
-}
+    get() = SessionClock.clockDisplay(seconds.toLong())

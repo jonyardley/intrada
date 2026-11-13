@@ -7,8 +7,6 @@ import com.intrada.shared.AppEffect
 import com.intrada.shared.Effect
 import com.intrada.shared.EntryStatus
 import com.intrada.shared.Event
-import com.intrada.shared.FocusKind
-import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
 import com.intrada.shared.Letter
@@ -30,11 +28,9 @@ class PracticeInProgressRoundTripTest {
                 itemId = "i1",
                 itemType = ItemKind.EXERCISE,
                 intention = "A at 84",
-                focus = IntentionFocus(FocusKind.CLEANREPS, 5.toUShort()),
                 durationSecs = 1200u,
                 groupId = "block-1",
                 variationIds = listOf("v-a", "v-b"),
-                repTarget = 6.toUByte(),
                 key = Key(Letter.G, Accidental.NATURAL, Modality.MAJOR),
             )
         val at = "2026-10-04T09:00:00Z"
@@ -58,10 +54,6 @@ class PracticeInProgressRoundTripTest {
                             away = emptyList(),
                         )
                     ),
-                intentionMet = null,
-                felt = null,
-                gotInTheWay = emptyList(),
-                notePoints = emptyList(),
             )
         val bridge = LiveBridge()
         bridge.update(Event.StartApp)
