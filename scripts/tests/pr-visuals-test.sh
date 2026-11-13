@@ -40,7 +40,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF "$needle"; then
+  if grep -qF "$needle" <<<"$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))

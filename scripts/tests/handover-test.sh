@@ -107,7 +107,7 @@ pass=0
 fail=0
 check() {
   local name=$1 haystack=$2 needle=$3
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -117,7 +117,7 @@ check() {
 }
 refute() {
   local name=$1 haystack=$2 needle=$3
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     fail=$((fail + 1))
     echo "✗ $name: did not expect '$needle'" >&2
   else

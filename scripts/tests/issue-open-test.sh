@@ -36,7 +36,7 @@ check() {
   [ -f "$CALLS" ] || opened=0
   [ "$want_status" -eq 0 ] && want_opened=1
   if [ "$status" -eq "$want_status" ] && [ "$opened" -eq "$want_opened" ] &&
-    printf '%s' "$out" | grep -qF -- "$want_text"; then
+    grep -qF -- "$want_text" <<<"$out"; then
     echo "✓ $name"
     pass=$((pass + 1))
   else

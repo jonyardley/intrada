@@ -27,7 +27,7 @@ body='[]'
 case "$1 ${2:-}" in
   "api graphql")
     body='{"data":{"repository":{"issues":{"nodes":[]}}}}'
-    if printf '%s' "$*" | grep -qF 'labels: ["ready"]'; then
+    if [[ "$*" == *'labels: ["ready"]'* ]]; then
       if [ -n "${FAIL_READY:-}" ]; then
         echo "gh: Your token has not been granted the required scopes." >&2
         exit 1
@@ -55,7 +55,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -65,7 +65,7 @@ check() {
 
 refute() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     fail=$((fail + 1))
     printf '✗ %s\n    did not expect: %s\n' "$desc" "$needle" >&2
   else

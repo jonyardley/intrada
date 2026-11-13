@@ -79,7 +79,7 @@ expect_refusal() {
   if [ "$run_status" -eq 0 ]; then
     fail=$((fail + 1))
     printf '✗ %s: expected a refusal, script exited 0\n    output: %s\n' "$desc" "$out" >&2
-  elif ! printf '%s' "$out" | grep -qF -- "$needle"; then
+  elif ! grep -qF -- "$needle" <<<"$out"; then
     fail=$((fail + 1))
     printf '✗ %s: refused, but the message is missing %s\n    output: %s\n' "$desc" "$needle" "$out" >&2
   elif [ "$(mutations)" != "0" ]; then
@@ -102,7 +102,7 @@ equals() {
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))

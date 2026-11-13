@@ -27,7 +27,7 @@ for i in "${!args[@]}"; do
 done
 
 endpoint="${2:-}"
-if [ -n "${FAIL_ON:-}" ] && printf '%s' "$endpoint" | grep -q "$FAIL_ON"; then
+if [ -n "${FAIL_ON:-}" ] && grep -q "$FAIL_ON" <<<"$endpoint"; then
   echo "gh: HTTP 403: API rate limit exceeded" >&2
   exit 1
 fi
@@ -43,7 +43,7 @@ if [ "${1:-}" = "api" ]; then
   esac
 fi
 
-if [ -n "$jq_expr" ] && ! { [ -n "${RAW_ON:-}" ] && printf '%s' "$endpoint" | grep -q "$RAW_ON"; }; then
+if [ -n "$jq_expr" ] && ! { [ -n "${RAW_ON:-}" ] && grep -q "$RAW_ON" <<<"$endpoint"; }; then
   printf '%s' "$body" | jq -r "$jq_expr"
 else
   printf '%s' "$body"
@@ -70,7 +70,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -80,7 +80,7 @@ check() {
 
 refute() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     fail=$((fail + 1))
     printf '✗ %s\n    did not expect: %s\n' "$desc" "$needle" >&2
   else

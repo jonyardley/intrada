@@ -26,7 +26,7 @@ body='[]'
 case "$1 ${2:-}" in
   "api graphql")
     # The ready queue has its own read and its own self-test.
-    if printf '%s' "$*" | grep -qF 'labels: ["ready"]'; then
+    if [[ "$*" == *'labels: ["ready"]'* ]]; then
       body='{"data":{"repository":{"issues":{"nodes":[]}}}}'
       [ -n "$jq_expr" ] && printf '%s' "$body" | jq -r "$jq_expr" || printf '%s' "$body"
       exit 0
@@ -57,7 +57,7 @@ fail=0
 
 check() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
@@ -67,7 +67,7 @@ check() {
 
 refute() {
   local haystack="$1" desc="$2" needle="$3"
-  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<<"$haystack"; then
     fail=$((fail + 1))
     printf '✗ %s\n    did not expect: %s\n' "$desc" "$needle" >&2
   else
