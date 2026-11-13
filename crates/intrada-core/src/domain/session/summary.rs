@@ -141,14 +141,11 @@ pub(super) fn update_entry_notes(
         return crux_core::render::render();
     }
 
-    let offered = note_offers(notes.as_deref().unwrap_or_default());
     let Some(entry) = entry_for_update_mut(model, &entry_id) else {
         model.raise_error(format!("Entry '{entry_id}' not found"));
         return crux_core::render::render();
     };
 
-    // A confirmed point must still read the same in the note as edited.
-    entry.note_points.retain(|p| offered.contains(p));
     entry.notes = notes;
     model.last_error = None;
     persist_if_active(model)

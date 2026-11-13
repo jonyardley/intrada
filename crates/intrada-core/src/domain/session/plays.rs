@@ -15,20 +15,17 @@ pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
             key: entry.plan.key,
             ..PlayWay::default()
         };
-        entry
-            .plays
-            .push(Play::opened(way, entry.plan.rep_target, now));
+        entry.plays.push(Play::opened(way, now));
     }
 }
 
 /// Stamp the open play's seconds from its own start, so a switch mid item
 /// splits the time rather than double-counting it, and its tempo from what
-/// the click was doing at that instant (#1761). `None` is a close with no
-/// reading, which only a skip makes.
+/// the click was doing at that instant (#1761).
 pub(super) fn close_open_play(
     entry: &mut SetlistEntry,
     now: DateTime<Utc>,
-    reading: Option<&TempoReading>,
+    reading: &TempoReading,
 ) -> TempoStamp {
     close_play(entry, now, reading, false)
 }
@@ -38,7 +35,7 @@ pub(super) fn close_open_play(
 pub(super) fn close_play(
     entry: &mut SetlistEntry,
     now: DateTime<Utc>,
-    reading: Option<&TempoReading>,
+    reading: &TempoReading,
     stamped: bool,
 ) -> TempoStamp {
     let Some(play) = entry.open_play_mut() else {
@@ -51,15 +48,12 @@ pub(super) fn close_play(
         let elapsed = (now - play.started_at).num_seconds().max(0) as u64;
         play.seconds = elapsed.saturating_sub(left_out_secs(&play.away, play.started_at, now));
     }
-    match reading {
-        Some(reading) => stamp_tempo(play, reading),
-        None => TempoStamp::NothingToKeep,
-    }
+    stamp_tempo(play, reading)
 }
 
 /// What a close did with its reading. The handler that closed the play
 /// reports `Unusable` as a notice, not an error: the play still closed and
-/// the tap landed (#1325).
+/// the event landed (#1325).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum TempoStamp {
     Kept,
@@ -135,82 +129,12 @@ pub(crate) fn play_would_survive_drop(entry: &SetlistEntry, play: &Play) -> bool
         && entry.plays.first().is_some_and(|first| first.id == play.id)
 }
 
-/// The first tap is what switches the counter on: it writes the target along
-/// with itself, so an untouched entry keeps its rep fields `None` and banks
-/// nothing (design-principles T19). A target set in the builder is kept;
-/// otherwise the musician's default is written (#1915). The count is the
-/// replay of the taps still standing, so it goes on past the target (#2107)
-/// and a tap the full history cannot keep does not count.
-pub(super) fn record_rep(
-    model: &mut Model,
-    action: RepAction,
-    now: DateTime<Utc>,
-    reading: &TempoReading,
-) -> Command<Effect, Event> {
-    let default_rep_target = model.practice_defaults.rep_target;
-    let SessionStatus::Active(ref mut active) = model.session_status else {
-        return crux_core::render::render();
-    };
-    let Some(entry) = active.entries.get_mut(active.current_index) else {
-        return crux_core::render::render();
-    };
-    // Repetitions belong to the play open now, so they reset when a switch
-    // opens the next one (#1739 decision 6).
-    open_first_play(entry, now);
-    let Some(play) = entry.open_play_mut() else {
-        return crux_core::render::render();
-    };
-    let history = play.rep_history.as_deref().unwrap_or_default();
-    if history.len() >= validation::MAX_REP_HISTORY
-        || (action == RepAction::Undo && standing_taps(history).is_empty())
-    {
-        return crux_core::render::render();
-    }
-
-    play.rep_target.get_or_insert(default_rep_target);
-    let history = play.rep_history.get_or_insert_with(Vec::new);
-    history.push(RepEvent {
-        action,
-        at: now,
-        tempo: crotchet_tempo(reading),
-        click_sounding: Some(reading.click_sounding),
-    });
-    play.rep_count = Some(rep_count(history));
-
-    model.last_error = None;
-    persist_active(active)
-}
-
-/// The got its and misses no undo has reversed, in order.
-pub(crate) fn standing_taps(history: &[RepEvent]) -> Vec<RepAction> {
-    let mut standing = Vec::new();
-    for event in history {
-        match event.action {
-            RepAction::Undo => {
-                standing.pop();
-            }
-            tap => standing.push(tap),
-        }
-    }
-    standing
-}
-
-/// Got it adds one, uncapped bar the byte; a miss steps back one, floor 0.
-pub(crate) fn rep_count(history: &[RepEvent]) -> u8 {
-    standing_taps(history)
-        .into_iter()
-        .fold(0u8, |count, tap| match tap {
-            RepAction::Success => count.saturating_add(1),
-            RepAction::Missed | RepAction::Undo => count.saturating_sub(1),
-        })
-}
-
-/// A change this soon after the last, with no tap between, is the same climb
-/// still moving: it replaces the last rather than adding to it.
+/// A change this soon after the last is the same climb still moving: it
+/// replaces the last rather than adding to it.
 const TEMPO_SETTLE_SECS: i64 = 2;
 
 /// Keeps where the tempo rested on the open play (#2107). A setting that gives
-/// no crotchet tempo writes nothing and says nothing, like a tap's.
+/// no crotchet tempo writes nothing and says nothing.
 pub(super) fn record_tempo_change(
     model: &mut Model,
     now: DateTime<Utc>,
@@ -238,22 +162,12 @@ pub(super) fn record_tempo_change(
         tempo,
         click_sounding: reading.click_sounding,
     };
-    let last_tap_at = play
-        .rep_history
-        .as_ref()
-        .and_then(|h| h.last())
-        .map(|e| e.at);
-    let full = play.tempo_changes.len() >= validation::MAX_REP_HISTORY;
+    let full = play.tempo_changes.len() >= validation::MAX_TEMPO_CHANGES;
     match play.tempo_changes.last_mut() {
         Some(last) if last.tempo == tempo && last.click_sounding == reading.click_sounding => {
             return crux_core::render::render();
         }
-        Some(last)
-            if (now - last.at).num_seconds() < TEMPO_SETTLE_SECS
-                && last_tap_at.is_none_or(|tap| tap < last.at) =>
-        {
-            *last = change;
-        }
+        Some(last) if (now - last.at).num_seconds() < TEMPO_SETTLE_SECS => *last = change,
         _ if full => return crux_core::render::render(),
         _ => play.tempo_changes.push(change),
     }
@@ -323,7 +237,7 @@ pub(super) fn transition_to_summary(
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.status = EntryStatus::Completed;
         open_first_play(entry, started);
-        stamp = close_play(entry, now, Some(reading), stamped);
+        stamp = close_play(entry, now, reading, stamped);
         entry.duration_secs = item_seconds(entry);
     }
 

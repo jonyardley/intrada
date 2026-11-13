@@ -367,10 +367,11 @@ mod tests {
     #[test]
     fn save_session_persistence_op_round_trips_on_ffi_bincode_wire() {
         // PracticeSession crosses the bridge as a SaveSession persistence Effect;
-        // its optional-heavy SetlistEntry + rep_history is exactly the #846 risk.
+        // its optional-heavy SetlistEntry and nested lists are exactly the #846
+        // risk, so every optional and list is filled.
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PlannedItem, Play, PracticeSession, RepAction, RepEvent,
-            SetlistEntry,
+            Away, ClickState, CompletionStatus, EntryStatus, PlannedItem, Play, PracticeSession,
+            SetlistEntry, TempoChange,
         };
         use crate::persistence::PersistenceOperation;
         let now = chrono::Utc::now();
@@ -380,11 +381,9 @@ mod tests {
                 item_id: "p1".to_string(),
                 item_type: ItemKind::Piece,
                 intention: Some("evenness".to_string()),
-                focus: None,
                 duration_secs: Some(300),
                 group_id: None,
-                variation_ids: vec![],
-                rep_target: Some(5),
+                variation_ids: vec!["v-1".to_string()],
                 key: crate::domain::key::Key::parse("E flat major"),
             },
             item_title: "Clair de Lune".to_string(),
@@ -396,34 +395,29 @@ mod tests {
                 id: "play-1".to_string(),
                 key: crate::domain::key::Key::parse("Bb minor"),
                 variation_ids: vec!["v-1".to_string()],
-                tempo_changes: vec![],
+                tempo_changes: vec![TempoChange {
+                    at: now,
+                    tempo: 96,
+                    click_sounding: true,
+                }],
                 started_at: now,
                 seconds: 300,
-                rep_target: Some(5),
-                rep_count: Some(5),
-                rep_history: Some(vec![
-                    RepEvent {
-                        action: RepAction::Success,
-                        at: now,
-                        click_sounding: None,
-                        tempo: None,
-                    },
-                    RepEvent {
-                        action: RepAction::Missed,
-                        at: now,
-                        click_sounding: None,
-                        tempo: None,
-                    },
-                ]),
                 achieved_tempo: Some(120),
-                click_pattern: None,
+                click_pattern: Some(ClickState {
+                    metre: crate::domain::Metre {
+                        beats: 6,
+                        unit: 8,
+                        groups: Some(vec![3, 3]),
+                    },
+                    sounding: 0b001001,
+                }),
                 score: Some(4),
-                away: Vec::new(),
+                away: vec![Away {
+                    left_at: now,
+                    back_at: Some(now),
+                    left_out: true,
+                }],
             }],
-            intention_met: None,
-            felt: None,
-            got_in_the_way: Vec::new(),
-            note_points: Vec::new(),
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -470,14 +464,6 @@ mod tests {
         assert_round_trips(SessionEvent::SetEntryIntention {
             entry_id: "e1".to_string(),
             intention: None,
-        });
-        assert_round_trips(SessionEvent::SetRepTarget {
-            entry_id: "e1".to_string(),
-            target: Some(7),
-        });
-        assert_round_trips(SessionEvent::SetRepTarget {
-            entry_id: "e1".to_string(),
-            target: None,
         });
         assert_round_trips(SessionEvent::SetEntryDuration {
             entry_id: "e1".to_string(),
@@ -552,11 +538,9 @@ mod tests {
                 item_id: "ex1".to_string(),
                 item_type: ItemKind::Exercise,
                 intention: None,
-                focus: None,
                 duration_secs: None,
                 group_id: Some("block-1".to_string()),
                 variation_ids: vec![],
-                rep_target: None,
                 key: None,
             },
             item_title: "Scales".to_string(),
@@ -565,10 +549,6 @@ mod tests {
             status: EntryStatus::NotAttempted,
             notes: None,
             plays: Vec::new(),
-            intention_met: None,
-            felt: None,
-            got_in_the_way: Vec::new(),
-            note_points: Vec::new(),
         });
     }
 

@@ -13,8 +13,8 @@ use crate::domain::metre::{ClickBarOption, ClickPresetOption, TempoBand};
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
 use crate::domain::session::{
-    ClickState, CompletionStatus, EntryStatus, PracticeSession, ReflectionAnswers, RepEvent,
-    SessionStatus, TempoReading,
+    ClickState, CompletionStatus, EntryStatus, PracticeSession, ReflectionAnswers, SessionStatus,
+    TempoReading,
 };
 use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
@@ -338,10 +338,6 @@ pub struct LimitsView {
     pub metre_beats_min: u8,
     pub metre_beats_max: u8,
     pub metre_units: Vec<u8>,
-    pub rep_target_min: u8,
-    pub rep_target_max: u8,
-    /// The musician's own default once set (#1915).
-    pub rep_target_default: u8,
     pub planned_duration_min_secs: u32,
     pub planned_duration_max_secs: u32,
     pub planned_duration_default_secs: u32,
@@ -389,9 +385,6 @@ impl Default for LimitsView {
             metre_beats_min: validation::MIN_METRE_BEATS,
             metre_beats_max: validation::MAX_METRE_BEATS,
             metre_units: validation::METRE_UNITS.to_vec(),
-            rep_target_min: validation::MIN_REP_TARGET,
-            rep_target_max: validation::MAX_REP_TARGET,
-            rep_target_default: validation::DEFAULT_REP_TARGET,
             planned_duration_min_secs: validation::MIN_PLANNED_DURATION_SECS,
             planned_duration_max_secs: validation::MAX_PLANNED_DURATION_SECS,
             planned_duration_default_secs: validation::DEFAULT_PLANNED_DURATION_SECS,
@@ -665,14 +658,9 @@ pub struct PlayView {
     pub label: Option<String>,
     pub seconds: u64,
     pub duration_display: String,
-    /// "4m 0s", "92 bpm", "5 of 6 reps": only what this play recorded, the
-    /// duration always first, since rows that show it elsewhere drop it (#2515).
+    /// "4m 0s", "92 bpm": only what this play recorded, the duration always
+    /// first, since rows that show it elsewhere drop it (#2515).
     pub meta_parts: Vec<String>,
-    pub rep_target: Option<u8>,
-    pub rep_count: Option<u8>,
-    /// Worked out from the count and the target, never stored (#2107).
-    pub rep_target_reached: Option<bool>,
-    pub rep_history: Option<Vec<RepEvent>>,
     pub achieved_tempo: Option<u16>,
     pub click_pattern: Option<ClickState>,
     /// `achieved_tempo` in the unit of the click that stamped it, crotchets
@@ -815,55 +803,16 @@ pub struct SetlistEntryView {
     pub planned_variation_ids: Vec<String>,
     /// "Hands separately"; `None` with no plan.
     pub planned_label: Option<String>,
-    /// The repetition target set in the builder, which every play starts from.
-    pub planned_rep_target: Option<u8>,
     /// What was actually practised, in order.
     pub plays: Vec<PlayView>,
     /// The mean of the plays that carry a mark, rounded to nearest, and `None`
     /// when none do. The only place several marks collapse into one (#1739
     /// decision 9): per-variation history reads `plays` and never this.
     pub score_summary: Option<u8>,
-    pub record: EntryRecordView,
     pub planned_key: Option<crate::domain::key::Key>,
-    /// The builder's tags under the row: the variations still on the item,
-    /// then "Focus: at 84" (#2467). Empty outside the builder.
+    /// The builder's tags under the row: the key, then the variations still
+    /// on the item (#2467). Empty outside the builder.
     pub plan_tags: Vec<String>,
-}
-
-/// What v0.17 adds to an entry (#50).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct EntryRecordView {
-    pub focus: Option<FocusView>,
-    /// Read from the typed intention ("at 84"); `None` once it is the focus.
-    pub suggested_focus: Option<FocusView>,
-    /// The answer, or what the plays show where the focus allows.
-    pub intention_met: Option<crate::domain::session::IntentionMet>,
-    /// True when `intention_met` was worked out from the plays, not answered.
-    pub intention_met_read: bool,
-    pub felt: Option<crate::domain::session::Felt>,
-    pub got_in_the_way: Vec<crate::domain::session::Obstacle>,
-    pub note_points: Vec<NotePointView>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct FocusView {
-    pub focus: crate::domain::session::IntentionFocus,
-    /// "At 84", "5 clean in a row", "From memory".
-    pub label: String,
-    /// "♩ = 84", "5 clean in a row"; `None` for a focus with no number.
-    pub target_caption: Option<String>,
-}
-
-/// A point from the note: offered on the sheet, or confirmed on the entry.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct NotePointView {
-    pub span: crate::domain::session::NoteSpan,
-    /// "Bars 21 to 24", "♩ = 84", "3 clean".
-    pub label: String,
-    pub confirmed: bool,
 }
 
 /// The one-tap offer of how the item was last played.
@@ -918,13 +867,6 @@ pub struct AwayOfferView {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct FinishSheetView {
-    /// Read from the draft's note, in note order.
-    pub note_offers: Vec<NotePointView>,
-    /// The sheet asks once whether the intention was met.
-    pub asks_intention: bool,
-    pub intention_met_read: Option<crate::domain::session::IntentionMet>,
-    pub felt_choices: Vec<FeltChoiceView>,
-    pub obstacle_choices: Vec<ObstacleChoiceView>,
     /// One per play, in play order.
     pub rows: Vec<FinishRowView>,
     /// What each row's key can be changed to; the variations are
@@ -946,20 +888,6 @@ pub struct FinishRowView {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct FeltChoiceView {
-    pub felt: crate::domain::session::Felt,
-    pub label: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ObstacleChoiceView {
-    pub obstacle: crate::domain::session::Obstacle,
-    pub label: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSessionView {
     pub current_item_title: String,
     pub current_item_type: ItemKind,
@@ -973,13 +901,6 @@ pub struct ActiveSessionView {
     /// tab backgrounding without drift.
     pub current_item_started_at: String,
     pub entries: Vec<SetlistEntryView>,
-    pub current_rep_target: Option<u8>,
-    pub current_rep_count: Option<u8>,
-    pub current_rep_target_reached: Option<bool>,
-    pub current_rep_history: Option<Vec<RepEvent>>,
-    /// How many slots the counter draws before the first tap. A drawn target
-    /// is not a recorded one: `current_rep_target` stays `None` until a tap.
-    pub current_rep_slots: u8,
     /// How the open play is being played, so the player can show it (#2246).
     pub current_key: Option<Key>,
     pub current_variation_ids: Vec<String>,
@@ -1019,10 +940,6 @@ pub struct ActiveSessionView {
     /// The seed bar's patterns: an item may carry a valid grouping the
     /// sheet's `click_bars` table does not list.
     pub click_seed_presets: Vec<ClickPresetOption>,
-    /// How far the count has gone past the target, 0 at or under it (#2107).
-    pub current_reps_past_target: u8,
-    /// A got it or a miss is still standing for undo to reverse.
-    pub current_can_undo: bool,
     pub record: ActiveRecordView,
 }
 
@@ -1100,7 +1017,6 @@ pub struct BuildingSetlistView {
     pub entry_variations: Vec<EntryVariationsView>,
     /// For the entries whose item was last played in a key or on variations.
     pub last_times: Vec<LastTimeView>,
-    pub focus_choices: Vec<FocusChoiceView>,
     /// For the entries whose item keeps keys of its own.
     pub entry_keys: Vec<EntryKeysView>,
     /// "10 min · 2 blocks · 3 items": the time only once some is planned,
@@ -1108,23 +1024,6 @@ pub struct BuildingSetlistView {
     pub summary: String,
     /// "Start session · 10 min", or "Start session".
     pub start_title: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct FocusChoiceView {
-    pub kind: crate::domain::session::FocusKind,
-    pub label: String,
-    pub target: Option<FocusTargetView>,
-}
-
-/// What a numbered focus's target is held to, and the stepper's step.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct FocusTargetView {
-    pub min: u16,
-    pub max: u16,
-    pub step: u16,
 }
 
 /// What an entry's plan can name: its item's variations.
@@ -1350,33 +1249,6 @@ mod tests {
                 "the core accepts a {unit} beat value the sheet never offers"
             );
         }
-    }
-
-    #[test]
-    fn offered_rep_targets_are_what_validate_rep_target_accepts() {
-        let limits = LimitsView::default();
-
-        for target in limits.rep_target_min..=limits.rep_target_max {
-            assert!(
-                crate::validation::validate_rep_target(&Some(target)).is_ok(),
-                "the sheet offers {target} reps, which the core refuses"
-            );
-        }
-
-        for target in [
-            limits.rep_target_min.saturating_sub(1),
-            limits.rep_target_max + 1,
-        ] {
-            assert!(
-                crate::validation::validate_rep_target(&Some(target)).is_err(),
-                "{target} reps is outside the offered range but the core accepts it"
-            );
-        }
-
-        assert!(
-            (limits.rep_target_min..=limits.rep_target_max).contains(&limits.rep_target_default),
-            "the default the sheet opens on sits outside the range it offers"
-        );
     }
 
     #[test]

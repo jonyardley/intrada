@@ -18,21 +18,15 @@ pub const MIN_BPM: u16 = 1;
 pub const MAX_BPM: u16 = 400;
 pub const MIN_SCORE: u8 = 1;
 pub const MAX_SCORE: u8 = 10;
-// Equal to MAX on purpose: the stepper exists to ask for fewer passes, never more.
-pub const DEFAULT_REP_TARGET: u8 = 10;
-pub const MIN_REP_TARGET: u8 = 3;
-pub const MAX_REP_TARGET: u8 = 10;
-pub const MAX_REP_HISTORY: usize = 500;
+pub const MAX_TEMPO_CHANGES: usize = 500;
 pub const MAX_VARIATION_LABEL: usize = 100;
 /// Per item, and per play.
 pub const MAX_VARIATIONS: usize = 24;
 pub const MAX_KEYS: usize = 24;
 pub const MAX_PLAYS_PER_ENTRY: usize = 24;
 pub const MAX_TIMES_AWAY: usize = 50;
-pub const MAX_NOTE_POINTS: usize = 50;
-pub const MAX_CLEAN_REPS: u16 = 100;
-/// Under this, a play with no mark and no repetitions is a stray tap on the
-/// picker rather than practice, and the terminal transition drops it (#1739).
+/// Under this, a play with no mark is a stray tap on the picker rather than
+/// practice, and the terminal transition drops it (#1739).
 pub const MIN_PLAY_SECONDS: u64 = 5;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
@@ -282,20 +276,6 @@ pub fn validate_score(score: u8) -> Result<(), LibraryError> {
             field: "score".to_string(),
             message: format!("Mark must be between {MIN_SCORE} and {MAX_SCORE}"),
         });
-    }
-    Ok(())
-}
-
-pub fn validate_rep_target(rep_target: &Option<u8>) -> Result<(), LibraryError> {
-    if let Some(t) = rep_target {
-        if !(MIN_REP_TARGET..=MAX_REP_TARGET).contains(t) {
-            return Err(LibraryError::Validation {
-                field: "rep_target".to_string(),
-                message: format!(
-                    "Rep target must be between {MIN_REP_TARGET} and {MAX_REP_TARGET}"
-                ),
-            });
-        }
     }
     Ok(())
 }

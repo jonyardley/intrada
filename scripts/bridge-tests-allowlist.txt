@@ -37,8 +37,6 @@ ProfileView
 RecognitionOperation
 ReflectionDraft
 ReflectionView
-RepAction
-RepEvent
 ScaffoldKind
 ScaffoldPreviewView
 ScaffoldSpecView

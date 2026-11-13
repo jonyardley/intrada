@@ -109,17 +109,6 @@ pub(super) fn set_entry_intention(
     })
 }
 
-pub(super) fn set_rep_target(
-    model: &mut Model,
-    entry_id: String,
-    target: Option<u8>,
-) -> Command<Effect, Event> {
-    let check = validation::validate_rep_target(&target);
-    set_planned(model, &entry_id, check, |entry| {
-        entry.plan.rep_target = target;
-    })
-}
-
 pub(super) fn set_entry_duration(
     model: &mut Model,
     entry_id: String,
@@ -129,24 +118,6 @@ pub(super) fn set_entry_duration(
     set_planned(model, &entry_id, check, |entry| {
         entry.plan.duration_secs = duration_secs;
     })
-}
-
-pub(super) fn set_focus(
-    model: &mut Model,
-    entry_id: String,
-    focus: Option<IntentionFocus>,
-) -> Command<Effect, Event> {
-    let piece_bpm = entry_for_plan(model, &entry_id)
-        .and_then(|e| model.items.iter().find(|i| i.id == e.plan.item_id))
-        .and_then(|i| i.tempo.as_ref()?.bpm);
-    let focus = focus.map(|mut focus| {
-        if focus.target.is_none() {
-            focus.target = starting_target(focus.kind, piece_bpm);
-        }
-        focus
-    });
-    let check = focus.as_ref().map_or(Ok(()), validate_focus);
-    set_planned(model, &entry_id, check, |entry| entry.plan.focus = focus)
 }
 
 pub(super) fn set_entry_variations(
@@ -171,41 +142,15 @@ pub(super) fn set_entry_key(
 }
 
 pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Effect, Event> {
-    let last = entry_for_plan(model, &entry_id).and_then(|e| last_plan(model, &e.plan.item_id));
-    let Some((way, focus)) = last else {
+    let last = entry_for_plan(model, &entry_id).and_then(|e| last_time(model, &e.plan.item_id));
+    let Some(way) = last else {
         model.raise_error("There's no last time to plan from".to_string());
         return crux_core::render::render();
     };
     set_planned(model, &entry_id, Ok(()), |entry| {
         entry.plan.key = way.key;
         entry.plan.variation_ids = way.variation_ids;
-        entry.plan.focus = focus;
     })
-}
-
-/// Last time's way and aim, for the builder's one-tap start (#2397).
-pub(crate) fn last_plan(model: &Model, item_id: &str) -> Option<(PlayWay, Option<IntentionFocus>)> {
-    let way = last_time(model, item_id);
-    let focus = last_focus(model, item_id);
-    (way.is_some() || focus.is_some()).then(|| (way.unwrap_or_default(), focus))
-}
-
-/// Taken only from an entry that was played, and offered only when the
-/// builder would accept it today, so a tempo the click cannot play is left
-/// behind.
-fn last_focus(model: &Model, item_id: &str) -> Option<IntentionFocus> {
-    let focus = model
-        .sessions
-        .iter()
-        .filter(|s| s.entries.iter().any(|e| e.plan.item_id == item_id))
-        .max_by_key(|s| s.started_at)?
-        .entries
-        .iter()
-        .rev()
-        .filter(|e| e.plan.item_id == item_id)
-        .filter(|e| e.plays.iter().any(|p| !p.is_incidental()))
-        .find_map(|e| e.plan.focus.clone())?;
-    validate_focus(&focus).is_ok().then_some(focus)
 }
 
 /// Kept to what is still in the library; plain in the written key offers nothing.

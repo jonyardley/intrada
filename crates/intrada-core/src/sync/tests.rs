@@ -9,9 +9,7 @@ use crate::domain::key::{Accidental, Key, Letter};
 use crate::domain::link::ExerciseLink;
 use crate::domain::metre::Metre;
 use crate::domain::session::{
-    Away, ClickState, EntryStatus, Felt, FocusKind, IntentionFocus, IntentionMet, NotePoint,
-    NotePointKind, NoteSpan, Obstacle, PlannedItem, Play, RepAction, RepEvent, SetlistEntry,
-    TempoChange,
+    Away, ClickState, EntryStatus, PlannedItem, Play, SetlistEntry, TempoChange,
 };
 use crate::domain::types::Tempo;
 use crate::model::Model;
@@ -211,14 +209,6 @@ fn full_session() -> PracticeSession {
     let play = Play {
         key: Some(key(Letter::D, Accidental::Natural, Some(Modality::Major))),
         variation_ids: vec!["v".to_string()],
-        rep_target: Some(5),
-        rep_count: Some(3),
-        rep_history: Some(vec![RepEvent {
-            action: RepAction::Success,
-            at: at(10),
-            tempo: Some(66),
-            click_sounding: Some(true),
-        }]),
         tempo_changes: vec![TempoChange {
             at: at(10),
             tempo: 66,
@@ -237,14 +227,9 @@ fn full_session() -> PracticeSession {
     let entry = SetlistEntry {
         plan: PlannedItem {
             intention: Some("even semiquavers".to_string()),
-            focus: Some(IntentionFocus {
-                kind: FocusKind::Tempo,
-                target: Some(80),
-            }),
             duration_secs: Some(600),
             group_id: Some("g".to_string()),
             variation_ids: vec!["v".to_string()],
-            rep_target: Some(5),
             key: Some(key(Letter::D, Accidental::Natural, Some(Modality::Major))),
             ..SetlistEntry::fixture().plan
         },
@@ -252,13 +237,6 @@ fn full_session() -> PracticeSession {
         duration_secs: 300,
         notes: Some("steady".to_string()),
         plays: vec![play],
-        intention_met: Some(IntentionMet::Partly),
-        felt: Some(Felt::HardWork),
-        got_in_the_way: vec![Obstacle::Rhythm],
-        note_points: vec![NotePoint {
-            kind: NotePointKind::Tempo { bpm: 66 },
-            span: NoteSpan { start: 0, end: 5 },
-        }],
         ..SetlistEntry::fixture()
     };
     PracticeSession {
@@ -371,7 +349,7 @@ fn every_kind_decodes_to_what_was_encoded() {
 
 const PINNED_ITEM: &str = r#"{"id":"piece","title":"Etude","kind":"piece","composer":"Chopin","key":{"letter":"E","accidental":"Flat","mode":"major"},"tempo":{"marking":"Andante","bpm":66},"notes":"voicing","tags":["recital"],"created_at":"2026-09-21T14:13:20Z","updated_at":"2026-09-21T14:13:20Z","priority":true,"chord_chart":{"key":{"letter":"G","accidental":"Natural","mode":"minor"},"sections":[{"label":"A","bars":[{"chords":[{"symbol":{"root":0,"quality":"Min7","extensions":["9"],"bass":7,"raw":"Cm9/G"}}]}]}]},"photo_id":"photo","metre":{"beats":7,"unit":8,"groups":[2,2,3]},"variation_ids":["v"],"keys":[{"letter":"C","accidental":"Sharp","mode":"minor"}],"exercise_links":[{"id":"l1","exercise_id":"e1","position":0,"updated_at":"2026-09-21T14:13:20Z","deleted_at":"2026-09-21T14:13:25Z"}]}"#;
 const PINNED_VARIATION: &str = r#"{"id":"v","label":"Dotted rhythms","updated_at":"2026-09-21T14:13:20Z","deleted_at":"2026-09-21T14:13:25Z"}"#;
-const PINNED_SESSION: &str = r#"{"id":"s","entries":[{"id":"entry-1","plan":{"item_id":"item-1","item_type":"piece","intention":"even semiquavers","focus":{"kind":"Tempo","target":80},"duration_secs":600,"group_id":"g","variation_ids":["v"],"rep_target":5,"key":{"letter":"D","accidental":"Natural","mode":"major"}},"item_title":"Item","position":0,"duration_secs":300,"status":"Completed","notes":"steady","plays":[{"id":"play-1","key":{"letter":"D","accidental":"Natural","mode":"major"},"variation_ids":["v"],"started_at":"1970-01-01T00:00:00Z","seconds":60,"rep_target":5,"rep_count":3,"rep_history":[{"action":"Success","at":"2026-09-21T14:13:30Z","tempo":66,"click_sounding":true}],"tempo_changes":[{"at":"2026-09-21T14:13:30Z","tempo":66,"click_sounding":true}],"achieved_tempo":66,"click_pattern":{"metre":{"beats":3,"unit":4,"groups":[3]},"sounding":1},"score":4,"away":[{"left_at":"2026-09-21T14:13:40Z","back_at":"2026-09-21T14:13:50Z","left_out":true}]}],"intention_met":"Partly","felt":"HardWork","got_in_the_way":["Rhythm"],"note_points":[{"kind":{"Tempo":{"bpm":66}},"span":{"start":0,"end":5}}]}],"session_notes":"good day","started_at":"2026-09-21T14:13:20Z","completed_at":"2026-09-21T14:13:20Z","total_duration_secs":300,"completion_status":"Completed","session_score":4,"capture_version":1}"#;
+const PINNED_SESSION: &str = r#"{"id":"s","entries":[{"id":"entry-1","plan":{"item_id":"item-1","item_type":"piece","intention":"even semiquavers","duration_secs":600,"group_id":"g","variation_ids":["v"],"key":{"letter":"D","accidental":"Natural","mode":"major"}},"item_title":"Item","position":0,"duration_secs":300,"status":"Completed","notes":"steady","plays":[{"id":"play-1","key":{"letter":"D","accidental":"Natural","mode":"major"},"variation_ids":["v"],"started_at":"1970-01-01T00:00:00Z","seconds":60,"tempo_changes":[{"at":"2026-09-21T14:13:30Z","tempo":66,"click_sounding":true}],"achieved_tempo":66,"click_pattern":{"metre":{"beats":3,"unit":4,"groups":[3]},"sounding":1},"score":4,"away":[{"left_at":"2026-09-21T14:13:40Z","back_at":"2026-09-21T14:13:50Z","left_out":true}]}]}],"session_notes":"good day","started_at":"2026-09-21T14:13:20Z","completed_at":"2026-09-21T14:13:20Z","total_duration_secs":300,"completion_status":"Completed","session_score":4,"capture_version":1}"#;
 
 /// Another device reads these bytes, maybe on an older app.
 #[test]

@@ -1,11 +1,9 @@
-pub mod bars;
 pub mod chart;
 pub mod first_run;
 pub mod item;
 pub mod key;
 pub mod link;
 pub mod metre;
-pub mod note_patterns;
 pub mod practice_defaults;
 pub mod profile;
 pub mod session;

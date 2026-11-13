@@ -5,14 +5,12 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::bars::BarRange;
 use crate::domain::item::{ItemKind, Modality};
 use crate::domain::key::{key_from_stored, key_to_stored, Key};
 use crate::domain::metre::Metre;
 use crate::domain::session::{
-    Away, ClickState, CompletionStatus, EntryStatus, Felt, FocusKind, IntentionFocus, IntentionMet,
-    NotePoint, NotePointKind, NoteSpan, Obstacle, PlannedItem, Play, PracticeSession, RepAction,
-    RepEvent, SetlistEntry, TempoChange,
+    Away, ClickState, CompletionStatus, EntryStatus, PlannedItem, Play, PracticeSession,
+    SetlistEntry, TempoChange,
 };
 
 /// The `session` table's columns, as the shell reads and writes them.
@@ -147,23 +145,6 @@ fn entry_status_text(status: &EntryStatus) -> &'static str {
     }
 }
 
-fn rep_action(raw: &str) -> Option<RepAction> {
-    match raw {
-        "missed" => Some(RepAction::Missed),
-        "success" => Some(RepAction::Success),
-        "undo" => Some(RepAction::Undo),
-        _ => None,
-    }
-}
-
-fn rep_action_text(action: RepAction) -> &'static str {
-    match action {
-        RepAction::Missed => "missed",
-        RepAction::Success => "success",
-        RepAction::Undo => "undo",
-    }
-}
-
 fn item_kind(raw: &str) -> Option<ItemKind> {
     match raw {
         "piece" => Some(ItemKind::Piece),
@@ -194,82 +175,6 @@ fn modality_text(modality: Modality) -> &'static str {
     }
 }
 
-fn focus_kind(raw: &str) -> Option<FocusKind> {
-    match raw {
-        "tempo" => Some(FocusKind::Tempo),
-        "clean_reps" => Some(FocusKind::CleanReps),
-        "from_memory" => Some(FocusKind::FromMemory),
-        "evenness" => Some(FocusKind::Evenness),
-        _ => None,
-    }
-}
-
-fn focus_kind_text(kind: FocusKind) -> &'static str {
-    match kind {
-        FocusKind::Tempo => "tempo",
-        FocusKind::CleanReps => "clean_reps",
-        FocusKind::FromMemory => "from_memory",
-        FocusKind::Evenness => "evenness",
-    }
-}
-
-fn intention_met(raw: &str) -> Option<IntentionMet> {
-    match raw {
-        "yes" => Some(IntentionMet::Yes),
-        "partly" => Some(IntentionMet::Partly),
-        "not_yet" => Some(IntentionMet::NotYet),
-        _ => None,
-    }
-}
-
-fn intention_met_text(met: IntentionMet) -> &'static str {
-    match met {
-        IntentionMet::Yes => "yes",
-        IntentionMet::Partly => "partly",
-        IntentionMet::NotYet => "not_yet",
-    }
-}
-
-fn felt(raw: &str) -> Option<Felt> {
-    match raw {
-        "comfortable" => Some(Felt::Comfortable),
-        "hard_work" => Some(Felt::HardWork),
-        "strained" => Some(Felt::Strained),
-        _ => None,
-    }
-}
-
-fn felt_text(felt: Felt) -> &'static str {
-    match felt {
-        Felt::Comfortable => "comfortable",
-        Felt::HardWork => "hard_work",
-        Felt::Strained => "strained",
-    }
-}
-
-fn obstacle(raw: &str) -> Option<Obstacle> {
-    match raw {
-        "notes" => Some(Obstacle::Notes),
-        "rhythm" => Some(Obstacle::Rhythm),
-        "fingering" => Some(Obstacle::Fingering),
-        "memory" => Some(Obstacle::Memory),
-        "tone" => Some(Obstacle::Tone),
-        "tension" => Some(Obstacle::Tension),
-        _ => None,
-    }
-}
-
-fn obstacle_text(obstacle: Obstacle) -> &'static str {
-    match obstacle {
-        Obstacle::Notes => "notes",
-        Obstacle::Rhythm => "rhythm",
-        Obstacle::Fingering => "fingering",
-        Obstacle::Memory => "memory",
-        Obstacle::Tone => "tone",
-        Obstacle::Tension => "tension",
-    }
-}
-
 fn parse_time(raw: &str) -> Option<DateTime<Utc>> {
     raw.parse().ok()
 }
@@ -291,9 +196,9 @@ where
 
 /// The per-play fields below `plays` are LEGACY: every row written before
 /// #1739 carries them at entry level and has no `plays`. They are read, never
-/// written; nothing on device is rewritten (#1739 decision 8). A step a row
-/// names, planned or played, is not read: steps were retired, not moved (#2246),
-/// and so were sections.
+/// written (#1739 decision 8). A step a row names, planned or played, is not
+/// read: steps were retired, not moved (#2246), and so were sections, focus,
+/// repetitions and the finish answers (#2791).
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StoredEntry {
@@ -315,30 +220,12 @@ struct StoredEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     planned_variation_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    planned_rep_target: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     plays: Option<Vec<StoredPlay>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    focus: Option<StoredFocus>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    intention_met: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    felt: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    got_in_the_way: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    note_points: Option<Vec<StoredNotePoint>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     planned_key: Option<StoredKey>,
 
     #[serde(default, skip_serializing)]
     score: Option<u8>,
-    #[serde(default, skip_serializing)]
-    rep_target: Option<u8>,
-    #[serde(default, skip_serializing)]
-    rep_count: Option<u8>,
-    #[serde(default, skip_serializing)]
-    rep_history: Option<Vec<StoredRepEvent>>,
     #[serde(default, skip_serializing)]
     achieved_tempo: Option<u16>,
     #[serde(default, skip_serializing)]
@@ -356,12 +243,6 @@ struct StoredPlay {
     started_at: String,
     seconds: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    rep_target: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    rep_count: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    rep_history: Option<Vec<StoredRepEvent>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     tempo_changes: Option<Vec<StoredTempoChange>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     achieved_tempo: Option<u16>,
@@ -371,36 +252,6 @@ struct StoredPlay {
     score: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     away: Option<Vec<StoredAway>>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct StoredFocus {
-    kind: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    target: Option<u16>,
-}
-
-/// `kind` is "bars" with `first` and `last`, "tempo" with `bpm`, or
-/// "repetitions" with `count`, `clean` and `inARow`.
-#[derive(Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-struct StoredNotePoint {
-    kind: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    first: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    last: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    bpm: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    count: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    clean: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    in_a_row: Option<bool>,
-    start: u32,
-    end: u32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -417,26 +268,6 @@ struct StoredKey {
     key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     modality: Option<String>,
-}
-
-/// Taps before the history was timestamped (#1367) are bare action strings.
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-enum StoredRepEvent {
-    Bare(String),
-    Timed(StoredTimedRepEvent),
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct StoredTimedRepEvent {
-    action: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    at: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    tempo: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    click_sounding: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -511,36 +342,6 @@ impl Reader {
             EntryStatus::NotAttempted,
         );
         let plays = self.plays(e, &status);
-        let focus = e.focus.as_ref().and_then(|f| {
-            let kind = focus_kind(&f.kind).or_else(|| {
-                self.note(format!("unknown FocusKind on decode: {:?}", f.kind));
-                None
-            })?;
-            Some(IntentionFocus {
-                kind,
-                target: f.target,
-            })
-        });
-        let intention_met = e
-            .intention_met
-            .as_deref()
-            .and_then(|raw| self.known("IntentionMet", raw, |r| intention_met(r).map(Some), None));
-        let felt = e
-            .felt
-            .as_deref()
-            .and_then(|raw| self.known("Felt", raw, |r| felt(r).map(Some), None));
-        let got_in_the_way = e
-            .got_in_the_way
-            .iter()
-            .flatten()
-            .filter_map(|raw| self.known("Obstacle", raw, |r| obstacle(r).map(Some), None))
-            .collect();
-        let note_points = e
-            .note_points
-            .iter()
-            .flatten()
-            .filter_map(|p| self.note_point(p))
-            .collect();
         let planned_key = e.planned_key.as_ref().and_then(|k| self.key(k));
         SetlistEntry {
             id: e.id.clone(),
@@ -548,11 +349,9 @@ impl Reader {
                 item_id: e.item_id.clone(),
                 item_type: self.known("ItemKind", &e.item_type, item_kind, ItemKind::Piece),
                 intention: e.intention.clone(),
-                focus,
                 duration_secs: e.planned_duration_secs,
                 group_id: e.group_id.clone(),
                 variation_ids: e.planned_variation_ids.clone().unwrap_or_default(),
-                rep_target: e.planned_rep_target.or(e.rep_target),
                 key: planned_key,
             },
             item_title: e.item_title.clone(),
@@ -561,36 +360,7 @@ impl Reader {
             status,
             notes: e.notes.clone(),
             plays,
-            intention_met,
-            felt,
-            got_in_the_way,
-            note_points,
         }
-    }
-
-    fn note_point(&mut self, p: &StoredNotePoint) -> Option<NotePoint> {
-        let kind = match (p.kind.as_str(), p.first, p.last, p.bpm, p.count) {
-            ("bars", Some(first), Some(last), _, _) => {
-                NotePointKind::Bars(BarRange { first, last })
-            }
-            ("tempo", _, _, Some(bpm), _) => NotePointKind::Tempo { bpm },
-            ("repetitions", _, _, _, Some(count)) => NotePointKind::Repetitions {
-                count,
-                clean: p.clean.unwrap_or(false),
-                in_a_row: p.in_a_row.unwrap_or(false),
-            },
-            _ => {
-                self.note(format!("unreadable note point on decode: {:?}", p.kind));
-                return None;
-            }
-        };
-        Some(NotePoint {
-            kind,
-            span: NoteSpan {
-                start: p.start,
-                end: p.end,
-            },
-        })
     }
 
     /// A row written before #1739 has no `plays` and folds into a single play
@@ -599,10 +369,8 @@ impl Reader {
         if let Some(stored) = e.plays.as_ref().filter(|p| !p.is_empty()) {
             return stored.iter().map(|p| self.play(p)).collect();
         }
-        // A mark or a banked repetition is a record of practice whatever the
-        // status says: rows before #1739 froze rep state on a skip.
-        let recorded = e.score.is_some() || e.rep_count.unwrap_or(0) > 0;
-        if *status != EntryStatus::Completed && !recorded {
+        // A mark is a record of practice whatever the status says.
+        if *status != EntryStatus::Completed && e.score.is_none() {
             return Vec::new();
         }
         vec![Play {
@@ -611,9 +379,6 @@ impl Reader {
             variation_ids: Vec::new(),
             started_at: self.session_start,
             seconds: e.duration_secs,
-            rep_target: e.rep_target,
-            rep_count: e.rep_count,
-            rep_history: self.rep_history(e.rep_history.as_deref()),
             tempo_changes: Vec::new(),
             achieved_tempo: e.achieved_tempo,
             click_pattern: e.click_pattern.as_ref().map(click_state),
@@ -638,9 +403,6 @@ impl Reader {
             variation_ids: p.variation_ids.clone().unwrap_or_default(),
             started_at: self.time(&p.started_at),
             seconds: p.seconds,
-            rep_target: p.rep_target,
-            rep_count: p.rep_count,
-            rep_history: self.rep_history(p.rep_history.as_deref()),
             tempo_changes: p
                 .tempo_changes
                 .iter()
@@ -665,32 +427,6 @@ impl Reader {
                 })
                 .collect(),
         }
-    }
-
-    /// An untimed tap takes the session start: dated roughly, never dropped.
-    fn rep_history(&mut self, stored: Option<&[StoredRepEvent]>) -> Option<Vec<RepEvent>> {
-        stored.map(|events| {
-            events
-                .iter()
-                .map(|event| match event {
-                    StoredRepEvent::Bare(action) => RepEvent {
-                        action: self.known("RepAction", action, rep_action, RepAction::Missed),
-                        at: self.session_start,
-                        tempo: None,
-                        click_sounding: None,
-                    },
-                    StoredRepEvent::Timed(t) => RepEvent {
-                        action: self.known("RepAction", &t.action, rep_action, RepAction::Missed),
-                        at: match &t.at {
-                            Some(at) => self.time(at),
-                            None => self.session_start,
-                        },
-                        tempo: t.tempo,
-                        click_sounding: t.click_sounding,
-                    },
-                })
-                .collect()
-        })
     }
 }
 
@@ -721,26 +457,9 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
         planned_duration_secs: e.plan.duration_secs,
         group_id: e.plan.group_id.clone(),
         planned_variation_ids: Some(e.plan.variation_ids.clone()),
-        planned_rep_target: e.plan.rep_target,
         plays: Some(e.plays.iter().map(stored_play).collect()),
-        focus: e.plan.focus.as_ref().map(|f| StoredFocus {
-            kind: focus_kind_text(f.kind).to_string(),
-            target: f.target,
-        }),
-        intention_met: e.intention_met.map(|m| intention_met_text(m).to_string()),
-        felt: e.felt.map(|f| felt_text(f).to_string()),
-        got_in_the_way: Some(
-            e.got_in_the_way
-                .iter()
-                .map(|o| obstacle_text(*o).to_string())
-                .collect(),
-        ),
-        note_points: Some(e.note_points.iter().map(stored_note_point).collect()),
         planned_key: e.plan.key.as_ref().map(stored_key),
         score: None,
-        rep_target: None,
-        rep_count: None,
-        rep_history: None,
         achieved_tempo: None,
         click_pattern: None,
     }
@@ -761,21 +480,6 @@ fn stored_play(p: &Play) -> StoredPlay {
         variation_ids: Some(p.variation_ids.clone()),
         started_at: time_text(&p.started_at),
         seconds: p.seconds,
-        rep_target: p.rep_target,
-        rep_count: p.rep_count,
-        rep_history: p.rep_history.as_ref().map(|events| {
-            events
-                .iter()
-                .map(|r| {
-                    StoredRepEvent::Timed(StoredTimedRepEvent {
-                        action: rep_action_text(r.action).to_string(),
-                        at: Some(time_text(&r.at)),
-                        tempo: r.tempo,
-                        click_sounding: r.click_sounding,
-                    })
-                })
-                .collect()
-        }),
         tempo_changes: Some(
             p.tempo_changes
                 .iter()
@@ -806,38 +510,6 @@ fn stored_play(p: &Play) -> StoredPlay {
                 })
                 .collect(),
         ),
-    }
-}
-
-fn stored_note_point(p: &NotePoint) -> StoredNotePoint {
-    let base = StoredNotePoint {
-        start: p.span.start,
-        end: p.span.end,
-        ..StoredNotePoint::default()
-    };
-    match p.kind {
-        NotePointKind::Bars(bars) => StoredNotePoint {
-            kind: "bars".to_string(),
-            first: Some(bars.first),
-            last: Some(bars.last),
-            ..base
-        },
-        NotePointKind::Tempo { bpm } => StoredNotePoint {
-            kind: "tempo".to_string(),
-            bpm: Some(bpm),
-            ..base
-        },
-        NotePointKind::Repetitions {
-            count,
-            clean,
-            in_a_row,
-        } => StoredNotePoint {
-            kind: "repetitions".to_string(),
-            count: Some(count),
-            clean: Some(clean),
-            in_a_row: Some(in_a_row),
-            ..base
-        },
     }
 }
 

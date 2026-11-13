@@ -593,6 +593,14 @@ pub fn practice_defaults_blob_version() -> u32 {
     crate::domain::practice_defaults::PracticeDefaults::BLOB_VERSION
 }
 
+/// The key of the blob before the last shape change, read once at launch and
+/// sent to the core to carry across (#2791).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn practice_defaults_previous_blob_version() -> u32 {
+    crate::domain::practice_defaults::PracticeDefaults::PREVIOUS_BLOB_VERSION
+}
+
 /// The shell builds the first-run blob's storage key from this (#2116).
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 #[must_use]

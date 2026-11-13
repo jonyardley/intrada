@@ -1,7 +1,6 @@
-//! The repetition target and metronome start a session item begins with,
-//! and the length a new session starts at, set once by the musician and
-//! stored on the device (`specs/practice-defaults.md`,
-//! #1736).
+//! The metronome start a session item begins with and the length a new
+//! session starts at, set once by the musician and stored on the device
+//! (#1915, #1736).
 
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
@@ -10,6 +9,7 @@ use crate::app::{AppEffect, Effect, Event};
 use crate::domain::Metre;
 use crate::model::Model;
 use crate::validation;
+use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -32,10 +32,9 @@ impl ClickStart {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeDefaults {
-    pub rep_target: u8,
     pub click: ClickStart,
     pub session_length_mins: Option<u16>,
 }
@@ -43,16 +42,32 @@ pub struct PracticeDefaults {
 impl PracticeDefaults {
     /// The blob is positional bincode, so a build reads only a blob of its
     /// own shape. The shell names its storage key by this number, so a shape
-    /// change bumps it here and nowhere else (#2216). Version 1 is retired.
-    pub const BLOB_VERSION: u32 = 2;
-}
+    /// change bumps it here and nowhere else (#2216). Version 1 is retired;
+    /// version 2 is carried across once (#2791).
+    pub const BLOB_VERSION: u32 = 3;
+    pub const PREVIOUS_BLOB_VERSION: u32 = 2;
 
-impl Default for PracticeDefaults {
-    fn default() -> Self {
-        PracticeDefaults {
-            rep_target: validation::DEFAULT_REP_TARGET,
-            click: ClickStart::EveryBeat,
-            session_length_mins: None,
+    /// Version 2 held a repetition target first, since removed (#2791).
+    fn from_previous_blob(bytes: &[u8]) -> Option<Self> {
+        #[derive(Deserialize)]
+        struct Version2 {
+            _rep_target: u8,
+            click: ClickStart,
+            session_length_mins: Option<u16>,
+        }
+        let old: Version2 = BincodeFfiFormat::deserialize(bytes).ok()?;
+        Some(Self {
+            click: old.click,
+            session_length_mins: old.session_length_mins,
+        })
+    }
+
+    fn clamped(self) -> Self {
+        Self {
+            session_length_mins: self
+                .session_length_mins
+                .map(validation::clamp_session_length),
+            ..self
         }
     }
 }
@@ -64,6 +79,9 @@ pub enum PracticeDefaultsEvent {
     Save(PracticeDefaults),
     /// The shell replaying the stored blob at launch: clamped, never re-saved.
     Loaded(PracticeDefaults),
+    /// The version 2 blob's bytes, sent once when no version 3 blob exists:
+    /// clamped and saved in the new shape.
+    Carried(Vec<u8>),
 }
 
 pub fn handle_practice_defaults_event(
@@ -72,9 +90,7 @@ pub fn handle_practice_defaults_event(
 ) -> Command<Effect, Event> {
     match event {
         PracticeDefaultsEvent::Save(defaults) => {
-            if let Err(e) = validation::validate_rep_target(&Some(defaults.rep_target))
-                .and_then(|()| validation::validate_session_length(&defaults.session_length_mins))
-            {
+            if let Err(e) = validation::validate_session_length(&defaults.session_length_mins) {
                 model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
@@ -86,16 +102,19 @@ pub fn handle_practice_defaults_event(
             ])
         }
         PracticeDefaultsEvent::Loaded(defaults) => {
-            model.practice_defaults = PracticeDefaults {
-                rep_target: defaults
-                    .rep_target
-                    .clamp(validation::MIN_REP_TARGET, validation::MAX_REP_TARGET),
-                session_length_mins: defaults
-                    .session_length_mins
-                    .map(validation::clamp_session_length),
-                ..defaults
-            };
+            model.practice_defaults = defaults.clamped();
             crux_core::render::render()
+        }
+        PracticeDefaultsEvent::Carried(bytes) => {
+            let Some(carried) = PracticeDefaults::from_previous_blob(&bytes) else {
+                return crux_core::render::render();
+            };
+            let defaults = carried.clamped();
+            model.practice_defaults = defaults;
+            Command::all([
+                Command::notify_shell(AppEffect::SavePracticeDefaults(defaults)).into(),
+                crux_core::render::render(),
+            ])
         }
     }
 }
@@ -109,7 +128,6 @@ mod tests {
 
     fn fixture() -> PracticeDefaults {
         PracticeDefaults {
-            rep_target: 5,
             click: ClickStart::TwoAndFour,
             session_length_mins: Some(25),
         }
@@ -135,6 +153,13 @@ mod tests {
             unit,
             groups,
         }
+    }
+
+    fn bytes(hex: &str) -> Vec<u8> {
+        (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
+            .collect()
     }
 
     // ── Starting beats ──
@@ -176,41 +201,6 @@ mod tests {
         assert_eq!(emits_save(&mut cmd), Some(fixture()));
     }
 
-    #[test]
-    fn save_accepts_both_ends_of_the_range() {
-        for target in [validation::MIN_REP_TARGET, validation::MAX_REP_TARGET] {
-            let mut model = Model::default();
-            let defaults = PracticeDefaults {
-                rep_target: target,
-                ..fixture()
-            };
-            let mut cmd = send(&mut model, PracticeDefaultsEvent::Save(defaults));
-            assert_eq!(model.practice_defaults, defaults);
-            assert_eq!(emits_save(&mut cmd), Some(defaults));
-        }
-    }
-
-    #[test]
-    fn save_outside_the_range_keeps_the_last_defaults_and_writes_nothing() {
-        for target in [
-            validation::MIN_REP_TARGET - 1,
-            validation::MAX_REP_TARGET + 1,
-        ] {
-            let mut model = Model::default();
-            let _ = send(&mut model, PracticeDefaultsEvent::Save(fixture()));
-            let mut cmd = send(
-                &mut model,
-                PracticeDefaultsEvent::Save(PracticeDefaults {
-                    rep_target: target,
-                    ..PracticeDefaults::default()
-                }),
-            );
-            assert_eq!(model.practice_defaults, fixture(), "target {target}");
-            assert!(model.last_error.is_some(), "target {target}");
-            assert_eq!(emits_save(&mut cmd), None, "target {target}");
-        }
-    }
-
     /// The save effect is fire-and-forget, so no confirmation clears the
     /// banner: an accepted save must clear it itself (`Store+Feedback.swift`).
     #[test]
@@ -219,7 +209,7 @@ mod tests {
         let _ = send(
             &mut model,
             PracticeDefaultsEvent::Save(PracticeDefaults {
-                rep_target: 0,
+                session_length_mins: Some(5),
                 ..fixture()
             }),
         );
@@ -236,9 +226,8 @@ mod tests {
             let mut cmd = send(
                 &mut model,
                 PracticeDefaultsEvent::Save(PracticeDefaults {
-                    rep_target: 7,
+                    click: ClickStart::EveryBeat,
                     session_length_mins: Some(length),
-                    ..fixture()
                 }),
             );
             assert_eq!(model.practice_defaults, fixture(), "length {length}");
@@ -273,25 +262,6 @@ mod tests {
     }
 
     #[test]
-    fn loaded_clamps_a_target_the_range_has_since_left_behind() {
-        for (stored, expected) in [
-            (0, validation::MIN_REP_TARGET),
-            (200, validation::MAX_REP_TARGET),
-        ] {
-            let mut model = Model::default();
-            let _ = send(
-                &mut model,
-                PracticeDefaultsEvent::Loaded(PracticeDefaults {
-                    rep_target: stored,
-                    ..fixture()
-                }),
-            );
-            assert_eq!(model.practice_defaults.rep_target, expected);
-            assert_eq!(model.practice_defaults.click, ClickStart::TwoAndFour);
-        }
-    }
-
-    #[test]
     fn loaded_brings_a_stored_session_length_back_onto_the_stepper() {
         for (stored, expected) in [
             (Some(5), Some(10)),
@@ -311,36 +281,68 @@ mod tests {
                 model.practice_defaults.session_length_mins, expected,
                 "stored {stored:?}"
             );
+            assert_eq!(model.practice_defaults.click, ClickStart::TwoAndFour);
+        }
+    }
+
+    // ── Carrying version 2 across (#2791) ──
+
+    /// The two version 2 blobs pinned before #2791: what devices hold.
+    #[test]
+    fn a_version_2_blob_keeps_its_click_and_length_and_saves_them_as_version_3() {
+        for (hex, expected) in [
+            ("0501000000011900", fixture()),
+            ("0a0000000000", PracticeDefaults::default()),
+            (
+                "0301000000010500",
+                PracticeDefaults {
+                    session_length_mins: Some(10),
+                    ..fixture()
+                },
+            ),
+        ] {
+            let mut model = Model::default();
+            let mut cmd = send(&mut model, PracticeDefaultsEvent::Carried(bytes(hex)));
+            assert_eq!(model.practice_defaults, expected, "{hex}");
+            assert_eq!(emits_save(&mut cmd), Some(expected), "{hex}");
+        }
+    }
+
+    #[test]
+    fn bytes_that_are_not_a_version_2_blob_change_and_write_nothing() {
+        for hex in ["", "05", "0509000000"] {
+            let mut model = Model::default();
+            let mut cmd = send(&mut model, PracticeDefaultsEvent::Carried(bytes(hex)));
+            assert_eq!(
+                model.practice_defaults,
+                PracticeDefaults::default(),
+                "{hex}"
+            );
+            assert_eq!(model.last_error, None, "{hex}");
+            assert_eq!(emits_save(&mut cmd), None, "{hex}");
         }
     }
 
     // ── View ──
 
     #[test]
-    fn view_model_carries_the_defaults_and_the_limits_follow_them() {
+    fn view_model_carries_the_defaults() {
         let mut model = Model::default();
-        assert_eq!(
-            Intrada.view(&model).limits.rep_target_default,
-            validation::DEFAULT_REP_TARGET
-        );
         let _ = send(&mut model, PracticeDefaultsEvent::Save(fixture()));
-        let view = Intrada.view(&model);
-        assert_eq!(view.practice_defaults, fixture());
-        assert_eq!(view.limits.rep_target_default, 5);
+        assert_eq!(Intrada.view(&model).practice_defaults, fixture());
     }
 
     // ── Wire ──
 
-    const PINNED_DEFAULTS_HEX: &str = "0501000000011900";
-    const PINNED_UNTOUCHED_DEFAULTS_HEX: &str = "0a0000000000";
-    const PINNED_BLOB_VERSION: u32 = 2;
+    const PINNED_DEFAULTS_HEX: &str = "01000000011900";
+    const PINNED_UNTOUCHED_DEFAULTS_HEX: &str = "0000000000";
+    const PINNED_BLOB_VERSION: u32 = 3;
 
     /// Positional bincode: a new field breaks every stored blob (#1345). The
     /// shell's key follows `BLOB_VERSION` (#2216); the test cannot tell a
     /// re-pin with a bump from one without, so the failure message is the protocol.
     #[test]
     fn practice_defaults_blob_wire_is_pinned() {
-        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
         for (defaults, pinned) in [
             (fixture(), PINNED_DEFAULTS_HEX),
             (PracticeDefaults::default(), PINNED_UNTOUCHED_DEFAULTS_HEX),
@@ -366,6 +368,9 @@ mod tests {
         )));
         assert_round_trips(Event::PracticeDefaults(PracticeDefaultsEvent::Loaded(
             PracticeDefaults::default(),
+        )));
+        assert_round_trips(Event::PracticeDefaults(PracticeDefaultsEvent::Carried(
+            bytes("0501000000011900"),
         )));
         assert_round_trips(AppEffect::SavePracticeDefaults(fixture()));
     }
