@@ -994,6 +994,10 @@ jobs:
       # every bridge type and ViewModel field needs a LiveBridge test (#846, #2101).
       - name: Bridge types have a LiveBridge test
         run: bash scripts/check-bridge-tests.sh
+      # Under pipefail, grep -q exits on its first match and the writer feeding
+      # it dies of a closed pipe, so a found match reads as a miss (#2847).
+      - name: No script pipes into grep -q
+        run: bash scripts/check-grep-pipes.sh
       # ── the gates above, proven against broken input ────────────────────
       - name: Hygiene checks still bite
         run: bash scripts/tests/hygiene-checks-test.sh

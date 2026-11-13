@@ -1128,6 +1128,39 @@ rm "$lessons"
 lessons_missing() { grep -q "no $lessons to read" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "no lessons file, named in the message" lessons_missing
 
+# ── The grep pipe check ────────────────────────────────────────────────────
+# Each fixture's pipe arrives through %s, so this file's own text never holds
+# one for the check to refuse.
+
+pipes_root="$work/grep-pipes"
+pipes_check() {
+  GREP_PIPES_ROOT="$pipes_root" bash "$repo_root/scripts/check-grep-pipes.sh"
+}
+pipes_case() {
+  local want="$1" name="$2" body="$3"
+  mkdir -p "$pipes_root/lib"
+  : >"$pipes_root/clean.sh"
+  : >"$pipes_root/lib/helper.sh"
+  # shellcheck disable=SC2059 # the body is the format, its %s the pipe
+  printf "$body" '|' '|' >"$pipes_root/${4:-clean.sh}"
+  expect "$want" "$name" pipes_check
+}
+pipes_case 1 "a pipe into grep -q on one line" 'set -o pipefail\nprintf x %s grep -q x\n'
+pipes_case 1 "a pipe split after the bar" 'printf x %s\n  grep -q x\n'
+pipes_case 1 "a pipe split by a backslash" 'printf x %s \\\n  grep -q x\n'
+pipes_case 1 "a pipe into grep -E -q" 'printf x %s grep -E -q x\n'
+pipes_case 1 "a pipe into grep --quiet" 'printf x %s grep --quiet x\n'
+pipes_case 1 "a pipe in a sourced helper under lib/" 'printf x %s grep -qF x\n' lib/helper.sh
+pipes_case 0 "a here-string" 'grep -q x <<<"$text"\n'
+pipes_case 0 "an or before grep -q" 'false %s%s grep -q x file\n'
+pipes_case 0 "a commented pipe" '# printf x %s grep -q x\n'
+pipes_case 0 "a pipe into a grep that prints" 'printf x %s grep -c x\n'
+pipes_names_shape() { grep -q "here-string" <<<"$(pipes_check 2>&1 || true)"; }
+printf 'printf x %s grep -q x\n' '|' >"$pipes_root/clean.sh"
+expect 0 "a refusal names the here-string shape" pipes_names_shape
+pipes_root="$work/no-such-root"
+expect 2 "no root to read" pipes_check
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then
