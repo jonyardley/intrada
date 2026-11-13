@@ -356,7 +356,7 @@ setup 101
 echo draft >"$FAKE/scenario-101"
 run_loop
 ok "a draft is announced, with no park" \
-  'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && grep -q "run over: 1 issue run" "$work/out"'
+  'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && grep -q "run over: 1 issue run" "$work/out" && grep -qx "Crew finished: 1 issue run, details on each issue" "$FAKE/notified"'
 ok "the session is started as the crew, on Opus at high effort, with the brief" \
   'grep -qE -- "--bg --model opus --effort high --permission-mode auto -n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
@@ -428,7 +428,7 @@ echo draft >"$FAKE/scenario-102"
 : >"$FAKE/down-on-start"
 run_loop
 ok "a draft whose notes cannot be read ends the run, neither announced nor parked" \
-  '[ "$(started)" = 101 ] && ! grep -qs "draft ready" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && [ "$(notes 101 | grep -c "Crew: parked")" = 0 ] && grep -q "could not read the notes on #101" "$work/out"'
+  '[ "$(started)" = 101 ] && ! grep -qs "draft ready" "$FAKE/notified" && ! labels 101 | grep -qx needs-owner && [ "$(notes 101 | grep -c "Crew: parked")" = 0 ] && grep -q "could not read the notes on #101" "$work/out" && grep -q "GitHub could not be read for #101" "$work/out"'
 
 setup 101
 echo draft >"$FAKE/scenario-101"
