@@ -280,25 +280,6 @@ internal fun PracticeDefaultsSection(
         SectionHeader("Practice defaults")
         Column(Modifier.fillMaxWidth().cardSurface()) {
             Column(
-                Modifier.padding(
-                    horizontal = IntradaSpacing.card,
-                    vertical = IntradaSpacing.controlGap,
-                )
-            ) {
-                FieldLabel("Repetitions")
-                StepperRow(
-                    "${defaults.repTarget} per item",
-                    "repetitions",
-                    "profile.repTarget",
-                    onStep = {
-                        save(defaults.copy(repTarget = (defaults.repTarget.toInt() + it).toUByte()))
-                    },
-                    canDecrease = defaults.repTarget > limits.repTargetMin,
-                    canIncrease = defaults.repTarget < limits.repTargetMax,
-                )
-            }
-            HairlineDivider(Modifier.padding(start = IntradaSpacing.card))
-            Column(
                 Modifier.padding(IntradaSpacing.card),
                 verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
             ) {

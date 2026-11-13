@@ -180,8 +180,6 @@ class ReflectionSubmitRoundTripTest {
             marks = listOf(DraftMark(tempo.playId, 4.toUByte())),
             note = note,
             tempos = listOf(tempo),
-            gotInTheWay = emptyList(),
-            notePoints = emptyList(),
             ways = emptyList(),
         )
 

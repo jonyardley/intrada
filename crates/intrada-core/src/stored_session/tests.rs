@@ -49,7 +49,6 @@ fn a_legacy_entry_folds_into_one_play_carrying_everything() {
     assert_eq!(play.started_at, at(START));
     assert_eq!(play.seconds, 600);
     assert_eq!(play.score, Some(7));
-    assert_eq!((play.rep_target, play.rep_count), (Some(10), Some(8)));
     assert_eq!(play.achieved_tempo, Some(120));
     assert_eq!(
         play.click_pattern,
@@ -62,23 +61,12 @@ fn a_legacy_entry_folds_into_one_play_carrying_everything() {
             sounding: 1
         })
     );
-    assert_eq!(
-        play.rep_history
-            .as_ref()
-            .map(|h| h.iter().map(|r| r.at).collect::<Vec<_>>()),
-        Some(vec![at("2026-09-01T10:01:00Z"), at("2026-09-01T10:02:00Z")])
-    );
     assert!(
         play.variation_ids.is_empty(),
         "a step is retired, not moved (#2246)"
     );
     assert_eq!(entry.plan.group_id.as_deref(), Some("g1"));
     assert_eq!(entry.plan.intention.as_deref(), Some("even tone"));
-    assert_eq!(
-        entry.plan.rep_target,
-        Some(10),
-        "the old target plans the entry"
-    );
     assert!(entry.plan.variation_ids.is_empty());
     assert_eq!(
         entry.plan.key, None,
@@ -109,46 +97,16 @@ fn a_legacy_not_attempted_entry_keeps_no_play() {
     );
 }
 
+/// The old skip froze repetitions rather than discarding them. With
+/// repetitions removed (#2791) such a row holds no time and no mark, so it
+/// keeps no play.
 #[test]
-fn a_legacy_entry_with_untimed_taps_dates_them_to_the_session_start() {
-    let read = read(
-        r#"[{"id":"e1","itemId":"i1","itemTitle":"X","itemType":"piece","position":0,"durationSecs":0,"status":"completed","repTarget":5,"repCount":1,"repHistory":["success","missed"]}]"#,
-    );
-    assert!(
-        read.unreadable.is_empty(),
-        "both actions read, not defaulted"
-    );
-    let entry = &read.session.entries[0];
-    let history = entry.plays[0].rep_history.clone().expect("a history");
-    assert_eq!(
-        history,
-        vec![
-            RepEvent {
-                action: RepAction::Success,
-                at: at(START),
-                tempo: None,
-                click_sounding: None
-            },
-            RepEvent {
-                action: RepAction::Missed,
-                at: at(START),
-                tempo: None,
-                click_sounding: None
-            },
-        ]
-    );
-}
-
-/// The old skip froze rep state rather than discarding it, so these rows
-/// exist: skipped, with repetitions genuinely banked.
-#[test]
-fn a_legacy_skipped_entry_that_banked_reps_keeps_its_play() {
+fn a_legacy_skipped_entry_that_banked_only_repetitions_keeps_no_play() {
     let entry = only_entry(
         r#"[{"id":"e1","itemId":"i1","itemTitle":"Hanon No. 1","itemType":"exercise","position":0,"durationSecs":0,"status":"skipped","repTarget":10,"repCount":4,"repTargetReached":false}]"#,
     );
     assert_eq!(entry.status, EntryStatus::Skipped);
-    assert_eq!(entry.plays.len(), 1);
-    assert_eq!(entry.plays[0].rep_count, Some(4));
+    assert!(entry.plays.is_empty());
 }
 
 #[test]
@@ -177,7 +135,7 @@ fn plays_win_over_stale_legacy_keys() {
 #[test]
 fn unknown_values_fall_back_conservatively_and_are_listed() {
     let mut stored = row(
-        r#"[{"id":"e1","itemId":"i1","itemTitle":"X","itemType":"klingon","position":0,"durationSecs":0,"status":"quantum"},{"id":"e2","itemId":"i1","itemTitle":"X","itemType":"piece","position":1,"durationSecs":0,"status":"completed","repHistory":["warp"]}]"#,
+        r#"[{"id":"e1","itemId":"i1","itemTitle":"X","itemType":"klingon","position":0,"durationSecs":0,"status":"quantum"}]"#,
     );
     stored.completion_status = "enlightenment".to_string();
     let read = session_from_stored(&stored).expect("reads");
@@ -188,18 +146,12 @@ fn unknown_values_fall_back_conservatively_and_are_listed() {
     assert_eq!(first.status, EntryStatus::NotAttempted, "never completed");
     assert!(first.plays.is_empty(), "an unknown status invents no play");
     assert_eq!(first.plan.item_type, ItemKind::Piece);
-    let taps = session.entries[1].plays[0]
-        .rep_history
-        .clone()
-        .expect("taps");
-    assert_eq!(taps[0].action, RepAction::Missed, "never a success");
     assert_eq!(
         read.unreadable,
         vec![
             r#"unknown CompletionStatus on decode: "enlightenment""#,
             r#"unknown EntryStatus on decode: "quantum""#,
             r#"unknown ItemKind on decode: "klingon""#,
-            r#"unknown RepAction on decode: "warp""#,
         ]
     );
 }
@@ -280,21 +232,12 @@ fn out_of_range_numbers_clamp() {
 // ── Writing ──
 
 fn current_session() -> PracticeSession {
-    let tap = RepEvent {
-        action: RepAction::Undo,
-        at: at("2026-09-01T10:01:30.250Z"),
-        tempo: Some(96),
-        click_sounding: Some(true),
-    };
     let play = Play {
         id: "p1".to_string(),
         key: Key::parse("F# minor"),
         variation_ids: vec!["v-dotted".to_string()],
         started_at: at(START),
         seconds: 240,
-        rep_target: Some(5),
-        rep_count: Some(3),
-        rep_history: Some(vec![tap]),
         tempo_changes: vec![TempoChange {
             at: at("2026-09-01T10:02:00Z"),
             tempo: 104,
@@ -310,13 +253,16 @@ fn current_session() -> PracticeSession {
             sounding: 0b101,
         }),
         score: Some(4),
-        away: Vec::new(),
+        away: vec![Away {
+            left_at: at("2026-09-01T10:01:30.250Z"),
+            back_at: Some(at("2026-09-01T10:02:30Z")),
+            left_out: true,
+        }],
     };
     let entry = SetlistEntry {
         plan: PlannedItem {
             item_type: ItemKind::Exercise,
             variation_ids: vec!["v-dotted".to_string()],
-            rep_target: Some(5),
             key: crate::domain::key::Key::parse("A flat major"),
             ..SetlistEntry::fixture().plan
         },
@@ -368,8 +314,7 @@ fn a_written_row_keeps_the_shape_the_swift_encoder_wrote() {
         &serde_json::json!({
             "id": "entry-2", "itemId": "item-1", "itemTitle": "Item", "itemType": "piece",
             "position": 1, "durationSecs": 0, "status": "skipped",
-            "plannedVariationIds": [], "plays": [], "gotInTheWay": [],
-            "notePoints": []
+            "plannedVariationIds": [], "plays": []
         })
     );
     let play = &entries[0]["plays"][0];
@@ -378,8 +323,8 @@ fn a_written_row_keeps_the_shape_the_swift_encoder_wrote() {
         serde_json::json!({"key": "F#", "modality": "minor"})
     );
     assert_eq!(
-        play["repHistory"][0],
-        serde_json::json!({"action": "undo", "at": "2026-09-01T10:01:30.250Z", "tempo": 96, "clickSounding": true})
+        play["away"][0],
+        serde_json::json!({"leftAt": "2026-09-01T10:01:30.250Z", "backAt": "2026-09-01T10:02:30Z", "leftOut": true})
     );
     assert_eq!(
         play["clickPattern"],
@@ -417,10 +362,6 @@ fn every_stored_enum_text_is_pinned() {
         ["completed", "skipped", "not_attempted"]
     );
     assert_eq!(
-        [RepAction::Missed, RepAction::Success, RepAction::Undo].map(rep_action_text),
-        ["missed", "success", "undo"]
-    );
-    assert_eq!(
         [ItemKind::Piece, ItemKind::Exercise].map(|k| item_kind_text(&k)),
         ["piece", "exercise"]
     );
@@ -441,9 +382,6 @@ fn every_stored_enum_text_reads_back() {
         EntryStatus::NotAttempted,
     ] {
         assert_eq!(entry_status(entry_status_text(&s)), Some(s));
-    }
-    for a in [RepAction::Missed, RepAction::Success, RepAction::Undo] {
-        assert_eq!(rep_action(rep_action_text(a)), Some(a));
     }
     for k in [ItemKind::Piece, ItemKind::Exercise] {
         assert_eq!(item_kind(item_kind_text(&k)), Some(k));
@@ -471,21 +409,16 @@ fn section_keys_an_older_row_carries_are_read_as_nothing_and_never_written() {
 }
 
 /// The flat row every build writes, with every plan field set.
-const FULL_PLAN_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v-dotted"],"plannedRepTarget":5,"plays":[],"focus":{"kind":"tempo","target":84},"gotInTheWay":[],"notePoints":[],"plannedKey":{"key":"Ab","modality":"major"}}]"#;
+const FULL_PLAN_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v-dotted"],"plays":[],"plannedKey":{"key":"Ab","modality":"major"}}]"#;
 
 fn full_plan() -> PlannedItem {
     PlannedItem {
         item_id: "i1".to_string(),
         item_type: ItemKind::Exercise,
         intention: Some("even semiquavers".to_string()),
-        focus: Some(IntentionFocus {
-            kind: FocusKind::Tempo,
-            target: Some(84),
-        }),
         duration_secs: Some(600),
         group_id: Some("g1".to_string()),
         variation_ids: vec!["v-dotted".to_string()],
-        rep_target: Some(5),
         key: Key::parse("A flat major"),
     }
 }
@@ -498,11 +431,9 @@ fn a_saved_row_reads_back_to_the_same_plan_field_by_field() {
     assert_eq!(plan.item_id, expected.item_id);
     assert_eq!(plan.item_type, expected.item_type);
     assert_eq!(plan.intention, expected.intention);
-    assert_eq!(plan.focus, expected.focus);
     assert_eq!(plan.duration_secs, expected.duration_secs);
     assert_eq!(plan.group_id, expected.group_id);
     assert_eq!(plan.variation_ids, expected.variation_ids);
-    assert_eq!(plan.rep_target, expected.rep_target);
     assert_eq!(plan.key, expected.key);
     assert_eq!(plan, expected, "a new plan field is read too");
 }
@@ -517,16 +448,29 @@ fn a_plan_writes_the_same_flat_row() {
     assert_eq!(written, shipped);
 }
 
-#[test]
-fn an_unknown_finish_answer_is_dropped_and_reported() {
-    let read = session_from_stored(&row(
-        r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":60,"status":"completed","felt":"serene","gotInTheWay":["memory","weather"],"intentionMet":"mostly"}]"#,
-    ))
-    .expect("reads");
+/// Rows written before #2791 carry focus, repetitions and the finish
+/// answers; a row the v23 step skipped still does. They read as nothing,
+/// report nothing and are never written back.
+const V019_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":60,"status":"completed","plannedRepTarget":5,"focus":{"kind":"tempo","target":84},"felt":"serene","gotInTheWay":["memory","weather"],"intentionMet":"mostly","notePoints":[{"kind":"tempo","bpm":80,"start":0,"end":2}],"plays":[{"id":"p1","startedAt":"2026-09-01T10:00:00Z","seconds":60,"repTarget":5,"repCount":2,"repHistory":["success","warp"],"score":6}]}]"#;
 
-    let entry = &read.session.entries[0];
-    assert_eq!(entry.felt, None);
-    assert_eq!(entry.got_in_the_way, [Obstacle::Memory]);
-    assert_eq!(entry.intention_met, None);
-    assert_eq!(read.unreadable.len(), 3, "{:?}", read.unreadable);
+#[test]
+fn removed_keys_an_older_row_carries_are_read_as_nothing_and_never_written() {
+    let read = session_from_stored(&row(V019_ENTRY)).expect("reads");
+
+    assert_eq!(read.unreadable, Vec::<String>::new());
+    assert_eq!(read.session.entries[0].plays[0].score, Some(6));
+    let rewritten = session_to_stored(&read.session).expect("writes");
+    for key in [
+        "plannedRepTarget",
+        "focus",
+        "felt",
+        "gotInTheWay",
+        "intentionMet",
+        "notePoints",
+        "repTarget",
+        "repCount",
+        "repHistory",
+    ] {
+        assert!(!rewritten.entries.contains(key), "{key} is never written");
+    }
 }

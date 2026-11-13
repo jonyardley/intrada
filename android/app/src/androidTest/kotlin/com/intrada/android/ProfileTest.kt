@@ -6,6 +6,7 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isNotSelected
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.performTextInput
@@ -74,15 +75,12 @@ class ProfileTest {
     @Test
     fun practiceDefaultsSurviveARelaunch() {
         openProfile()
-        app.text("10 per item")
-        app.tap("profile.repTarget.decrease")
+        app.await(hasTestTag("profile.click.twoAndFour") and isNotSelected())
         app.tap("profile.click.twoAndFour")
         app.await(hasTestTag("profile.click.twoAndFour") and isSelected())
-        app.text("9 per item")
 
         app.relaunchToPractice()
         app.tap("practice.profile")
-        app.text("9 per item")
         app.await(hasTestTag("profile.click.twoAndFour") and isSelected())
     }
 

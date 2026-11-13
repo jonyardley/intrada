@@ -8,14 +8,11 @@ import com.intrada.shared.AppEffect
 import com.intrada.shared.ClickBarOption
 import com.intrada.shared.ClickPreset
 import com.intrada.shared.ClickPresetOption
+import com.intrada.shared.ClickStart
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
 import com.intrada.shared.ExerciseLink
-import com.intrada.shared.Felt
-import com.intrada.shared.FocusKind
-import com.intrada.shared.FocusTargetView
-import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
@@ -25,6 +22,7 @@ import com.intrada.shared.LinkChange
 import com.intrada.shared.Modality
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
+import com.intrada.shared.PracticeDefaultsEvent
 import com.intrada.shared.Request
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
@@ -334,19 +332,14 @@ class BridgeRoundTripTest {
                 )
         )
 
-    // A focus and time away cross on Kotlin's encoder and come back on its decoder (#846, #2249).
+    // Time away crosses on Kotlin's encoder and comes back on its decoder (#846, #2249).
     @Test
-    fun aFocusAndTimeAwayRunThroughThePracticeScreen() {
+    fun timeAwayRunsThroughThePracticeScreen() {
         val bridge = LiveBridge()
         bridge.update(Event.StartApp)
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
         bridge.update(Event.Session(SessionEvent.StartBuilding))
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
-        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
-        val focus = IntentionFocus(FocusKind.TEMPO, 84.toUShort())
-        bridge.update(Event.Session(SessionEvent.SetFocus(entryId, focus)))
-        val record = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record
-        assertEquals("At 84", record?.focus?.label)
 
         bridge.update(Event.Session(SessionEvent.StartSession("2026-10-04T09:00:00Z")))
         bridge.update(Event.Session(SessionEvent.WentAway("2026-10-04T09:01:00Z")))
@@ -367,7 +360,7 @@ class BridgeRoundTripTest {
 
     // The builder rules the core owns cross both ways on Kotlin's codec (#2393).
     @Test
-    fun variationsAndFocusTargetsCrossTheBridge() {
+    fun plannedVariationsCrossTheBridge() {
         val bridge = LiveBridge()
         bridge.update(Event.StartApp)
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
@@ -379,36 +372,18 @@ class BridgeRoundTripTest {
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
         val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
         bridge.update(Event.Session(SessionEvent.SetEntryVariations(entryId, listOf(dotted))))
-        bridge.update(
-            Event.Session(SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.CLEANREPS)))
-        )
 
         val building = bridge.view().buildingSetlist
-        val record = building?.entries?.firstOrNull()?.record
         assertEquals(listOf(dotted), building?.entries?.firstOrNull()?.plannedVariationIds)
-        assertEquals("1 clean in a row", record?.focus?.targetCaption)
-        assertEquals(
-            listOf(FocusTargetView(40u, 208u, 2u), FocusTargetView(1u, 100u, 1u), null, null),
-            building?.focusChoices?.map { it.target },
-        )
     }
 
     @Test
-    fun theBuilderAndTheFinishSheetCarryTheChoiceWordsFromTheCore() {
+    fun theFinishSheetHasOneRowPerPlay() {
         val bridge = LiveBridge()
         bridge.update(Event.StartApp)
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
         bridge.update(Event.Session(SessionEvent.StartBuilding))
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
-        val focus = bridge.view().buildingSetlist?.focusChoices
-        assertEquals(
-            listOf("Tempo", "Clean in a row", "From memory", "Evenness"),
-            focus?.map { it.label },
-        )
-        assertEquals(
-            listOf(FocusKind.TEMPO, FocusKind.CLEANREPS, FocusKind.FROMMEMORY, FocusKind.EVENNESS),
-            focus?.map { it.kind },
-        )
 
         bridge.update(Event.Session(SessionEvent.StartSession("2026-10-04T09:00:00Z")))
         bridge.update(
@@ -419,14 +394,31 @@ class BridgeRoundTripTest {
                 )
             )
         )
-        val felt = bridge.view().activeSession?.record?.finish?.feltChoices
-        assertEquals(listOf("Comfortable", "Hard work", "Strained"), felt?.map { it.label })
-        assertEquals(listOf(Felt.COMFORTABLE, Felt.HARDWORK, Felt.STRAINED), felt?.map { it.felt })
-        val active = bridge.view().activeSession
-        assertEquals(
-            active?.entries?.first()?.plays?.map { it.id },
-            active?.record?.finish?.rows?.map { it.playId },
-        )
+        val active = checkNotNull(bridge.view().activeSession)
+        val rows = checkNotNull(active.record.finish).rows.map { it.playId }
+        assertTrue(rows.isNotEmpty())
+        assertEquals(active.entries.first().plays.map { it.id }, rows)
+    }
+
+    // Real version 2 device bytes: a skewed Vec<u8> would carry nothing and raise nothing (#2791).
+    @Test
+    fun versionTwoDefaultsCarryIntoTheViewAndAreSavedOnce() {
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val bytes = listOf(0x05, 0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00).map { it.toUByte() }
+
+        val saved =
+            bridge
+                .update(Event.PracticeDefaults(PracticeDefaultsEvent.Carried(bytes)))
+                .mapNotNull {
+                    ((it.effect as? Effect.App)?.value as? AppEffect.SavePracticeDefaults)?.value
+                }
+                .single()
+
+        val shown = bridge.view().practiceDefaults
+        assertEquals(ClickStart.TWOANDFOUR, shown.click)
+        assertEquals(25.toUShort(), shown.sessionLengthMins)
+        assertEquals(shown, saved)
     }
 
     private fun addItem(

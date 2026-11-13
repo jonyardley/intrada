@@ -45,7 +45,6 @@ not exist. Rows without a link are still to be written.
 | [WeekStrip](WeekStrip/README.md) | Picking a day of the week on the Practice home |
 | [RecentSessions](RecentSessions/README.md) | An item's marks from its last few sessions, with the trend |
 | [MasteryDial](MasteryDial/README.md) | The average mark across the library, as a ring |
-| [RepCounter](RepCounter/README.md) | Counting repetitions in the player |
 | [UpNextHero](UpNextHero/README.md) | The suggested next session, ready to start |
 | [AddRowButton](AddRowButton/README.md) | The full-width row that adds something to a list |
 | [ConsistencyBars](ConsistencyBars/README.md) | Minutes practised each week, as bars |

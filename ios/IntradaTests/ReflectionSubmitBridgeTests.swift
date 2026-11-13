@@ -26,8 +26,7 @@ struct ReflectionSubmitBridgeTests {
   private func answers(playId: String, note: String) -> ReflectionAnswers {
     ReflectionAnswers(
       marks: [DraftMark(playId: playId, score: 4)], note: note,
-      tempos: [DraftTempo(playId: playId, tempo: 96, click: nil)], felt: nil, gotInTheWay: [],
-      notePoints: [], intentionMet: nil, ways: [])
+      tempos: [DraftTempo(playId: playId, tempo: 96, click: nil)], ways: [])
   }
 
   @Test func theSubmitLandsTheNoteTheMarkAndTheTempo() throws {

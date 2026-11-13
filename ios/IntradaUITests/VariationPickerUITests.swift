@@ -48,6 +48,12 @@ final class VariationPickerUITests: XCTestCase {
     row.tap()
   }
 
+  /// A play under five seconds with no mark is a stray tap the core drops,
+  /// so each stretch runs past it to be offered a mark (#2791).
+  private func playLongEnoughToMark() {
+    usleep(5_500_000)
+  }
+
   private func tapPill(_ selector: XCUIElement, _ value: Int) {
     selector.coordinate(
       withNormalizedOffset: CGVector(dx: (Double(value) - 0.5) / 10, dy: 0.5)
@@ -57,9 +63,11 @@ final class VariationPickerUITests: XCTestCase {
   func testTheItemCompleteSheetOffersAMarkPerVariation() {
     let app = startScalesSession()
 
-    app.control("player.gotIt", spoken: "Got it", timeout: 10).tap()
+    XCTAssertTrue(
+      app.buttons["player.advance"].waitForExistence(timeout: 10), "the player is up")
+    playLongEnoughToMark()
     pick(app, "Hands separately")
-    app.control("player.gotIt", spoken: "Got it").tap()
+    playLongEnoughToMark()
 
     app.control("player.advance", spoken: "Finish session").tap()
 
@@ -92,23 +100,6 @@ final class VariationPickerUITests: XCTestCase {
       "and hands separately kept its three rather than seven")
 
     app.discardSummary()
-  }
-}
-
-extension VariationPickerUITests {
-  func testGotItCountsPastTheTargetAndUndoTakesItBack() {
-    let app = startScalesSession()
-    let reps = app.control("player.reps", spoken: "Repetitions", timeout: 10)
-    guard let slots = (reps.value as? String)?.split(separator: " ").last.flatMap({ Int($0) })
-    else { return XCTFail("the counter names its target: \(reps.value ?? "")") }
-    XCTAssertFalse(app.buttons["player.undo"].exists, "nothing to undo before a tap")
-
-    let gotIt = app.control("player.gotIt", spoken: "Got it")
-    for _ in 0...slots { gotIt.tap() }
-    XCTAssertEqual(reps.value as? String, "\(slots + 1) of \(slots), 1 extra")
-
-    app.buttons["player.undo"].tap()
-    XCTAssertEqual(reps.value as? String, "\(slots) of \(slots)")
   }
 }
 

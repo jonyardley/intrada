@@ -56,8 +56,6 @@ class PlayerFlowTest {
 
         compose.onNodeWithTag("player.title").assertIsDisplayed()
         compose.onNodeWithText("Gymnopédie No. 1").assertIsDisplayed()
-        compose.onNodeWithTag("player.gotIt").performScrollTo().performClick()
-        assertEquals(1, store.active().currentRepCount?.toInt())
         compose.onNodeWithTag("player.advance").performClick()
         compose.onNodeWithTag("reflection.mark.4").performScrollTo().performClick()
         compose.onNodeWithTag("reflection.save").performScrollTo().performClick()
@@ -139,9 +137,6 @@ class PlayerFlowTest {
         val now = "2026-10-07T09:05:00Z"
         first.send(Event.Session(SessionEvent.PrepareReflection(now, PlayerFixtures.silent)))
         first.send(Event.Session(SessionEvent.NextItem(now, now, PlayerFixtures.silent)))
-        first.send(
-            Event.Session(SessionEvent.RepGotIt("2026-10-07T09:06:00Z", PlayerFixtures.silent))
-        )
         // The sheet stamps the open play's seconds, so the slot holds three minutes of Hanon
         // (#2061).
         first.send(
@@ -161,7 +156,6 @@ class PlayerFlowTest {
         assertEquals(1uL, after.currentPosition)
         assertEquals(before.currentItemTitle, after.currentItemTitle)
         assertEquals(before.startedAt, after.startedAt)
-        assertEquals(1, after.currentRepCount?.toInt())
         val itemStart = checkNotNull(SessionClock.parse(after.currentItemStartedAt))
         val resumed = checkNotNull(SessionClock.parse(resumedAt))
         assertEquals(180L, SessionClock.secondsBetween(itemStart, resumed))

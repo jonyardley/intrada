@@ -15,7 +15,6 @@ import com.intrada.android.ui.PickerCopy
 import com.intrada.android.ui.PickerRows
 import com.intrada.android.ui.PickerSearch
 import com.intrada.shared.Event
-import com.intrada.shared.IntentionFocus
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.ViewModel
 import kotlinx.coroutines.test.runTest
@@ -55,9 +54,6 @@ class BuilderSnapshotTest {
     fun entrySettings() = runTest {
         val store = plannedPieceStore()
         val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
-        val tempo = store.setlist().focusChoices.first { it.target != null }
-        store.send(Event.Session(SessionEvent.SetFocus(piece.id, IntentionFocus(tempo.kind))))
-        store.settle()
         val planned = store.setlist().entries.single { it.id == piece.id }
         val limits = store.viewModel.value?.limits ?: error("no limits")
         captureRoboImage("src/test/snapshots/builder-entry-settings.png") {

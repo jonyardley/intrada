@@ -151,6 +151,6 @@ final class SessionBuilderUITests: XCTestCase {
 
     // Row tap opens the entry settings sheet (Toggle labels surface as switches).
     hanonRow.tap()
-    app.control("entrySettings.trackReps", spoken: "Track repetitions")
+    app.control("entrySettings.plannedDuration", spoken: "Planned duration")
   }
 }

@@ -10,7 +10,6 @@ import Testing
 struct SheetBoundsTests {
   private let limits = LimitsView(
     metreBeatsMin: 5, metreBeatsMax: 7, metreUnits: [4, 16],
-    repTargetMin: 2, repTargetMax: 4, repTargetDefault: 3,
     plannedDurationMinSecs: 90, plannedDurationMaxSecs: 630, plannedDurationDefaultSecs: 480,
     sessionLengthMinMins: 15, sessionLengthMaxMins: 45, sessionLengthStepMins: 15,
     sessionLengthDefaultMins: 30,
@@ -36,10 +35,6 @@ struct SheetBoundsTests {
 
   @Test func theBeatValuePillsOfferTheUnitsTheCoreAccepts() {
     #expect(clickSheet().unitOptions == [4, 16])
-  }
-
-  @Test func theRepStepperOffersTheTargetRangeTheCoreAccepts() {
-    #expect(entrySheet().repTargetRange == 2...4)
   }
 
   @Test func theDurationStepperOffersTheCoresWholeMinutes() {
@@ -72,16 +67,6 @@ struct SheetBoundsTests {
 
   @Test func aSwipeDownWithinTheRangeStepsOneMark() {
     #expect(scoreSelector(score: 4).markBelow == 3)
-  }
-
-  @Test func anEntryWithNoTargetStartsAtTheCoresDefault() {
-    #expect(EntrySettingsSheet.initialRepTarget(for: .previewGroupedScales, limits: limits) == 3)
-  }
-
-  @Test func anEntryThatAlreadyHasATargetKeepsIt() {
-    #expect(
-      EntrySettingsSheet.initialRepTarget(for: .previewGroupedScalesConfigured, limits: limits) == 7
-    )
   }
 
   @Test func anEntryWithNoPlannedDurationStartsAtTheCoresDefault() {

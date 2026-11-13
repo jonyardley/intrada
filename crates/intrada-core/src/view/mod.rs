@@ -4,8 +4,8 @@ use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
-    BuildingSetlistView, EntryVariationsView, FocusChoiceView, FocusTargetView, LimitsView, Model,
-    PhotoRecognitionView, SetlistBlockView, ViewModel,
+    BuildingSetlistView, EntryVariationsView, LimitsView, Model, PhotoRecognitionView,
+    SetlistBlockView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::{library_count_line, matches_query};
@@ -74,7 +74,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     view.plan_tags = plan_tags(
                         e.plan.key.map(|k| k.label()),
                         live_variation_labels(&cached.library, e).into_iter(),
-                        view.record.focus.as_ref(),
                     );
                     view
                 })
@@ -114,20 +113,10 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .entries
                 .iter()
                 // Decided 2026-10-04 (#2249, spec): an offer only while nothing is planned.
-                .filter(|entry| {
-                    entry.plan.focus.is_none()
-                        && entry.plan.variation_ids.is_empty()
-                        && entry.plan.key.is_none()
-                })
+                .filter(|entry| entry.plan.variation_ids.is_empty() && entry.plan.key.is_none())
                 .filter_map(|entry| {
-                    let (way, focus) =
-                        crate::domain::session::last_plan(model, &entry.plan.item_id)?;
-                    Some(crate::view::session::last_time_view(
-                        entry,
-                        way,
-                        focus.as_ref(),
-                        &labels,
-                    ))
+                    let way = crate::domain::session::last_time(model, &entry.plan.item_id)?;
+                    Some(crate::view::session::last_time_view(entry, way, &labels))
                 })
                 .collect();
             let entry_keys = building
@@ -158,20 +147,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     ),
                     entry_variations,
                     last_times,
-                    focus_choices: crate::domain::session::FOCUS_CHOICES
-                        .iter()
-                        .map(|&kind| FocusChoiceView {
-                            kind,
-                            label: crate::domain::session::focus_kind_label(kind).to_string(),
-                            target: crate::domain::session::focus_target_range(kind).map(
-                                |(range, step)| FocusTargetView {
-                                    min: *range.start(),
-                                    max: *range.end(),
-                                    step,
-                                },
-                            ),
-                        })
-                        .collect(),
                     entry_keys,
                     summary,
                     start_title,
@@ -204,9 +179,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             view.record.last_time =
                 crate::domain::session::last_time(model, &current_entry.plan.item_id)
                     .filter(|_| played_plain && active.reflection.is_none())
-                    .map(|way| {
-                        crate::view::session::last_time_view(current_entry, way, None, &labels)
-                    });
+                    .map(|way| crate::view::session::last_time_view(current_entry, way, &labels));
             if let (Some(finish), Some(item), Some(draft)) = (
                 view.record.finish.as_mut(),
                 model
@@ -266,10 +239,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             && matches!(model.session_status, SessionStatus::Idle),
         up_next,
         photo_recognition: photo_recognition_view(&model.photo_recognition),
-        limits: LimitsView {
-            rep_target_default: model.practice_defaults.rep_target,
-            ..LimitsView::default()
-        },
+        limits: LimitsView::default(),
         visible_ids,
         recently_practised_ids: cached.recently_practised_ids.clone(),
         shows_priorities: cached.has_priorities

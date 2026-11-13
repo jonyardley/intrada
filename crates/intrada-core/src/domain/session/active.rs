@@ -26,7 +26,7 @@ pub(super) fn prepare_reflection(
         .entries
         .get_mut(active.current_index)
         .map_or(TempoStamp::NothingToKeep, |entry| {
-            close_open_play(entry, now, Some(&reading))
+            close_open_play(entry, now, &reading)
         });
     active.reflection = Some(ReflectionDraft {
         now,
@@ -64,7 +64,7 @@ pub(super) fn next_item(
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.status = EntryStatus::Completed;
         open_first_play(entry, started);
-        stamp = close_play(entry, now, Some(&reading), stamped);
+        stamp = close_play(entry, now, &reading, stamped);
         entry.duration_secs = item_seconds(entry);
         drop_incidental_play(entry);
     }
@@ -86,19 +86,10 @@ pub(super) fn skip_item(model: &mut Model, now: DateTime<Utc>) -> Command<Effect
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.duration_secs = 0;
         entry.status = EntryStatus::Skipped;
-        // Skipped means not practised, so the play opened when the item
-        // became current goes (#1739 decision 3). A play that banked
-        // repetitions or a mark first is not that play and survives,
-        // exactly as rep state did before plays existed. Time alone
-        // does not count here: the clock ran while they decided to skip.
-        close_open_play(entry, now, None);
-        entry.plays.retain(Play::recorded_something);
-        // Only a completed entry carries a tempo, and the tempo history
-        // reads plays without the entry's status (#1761 rule 7).
-        for play in &mut entry.plays {
-            play.achieved_tempo = None;
-            play.click_pattern = None;
-        }
+        // Skipped means not practised, so its plays go (#1739 decision 3).
+        // Nothing marks a play before its entry completes, and time alone
+        // does not count: the clock ran while they decided to skip.
+        entry.plays.clear();
     }
 
     if active.current_index >= active.entries.len() - 1 {
@@ -162,7 +153,7 @@ pub(super) fn switch_play(
     way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
 
     // Switching to the way already open writes nothing, so a stray tap
-    // cannot clear the dots (#1739 decision 6). Checked before capacity,
+    // cannot split the play (#1739 decision 6). Checked before capacity,
     // or a full entry could not re-tap its own row.
     if entry.open_play().is_some_and(|p| p.is_played(&way)) {
         model.last_error = None;
@@ -186,9 +177,8 @@ pub(super) fn switch_play(
         return crux_core::render::render();
     };
 
-    let stamp = close_open_play(entry, now, Some(&reading));
-    let rep_target = entry.plan.rep_target;
-    entry.plays.push(Play::opened(way, rep_target, now));
+    let stamp = close_open_play(entry, now, &reading);
+    entry.plays.push(Play::opened(way, now));
 
     model.last_error = None;
     let persist = persist_active(active);
@@ -285,14 +275,12 @@ pub(super) fn update_reflection_draft(
     let entry = active.current_entry();
     answers.marks.retain(|mark| mark.score != 0);
     tidy_answers_note(&mut answers);
-    keep_offered_points(&mut answers);
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     }
     if active.reflection.is_none()
         || !draft_answers_valid(entry, &answers)
         || !draft_ways_valid(entry, &answers.ways, model)
-        || !obstacles_distinct(&answers.got_in_the_way)
     {
         return crux_core::render::render();
     }
@@ -349,7 +337,6 @@ pub(super) fn submit_reflection(
     answers.ways.retain(|way| markable(&way.play_id));
     let valid = draft_answers_valid(entry, &answers)
         && draft_ways_valid(entry, &answers.ways, model)
-        && obstacles_distinct(&answers.got_in_the_way)
         && answers.marks.iter().all(|m| markable(&m.play_id))
         && answers.tempos.iter().all(|t| markable(&t.play_id));
     if !valid {
@@ -401,64 +388,12 @@ pub(super) fn submit_reflection(
             row.click,
         ));
     }
-    // After the note, so a kept point is read from the note as stored.
-    for span in answers.note_points {
-        commands.push(super::finish::confirm_note_point(
-            model,
-            entry_id.clone(),
-            span,
-        ));
-    }
-    if answers.felt.is_some() {
-        commands.push(super::finish::set_felt(
-            model,
-            entry_id.clone(),
-            answers.felt,
-        ));
-    }
-    for obstacle in answers.got_in_the_way {
-        commands.push(super::finish::toggle_obstacle(
-            model,
-            entry_id.clone(),
-            obstacle,
-        ));
-    }
-    if answers.intention_met.is_some() {
-        commands.push(super::finish::answer_intention(
-            model,
-            entry_id,
-            answers.intention_met,
-        ));
-    }
     Command::all(commands)
 }
 
 fn tidy_answers_note(answers: &mut ReflectionAnswers) {
     answers.note =
         validation::trimmed_nonempty(Some(std::mem::take(&mut answers.note))).unwrap_or_default();
-}
-
-/// A note edit moves its points: a span no longer offered is dropped, since
-/// refusing would leave the crash-recovery copy stale (#2137).
-fn keep_offered_points(answers: &mut ReflectionAnswers) {
-    let offered: Vec<NoteSpan> = note_offers(&answers.note)
-        .into_iter()
-        .map(|p| p.span)
-        .collect();
-    let mut kept: Vec<NoteSpan> = Vec::new();
-    for span in &answers.note_points {
-        if offered.contains(span) && !kept.contains(span) {
-            kept.push(*span);
-        }
-    }
-    answers.note_points = kept;
-}
-
-fn obstacles_distinct(obstacles: &[Obstacle]) -> bool {
-    let mut seen = obstacles.to_vec();
-    seen.sort_by_key(|o| *o as u8);
-    seen.dedup();
-    seen.len() == obstacles.len()
 }
 
 fn draft_ways_valid(entry: &SetlistEntry, ways: &[DraftWay], model: &Model) -> bool {

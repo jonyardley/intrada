@@ -2437,10 +2437,10 @@ fn a_corrupt_play_time_in_the_saved_copy_resumes_from_now() {
     let mut model = model_with_library();
     let now = Utc::now();
     let mut entry = create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 0);
-    let mut earlier = Play::opened(PlayWay::default(), None, now);
+    let mut earlier = Play::opened(PlayWay::default(), now);
     earlier.seconds = u64::MAX;
     entry.plays.push(earlier);
-    let mut open = Play::opened(PlayWay::default(), None, now);
+    let mut open = Play::opened(PlayWay::default(), now);
     open.seconds = u64::MAX / 2;
     entry.plays.push(open);
 
@@ -2474,12 +2474,12 @@ fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
     let closed_seconds = 90;
 
     let mut entry = create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 0);
-    let mut earlier = Play::opened(PlayWay::default(), None, started_yesterday);
+    let mut earlier = Play::opened(PlayWay::default(), started_yesterday);
     earlier.seconds = closed_seconds;
     entry.plays.push(earlier);
     entry
         .plays
-        .push(Play::opened(PlayWay::default(), None, started_yesterday));
+        .push(Play::opened(PlayWay::default(), started_yesterday));
 
     let active = ActiveSession {
         id: "stale-session".to_string(),
@@ -2542,13 +2542,13 @@ fn test_recover_session_reanchors_only_the_current_entry_play() {
 
     let mut done = create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 0);
     done.status = EntryStatus::Completed;
-    let mut done_play = Play::opened(PlayWay::default(), None, started_yesterday);
+    let mut done_play = Play::opened(PlayWay::default(), started_yesterday);
     done_play.seconds = 90;
     done.plays.push(done_play);
     let mut current = create_entry("piece-2", "Clair de Lune", ItemKind::Piece, 1);
     current
         .plays
-        .push(Play::opened(PlayWay::default(), None, started_yesterday));
+        .push(Play::opened(PlayWay::default(), started_yesterday));
 
     let active = ActiveSession {
         id: "stale-session".to_string(),
@@ -4209,18 +4209,11 @@ fn a_stamped_stray_tap_is_still_dropped() {
     assert_eq!(entry.plays[0].id, opened);
 }
 
-/// Only a completed entry carries a tempo, so a skip clears the stamp a
-/// switch made on a play it keeps, and keeps that play's repetitions.
+/// Only a completed entry carries a tempo or a play, so a skip keeps no play,
+/// even one a switch stamped.
 #[test]
-fn a_skip_clears_the_stamp_on_a_play_it_keeps_and_keeps_its_repetitions() {
+fn a_skip_keeps_no_play_even_one_a_switch_stamped() {
     let (mut model, start) = model_with_variations();
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::seconds(10),
-            reading: crate::domain::session::TempoReading::silent(),
-        }),
-    );
     switch_to_d(
         &mut model,
         start + chrono::Duration::seconds(60),
@@ -4241,14 +4234,7 @@ fn a_skip_clears_the_stamp_on_a_play_it_keeps_and_keeps_its_repetitions() {
 
     let entry = only_entry(&model);
     assert_eq!(entry.status, EntryStatus::Skipped);
-    assert_eq!(
-        entry.plays.len(),
-        1,
-        "C banked a repetition, D recorded nothing"
-    );
-    assert_eq!(entry.plays[0].rep_count, Some(1));
-    assert_eq!(entry.plays[0].achieved_tempo, None);
-    assert_eq!(entry.plays[0].click_pattern, None);
+    assert!(entry.plays.is_empty(), "{:?}", entry.plays);
 }
 
 #[test]
@@ -4832,33 +4818,10 @@ fn tags_name_only_the_variations_still_on_the_item() {
     assert_eq!(tags(&model), ["Dotted"]);
 }
 
-// --- Rep Counter Tests ---
-
 const TAP_AT: &str = "2026-09-03T09:00:00Z";
 
 fn tap_at() -> DateTime<Utc> {
     TAP_AT.parse().expect("fixed timestamp")
-}
-
-fn got_it() -> Event {
-    Event::Session(SessionEvent::RepGotIt {
-        now: tap_at(),
-        reading: TempoReading::silent(),
-    })
-}
-
-fn missed() -> Event {
-    Event::Session(SessionEvent::RepMissed {
-        now: tap_at(),
-        reading: TempoReading::silent(),
-    })
-}
-
-fn actions(entry: &SetlistEntry) -> Option<Vec<RepAction>> {
-    play_of(entry)
-        .rep_history
-        .as_ref()
-        .map(|h| h.iter().map(|e| e.action).collect())
 }
 
 fn active_entry(model: &Model, index: usize) -> &SetlistEntry {
@@ -4866,726 +4829,6 @@ fn active_entry(model: &Model, index: usize) -> &SetlistEntry {
         panic!("Expected Active state");
     };
     &a.entries[index]
-}
-
-/// Helper: create an active session with a rep target on the first item.
-fn model_with_active_session_and_rep(target: u8) -> (Model, DateTime<Utc>) {
-    let mut model = model_with_library();
-    let now = Utc::now();
-    update(&mut model, Event::Session(SessionEvent::StartBuilding));
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-1".to_string(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-2".to_string(),
-        }),
-    );
-
-    // Set rep target on first entry during building
-    if let SessionStatus::Building(ref mut b) = model.session_status {
-        b.entries[0].plan.rep_target = Some(target);
-    } else {
-        panic!("Expected Building state");
-    }
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::StartSession { now }),
-    );
-    (model, now)
-}
-
-/// An untouched counter records nothing (T19): a builder target alone must
-/// not bank a zero and an empty history on session start.
-#[test]
-fn test_start_session_does_not_bank_rep_state() {
-    let (model, _now) = model_with_active_session_and_rep(5);
-
-    let targeted = active_entry(&model, 0);
-    assert_eq!(play_of(targeted).rep_target, Some(5));
-    assert_eq!(play_of(targeted).rep_count, None);
-    assert_eq!(play_of(targeted).rep_history, None);
-
-    let untouched = active_entry(&model, 1);
-    assert!(
-        untouched.plays.is_empty(),
-        "an item not yet reached has opened no play, so it banks nothing"
-    );
-}
-
-#[test]
-fn test_rep_got_it_increments() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(play_of(&a.entries[0]).rep_count, Some(3));
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_got_it_reaches_target() {
-    let (mut model, _now) = model_with_active_session_and_rep(3);
-
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(play_of(&a.entries[0]).rep_count, Some(3));
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_missed_decrements() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-
-    update(&mut model, missed());
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(play_of(&a.entries[0]).rep_count, Some(2));
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_missed_floor_zero() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-
-    // Miss with count at 0
-    update(&mut model, missed());
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(play_of(&a.entries[0]).rep_count, Some(0));
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_missed_at_target_steps_back_and_can_be_re_earned() {
-    let (mut model, _now) = model_with_active_session_and_rep(3);
-    for _ in 0..3 {
-        update(&mut model, got_it());
-    }
-
-    update(&mut model, missed());
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(play_of(entry).rep_count, Some(2));
-    assert_eq!(
-        actions(entry).map(|a| a.last().copied()),
-        Some(Some(RepAction::Missed))
-    );
-
-    update(&mut model, got_it());
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(play_of(entry).rep_count, Some(3));
-}
-
-#[test]
-fn test_first_got_it_on_untouched_entry_writes_all_four_fields() {
-    let (mut model, _now) = model_with_active_session(2);
-    assert_eq!(play_of(active_entry(&model, 0)).rep_target, None);
-
-    update(&mut model, got_it());
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(
-        play_of(entry).rep_target,
-        Some(validation::DEFAULT_REP_TARGET)
-    );
-    assert_eq!(play_of(entry).rep_count, Some(1));
-    assert_eq!(
-        play_of(entry).rep_history,
-        Some(vec![RepEvent {
-            action: RepAction::Success,
-            at: tap_at(),
-            tempo: Some(120),
-            click_sounding: Some(false),
-        }])
-    );
-}
-
-#[test]
-fn test_first_missed_on_untouched_entry_records_the_miss_at_zero() {
-    let (mut model, _now) = model_with_active_session(2);
-
-    update(&mut model, missed());
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(
-        play_of(entry).rep_target,
-        Some(validation::DEFAULT_REP_TARGET)
-    );
-    assert_eq!(play_of(entry).rep_count, Some(0));
-    assert_eq!(actions(entry), Some(vec![RepAction::Missed]));
-}
-
-#[test]
-fn test_first_tap_takes_the_musicians_default_target() {
-    let (mut model, _now) = model_with_active_session(2);
-    model.practice_defaults.rep_target = 5;
-
-    update(&mut model, got_it());
-
-    assert_eq!(play_of(active_entry(&model, 0)).rep_target, Some(5));
-}
-
-#[test]
-fn test_first_tap_keeps_a_builder_target() {
-    let (mut model, _now) = model_with_active_session_and_rep(7);
-    model.practice_defaults.rep_target = 5;
-
-    update(&mut model, got_it());
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(play_of(entry).rep_target, Some(7));
-    assert_eq!(play_of(entry).rep_count, Some(1));
-}
-
-#[test]
-fn test_rep_history_carries_each_taps_time_in_order() {
-    let (mut model, _now) = model_with_active_session(2);
-    let first = tap_at();
-    let second = first + chrono::Duration::seconds(40);
-    let third = second + chrono::Duration::seconds(55);
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: first,
-            reading: TempoReading::silent(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepMissed {
-            now: second,
-            reading: TempoReading::silent(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: third,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    assert_eq!(
-        play_of(active_entry(&model, 0)).rep_history,
-        Some(vec![
-            RepEvent {
-                action: RepAction::Success,
-                at: first,
-                tempo: Some(120),
-                click_sounding: Some(false),
-            },
-            RepEvent {
-                action: RepAction::Missed,
-                at: second,
-                tempo: Some(120),
-                click_sounding: Some(false),
-            },
-            RepEvent {
-                action: RepAction::Success,
-                at: third,
-                tempo: Some(120),
-                click_sounding: Some(false),
-            },
-        ])
-    );
-}
-
-#[test]
-fn test_rep_state_frozen_on_next_item() {
-    let (mut model, start) = model_with_active_session_and_rep(5);
-
-    // Got-it 3 times (partial progress)
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-
-    let now = start + chrono::Duration::seconds(30);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now,
-            next_item_started_at: now,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        // First entry frozen: 3/5, target not reached
-        assert_eq!(play_of(&a.entries[0]).rep_count, Some(3));
-        // Now on second item
-        assert_eq!(a.current_index, 1);
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-/// Repetitions banked before a skip are a record of practice and survive
-/// it, frozen, as they did before plays existed. What a skip discards is
-/// the play that recorded nothing (#1739 decision 3).
-#[test]
-fn test_rep_state_frozen_on_skip_item() {
-    let (mut model, start) = model_with_active_session_and_rep(5);
-
-    // Got-it once
-    update(&mut model, got_it());
-
-    let now = start + chrono::Duration::seconds(10);
-    update(&mut model, Event::Session(SessionEvent::SkipItem { now }));
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(a.entries[0].status, EntryStatus::Skipped);
-        assert_eq!(a.entries[0].plays.len(), 1);
-        assert_eq!(a.entries[0].plays[0].rep_count, Some(1));
-        assert_eq!(a.entries[0].plays[0].rep_target, Some(5));
-        assert_eq!(a.entries[0].plan.rep_target, Some(5));
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_state_persisted_through_save() {
-    let (mut model, start) = model_with_active_session_and_rep(3);
-
-    // Reach target
-    for _ in 0..3 {
-        update(&mut model, got_it());
-    }
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: start,
-            next_item_started_at: start,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    let t1 = start + chrono::Duration::seconds(60);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: t1,
-            next_item_started_at: t1,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    let t2 = t1 + chrono::Duration::seconds(5);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SaveSession { now: t2 }),
-    );
-    update(
-        &mut model,
-        Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
-    );
-
-    assert_eq!(model.sessions.len(), 1);
-    assert_eq!(play_of(&model.sessions[0].entries[0]).rep_target, Some(3));
-    assert_eq!(play_of(&model.sessions[0].entries[0]).rep_count, Some(3));
-}
-
-#[test]
-fn test_a_tap_touches_only_the_current_entry() {
-    let (mut model, _now) = model_with_active_session(2);
-
-    update(&mut model, got_it());
-
-    let other = active_entry(&model, 1);
-    assert!(
-        other.plays.is_empty(),
-        "the tap opened no play on an item that is not current"
-    );
-}
-
-/// The count keeps going past the target, every tap kept (#2107).
-#[test]
-fn test_rep_got_it_counts_on_past_the_target() {
-    let (mut model, _now) = model_with_active_session_and_rep(3);
-
-    for _ in 0..5 {
-        update(&mut model, got_it());
-    }
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(play_of(entry).rep_count, Some(5));
-    assert_eq!(actions(entry).map(|a| a.len()), Some(5));
-}
-
-#[test]
-fn test_rep_undo_reverses_the_last_standing_tap_and_is_kept_as_undo() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-    let undo = || {
-        Event::Session(SessionEvent::RepUndo {
-            now: tap_at(),
-            reading: TempoReading::silent(),
-        })
-    };
-
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-    update(&mut model, missed());
-    assert_eq!(play_of(active_entry(&model, 0)).rep_count, Some(1));
-
-    update(&mut model, undo());
-    assert_eq!(
-        play_of(active_entry(&model, 0)).rep_count,
-        Some(2),
-        "undoing a miss gives the pass back: a correction is not a failure"
-    );
-    update(&mut model, undo());
-    assert_eq!(play_of(active_entry(&model, 0)).rep_count, Some(1));
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(
-        actions(entry),
-        Some(vec![
-            RepAction::Success,
-            RepAction::Success,
-            RepAction::Missed,
-            RepAction::Undo,
-            RepAction::Undo,
-        ])
-    );
-}
-
-/// A miss at zero changed nothing on the count, so undoing it changes
-/// nothing either: the count is the replay of what still stands.
-#[test]
-fn test_rep_undo_of_a_floored_miss_leaves_the_count_at_zero() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-    update(&mut model, missed());
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepUndo {
-            now: tap_at(),
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    assert_eq!(play_of(active_entry(&model, 0)).rep_count, Some(0));
-}
-
-#[test]
-fn test_rep_undo_with_nothing_standing_writes_nothing() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-    let undo = Event::Session(SessionEvent::RepUndo {
-        now: tap_at(),
-        reading: TempoReading::silent(),
-    });
-
-    let mut cmd = Intrada.update(undo.clone(), &mut model);
-    assert!(recovery_saves(&mut cmd).is_empty());
-    assert_eq!(play_of(active_entry(&model, 0)).rep_history, None);
-    assert_eq!(play_of(active_entry(&model, 0)).rep_count, None);
-
-    update(&mut model, got_it());
-    update(&mut model, undo.clone());
-    let mut cmd = Intrada.update(undo, &mut model);
-    assert!(
-        recovery_saves(&mut cmd).is_empty(),
-        "the got it was already undone"
-    );
-    assert_eq!(actions(active_entry(&model, 0)).map(|a| a.len()), Some(2));
-}
-
-/// Only a tap with the click sounding is tempo evidence (T16), but a silent
-/// tap keeps its number; a setting with no crotchet tempo keeps none.
-#[test]
-fn test_each_tap_keeps_its_tempo_and_whether_the_click_sounded() {
-    let (mut model, _now) = model_with_active_session(2);
-    let tap = |reading: TempoReading| {
-        Event::Session(SessionEvent::RepGotIt {
-            now: tap_at(),
-            reading,
-        })
-    };
-    let unusable = TempoReading {
-        bpm: 0,
-        click_sounding: true,
-        click: None,
-    };
-
-    update(&mut model, tap(sounding(108, None)));
-    update(&mut model, tap(TempoReading::silent()));
-    update(
-        &mut model,
-        tap(sounding(84, Some(every_beat_in_common_time()))),
-    );
-    update(&mut model, tap(unusable));
-
-    let history = play_of(active_entry(&model, 0))
-        .rep_history
-        .clone()
-        .expect("four taps");
-    let kept: Vec<(Option<u16>, Option<bool>)> = history
-        .iter()
-        .map(|e| (e.tempo, e.click_sounding))
-        .collect();
-    assert_eq!(
-        kept,
-        vec![
-            (Some(108), Some(true)),
-            (Some(120), Some(false)),
-            (Some(84), Some(true)),
-            (None, Some(true)),
-        ]
-    );
-    assert!(
-        model.last_error.is_none(),
-        "an unusable setting says nothing"
-    );
-    assert_eq!(play_of(active_entry(&model, 0)).rep_count, Some(4));
-}
-
-/// A tap the full history cannot keep does not count either, so the count
-/// is always the replay of the history.
-#[test]
-fn test_a_tap_past_the_history_cap_is_neither_kept_nor_counted() {
-    let (mut model, _now) = model_with_active_session(2);
-    for _ in 0..validation::MAX_REP_HISTORY {
-        update(&mut model, got_it());
-    }
-    let full = play_of(active_entry(&model, 0)).clone();
-
-    update(&mut model, got_it());
-    update(&mut model, missed());
-
-    assert_eq!(play_of(active_entry(&model, 0)), &full);
-    assert_eq!(full.rep_count, Some(u8::MAX), "saturates at the byte");
-}
-
-#[test]
-fn test_rep_state_frozen_on_end_session_early() {
-    let (mut model, now) = model_with_active_session_and_rep(5);
-
-    // Increment rep count twice on item 1
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-
-    // End session early (item 2 is never reached)
-    let t1 = now + chrono::Duration::seconds(30);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::EndSessionEarly {
-            now: t1,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        // Item 1: rep state frozen at 2/5, not reached
-        assert_eq!(play_of(&s.entries[0]).rep_target, Some(5));
-        assert_eq!(play_of(&s.entries[0]).rep_count, Some(2));
-        assert_eq!(s.entries[0].status, EntryStatus::Completed);
-
-        // Item 2: never reached, so it records nothing at all
-        assert!(s.entries[1].plays.is_empty());
-        assert_eq!(s.entries[1].status, EntryStatus::NotAttempted);
-    } else {
-        panic!("Expected Summary state");
-    }
-}
-
-// ── SetRepTarget (Building phase) tests ──────────────────────────
-
-#[test]
-fn test_set_rep_target_in_building() {
-    let mut model = model_with_library();
-    update(&mut model, Event::Session(SessionEvent::StartBuilding));
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-1".to_string(),
-        }),
-    );
-
-    let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-        b.entries[0].id.clone()
-    } else {
-        panic!("Expected Building state");
-    };
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetRepTarget {
-            entry_id: entry_id.clone(),
-            target: Some(7),
-        }),
-    );
-
-    assert!(model.last_error.is_none());
-    if let SessionStatus::Building(ref b) = model.session_status {
-        assert_eq!(b.entries[0].plan.rep_target, Some(7));
-        assert!(
-            b.entries[0].plays.is_empty(),
-            "a target is a plan: it banks no progress"
-        );
-    } else {
-        panic!("Expected Building state");
-    }
-}
-
-#[test]
-fn test_set_rep_target_clear() {
-    let mut model = model_with_library();
-    update(&mut model, Event::Session(SessionEvent::StartBuilding));
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-1".to_string(),
-        }),
-    );
-
-    let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-        b.entries[0].id.clone()
-    } else {
-        panic!("Expected Building state");
-    };
-
-    // Set target first
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetRepTarget {
-            entry_id: entry_id.clone(),
-            target: Some(5),
-        }),
-    );
-
-    // Then clear it
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetRepTarget {
-            entry_id,
-            target: None,
-        }),
-    );
-
-    assert!(model.last_error.is_none());
-    if let SessionStatus::Building(ref b) = model.session_status {
-        assert_eq!(b.entries[0].plan.rep_target, None);
-    } else {
-        panic!("Expected Building state");
-    }
-}
-
-#[test]
-fn test_set_rep_target_invalid_value() {
-    let mut model = model_with_library();
-    update(&mut model, Event::Session(SessionEvent::StartBuilding));
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-1".to_string(),
-        }),
-    );
-
-    let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-        b.entries[0].id.clone()
-    } else {
-        panic!("Expected Building state");
-    };
-
-    // Target below minimum (3)
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetRepTarget {
-            entry_id: entry_id.clone(),
-            target: Some(1),
-        }),
-    );
-
-    assert_eq!(
-        model.last_error.as_deref(),
-        Some("Rep target must be between 3 and 10")
-    );
-    if let SessionStatus::Building(ref b) = model.session_status {
-        assert_eq!(b.entries[0].plan.rep_target, None); // unchanged
-    } else {
-        panic!("Expected Building state");
-    }
-
-    // Target above maximum (10)
-    model.last_error = None;
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetRepTarget {
-            entry_id,
-            target: Some(15),
-        }),
-    );
-
-    assert_eq!(
-        model.last_error.as_deref(),
-        Some("Rep target must be between 3 and 10")
-    );
-}
-
-#[test]
-fn test_set_rep_target_flows_to_active() {
-    let mut model = model_with_library();
-    let now = Utc::now();
-    update(&mut model, Event::Session(SessionEvent::StartBuilding));
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-1".to_string(),
-        }),
-    );
-
-    let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-        b.entries[0].id.clone()
-    } else {
-        panic!("Expected Building state");
-    };
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetRepTarget {
-            entry_id,
-            target: Some(8),
-        }),
-    );
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::StartSession { now }),
-    );
-
-    let entry = active_entry(&model, 0);
-    assert_eq!(play_of(entry).rep_target, Some(8));
-    assert_eq!(
-        play_of(entry).rep_count,
-        None,
-        "nothing is banked before the first tap"
-    );
 }
 
 // ── SetEntryDuration (Building phase) tests ──────────────────────
@@ -5651,77 +4894,6 @@ fn set_entry_duration_none_clears_the_plan() {
     assert_eq!(building_entries(&model)[0].plan.duration_secs, None);
 }
 
-// --- Rep History Tests (US1) ---
-
-#[test]
-fn test_rep_history_appended_on_got_it() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(
-            actions(&a.entries[0]),
-            Some(vec![RepAction::Success, RepAction::Success])
-        );
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_history_appended_on_missed() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-
-    update(&mut model, got_it());
-    update(&mut model, missed());
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(
-            actions(&a.entries[0]),
-            Some(vec![RepAction::Success, RepAction::Missed])
-        );
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_history_frozen_on_next_item() {
-    let (mut model, start) = model_with_active_session_and_rep(5);
-
-    // Record some actions
-    update(&mut model, got_it());
-    update(&mut model, missed());
-    update(&mut model, got_it());
-
-    // Move to next item
-    let next_time = start + chrono::Duration::seconds(60);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: next_time,
-            next_item_started_at: next_time,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        // First entry's history should be frozen with the recorded actions
-        assert_eq!(
-            actions(&a.entries[0]),
-            Some(vec![
-                RepAction::Success,
-                RepAction::Missed,
-                RepAction::Success
-            ])
-        );
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
 #[test]
 fn test_update_session_score_sets_and_validates() {
     let mut model = model_with_summary();
@@ -5749,48 +4921,6 @@ fn test_update_session_score_sets_and_validates() {
     assert_eq!(s.session_score, Some(8));
 }
 
-#[test]
-fn test_rep_history_persisted_through_save() {
-    let (mut model, start) = model_with_active_session_and_rep(3);
-
-    // Hit got it 3 times to reach target
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-    update(&mut model, got_it());
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: start,
-            next_item_started_at: start,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    // Finish session
-    let end_time = start + chrono::Duration::seconds(120);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: end_time,
-            next_item_started_at: end_time,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(
-            actions(&s.entries[0]),
-            Some(vec![
-                RepAction::Success,
-                RepAction::Success,
-                RepAction::Success
-            ])
-        );
-    } else {
-        panic!("Expected Summary state");
-    }
-}
-
 /// `group_id` rides `SetlistEntry` across the bincode FFI wire (in the
 /// persisted `PracticeSession` and the ViewModel). It is the sole input to
 /// the B1 context derivation, so a silent drop on the wire would erase every
@@ -5804,11 +4934,9 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
             item_id: "ex-1".to_string(),
             item_type: ItemKind::Exercise,
             intention: Some("even tone".to_string()),
-            focus: None,
             duration_secs: Some(300),
             group_id: Some("g1".to_string()),
             variation_ids: vec!["v-2".to_string()],
-            rep_target: Some(5),
             key: None,
         },
         item_title: "Scales".to_string(),
@@ -5822,28 +4950,6 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
             variation_ids: vec!["v-1".to_string(), "v-2".to_string()],
             started_at: tap_at(),
             seconds: 300,
-            rep_target: Some(5),
-            rep_count: Some(5),
-            rep_history: Some(vec![
-                RepEvent {
-                    action: RepAction::Success,
-                    at: tap_at(),
-                    tempo: Some(96),
-                    click_sounding: Some(true),
-                },
-                RepEvent {
-                    action: RepAction::Missed,
-                    at: tap_at(),
-                    tempo: None,
-                    click_sounding: Some(false),
-                },
-                RepEvent {
-                    action: RepAction::Undo,
-                    at: tap_at(),
-                    tempo: None,
-                    click_sounding: None,
-                },
-            ]),
             tempo_changes: vec![TempoChange {
                 at: tap_at(),
                 tempo: 84,
@@ -5854,10 +4960,6 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
             score: Some(6),
             away: Vec::new(),
         }],
-        intention_met: None,
-        felt: None,
-        got_in_the_way: Vec::new(),
-        note_points: Vec::new(),
     });
 }
 
@@ -5871,22 +4973,7 @@ fn pinned_active_session() -> ActiveSession {
     touched.plan.intention = Some("evenness".to_string());
     touched.plan.duration_secs = Some(300);
     touched.plan.group_id = Some("g1".to_string());
-    touched.plan.focus = Some(IntentionFocus {
-        kind: FocusKind::Tempo,
-        target: Some(84),
-    });
-    touched.intention_met = Some(IntentionMet::Partly);
-    touched.felt = Some(Felt::Strained);
-    touched.got_in_the_way = vec![Obstacle::Fingering, Obstacle::Memory];
-    touched.note_points = vec![NotePoint {
-        kind: NotePointKind::Bars(crate::domain::bars::BarRange {
-            first: 12,
-            last: 14,
-        }),
-        span: NoteSpan { start: 0, end: 12 },
-    }];
     touched.plan.variation_ids = vec!["v-1".to_string()];
-    touched.plan.rep_target = Some(10);
     touched.plan.key = crate::domain::key::Key::parse("G major");
     touched.plays = vec![Play {
         id: "e1-play".to_string(),
@@ -5894,28 +4981,6 @@ fn pinned_active_session() -> ActiveSession {
         variation_ids: vec!["v-1".to_string(), "v-2".to_string()],
         started_at: tap_at(),
         seconds: 300,
-        rep_target: Some(10),
-        rep_count: Some(1),
-        rep_history: Some(vec![
-            RepEvent {
-                action: RepAction::Success,
-                at: tap_at(),
-                tempo: Some(120),
-                click_sounding: Some(true),
-            },
-            RepEvent {
-                action: RepAction::Missed,
-                at: tap_at() + chrono::Duration::seconds(40),
-                tempo: Some(120),
-                click_sounding: Some(false),
-            },
-            RepEvent {
-                action: RepAction::Undo,
-                at: tap_at() + chrono::Duration::seconds(41),
-                tempo: None,
-                click_sounding: None,
-            },
-        ]),
         tempo_changes: vec![TempoChange {
             at: tap_at() + chrono::Duration::seconds(20),
             tempo: 120,
@@ -5963,10 +5028,6 @@ fn pinned_active_session() -> ActiveSession {
                     tempo: 150,
                     click: None,
                 }],
-                felt: Some(Felt::Comfortable),
-                got_in_the_way: vec![Obstacle::Tone],
-                note_points: vec![NoteSpan { start: 0, end: 6 }],
-                intention_met: Some(IntentionMet::Yes),
                 ways: vec![DraftWay {
                     play_id: "e2-play".to_string(),
                     key: crate::domain::key::Key::parse("D major"),
@@ -5979,34 +5040,27 @@ fn pinned_active_session() -> ActiveSession {
 
 const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "020000000000000073310200000000000000020000000000000065310200000000000000703100",
-    "0000000108000000000000006576656e6e6573730100000000015400012c010000010200000000",
-    "000000673101000000000000000300000000000000762d31010a01040000000000000001000000",
-    "000d00000000000000436c616972206465204c756e6500000000000000002c0100000000000000",
-    "0000000108000000000000007068726173696e670100000000000000070000000000000065312d",
-    "706c6179010000000001000000010100000002000000000000000300000000000000762d310300",
-    "000000000000762d321400000000000000323032362d30392d30335430393a30303a30305a2c01",
-    "000000000000010a0101010300000000000000010000001400000000000000323032362d30392d",
-    "30335430393a30303a30305a0178000101000000001400000000000000323032362d30392d3033",
-    "5430393a30303a34305a0178000100020000001400000000000000323032362d30392d30335430",
-    "393a30303a34315a000001000000000000001400000000000000323032362d30392d3033543039",
-    "3a30303a32305a7800010178000107080103000000000000000302022900010402000000000000",
-    "001400000000000000323032362d30392d30335430393a30313a30305a01140000000000000032",
-    "3032362d30392d30335430393a30373a30305a011400000000000000323032362d30392d303354",
-    "30393a30383a32305a000001010000000102000000020000000000000002000000030000000100",
-    "000000000000000000000c000e00000000000c0000000200000000000000653202000000000000",
-    "00783101000000000000000000000000000000000006000000000000005363616c657301000000",
-    "000000000000000000000000020000000000000000000000000000000000000000000000000000",
-    "0000000001000000000000001400000000000000323032362d30392d30335430393a30303a3030",
-    "5a1400000000000000323032362d30392d30335430383a34373a30305a01140000000000000032",
-    "3032362d30392d30335430393a30303a30305aa800010107080103000000000000000302022900",
-    "0100000000000000070000000000000065322d706c617906060000000000000073746561647901",
-    "00000000000000070000000000000065322d706c61799600000100000000010000000000000004",
-    "000000010000000000000000000000060000000100000000010000000000000007000000000000",
-    "0065322d706c617901010000000000000001000000000100000000000000030000000000000076",
-    "2d31",
+    "0000000108000000000000006576656e6e657373012c0100000102000000000000006731010000",
+    "00000000000300000000000000762d3101040000000000000001000000000d0000000000000043",
+    "6c616972206465204c756e6500000000000000002c010000000000000000000001080000000000",
+    "00007068726173696e670100000000000000070000000000000065312d706c6179010000000001",
+    "000000010100000002000000000000000300000000000000762d310300000000000000762d3214",
+    "00000000000000323032362d30392d30335430393a30303a30305a2c0100000000000001000000",
+    "000000001400000000000000323032362d30392d30335430393a30303a32305a78000101780001",
+    "07080103000000000000000302022900010402000000000000001400000000000000323032362d",
+    "30392d30335430393a30313a30305a011400000000000000323032362d30392d30335430393a30",
+    "373a30305a011400000000000000323032362d30392d30335430393a30383a32305a0000020000",
+    "000000000065320200000000000000783101000000000000000000000000000000060000000000",
+    "00005363616c657301000000000000000000000000000000020000000000000000000000000100",
+    "0000000000001400000000000000323032362d30392d30335430393a30303a30305a1400000000",
+    "000000323032362d30392d30335430383a34373a30305a011400000000000000323032362d3039",
+    "2d30335430393a30303a30305aa800010107080103000000000000000302022900010000000000",
+    "0000070000000000000065322d706c617906060000000000000073746561647901000000000000",
+    "00070000000000000065322d706c61799600000100000000000000070000000000000065322d70",
+    "6c6179010100000000000000010000000001000000000000000300000000000000762d31",
 );
 
-const PINNED_BLOB_VERSION: u32 = 10;
+const PINNED_BLOB_VERSION: u32 = 11;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump
@@ -6027,15 +5081,6 @@ fn active_session_blob_wire_is_pinned() {
     let back: ActiveSession =
         BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
     assert_eq!(back, session);
-}
-
-/// The timestamped tap events and the history they write cross the bridge
-/// (#846 class); pinned before any screen sends the new payloads.
-#[test]
-fn rep_tap_events_round_trip_on_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(got_it());
-    crate::domain::types::assert_round_trips(missed());
-    crate::domain::types::assert_round_trips(pinned_active_session());
 }
 
 /// The extended tempo payload crosses the bridge with the click state on
@@ -6078,18 +5123,6 @@ fn plan_switch_and_tap_events_round_trip_on_ffi_bincode_wire() {
             entry_id: "e1".to_string(),
             key: crate::domain::key::Key::parse("F# minor"),
             variation_ids: vec!["v1".to_string(), "v2".to_string()],
-            now: tap_at(),
-            reading: reading.clone(),
-        },
-        SessionEvent::RepGotIt {
-            now: tap_at(),
-            reading: reading.clone(),
-        },
-        SessionEvent::RepMissed {
-            now: tap_at(),
-            reading: TempoReading::silent(),
-        },
-        SessionEvent::RepUndo {
             now: tap_at(),
             reading: reading.clone(),
         },
@@ -6198,13 +5231,7 @@ fn switching_to_the_variation_already_open_writes_nothing() {
             reading: TempoReading::silent(),
         }),
     );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::seconds(70),
-            reading: crate::domain::session::TempoReading::silent(),
-        }),
-    );
+    let open = play_of(only_entry(&model)).id.clone();
 
     update(
         &mut model,
@@ -6219,11 +5246,7 @@ fn switching_to_the_variation_already_open_writes_nothing() {
 
     let entry = only_entry(&model);
     assert_eq!(entry.plays.len(), 2, "the stray tap opened nothing");
-    assert_eq!(
-        play_of(entry).rep_count,
-        Some(1),
-        "the stray tap did not clear the dots"
-    );
+    assert_eq!(play_of(entry).id, open, "the open play carries on");
 }
 
 #[test]
@@ -6271,13 +5294,7 @@ fn naming_the_written_key_is_the_play_already_open() {
         (model, now)
     };
     let entry_id = only_entry(&model).id.clone();
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::seconds(10),
-            reading: TempoReading::silent(),
-        }),
-    );
+    let open = play_of(only_entry(&model)).id.clone();
 
     update(
         &mut model,
@@ -6292,48 +5309,7 @@ fn naming_the_written_key_is_the_play_already_open() {
 
     let entry = only_entry(&model);
     assert_eq!(entry.plays.len(), 1, "the written key is already open");
-    assert_eq!(play_of(entry).rep_count, Some(1));
-}
-
-#[test]
-fn repetitions_and_tempo_land_on_the_open_play_and_reset_on_a_switch() {
-    let (mut model, start) = model_with_variations();
-    let entry_id = only_entry(&model).id.clone();
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::seconds(10),
-            reading: crate::domain::session::TempoReading::silent(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::seconds(20),
-            reading: crate::domain::session::TempoReading::silent(),
-        }),
-    );
-    assert_eq!(play_of(only_entry(&model)).rep_count, Some(2));
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SwitchPlay {
-            entry_id,
-            key: None,
-            variation_ids: vec!["v-d".to_string()],
-            now: start + chrono::Duration::seconds(30),
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    let entry = only_entry(&model);
-    assert_eq!(
-        entry.plays[0].rep_count,
-        Some(2),
-        "the first play keeps its"
-    );
-    assert_eq!(play_of(entry).rep_count, None, "the new play starts empty");
+    assert_eq!(play_of(entry).id, open);
 }
 
 #[test]
@@ -6766,66 +5742,6 @@ fn moving_off_an_item_keeps_its_only_play_however_short() {
 }
 
 #[test]
-fn finishing_keeps_a_short_play_that_banked_a_repetition() {
-    let (mut model, start) = model_with_variations();
-    let entry_id = only_entry(&model).id.clone();
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SwitchPlay {
-            entry_id,
-            key: None,
-            variation_ids: vec!["v-d".to_string()],
-            now: start + chrono::Duration::seconds(298),
-            reading: TempoReading::silent(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::seconds(299),
-            reading: crate::domain::session::TempoReading::silent(),
-        }),
-    );
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: start + chrono::Duration::seconds(300),
-            next_item_started_at: start + chrono::Duration::seconds(300),
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    let entry = only_entry(&model);
-    assert_eq!(entry.plays.len(), 2);
-    assert_eq!(entry.plays[1].rep_count, Some(1));
-}
-
-#[test]
-fn a_skipped_entry_keeps_a_play_that_banked_repetitions() {
-    let (mut model, start) = model_with_variations();
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::seconds(30),
-            reading: crate::domain::session::TempoReading::silent(),
-        }),
-    );
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SkipItem {
-            now: start + chrono::Duration::seconds(60),
-        }),
-    );
-
-    let entry = only_entry(&model);
-    assert_eq!(entry.status, EntryStatus::Skipped);
-    assert_eq!(entry.plays.len(), 1);
-    assert_eq!(entry.plays[0].rep_count, Some(1));
-}
-
-#[test]
 fn a_skipped_entry_that_recorded_nothing_keeps_no_play() {
     let (mut model, start) = model_with_variations();
 
@@ -6995,22 +5911,6 @@ fn switching_variation_saves_the_recovery_copy() {
     assert_saved_what_is_active(&saves, &model);
     let open = saves[0].entries[0].open_play().expect("a play is open");
     assert_eq!(open.variation_ids, vec!["v-d".to_string()]);
-}
-
-#[test]
-fn a_repetition_saves_the_recovery_copy() {
-    let (mut model, now) = model_with_active_session_and_rep(5);
-
-    let saves = run(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: now + chrono::Duration::seconds(3),
-            reading: crate::domain::session::TempoReading::silent(),
-        }),
-    );
-
-    assert_saved_what_is_active(&saves, &model);
-    assert_eq!(play_of(&saves[0].entries[0]).rep_count, Some(1));
 }
 
 #[test]
@@ -7225,60 +6125,12 @@ fn skipping_the_last_item_drops_the_play_that_recorded_nothing() {
 }
 
 #[test]
-fn skipping_the_last_item_clears_the_tempo_of_a_play_that_survives() {
-    let (mut model, start) = model_with_active_session_and_rep(5);
-    let t1 = start + chrono::Duration::seconds(30);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: t1,
-            next_item_started_at: t1,
-            reading: TempoReading::silent(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: t1,
-            reading: TempoReading::silent(),
-        }),
-    );
-    let SessionStatus::Active(ref mut active) = model.session_status else {
-        panic!("Expected Active state");
-    };
-    let play = active.entries[1].open_play_mut().expect("a play is open");
-    play.achieved_tempo = Some(96);
-    play.click_pattern = Some(seven_eight_on_group_starts());
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SkipItem {
-            now: t1 + chrono::Duration::seconds(40),
-        }),
-    );
-
-    let SessionStatus::Summary(ref summary) = model.session_status else {
-        panic!("Expected Summary state");
-    };
-    let play = play_of(&summary.entries[1]);
-    assert_eq!(play.rep_count, Some(1));
-    assert_eq!(play.achieved_tempo, None);
-    assert_eq!(play.click_pattern, None);
-}
-
-#[test]
 fn planning_setters_are_refused_outside_building() {
-    let setters: [fn(String) -> Event; 3] = [
+    let setters: [fn(String) -> Event; 2] = [
         |entry_id| {
             Event::Session(SessionEvent::SetEntryIntention {
                 entry_id,
                 intention: Some("Slow hands".to_string()),
-            })
-        },
-        |entry_id| {
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id,
-                target: Some(10),
             })
         },
         |entry_id| {
@@ -7391,10 +6243,6 @@ fn answers_for(play_id: &str) -> ReflectionAnswers {
             tempo: 96,
             click: Some(seven_eight_on_group_starts()),
         }],
-        felt: None,
-        got_in_the_way: Vec::new(),
-        note_points: Vec::new(),
-        intention_met: None,
         ways: Vec::new(),
     }
 }
@@ -8295,7 +7143,7 @@ fn a_full_list_of_tempo_changes_keeps_no_more() {
     let play = active.entries[0]
         .open_play_mut()
         .expect("a tempo change opens a play");
-    play.tempo_changes = (0..crate::validation::MAX_REP_HISTORY)
+    play.tempo_changes = (0..crate::validation::MAX_TEMPO_CHANGES)
         .map(|i| TempoChange {
             at: start + chrono::Duration::seconds(i as i64),
             tempo: 40 + (i % 2) as u16,
@@ -8307,7 +7155,7 @@ fn a_full_list_of_tempo_changes_keeps_no_more() {
     tempo_to(&mut model, late, 90);
     assert_eq!(
         kept_tempos(&model).len(),
-        crate::validation::MAX_REP_HISTORY
+        crate::validation::MAX_TEMPO_CHANGES
     );
     assert_ne!(kept_tempos(&model).last(), Some(&90));
 }
@@ -8319,23 +7167,6 @@ fn a_change_two_seconds_on_is_kept_beside_the_last() {
     tempo_to(&mut model, start + chrono::Duration::seconds(2), 72);
 
     assert_eq!(kept_tempos(&model), vec![60, 72]);
-}
-
-/// A tap between two quick changes settles the first: it was played at.
-#[test]
-fn a_tap_settles_a_change() {
-    let (mut model, start) = model_with_active_session(1);
-    tempo_to(&mut model, start, 60);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::RepGotIt {
-            now: start + chrono::Duration::milliseconds(500),
-            reading: sounding(60, None),
-        }),
-    );
-    tempo_to(&mut model, start + chrono::Duration::seconds(1), 64);
-
-    assert_eq!(kept_tempos(&model), vec![60, 64]);
 }
 
 #[test]
@@ -8357,7 +7188,7 @@ fn an_unchanged_or_unusable_tempo_keeps_nothing() {
 fn the_pieces_own_score_reads_plain_run_throughs_only() {
     let scored = |score: u8, way: PlayWay| Play {
         score: Some(score),
-        ..Play::opened(way, None, tap_at())
+        ..Play::opened(way, tap_at())
     };
     let entry = SetlistEntry {
         plays: vec![
@@ -8423,10 +7254,6 @@ fn an_entry_from_a_plan_carries_the_plan_and_nothing_played() {
             status: EntryStatus::NotAttempted,
             notes: None,
             plays: Vec::new(),
-            intention_met: None,
-            felt: None,
-            got_in_the_way: Vec::new(),
-            note_points: Vec::new(),
         }
     );
 }

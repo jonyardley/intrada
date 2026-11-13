@@ -32,9 +32,6 @@ import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
 import com.intrada.android.ui.MasteryDeltaToast
 import com.intrada.android.ui.MasteryDial
-import com.intrada.android.ui.RepActions
-import com.intrada.android.ui.RepCounter
-import com.intrada.android.ui.RepState
 import com.intrada.android.ui.ScoreRing
 import com.intrada.android.ui.ScoreSelector
 import com.intrada.android.ui.ScreenScaffold
@@ -311,66 +308,8 @@ class ComponentsSnapshotTest {
     }
 
     @Test
-    fun repCounters() {
-        captureRoboImage("src/test/snapshots/rep-counter.png") { RepCounters() }
-    }
-
-    @Test
     fun formFields() {
         captureRoboImage("src/test/snapshots/form-field.png") { FormFields() }
-    }
-
-    @Composable
-    private fun RepCounters() {
-        val actions = RepActions(onGotIt = {}, onNotQuite = {}, onUndo = {})
-        Paper {
-            Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section)) {
-                RepCounter(
-                    RepState(
-                        count = 0,
-                        slots = 10,
-                        touched = false,
-                        reached = false,
-                        extra = 0,
-                        canUndo = false,
-                    ),
-                    actions,
-                )
-                RepCounter(
-                    RepState(
-                        count = 7,
-                        slots = 10,
-                        touched = true,
-                        reached = false,
-                        extra = 0,
-                        canUndo = true,
-                    ),
-                    actions,
-                )
-                RepCounter(
-                    RepState(
-                        count = 10,
-                        slots = 10,
-                        touched = true,
-                        reached = true,
-                        extra = 0,
-                        canUndo = true,
-                    ),
-                    actions,
-                )
-                RepCounter(
-                    RepState(
-                        count = 12,
-                        slots = 10,
-                        touched = true,
-                        reached = true,
-                        extra = 2,
-                        canUndo = true,
-                    ),
-                    actions,
-                )
-            }
-        }
     }
 
     @Composable

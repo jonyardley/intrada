@@ -20,9 +20,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     var active = ActiveSessionView.previewActive
     let start = try XCTUnwrap(SessionClock.parseRFC3339(active.currentItemStartedAt))
     active.reflection = ReflectionView(
-      answers: ReflectionAnswers(
-        marks: [], note: "", tempos: [], felt: nil, gotInTheWay: [], notePoints: [],
-        intentionMet: nil, ways: []),
+      answers: ReflectionAnswers(marks: [], note: "", tempos: [], ways: []),
       reading: TempoReading(bpm: 72, clickSounding: false, click: nil),
       stoppedAt: SessionClock.nowRFC3339(start.addingTimeInterval(42)),
       tempos: [.preview("entry-1-p1", tempo: 72)], elapsedSecs: 42)
@@ -203,13 +201,6 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
-  func testFocusPlayerWithReps() {
-    assertSnapshot(
-      of: host(
-        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
-        store: .previewActiveReps), as: config)
-  }
-
   /// The variation chip, on the one screen where space is tightest (#1739).
   func testFocusPlayerWithVariations() {
     assertSnapshot(
@@ -228,39 +219,5 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       currentVariationId: active.currentVariationIds.first,
       onPick: { _ in true })
     assertSnapshot(of: host(sheet), as: config)
-  }
-
-  func testRepCounter() {
-    let counters = ZStack {
-      PaperBackground()
-      VStack(spacing: 24) {
-        RepCounter(
-          count: 0, slots: 10, touched: false, reached: false, onGotIt: {}, onNotQuite: {})
-        RepCounter(
-          count: 7, slots: 10, touched: true, reached: false, canUndo: true,
-          onGotIt: {}, onNotQuite: {})
-        RepCounter(
-          count: 10, slots: 10, touched: true, reached: true, canUndo: true,
-          onGotIt: {}, onNotQuite: {})
-        RepCounter(
-          count: 12, slots: 10, touched: true, reached: true, extra: 2, canUndo: true,
-          onGotIt: {}, onNotQuite: {})
-      }
-      .padding(16)
-    }
-    assertSnapshot(of: host(counters), as: config)
-  }
-
-  func testRepCounterAccessibilitySize() {
-    let counter = ZStack {
-      PaperBackground()
-      RepCounter(
-        count: 12, slots: 10, touched: true, reached: true, extra: 2, canUndo: true,
-        onGotIt: {}, onNotQuite: {}
-      )
-      .padding(16)
-    }
-    .dynamicTypeSize(.accessibility3)
-    assertSnapshot(of: host(counter), as: config)
   }
 }

@@ -400,7 +400,7 @@ mod tests {
     }
 
     #[test]
-    fn taps_during_a_practice_keep_the_cache() {
+    fn a_tempo_change_during_a_practice_keeps_the_cache() {
         let mut model = sampled();
         let ids: Vec<String> = model.items.iter().take(2).map(|i| i.id.clone()).collect();
         let start = Utc::now();
@@ -419,7 +419,7 @@ mod tests {
 
         send(
             &mut model,
-            Event::Session(SessionEvent::RepGotIt {
+            Event::Session(SessionEvent::TempoChanged {
                 now: start,
                 reading: crate::domain::session::TempoReading::silent(),
             }),
@@ -438,7 +438,7 @@ mod tests {
             crate::domain::session::SessionStatus::Active(_)
         ));
         assert_eq!(library_allocation(&model), kept);
-        assert_current(&mut model, "taps mid-practice");
+        assert_current(&mut model, "a tempo change mid-practice");
     }
 
     #[test]
@@ -538,7 +538,7 @@ mod tests {
         );
         events.extend([
             Event::Session(SessionEvent::StartSession { now: start }),
-            Event::Session(SessionEvent::RepGotIt {
+            Event::Session(SessionEvent::TempoChanged {
                 now: start,
                 reading: crate::domain::session::TempoReading::silent(),
             }),

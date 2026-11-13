@@ -46,66 +46,6 @@ struct ReflectionHandoffTests {
     #expect(ReflectionHandoff.refusalMessage(halted: true, error: error) == Store.haltedMessage)
   }
 
-  // ── The finish answers (#2307, #2308, #2303) ──
-
-  @Test func theKeptPointTheFeltWordAndWhatGotInTheWayLandOnTheEntry() throws {
-    let bridge = RowsBridge()
-    _ = try pieceMidSession(bridge)
-    let note = "Left hand rushed in bar 12, got it at 84"
-    _ = try bridge.update(.session(.updateReflectionDraft(answers: .preview(note: note))))
-    let offers = try #require(try bridge.rendered().activeSession?.record.finish?.noteOffers)
-    let bar = try #require(offers.first { $0.label.contains("12") })
-
-    try submit(
-      bridge,
-      .preview(
-        note: note, felt: .strained, gotInTheWay: [.rhythm, .tension], notePoints: [bar.span]))
-
-    let record = try #require(try bridge.rendered().summary?.entries.first?.record)
-    #expect(record.felt == .strained)
-    #expect(record.gotInTheWay == [.rhythm, .tension])
-    #expect(record.notePoints.map(\.span) == [bar.span])
-  }
-
-  @Test func anAimAnsweredOnTheSheetIsKept() throws {
-    let bridge = RowsBridge()
-    _ = try bridge.update(.startApp)
-    _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "Clair de lune", kind: .piece, composer: nil, key: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
-    let itemId = try #require(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try #require(try bridge.rendered().buildingSetlist?.entries.first?.id)
-    _ = try bridge.update(.session(.setEntryIntention(entryId: entryId, intention: "From memory")))
-    _ = try bridge.update(.session(.startSession(now: "2026-09-21T10:00:00Z")))
-    _ = try bridge.update(
-      .session(.prepareReflection(now: "2026-09-21T10:05:00Z", reading: .silent)))
-    #expect(try bridge.rendered().activeSession?.record.finish?.asksIntention == true)
-
-    try submit(bridge, .preview(intentionMet: .partly))
-
-    #expect(try bridge.rendered().summary?.entries.first?.record.intentionMet == .partly)
-  }
-
-  @Test func theFinishAnswersRideTheSheetsDraft() throws {
-    let bridge = RowsBridge()
-    _ = try pieceMidSession(bridge)
-
-    _ = try bridge.update(
-      .session(
-        .updateReflectionDraft(
-          answers: .preview(felt: .hardWork, gotInTheWay: [.memory], intentionMet: .notYet))))
-
-    let saved = try #require(try bridge.rendered().activeSession?.reflection?.answers)
-    #expect(saved.felt == .hardWork)
-    #expect(saved.gotInTheWay == [.memory])
-    #expect(saved.intentionMet == .notYet)
-  }
-
   // ── The open sheet's draft (#2137) ──
 
   @Test func theSheetReopensFromTheSavedDraftWithWhatWasWritten() throws {

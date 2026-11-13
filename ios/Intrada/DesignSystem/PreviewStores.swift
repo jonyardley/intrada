@@ -149,8 +149,7 @@
       Store(
         bridge: PreviewBridge(
           profile: .previewCellist,
-          practiceDefaults: PracticeDefaults(
-            repTarget: 5, click: .twoAndFour, sessionLengthMins: 40)))
+          practiceDefaults: PracticeDefaults(click: .twoAndFour, sessionLengthMins: 40)))
     }
 
     /// An offline store with curated sample items (specific edge cases).
@@ -263,24 +262,24 @@
           SetlistEntry(
             id: "re1",
             plan: PlannedItem(
-              itemId: "i1", itemType: .exercise, intention: nil, focus: nil, durationSecs: nil,
-              groupId: nil, variationIds: [], repTarget: nil, key: nil),
+              itemId: "i1", itemType: .exercise, intention: nil, durationSecs: nil,
+              groupId: nil, variationIds: [], key: nil),
             itemTitle: "Scales · D♭ major", position: 0, durationSecs: 180, status: .completed,
             notes: nil,
             plays: [
               Play(
                 id: "re1-p1", key: nil, variationIds: [],
-                startedAt: "2026-06-16T08:59:00Z", seconds: 180, repTarget: nil, repCount: nil,
-                repHistory: nil, tempoChanges: [], achievedTempo: nil, clickPattern: nil,
+                startedAt: "2026-06-16T08:59:00Z", seconds: 180, tempoChanges: [],
+                achievedTempo: nil, clickPattern: nil,
                 score: nil, away: [])
-            ], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []),
+            ]),
           SetlistEntry(
             id: "re2",
             plan: PlannedItem(
-              itemId: "i2", itemType: .piece, intention: nil, focus: nil, durationSecs: nil,
-              groupId: nil, variationIds: [], repTarget: nil, key: nil),
+              itemId: "i2", itemType: .piece, intention: nil, durationSecs: nil,
+              groupId: nil, variationIds: [], key: nil),
             itemTitle: "Clair de Lune", position: 1, durationSecs: 0, status: .notAttempted,
-            notes: nil, plays: [], intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []),
+            notes: nil, plays: []),
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
@@ -309,8 +308,8 @@
                 caption: "Exercise", plannedDisplay: nil, relatedLabel: "piece only"),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
-            entryKeys: [], summary: "2 items", startTitle: "Start session")))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], entryKeys: [],
+            summary: "2 items", startTitle: "Start session")))
     }
 
     static var previewBuildingEmpty: Store {
@@ -320,8 +319,8 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
-            entryKeys: [], summary: "0 items", startTitle: "Start session")))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], entryKeys: [],
+            summary: "0 items", startTitle: "Start session")))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -333,7 +332,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "0 items", startTitle: "Start session"),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
@@ -351,7 +350,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "0 items", startTitle: "Start session"),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
@@ -384,7 +383,7 @@
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
             lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
-            focusChoices: [], entryKeys: [],
+            entryKeys: [],
             summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
             startTitle: "Start session \u{B7} 12 min")))
     }
@@ -416,7 +415,7 @@
                 caption: "Exercise", plannedDisplay: nil, relatedLabel: "piece only"),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
             startTitle: "Start session \u{B7} 12 min")))
     }
@@ -440,13 +439,13 @@
                 relatedLabel: "+1 related")
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "12 min \u{B7} 1 block \u{B7} 2 items",
             startTitle: "Start session \u{B7} 12 min")))
     }
 
-    /// The builder with a focused piece and one offering last time
-    /// (#2249, #2303, #2315). `first` replaces the first row, for the sheet.
+    /// The builder with a planned piece and one offering last time
+    /// (#2249, #2315). `first` replaces the first row, for the sheet.
     static func previewBuildingPlanned(
       _ first: SetlistEntryView = .previewPlannedPiece,
       entryKeys: [EntryKeysView] = []
@@ -473,23 +472,19 @@
                 entryId: SetlistEntryView.previewLastTimePiece.id,
                 variationIds: ["v-dot"], label: "Last time: Dotted rhythms", key: nil)
             ],
-            focusChoices: FocusChoiceView.previewChoices, entryKeys: entryKeys,
+            entryKeys: entryKeys,
             summary: "22 min \u{B7} 3 items",
             startTitle: "Start session \u{B7} 22 min")))
     }
 
-    /// Player Focus: a piece mid-session, no reps.
+    /// Player Focus: a piece mid-session.
     static var previewActive: Store {
       Store(bridge: PreviewBridge(activeSession: .previewActive))
     }
 
-    /// Player Focus: an exercise with an active rep counter.
+    /// Player Focus: an exercise well into a long session.
     static var previewActiveLongSession: Store {
       Store(bridge: PreviewBridge(activeSession: .previewActiveLongSession))
-    }
-
-    static var previewActiveReps: Store {
-      Store(bridge: PreviewBridge(activeSession: .previewActiveReps))
     }
 
     /// Player Focus: an exercise with variations, so the picker chip shows

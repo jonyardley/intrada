@@ -178,7 +178,7 @@ struct PreviewFixtureParityTests {
             nextItemStartedAt: "\(day)T09:05:30Z",
             answers: ReflectionAnswers(
               marks: [], note: "", tempos: [DraftTempo(playId: playId, tempo: tempo, click: nil)],
-              felt: nil, gotInTheWay: [], notePoints: [], intentionMet: nil, ways: []))))
+              ways: []))))
       let write = try #require(
         try bridge.update(.session(.saveSession(now: "\(day)T09:06:00Z"))).first {
           if case .persistence(.saveSession) = $0.effect { return true } else { return false }

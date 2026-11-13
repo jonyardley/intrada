@@ -1,6 +1,5 @@
 use super::*;
 use crate::app::{Event, Intrada};
-use crate::domain::bars::BarRange;
 use crate::domain::item::Item;
 use crate::domain::variation::Variation;
 use crate::model::{ActiveSessionView, BuildingSetlistView};
@@ -92,16 +91,6 @@ fn building_view(m: &Model) -> BuildingSetlistView {
     Intrada.view(m).building_setlist.expect("building view")
 }
 
-fn set_duration(m: &mut Model, id: &str, secs: u32) {
-    send(
-        m,
-        SessionEvent::SetEntryDuration {
-            entry_id: id.to_string(),
-            duration_secs: Some(secs),
-        },
-    );
-}
-
 /// As iOS sends it: the click's own state rides every reading.
 fn sounding(bpm: u16) -> TempoReading {
     TempoReading {
@@ -112,15 +101,6 @@ fn sounding(bpm: u16) -> TempoReading {
             sounding: 0b1111,
         }),
     }
-}
-
-/// The piece over twenty minutes, started at `t(0)`.
-fn practising_p() -> Model {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    set_duration(&mut m, &id, 1200);
-    send(&mut m, SessionEvent::StartSession { now: t(0) });
-    m
 }
 
 // ── Time away (#2306) ──
@@ -218,330 +198,6 @@ fn an_away_open_across_a_crash_closes_at_the_last_saved_time() {
     assert_eq!(away.back_at, Some(t(60)));
 }
 
-// ── Intention (#2303) ──
-
-fn set_focus(m: &mut Model, id: &str, kind: FocusKind, target: Option<u16>) {
-    send(
-        m,
-        SessionEvent::SetFocus {
-            entry_id: id.to_string(),
-            focus: Some(IntentionFocus { kind, target }),
-        },
-    );
-}
-
-#[test]
-fn a_focus_is_refused_without_what_it_needs() {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    for (kind, target) in [
-        (FocusKind::Tempo, Some(500)),
-        (FocusKind::Tempo, Some(30)),
-        (FocusKind::CleanReps, Some(0)),
-        (FocusKind::Evenness, Some(3)),
-    ] {
-        set_focus(&mut m, &id, kind, target);
-        assert!(m.last_error.is_some(), "{kind:?} {target:?}");
-        assert_eq!(entries(&m)[0].plan.focus, None);
-    }
-}
-
-#[test]
-fn a_typed_intention_suggests_its_focus() {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    send(
-        &mut m,
-        SessionEvent::SetEntryIntention {
-            entry_id: id.clone(),
-            intention: Some("at 84".to_string()),
-        },
-    );
-
-    let suggested = building_view(&m).entries[0]
-        .record
-        .suggested_focus
-        .clone()
-        .expect("a suggestion");
-    assert_eq!(
-        suggested.focus,
-        IntentionFocus {
-            kind: FocusKind::Tempo,
-            target: Some(84),
-        }
-    );
-    assert_eq!(suggested.label, "At 84");
-
-    set_focus(&mut m, &id, FocusKind::Tempo, Some(84));
-    assert_eq!(
-        building_view(&m).entries[0].record.suggested_focus,
-        None,
-        "nothing left to suggest once it is the focus"
-    );
-}
-
-fn finish_a_with(focus: (FocusKind, Option<u16>), reading: TempoReading) -> Model {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    set_focus(&mut m, &id, focus.0, focus.1);
-    send(&mut m, SessionEvent::StartSession { now: t(0) });
-    send(
-        &mut m,
-        SessionEvent::PrepareReflection {
-            now: t(300),
-            reading,
-        },
-    );
-    m
-}
-
-#[test]
-fn a_tempo_is_met_when_a_play_reached_the_target_with_the_click() {
-    let m = finish_a_with((FocusKind::Tempo, Some(84)), sounding(84));
-
-    let finish = active_view(&m).record.finish.expect("the sheet");
-    assert_eq!(finish.intention_met_read, Some(IntentionMet::Yes));
-    assert!(!finish.asks_intention);
-}
-
-#[test]
-fn a_tempo_short_of_the_target_is_asked_not_read() {
-    let m = finish_a_with((FocusKind::Tempo, Some(84)), sounding(80));
-
-    let finish = active_view(&m).record.finish.expect("the sheet");
-    assert_eq!(finish.intention_met_read, None);
-    assert!(finish.asks_intention);
-}
-
-#[test]
-fn an_answer_is_stored_only_when_asked_and_given() {
-    let mut m = finish_a_with((FocusKind::Evenness, None), TempoReading::silent());
-    let id = entry_id(&m, 0);
-    assert!(active_view(&m).record.finish.expect("sheet").asks_intention);
-
-    send(
-        &mut m,
-        SessionEvent::NextItem {
-            now: t(300),
-            next_item_started_at: t(300),
-            reading: TempoReading::silent(),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::AnswerIntention {
-            entry_id: id,
-            answer: Some(IntentionMet::Partly),
-        },
-    );
-
-    assert_eq!(entries(&m)[0].intention_met, Some(IntentionMet::Partly));
-}
-
-// ── Finish answers (#2307, #2308) ──
-
-fn finished_with_note(note: &str) -> (Model, String) {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    send(&mut m, SessionEvent::StartSession { now: t(0) });
-    send(
-        &mut m,
-        SessionEvent::PrepareReflection {
-            now: t(300),
-            reading: TempoReading::silent(),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::UpdateEntryNotes {
-            entry_id: id.clone(),
-            notes: Some(note.to_string()),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::NextItem {
-            now: t(300),
-            next_item_started_at: t(300),
-            reading: TempoReading::silent(),
-        },
-    );
-    (m, id)
-}
-
-fn span_of(note: &str, text: &str) -> NoteSpan {
-    let start = note.find(text).expect("text in note");
-    NoteSpan {
-        start: start as u32,
-        end: (start + text.len()) as u32,
-    }
-}
-
-/// Notes a musician would type, confirmed through the event the sheet sends
-/// (#1256): what each confirm stores on the entry.
-#[test]
-fn confirming_a_point_stores_what_the_note_said() {
-    let bars = |first, last| NotePointKind::Bars(BarRange { first, last });
-    let cases: Vec<(&str, &str, NotePointKind)> = vec![
-        (
-            "left hand rushed in bar 12, got it at 84",
-            "bar 12",
-            bars(12, 12),
-        ),
-        (
-            "left hand rushed in bar 12, got it at 84",
-            "84",
-            NotePointKind::Tempo { bpm: 84 },
-        ),
-        ("B section fingering in 21-24", "21-24", bars(21, 24)),
-        (
-            "coda from memory, 3 clean",
-            "3 clean",
-            NotePointKind::Repetitions {
-                count: 3,
-                clean: true,
-                in_a_row: false,
-            },
-        ),
-        (
-            "A1 five clean in a row at q=96",
-            "q=96",
-            NotePointKind::Tempo { bpm: 96 },
-        ),
-    ];
-    for (note, text, kind) in cases {
-        let (mut m, id) = finished_with_note(note);
-        send(
-            &mut m,
-            SessionEvent::ConfirmNotePoint {
-                entry_id: id,
-                span: span_of(note, text),
-            },
-        );
-        assert_eq!(
-            entries(&m)[0].note_points,
-            [NotePoint {
-                kind,
-                span: span_of(note, text),
-            }],
-            "{note:?} confirming {text:?}"
-        );
-    }
-}
-
-#[test]
-fn the_sheet_offers_the_points_its_note_reads() {
-    let note = "left hand rushed in bar 12, got it at 84";
-    let mut m = building(&["p"]);
-    send(&mut m, SessionEvent::StartSession { now: t(0) });
-    send(
-        &mut m,
-        SessionEvent::PrepareReflection {
-            now: t(300),
-            reading: TempoReading::silent(),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::UpdateReflectionDraft {
-            answers: ReflectionAnswers {
-                note: note.to_string(),
-                note_points: vec![span_of(note, "84")],
-                ..ReflectionAnswers::default()
-            },
-        },
-    );
-
-    let offers: Vec<(String, bool)> = active_view(&m)
-        .record
-        .finish
-        .expect("the sheet")
-        .note_offers
-        .into_iter()
-        .map(|o| (o.label, o.confirmed))
-        .collect();
-    assert_eq!(
-        offers,
-        [
-            ("Bar 12".to_string(), false),
-            ("\u{2669} = 84".to_string(), true)
-        ]
-    );
-}
-
-#[test]
-fn a_span_the_note_offers_nothing_at_stores_nothing() {
-    let note = "left hand rushed in bar 12";
-    let (mut m, id) = finished_with_note(note);
-    send(
-        &mut m,
-        SessionEvent::ConfirmNotePoint {
-            entry_id: id.clone(),
-            span: span_of(note, "rushed"),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::ConfirmNotePoint {
-            entry_id: id.clone(),
-            span: span_of(note, "bar 12"),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::ConfirmNotePoint {
-            entry_id: id,
-            span: span_of(note, "bar 12"),
-        },
-    );
-
-    assert_eq!(
-        entries(&m)[0].note_points.len(),
-        1,
-        "once, and only a point"
-    );
-}
-
-#[test]
-fn how_it_felt_and_what_got_in_the_way_are_stored_on_the_entry() {
-    let (mut m, id) = finished_with_note("fine");
-    send(
-        &mut m,
-        SessionEvent::SetFelt {
-            entry_id: id.clone(),
-            felt: Some(Felt::Strained),
-        },
-    );
-    for obstacle in [Obstacle::Memory, Obstacle::Tension, Obstacle::Memory] {
-        send(
-            &mut m,
-            SessionEvent::ToggleObstacle {
-                entry_id: id.clone(),
-                obstacle,
-            },
-        );
-    }
-
-    let entry = &entries(&m)[0];
-    assert_eq!(entry.felt, Some(Felt::Strained));
-    assert_eq!(entry.got_in_the_way, [Obstacle::Tension]);
-}
-
-#[test]
-fn finish_answers_are_refused_on_an_entry_never_finished() {
-    let mut m = practising_p();
-    let id = entry_id(&m, 0);
-    send(
-        &mut m,
-        SessionEvent::SetFelt {
-            entry_id: id,
-            felt: Some(Felt::Comfortable),
-        },
-    );
-
-    assert_eq!(entries(&m)[0].felt, None);
-}
-
 // ── Builder rules the core owns (#2393) ──
 
 #[test]
@@ -558,135 +214,6 @@ fn an_unknown_variation_is_refused_and_plans_nothing() {
 
     assert!(m.last_error.is_some());
     assert!(entries(&m)[0].plan.variation_ids.is_empty());
-}
-
-fn with_piece_bpm(m: &mut Model, bpm: Option<u16>) {
-    let item = m.items.iter_mut().find(|i| i.id == "p").expect("p");
-    item.tempo = bpm.map(|bpm| crate::domain::types::Tempo {
-        marking: None,
-        bpm: Some(bpm),
-    });
-}
-
-/// A tempo focus starts at the piece's own marked tempo, held to what the
-/// click plays (#2406, decided with sections gone on 2026-11-08).
-#[test]
-fn a_numbered_focus_sent_without_a_target_starts_from_the_core() {
-    for (kind, bpm, starts) in [
-        (FocusKind::Tempo, Some(72), 72),
-        (FocusKind::Tempo, Some(300), 208),
-        (FocusKind::Tempo, None, 96),
-        (FocusKind::CleanReps, Some(72), 1),
-    ] {
-        let mut m = building(&["p"]);
-        with_piece_bpm(&mut m, bpm);
-        let id = entry_id(&m, 0);
-        set_focus(&mut m, &id, kind, None);
-        assert!(m.last_error.is_none(), "{:?}", m.last_error);
-        assert_eq!(
-            entries(&m)[0].plan.focus.as_ref().and_then(|f| f.target),
-            Some(starts),
-            "{kind:?} {bpm:?}"
-        );
-    }
-}
-
-#[test]
-fn each_focus_choice_carries_the_range_its_target_is_held_to() {
-    let m = building(&["p"]);
-    let ranges: Vec<Option<(u16, u16, u16)>> = building_view(&m)
-        .focus_choices
-        .iter()
-        .map(|c| c.target.as_ref().map(|t| (t.min, t.max, t.step)))
-        .collect();
-
-    assert_eq!(ranges, [Some((40, 208, 2)), Some((1, 100, 1)), None, None]);
-}
-
-#[test]
-fn a_target_at_each_end_of_its_range_is_taken() {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    for (kind, target) in [
-        (FocusKind::Tempo, 40),
-        (FocusKind::Tempo, 208),
-        (FocusKind::CleanReps, 1),
-        (FocusKind::CleanReps, 100),
-    ] {
-        set_focus(&mut m, &id, kind, Some(target));
-        assert!(m.last_error.is_none(), "{kind:?} {target}");
-    }
-    for (kind, target) in [
-        (FocusKind::Tempo, 39),
-        (FocusKind::Tempo, 209),
-        (FocusKind::CleanReps, 101),
-    ] {
-        set_focus(&mut m, &id, kind, Some(target));
-        assert!(m.last_error.is_some(), "{kind:?} {target}");
-    }
-}
-
-#[test]
-fn a_focus_shows_its_target_as_a_caption() {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    for (kind, target, caption) in [
-        (FocusKind::Tempo, Some(84), Some("\u{2669} = 84")),
-        (FocusKind::CleanReps, Some(5), Some("5 clean in a row")),
-        (FocusKind::FromMemory, None, None),
-    ] {
-        set_focus(&mut m, &id, kind, target);
-        let focus = building_view(&m).entries[0].record.focus.clone();
-        assert_eq!(
-            focus.and_then(|f| f.target_caption).as_deref(),
-            caption,
-            "{kind:?}"
-        );
-    }
-}
-
-#[test]
-fn twenty_clean_in_a_row_offers_a_focus_the_stepper_can_show() {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    send(
-        &mut m,
-        SessionEvent::SetEntryIntention {
-            entry_id: id,
-            intention: Some("20 clean in a row".to_string()),
-        },
-    );
-
-    let view = building_view(&m);
-    let suggested = view.entries[0]
-        .record
-        .suggested_focus
-        .clone()
-        .expect("a suggestion");
-    assert_eq!(suggested.focus.kind, FocusKind::CleanReps);
-    assert_eq!(suggested.focus.target, Some(20));
-    let range = view
-        .focus_choices
-        .iter()
-        .find(|c| c.kind == FocusKind::CleanReps)
-        .and_then(|c| c.target.clone())
-        .expect("a range");
-    assert!((range.min..=range.max).contains(&20));
-}
-
-#[test]
-fn a_typed_tempo_the_click_cannot_play_suggests_nothing() {
-    let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
-    send(
-        &mut m,
-        SessionEvent::SetEntryIntention {
-            entry_id: id,
-            intention: Some("A1 at 30".to_string()),
-        },
-    );
-
-    assert_eq!(building_view(&m).entries[0].record.suggested_focus, None);
 }
 
 // ── Last time ──
@@ -752,95 +279,6 @@ fn last_time_is_offered_and_one_tap_plans_it() {
     assert_eq!(entry.plan.variation_ids, ["v-dot"]);
 }
 
-fn saved_with_focus(way: PlayWay, focus: IntentionFocus) -> PracticeSession {
-    let mut saved = saved_session_playing("p", way, t(-100_000));
-    saved.entries[0].plan.focus = Some(focus);
-    saved
-}
-
-fn tempo_focus(target: u16) -> IntentionFocus {
-    IntentionFocus {
-        kind: FocusKind::Tempo,
-        target: Some(target),
-    }
-}
-
-fn building_p(m: &mut Model) -> String {
-    send(m, SessionEvent::StartBuilding);
-    send(
-        m,
-        SessionEvent::AddToSetlist {
-            item_id: "p".to_string(),
-        },
-    );
-    entry_id(m, 0)
-}
-
-#[test]
-fn last_times_aim_is_offered_and_one_tap_plans_it_too() {
-    let mut m = model();
-    let way = PlayWay {
-        key: None,
-        variation_ids: vec!["v-dot".to_string()],
-    };
-    m.sessions = vec![saved_with_focus(way, tempo_focus(84))].into();
-    let id = building_p(&mut m);
-
-    let offers = building_view(&m).last_times;
-    assert_eq!(offers[0].label, "Last time: Dotted · At 84");
-
-    send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
-    let entry = &entries(&m)[0];
-    assert_eq!(entry.plan.variation_ids, ["v-dot"]);
-    assert_eq!(entry.plan.focus, Some(tempo_focus(84)));
-}
-
-#[test]
-fn an_aim_the_builder_would_refuse_is_not_offered() {
-    for focus in [tempo_focus(30), tempo_focus(220)] {
-        let mut m = model();
-        let way = PlayWay {
-            variation_ids: vec!["v-dot".to_string()],
-            ..PlayWay::default()
-        };
-        m.sessions = vec![saved_with_focus(way, focus.clone())].into();
-        let id = building_p(&mut m);
-
-        assert_eq!(
-            building_view(&m).last_times[0].label,
-            "Last time: Dotted",
-            "{focus:?}"
-        );
-        send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
-        assert_eq!(entries(&m)[0].plan.focus, None, "{focus:?}");
-    }
-}
-
-/// An aim set for a piece that was then skipped was never practised, so it
-/// is not last time's (#2397).
-#[test]
-fn an_aim_from_a_piece_left_unplayed_is_not_offered() {
-    let stray_tap = Play {
-        seconds: 2,
-        score: None,
-        rep_count: None,
-        ..Play::fixture()
-    };
-    assert!(stray_tap.is_incidental());
-    for plays in [vec![], vec![stray_tap]] {
-        let mut m = model();
-        let mut saved = saved_with_focus(PlayWay::default(), tempo_focus(84));
-        saved.entries[0].plays = plays;
-        saved.entries[0].status = EntryStatus::Skipped;
-        m.sessions = vec![saved].into();
-        let id = building_p(&mut m);
-
-        assert!(building_view(&m).last_times.is_empty());
-        send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
-        assert_eq!(entries(&m)[0].plan.focus, None);
-    }
-}
-
 #[test]
 fn last_time_is_offered_only_while_nothing_is_planned() {
     let mut m = model();
@@ -863,16 +301,6 @@ fn last_time_is_offered_only_while_nothing_is_planned() {
     let id = entry_id(&m, 0);
     assert_eq!(building_view(&m).last_times.len(), 1);
 
-    set_focus(&mut m, &id, FocusKind::FromMemory, None);
-    assert!(building_view(&m).last_times.is_empty(), "a focus is a plan");
-
-    send(
-        &mut m,
-        SessionEvent::SetFocus {
-            entry_id: id.clone(),
-            focus: None,
-        },
-    );
     send(
         &mut m,
         SessionEvent::SetEntryVariations {
@@ -904,21 +332,6 @@ fn last_time_is_offered_only_while_nothing_is_planned() {
 fn every_field_set() -> ActiveSession {
     let mut entry = SetlistEntry::fixture();
     entry.status = EntryStatus::Completed;
-    entry.plan.focus = Some(IntentionFocus {
-        kind: FocusKind::Tempo,
-        target: Some(84),
-    });
-    entry.intention_met = Some(IntentionMet::Partly);
-    entry.felt = Some(Felt::HardWork);
-    entry.got_in_the_way = vec![Obstacle::Fingering, Obstacle::Tone];
-    entry.note_points = vec![NotePoint {
-        kind: NotePointKind::Repetitions {
-            count: 5,
-            clean: true,
-            in_a_row: true,
-        },
-        span: NoteSpan { start: 3, end: 22 },
-    }];
     entry.plays = vec![Play {
         away: vec![
             Away {
@@ -944,10 +357,7 @@ fn every_field_set() -> ActiveSession {
             now: t(600),
             reading: sounding(84),
             answers: ReflectionAnswers {
-                felt: Some(Felt::Comfortable),
-                got_in_the_way: vec![Obstacle::Notes],
-                note_points: vec![NoteSpan { start: 0, end: 6 }],
-                intention_met: Some(IntentionMet::Yes),
+                note: "steady".to_string(),
                 ..ReflectionAnswers::default()
             },
         }),
@@ -959,13 +369,6 @@ fn the_v017_record_and_its_events_round_trip_on_the_ffi_bincode_wire() {
     use crate::domain::types::assert_round_trips;
     assert_round_trips(every_field_set());
     for event in [
-        SessionEvent::SetFocus {
-            entry_id: "e1".to_string(),
-            focus: Some(IntentionFocus {
-                kind: FocusKind::CleanReps,
-                target: Some(5),
-            }),
-        },
         SessionEvent::ApplyLastTime {
             entry_id: "e1".to_string(),
         },
@@ -976,22 +379,6 @@ fn the_v017_record_and_its_events_round_trip_on_the_ffi_bincode_wire() {
         SessionEvent::WentAway { at: t(2) },
         SessionEvent::CameBack { at: t(3) },
         SessionEvent::LeaveAwayOut,
-        SessionEvent::ConfirmNotePoint {
-            entry_id: "e1".to_string(),
-            span: NoteSpan { start: 1, end: 2 },
-        },
-        SessionEvent::SetFelt {
-            entry_id: "e1".to_string(),
-            felt: None,
-        },
-        SessionEvent::ToggleObstacle {
-            entry_id: "e1".to_string(),
-            obstacle: Obstacle::Rhythm,
-        },
-        SessionEvent::AnswerIntention {
-            entry_id: "e1".to_string(),
-            answer: Some(IntentionMet::NotYet),
-        },
     ] {
         assert_round_trips(Event::Session(event));
     }
@@ -1008,70 +395,6 @@ fn the_v017_record_round_trips_through_storage() {
 
     assert_eq!(read.unreadable, Vec::<String>::new());
     assert_eq!(read.session, session);
-}
-
-#[test]
-fn each_felt_choice_is_stored_as_its_word_and_reads_back() {
-    for (felt, word) in [
-        (Felt::Comfortable, "comfortable"),
-        (Felt::HardWork, "hard_work"),
-        (Felt::Strained, "strained"),
-    ] {
-        let mut session = saved_session_playing("p", PlayWay::default(), t(0));
-        session.entries[0].felt = Some(felt);
-
-        let row = crate::stored_session::session_to_stored(&session).expect("writes");
-        let read = crate::stored_session::session_from_stored(&row).expect("reads");
-
-        assert!(
-            row.entries.contains(&format!("\"felt\":\"{word}\"")),
-            "{felt:?} stored as {word}: {}",
-            row.entries
-        );
-        assert_eq!(read.unreadable, Vec::<String>::new());
-        assert_eq!(read.session.entries[0].felt, Some(felt));
-    }
-}
-
-#[test]
-fn the_finish_sheet_offers_the_felt_choices_in_order_with_their_words() {
-    let m = sheet_open_on("", ReflectionAnswers::default());
-    let choices = active_view(&m)
-        .record
-        .finish
-        .expect("the sheet")
-        .felt_choices;
-
-    assert_eq!(
-        choices
-            .iter()
-            .map(|c| (c.felt, c.label.as_str()))
-            .collect::<Vec<_>>(),
-        [
-            (Felt::Comfortable, "Comfortable"),
-            (Felt::HardWork, "Hard work"),
-            (Felt::Strained, "Strained"),
-        ]
-    );
-}
-
-#[test]
-fn the_builder_offers_the_focus_kinds_in_order_with_their_words() {
-    let m = building(&["p"]);
-    let choices = building_view(&m).focus_choices;
-
-    assert_eq!(
-        choices
-            .iter()
-            .map(|c| (c.kind, c.label.as_str()))
-            .collect::<Vec<_>>(),
-        [
-            (FocusKind::Tempo, "Tempo"),
-            (FocusKind::CleanReps, "Clean in a row"),
-            (FocusKind::FromMemory, "From memory"),
-            (FocusKind::Evenness, "Evenness"),
-        ]
-    );
 }
 
 fn sheet_open_on(note: &str, answers: ReflectionAnswers) -> Model {
@@ -1097,140 +420,11 @@ fn sheet_open_on(note: &str, answers: ReflectionAnswers) -> Model {
 }
 
 #[test]
-fn a_draft_drops_a_span_its_edited_note_no_longer_offers() {
-    let note = "rushed in bar 12";
-    let m = sheet_open_on(
-        note,
-        ReflectionAnswers {
-            note_points: vec![NoteSpan { start: 0, end: 6 }, span_of(note, "bar 12")],
-            ..ReflectionAnswers::default()
-        },
-    );
+fn a_padded_draft_note_is_kept_trimmed() {
+    let m = sheet_open_on("  rushed in bar 12\n", ReflectionAnswers::default());
 
     let draft = &active(&m).reflection.as_ref().expect("draft").answers;
-    assert_eq!(draft.note, note, "kept, not refused");
-    assert_eq!(draft.note_points, [span_of(note, "bar 12")]);
-}
-
-#[test]
-fn a_padded_draft_note_is_kept_trimmed_with_its_points() {
-    let note = "rushed in bar 12";
-    let m = sheet_open_on(
-        "  rushed in bar 12\n",
-        ReflectionAnswers {
-            note_points: vec![span_of(note, "bar 12")],
-            ..ReflectionAnswers::default()
-        },
-    );
-
-    let draft = &active(&m).reflection.as_ref().expect("draft").answers;
-    assert_eq!(draft.note, note);
-    assert_eq!(draft.note_points, [span_of(note, "bar 12")]);
-}
-
-#[test]
-fn a_draft_naming_an_obstacle_twice_is_refused() {
-    let m = sheet_open_on(
-        "fine",
-        ReflectionAnswers {
-            got_in_the_way: vec![Obstacle::Tone, Obstacle::Tone],
-            ..ReflectionAnswers::default()
-        },
-    );
-
-    let draft = &active(&m).reflection.as_ref().expect("draft").answers;
-    assert!(draft.note.is_empty(), "refused whole");
-}
-
-#[test]
-fn editing_the_note_drops_points_it_no_longer_reads() {
-    let note = "left hand rushed in bar 12, got it at 84";
-    let (mut m, id) = finished_with_note(note);
-    for text in ["bar 12", "84"] {
-        send(
-            &mut m,
-            SessionEvent::ConfirmNotePoint {
-                entry_id: id.clone(),
-                span: span_of(note, text),
-            },
-        );
-    }
-    let edited = "left hand rushed in bar 12, got it at 88";
-    send(
-        &mut m,
-        SessionEvent::UpdateEntryNotes {
-            entry_id: id,
-            notes: Some(edited.to_string()),
-        },
-    );
-
-    let kinds: Vec<NotePointKind> = entries(&m)[0]
-        .note_points
-        .iter()
-        .map(|p| p.kind.clone())
-        .collect();
-    assert_eq!(
-        kinds,
-        [NotePointKind::Bars(BarRange {
-            first: 12,
-            last: 12
-        })]
-    );
-}
-
-#[test]
-fn an_answer_without_an_intention_is_not_stored() {
-    let (mut m, id) = finished_with_note("fine");
-    send(
-        &mut m,
-        SessionEvent::AnswerIntention {
-            entry_id: id,
-            answer: Some(IntentionMet::Yes),
-        },
-    );
-
-    assert_eq!(entries(&m)[0].intention_met, None);
-}
-
-#[test]
-fn a_given_answer_survives_a_tempo_typed_after_the_sheet() {
-    let mut m = finish_a_with((FocusKind::Tempo, Some(84)), sounding(72));
-    let id = entry_id(&m, 0);
-    assert!(active_view(&m).record.finish.expect("sheet").asks_intention);
-    let play_id = entries(&m)[0].plays[0].id.clone();
-    send(
-        &mut m,
-        SessionEvent::NextItem {
-            now: t(300),
-            next_item_started_at: t(300),
-            reading: TempoReading::silent(),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::UpdateEntryTempo {
-            entry_id: id.clone(),
-            play_id,
-            tempo: Some(84),
-            user_set: true,
-            click: None,
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::AnswerIntention {
-            entry_id: id,
-            answer: Some(IntentionMet::NotYet),
-        },
-    );
-
-    assert_eq!(entries(&m)[0].intention_met, Some(IntentionMet::NotYet));
-    let shown = &Intrada.view(&m).summary.expect("summary").entries[0].record;
-    assert_eq!(
-        (shown.intention_met, shown.intention_met_read),
-        (Some(IntentionMet::NotYet), false),
-        "their own answer, not the read"
-    );
+    assert_eq!(draft.note, "rushed in bar 12");
 }
 
 #[test]
@@ -1393,21 +587,6 @@ fn a_gap_from_before_a_resume_mid_play_is_not_taken_off() {
     );
 
     assert_eq!(entries(&fresh)[0].plays[0].seconds, 100);
-}
-
-#[test]
-fn a_span_confirmed_twice_in_a_draft_is_kept_once() {
-    let note = "rushed in bar 12";
-    let m = sheet_open_on(
-        note,
-        ReflectionAnswers {
-            note_points: vec![span_of(note, "bar 12"), span_of(note, "bar 12")],
-            ..ReflectionAnswers::default()
-        },
-    );
-
-    let draft = &active(&m).reflection.as_ref().expect("draft").answers;
-    assert_eq!(draft.note_points, [span_of(note, "bar 12")]);
 }
 
 // ── Linked exercises, keys and the scoring confirm (the rest of #2249) ──
@@ -2153,7 +1332,7 @@ fn no_key_row_when_the_only_key_kept_is_the_written_one() {
 
 #[test]
 fn a_blank_submitted_note_leaves_the_note_already_there() {
-    let mut m = finish_a_with((FocusKind::Evenness, None), TempoReading::silent());
+    let mut m = sheet_open_on("", ReflectionAnswers::default());
     let entry_id = entry_id(&m, 0);
     send(
         &mut m,
@@ -2183,7 +1362,7 @@ fn a_submitted_note_is_stored_trimmed_and_blank_is_no_note() {
         ("  rushed in bar 12\n", Some("rushed in bar 12")),
         (" \n ", None),
     ] {
-        let mut m = finish_a_with((FocusKind::Evenness, None), TempoReading::silent());
+        let mut m = sheet_open_on("", ReflectionAnswers::default());
 
         send(
             &mut m,
@@ -2202,21 +1381,16 @@ fn a_submitted_note_is_stored_trimmed_and_blank_is_no_note() {
 }
 
 #[test]
-fn one_submit_writes_the_way_the_point_the_felt_word_the_obstacle_and_the_aim() {
-    let mut m = finish_a_with((FocusKind::Evenness, None), TempoReading::silent());
+fn one_submit_writes_the_note_and_the_way() {
+    let mut m = sheet_open_on("", ReflectionAnswers::default());
     let play_id = entries(&m)[0].plays[0].id.clone();
-    let note = "rushed in bar 12";
 
     send(
         &mut m,
         SessionEvent::SubmitReflection {
             next_item_started_at: t(300),
             answers: ReflectionAnswers {
-                note: note.to_string(),
-                note_points: vec![span_of(note, "bar 12")],
-                felt: Some(Felt::Strained),
-                got_in_the_way: vec![Obstacle::Memory],
-                intention_met: Some(IntentionMet::Partly),
+                note: "rushed in bar 12".to_string(),
                 ways: vec![DraftWay {
                     play_id,
                     key: None,
@@ -2234,8 +1408,5 @@ fn one_submit_writes_the_way_the_point_the_felt_word_the_obstacle_and_the_aim() 
         ["v-dot"],
         "the way changed by hand"
     );
-    assert_eq!(entry.note_points.len(), 1, "read from the note as stored");
-    assert_eq!(entry.felt, Some(Felt::Strained));
-    assert_eq!(entry.got_in_the_way, [Obstacle::Memory]);
-    assert_eq!(entry.intention_met, Some(IntentionMet::Partly));
+    assert_eq!(entry.notes.as_deref(), Some("rushed in bar 12"));
 }

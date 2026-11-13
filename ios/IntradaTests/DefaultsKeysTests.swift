@@ -15,7 +15,8 @@ struct DefaultsKeysTests {
     #expect(Store.legacySortMovesToKey == "intrada.library-sort.v1")
     #expect(Store.profileDefaultsKey == "intrada.profile.v\(profileBlobVersion())")
     #expect(Store.firstRunKey == "intrada.first-run.v\(firstRunBlobVersion())")
-    #expect(Store.practiceDefaultsKey == "intrada.practice-defaults.v2")  // gitleaks:allow
+    #expect(Store.practiceDefaultsKey == "intrada.practice-defaults.v3")  // gitleaks:allow
+    #expect(Store.previousPracticeDefaultsKey == "intrada.practice-defaults.v2")  // gitleaks:allow
     #expect(Store.sessionInProgressKey == "intrada.session-in-progress.v\(sessionBlobVersion())")
   }
 }

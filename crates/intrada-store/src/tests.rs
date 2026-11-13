@@ -8,7 +8,7 @@ use intrada_core::domain::chart::{
     parse_chart, Bar, ChartChord, ChartSection, ChordChart, ChordQuality, ChordSymbol,
 };
 use intrada_core::domain::link::ExerciseLink;
-use intrada_core::domain::session::{Play, RepAction, RepEvent};
+use intrada_core::domain::session::{Play, TempoChange};
 use intrada_core::domain::{Metre, Variation};
 use intrada_core::persistence::{StoredItem, StoredPracticeSession, StoredRecords};
 use intrada_core::sync::{RecordKey, RecordKind};
@@ -31,10 +31,14 @@ fn at(text: &str) -> DateTime<Utc> {
 /// Migrated to `version`, seeded with raw rows at that schema, then opened,
 /// which finishes the migrations: the GRDB store's `upgradeTestStore`.
 fn upgraded(version: &str, seed: &str) -> Store {
+    upgraded_to(version, seed, migrations::latest())
+}
+
+fn upgraded_to(version: &str, seed: &str, target: &str) -> Store {
     let mut conn = Connection::open_in_memory().expect("opens");
     migrations::migrate(&mut conn, version, &mut vec![]).expect("migrates");
     conn.execute_batch(seed).expect("seeds");
-    Store::new(conn, migrations::latest()).expect("finishes")
+    Store::new(conn, target).expect("finishes")
 }
 
 impl Store {
@@ -212,15 +216,6 @@ fn record(id: &str, title: &str) -> Item {
     }
 }
 
-fn tap(action: RepAction, time: &str) -> RepEvent {
-    RepEvent {
-        action,
-        at: at(time),
-        tempo: None,
-        click_sounding: None,
-    }
-}
-
 /// `LibraryStoreTests.entry`.
 fn entry(id: &str) -> SetlistEntry {
     SetlistEntry {
@@ -229,11 +224,9 @@ fn entry(id: &str) -> SetlistEntry {
             item_id: format!("item-{id}"),
             item_type: ItemKind::Exercise,
             intention: Some("evenness".into()),
-            focus: None,
             duration_secs: Some(300),
             group_id: None,
             variation_ids: vec![],
-            rep_target: Some(5),
             key: None,
         },
         item_title: "Etude".into(),
@@ -247,23 +240,16 @@ fn entry(id: &str) -> SetlistEntry {
             variation_ids: vec![],
             started_at: at(EARLY),
             seconds: 300,
-            rep_target: Some(5),
-            rep_count: Some(5),
-            rep_history: Some(vec![
-                tap(RepAction::Success, "2026-01-01T00:01:00Z"),
-                tap(RepAction::Missed, "2026-01-01T00:02:00Z"),
-                tap(RepAction::Success, "2026-01-01T00:03:30Z"),
-            ]),
-            tempo_changes: vec![],
+            tempo_changes: vec![TempoChange {
+                at: at("2026-01-01T00:01:00Z"),
+                tempo: 120,
+                click_sounding: true,
+            }],
             achieved_tempo: Some(120),
             click_pattern: None,
             score: Some(4),
             away: vec![],
         }],
-        intention_met: None,
-        felt: None,
-        got_in_the_way: vec![],
-        note_points: vec![],
     }
 }
 
@@ -545,12 +531,6 @@ fn v19_keeps_every_key_chart_and_session() {
     let play = &entry.plays[0];
     assert_eq!(play.score, Some(7));
     assert_eq!(play.variation_ids, Vec::<String>::new());
-    let taps = play.rep_history.clone().expect("taps");
-    assert_eq!(
-        taps.iter().map(|t| t.action).collect::<Vec<_>>(),
-        vec![RepAction::Success]
-    );
-    assert_eq!(taps[0].tempo, None);
     assert_eq!(play.tempo_changes, vec![]);
 }
 
@@ -757,7 +737,11 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
              completion_status, entries, updated_at)
            VALUES ('s1', '{EARLY}', '{EARLY}', 600, 'completed', '{entries}', '{EARLY}');"
     );
-    let mut store = upgraded("v21_drop_unread_tables_and_columns", &seed);
+    let mut store = upgraded_to(
+        "v21_drop_unread_tables_and_columns",
+        &seed,
+        "v22_remove_sections",
+    );
 
     assert!(!tables(&store.conn).contains(&"section".to_string()));
     let link_columns: Vec<String> = rows(&store.conn, "exercise_link")[0]
@@ -851,14 +835,6 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
         "a play that was a section keeps its time, not its mark"
     );
     assert_eq!(plays[1].score, Some(6), "a plain play keeps its mark");
-    assert_eq!(
-        session.entries[0]
-            .plan
-            .focus
-            .as_ref()
-            .and_then(|f| f.target),
-        Some(84)
-    );
 }
 
 #[test]
@@ -874,13 +850,86 @@ fn v22_names_a_session_whose_entries_will_not_read_and_leaves_it() {
         .expect("migrates");
     conn.execute_batch(&seed).expect("seeds");
     let mut unreadable = Vec::new();
-    migrations::migrate(&mut conn, migrations::latest(), &mut unreadable).expect("migrates");
+    migrations::migrate(&mut conn, "v22_remove_sections", &mut unreadable).expect("migrates");
     unreadable.sort();
     assert_eq!(
         unreadable,
         [
             "v22_remove_sections skipped row s1",
             "v22_remove_sections skipped row s2"
+        ]
+    );
+    for (id, written) in [("s1", "not json"), ("s2", "{}")] {
+        let entries: String = conn
+            .query_row("SELECT entries FROM session WHERE id = ?1", [id], |r| {
+                r.get(0)
+            })
+            .expect("a row");
+        assert_eq!(entries, written, "{id}");
+    }
+}
+
+/// The rows below are what the codec wrote before #2791 and what builds before
+/// #1739 wrote (`stored_session/tests.rs`), copied, never made to fit the step;
+/// `extra` and the `repTarget` inside a tempo change are decoys that must stay.
+const V23_MODERN: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v1"],"plannedRepTarget":5,"plays":[{"id":"p1","key":{"key":"G","modality":"minor"},"variationIds":["v1"],"startedAt":"2026-09-01T10:00:00Z","seconds":300,"repTarget":5,"repCount":2,"repHistory":[{"action":"success","at":"2026-09-01T10:00:00Z","tempo":80,"clickSounding":true}],"tempoChanges":[{"at":"2026-09-01T10:00:00Z","tempo":80,"clickSounding":true,"repTarget":9}],"achievedTempo":80,"clickPattern":{"metre":{"beats":6,"unit":8,"groups":[3,3]},"sounding":9},"score":7,"away":[{"leftAt":"2026-09-01T10:00:00Z","backAt":"2026-09-01T10:00:00Z","leftOut":true}]},{"id":"p2","startedAt":"2026-09-01T10:05:00Z","seconds":300,"repTarget":5}],"focus":{"kind":"tempo","target":84},"intentionMet":"partly","felt":"hard_work","gotInTheWay":["rhythm","tension"],"notePoints":[{"kind":"bars","first":3,"last":4,"start":0,"end":10},{"kind":"tempo","bpm":80,"start":14,"end":16},{"kind":"repetitions","count":3,"clean":true,"inARow":true,"start":18,"end":20}],"plannedKey":{"key":"G","modality":"minor"},"extra":{"focus":1,"repCount":2}},{"id":"e2","itemId":"i2","itemTitle":"Scales","itemType":"exercise","position":1,"durationSecs":0,"status":"not_attempted","plays":[]}]"#;
+
+const V23_MODERN_AFTER: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Waltz","itemType":"piece","position":0,"durationSecs":600,"status":"completed","notes":"bars 3 to 4 at 80","intention":"even semiquavers","plannedDurationSecs":600,"groupId":"g1","plannedVariationIds":["v1"],"plays":[{"id":"p1","key":{"key":"G","modality":"minor"},"variationIds":["v1"],"startedAt":"2026-09-01T10:00:00Z","seconds":300,"tempoChanges":[{"at":"2026-09-01T10:00:00Z","tempo":80,"clickSounding":true,"repTarget":9}],"achievedTempo":80,"clickPattern":{"metre":{"beats":6,"unit":8,"groups":[3,3]},"sounding":9},"score":7,"away":[{"leftAt":"2026-09-01T10:00:00Z","backAt":"2026-09-01T10:00:00Z","leftOut":true}]},{"id":"p2","startedAt":"2026-09-01T10:05:00Z","seconds":300}],"plannedKey":{"key":"G","modality":"minor"},"extra":{"focus":1,"repCount":2}},{"id":"e2","itemId":"i2","itemTitle":"Scales","itemType":"exercise","position":1,"durationSecs":0,"status":"not_attempted","plays":[]}]"#;
+
+const V23_LEGACY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Major Scales","itemType":"exercise","position":0,"durationSecs":600,"status":"completed","score":7,"intention":"even tone","repTarget":10,"repCount":8,"repTargetReached":false,"repHistory":[{"action":"success","at":"2026-09-01T10:01:00Z"},{"action":"missed","at":"2026-09-01T10:02:00Z"}],"plannedDurationSecs":600,"achievedTempo":120,"clickPattern":{"metre":{"beats":3,"unit":4},"sounding":1},"groupId":"g1","variantId":"v-c"},{"id":"e2","itemId":"i2","itemTitle":"Hanon No. 1","itemType":"exercise","position":1,"durationSecs":0,"status":"skipped","repTarget":10,"repCount":4,"repTargetReached":false},{"id":"e3","itemId":"i3","itemTitle":"X","itemType":"piece","position":2,"durationSecs":0,"status":"completed","repTarget":5,"repCount":1,"repHistory":["success","missed"]}]"#;
+
+const V23_LEGACY_AFTER: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Major Scales","itemType":"exercise","position":0,"durationSecs":600,"status":"completed","score":7,"intention":"even tone","plannedDurationSecs":600,"achievedTempo":120,"clickPattern":{"metre":{"beats":3,"unit":4},"sounding":1},"groupId":"g1","variantId":"v-c"},{"id":"e2","itemId":"i2","itemTitle":"Hanon No. 1","itemType":"exercise","position":1,"durationSecs":0,"status":"skipped"},{"id":"e3","itemId":"i3","itemTitle":"X","itemType":"piece","position":2,"durationSecs":0,"status":"completed"}]"#;
+
+fn v23_seed(rows: &[(&str, &str)]) -> String {
+    rows.iter()
+        .map(|(id, entries)| {
+            format!(
+                "INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+                     completion_status, session_notes, entries, session_score, capture_version,
+                     updated_at)
+                   VALUES ('{id}', '{EARLY}', '{EARLY}', 600, 'completed', 'focus on rhythm',
+                     '{entries}', 7, 1, '{EARLY}');"
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn v23_removes_focus_repetitions_and_the_finish_answers_and_keeps_every_other_value() {
+    let seed = v23_seed(&[("s1", V23_MODERN), ("s2", V23_LEGACY)]);
+    let store = upgraded("v22_remove_sections", &seed);
+
+    for (id, expected) in [("s1", V23_MODERN_AFTER), ("s2", V23_LEGACY_AFTER)] {
+        let raw = store
+            .raw(&format!("SELECT entries FROM session WHERE id = '{id}'"))
+            .expect("a row");
+        assert_eq!(raw, expected, "{id}");
+        assert_eq!(
+            store.raw(&format!(
+                "SELECT session_notes || '|' || session_score || '|' || capture_version
+                   || '|' || updated_at || '|' || total_duration_secs
+                 FROM session WHERE id = '{id}'"
+            )),
+            Some(format!("focus on rhythm|7|1|{EARLY}|600")),
+            "{id}: the other columns, the change time included, are left alone"
+        );
+    }
+}
+
+#[test]
+fn v23_names_a_session_whose_entries_will_not_read_and_leaves_it() {
+    let mut conn = Connection::open_in_memory().expect("opens");
+    migrations::migrate(&mut conn, "v22_remove_sections", &mut vec![]).expect("migrates");
+    conn.execute_batch(&v23_seed(&[("s1", "not json"), ("s2", "{}")]))
+        .expect("seeds");
+    let mut unreadable = Vec::new();
+    migrations::migrate(&mut conn, migrations::latest(), &mut unreadable).expect("migrates");
+    unreadable.sort();
+    assert_eq!(
+        unreadable,
+        [
+            "v23_remove_focus_and_repetitions skipped row s1",
+            "v23_remove_focus_and_repetitions skipped row s2"
         ]
     );
     for (id, written) in [("s1", "not json"), ("s2", "{}")] {

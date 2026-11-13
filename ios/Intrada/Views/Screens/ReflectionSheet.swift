@@ -48,18 +48,10 @@ struct ReflectionPlay: Identifiable, Equatable {
   /// exercise with no variations).
   let variationLabel: String?
   let durationDisplay: String
-  let repCount: UInt8?
-  let repTarget: UInt8?
   /// Whether the core predicts this play survives the terminal drop (#1758).
   let isMarkable: Bool
 
   var title: String { variationLabel ?? "No variation" }
-
-  var meta: String {
-    var parts = [durationDisplay]
-    if let repTarget { parts.append("\(repCount ?? 0) of \(repTarget)") }
-    return parts.joined(separator: " · ")
-  }
 
   /// Reads each play's own stamped seconds: `PrepareReflection` gives the still-open play its real duration first.
   static func rows(_ plays: [PlayView]) -> [ReflectionPlay] {
@@ -67,7 +59,7 @@ struct ReflectionPlay: Identifiable, Equatable {
       ReflectionPlay(
         id: play.id, variationLabel: play.label,
         durationDisplay: SessionClock.clockDisplay(Int(play.seconds)),
-        repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable)
+        isMarkable: play.isMarkable)
     }
   }
 }
@@ -86,12 +78,11 @@ struct ReflectionSheet: View {
   /// decision 10).
   let plays: [ReflectionPlay]
   let limits: LimitsView
-  /// The core's finish answers to offer, and the aim they are asked against.
+  /// The core's rows and the keys each can change to (#2249).
   let finish: FinishSheetView?
   /// The item's live variations, for changing what a row says was played (#2249).
   let variations: [PickerVariationView]
   let plannedLabel: String?
-  let aim: String?
   /// Shown here because the player's banner sits under the sheet (#2009).
   let refusal: String?
   let onSave: (ReflectionAnswers) -> Void
@@ -106,11 +97,6 @@ struct ReflectionSheet: View {
   @State private var draftedNote: String
   /// One per row the core gave, so a play with no row has no tempo to send.
   @State private var tempos: [String: TrackedTempo]
-  @State private var felt: Felt?
-  @State private var obstacles: [Obstacle]
-  @State private var notePoints: [NoteSpan]
-  @State private var intentionMet: IntentionMet?
-  @State private var detailOpen: Bool
   @State private var ways: [DraftWay]
   @State private var changingPlayId: String?
 
@@ -122,7 +108,6 @@ struct ReflectionSheet: View {
     finish: FinishSheetView? = nil,
     variations: [PickerVariationView] = [],
     plannedLabel: String? = nil,
-    aim: String? = nil,
     refusal: String? = nil,
     seed: ReflectionAnswers? = nil,
     onSave: @escaping (ReflectionAnswers) -> Void,
@@ -139,7 +124,6 @@ struct ReflectionSheet: View {
     self.finish = finish
     self.variations = variations
     self.plannedLabel = plannedLabel
-    self.aim = aim
     self.refusal = refusal
     self.onSave = onSave
     self.onSkip = onSkip
@@ -154,11 +138,6 @@ struct ReflectionSheet: View {
       initialValue: Dictionary(
         tempoRows.map { ($0.playId, TrackedTempo(row: $0)) },
         uniquingKeysWith: { first, _ in first }))
-    _felt = State(initialValue: seed?.felt)
-    _obstacles = State(initialValue: seed?.gotInTheWay ?? [])
-    _notePoints = State(initialValue: seed?.notePoints ?? [])
-    _intentionMet = State(initialValue: seed?.intentionMet)
-    _detailOpen = State(initialValue: seed?.felt != nil || !(seed?.gotInTheWay.isEmpty ?? true))
     _ways = State(initialValue: seed?.ways ?? [])
     _changingPlayId = State(initialValue: changingPlayId)
   }
@@ -182,14 +161,6 @@ struct ReflectionSheet: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, IntradaSpacing.card)
-
-        if let finish, let aim, finish.asksIntention || finish.intentionMetRead != nil {
-          AimAnswer(
-            aim: aim, asks: finish.asksIntention, read: finish.intentionMetRead,
-            answer: drafting($intentionMet)
-          )
-          .padding(.top, IntradaSpacing.section)
-        }
 
         if plays.count > 1 {
           sectionTitle("What you played").padding(.top, IntradaSpacing.section)
@@ -233,18 +204,6 @@ struct ReflectionSheet: View {
         .cardSurface(cornerRadius: IntradaRadius.control)
         .padding(.top, IntradaSpacing.controlGap)
 
-        if let finish {
-          if !finish.noteOffers.isEmpty {
-            NoteOffers(offers: finish.noteOffers, onTap: toggleNotePoint)
-              .padding(.top, IntradaSpacing.card)
-          }
-          FinishDetail(
-            feltChoices: finish.feltChoices, obstacleChoices: finish.obstacleChoices,
-            felt: drafting($felt), obstacles: drafting($obstacles), open: $detailOpen
-          )
-          .padding(.top, IntradaSpacing.card)
-        }
-
         if let refusal {
           FormErrorBanner(message: refusal)
             .padding(.top, IntradaSpacing.card)
@@ -285,29 +244,7 @@ struct ReflectionSheet: View {
         marks[play.id].map { DraftMark(playId: play.id, score: UInt8(clamping: $0)) }
       },
       note: note,
-      tempos: TrackedTempo.handSet(tempoRows, tracked: tempos),
-      felt: felt, gotInTheWay: obstacles, notePoints: notePoints,
-      intentionMet: intentionMet, ways: ways)
-  }
-
-  private func toggleNotePoint(_ span: NoteSpan) {
-    var kept = finish?.noteOffers.filter(\.confirmed).map(\.span) ?? []
-    if let at = kept.firstIndex(of: span) {
-      kept.remove(at: at)
-    } else {
-      kept.append(span)
-    }
-    notePoints = kept
-    draft()
-  }
-
-  private func drafting<Value>(_ binding: Binding<Value>) -> Binding<Value> {
-    Binding(
-      get: { binding.wrappedValue },
-      set: {
-        binding.wrappedValue = $0
-        draft()
-      })
+      tempos: TrackedTempo.handSet(tempoRows, tracked: tempos), ways: ways)
   }
 
   private func draft() {
@@ -365,7 +302,7 @@ struct ReflectionSheet: View {
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.ink)
           .frame(maxWidth: .infinity, alignment: .leading)
-        Text(play.meta)
+        Text(play.durationDisplay)
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -377,7 +314,7 @@ struct ReflectionSheet: View {
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(IntradaColor.ink)
             .fixedSize(horizontal: false, vertical: true)
-          Text(play.meta)
+          Text(play.durationDisplay)
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
@@ -455,7 +392,7 @@ struct ReflectionSheet: View {
           itemTitle: "Clair de Lune", elapsedDisplay: "7:00",
           tempoTarget: clickTempoWords(bpm: 66, unit: 4).text,
           tempoRows: [.preview("p1")],
-          plays: [ReflectionPlay.preview("p1", nil, "7:00", nil, nil)], limits: .preview,
+          plays: [ReflectionPlay.preview("p1", nil, "7:00")], limits: .preview,
           onSave: { _ in }, onSkip: {}
         )
         .presentationDetents([.medium, .large])
@@ -469,9 +406,9 @@ struct ReflectionSheet: View {
           itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
           tempoRows: [.preview("p1"), .preview("p2"), .preview("p3")],
           plays: [
-            ReflectionPlay.preview("p1", "C major", "4:10", 8, 10),
-            ReflectionPlay.preview("p2", "G major", "3:20", 10, 10),
-            ReflectionPlay.preview("p3", "D major", "5:10", 4, 10),
+            ReflectionPlay.preview("p1", "C major", "4:10"),
+            ReflectionPlay.preview("p2", "G major", "3:20"),
+            ReflectionPlay.preview("p3", "D major", "5:10"),
           ],
           limits: .preview,
           onSave: { _ in }, onSkip: {}

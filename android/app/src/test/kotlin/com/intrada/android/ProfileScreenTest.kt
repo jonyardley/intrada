@@ -23,11 +23,13 @@ import androidx.compose.ui.test.performTextReplacement
 import com.intrada.android.core.Settings
 import com.intrada.android.ui.PracticeRoute
 import com.intrada.android.ui.ProfileRoute
+import com.intrada.shared.ClickStart
 import com.intrada.shared.HighlighterColour
 import com.intrada.shared.InstrumentIcon
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -203,14 +205,17 @@ class ProfileScreenTest {
     @Test
     fun aPracticeDefaultChangedHereIsTheCoresNewDefault() = runTest {
         val store = openedStore()
-        val before = checkNotNull(store.viewModel.value).practiceDefaults.repTarget
+        assertNotEquals(
+            ClickStart.TWOANDFOUR,
+            checkNotNull(store.viewModel.value).practiceDefaults.click,
+        )
         compose.setContent { ProfileRoute(store) }
 
-        compose.onNodeWithTag("profile.repTarget.decrease").performScrollTo().performClick()
+        compose.onNodeWithTag("profile.click.twoAndFour").performScrollTo().performClick()
 
         assertEquals(
-            (before - 1u).toUByte(),
-            checkNotNull(store.viewModel.value).practiceDefaults.repTarget,
+            ClickStart.TWOANDFOUR,
+            checkNotNull(store.viewModel.value).practiceDefaults.click,
         )
     }
 

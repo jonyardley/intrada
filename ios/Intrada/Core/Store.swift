@@ -43,6 +43,9 @@ final class Store {
   /// Its own blob, never fields on `Profile`, so no profile is lost to a
   /// failed decode (#1915), named by the core's `PracticeDefaults::BLOB_VERSION` (#2216).
   static let practiceDefaultsKey = "intrada.practice-defaults.v\(practiceDefaultsBlobVersion())"
+  /// The shape before the repetition target went (#2791), carried across once.
+  static let previousPracticeDefaultsKey =
+    "intrada.practice-defaults.v\(practiceDefaultsPreviousBlobVersion())"
   static let firstRunKey = "intrada.first-run.v\(firstRunBlobVersion())"
   private let bridge: CoreBridge
   private let store: (any ItemStore)?
@@ -258,6 +261,8 @@ final class Store {
   func forgetPersistedProfileDefaultsAndFirstRun() {
     profileSlot.clear()
     practiceDefaultsSlot.clear()
+    DefaultsSlot(key: Self.previousPracticeDefaultsKey, defaults: practiceDefaultsSlot.defaults)
+      .clear()
     firstRunSlot.clear()
   }
 
@@ -269,10 +274,24 @@ final class Store {
   }
 
   func restorePersistedPracticeDefaults() {
+    carryPreviousPracticeDefaults()
     guard let bytes = practiceDefaultsSlot.read(),
       let defaults = guarded({ try PracticeDefaults.bincodeDeserialize(input: bytes) })
     else { return }
     send(.practiceDefaults(.loaded(defaults)))
+  }
+
+  /// The core reads the old shape and saves the new one, so the old key goes
+  /// once its bytes are sent, and is never read again (#2791).
+  private func carryPreviousPracticeDefaults() {
+    let previous = DefaultsSlot(
+      key: Self.previousPracticeDefaultsKey, defaults: practiceDefaultsSlot.defaults)
+    guard let bytes = previous.read() else { return }
+    if practiceDefaultsSlot.read() == nil {
+      send(.practiceDefaults(.carried(bytes)))
+    }
+    // Cleared after the send: the core's save has written version 3 by now.
+    previous.clear()
   }
 
   func restorePersistedFirstRun() {

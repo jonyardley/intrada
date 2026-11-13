@@ -7,17 +7,16 @@ use crate::domain::item::{Item, ItemKind};
 use crate::domain::key::Key;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
-    self as session, ActiveSession, ClickState, EntryStatus, IntentionFocus, NotePoint, Play,
-    PlayWay, PracticeSession, ReflectionDraft, SetlistEntry, SummarySession,
+    self as session, ActiveSession, ClickState, EntryStatus, Play, PlayWay, PracticeSession,
+    ReflectionDraft, SetlistEntry, SummarySession,
 };
 use crate::domain::tempo_words::{self, TempoWords};
 use crate::domain::variation::Variation;
 use crate::model::{
-    ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
-    FeltChoiceView, FinishRowView, FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView,
-    LastTimeView, NotePointView, ObstacleChoiceView, PickerVariationView, PlayView,
-    PracticeSessionView, ReflectionTempoView, ReflectionView, SetlistBlockView, SetlistEntryView,
-    SummaryView, VariationView,
+    ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, FinishRowView,
+    FinishSheetView, ItemPracticeSummary, KeyChoiceView, LastTimeView, PickerVariationView,
+    PlayView, PracticeSessionView, ReflectionTempoView, ReflectionView, SetlistBlockView,
+    SetlistEntryView, SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -141,22 +140,6 @@ impl PlayLabels<'_> {
     pub fn way(&self, way: &PlayWay) -> Option<String> {
         Self::joined(self.parts(way.key.as_ref(), &way.variation_ids))
     }
-
-    fn focus(&self, focus: &IntentionFocus) -> FocusView {
-        FocusView {
-            focus: focus.clone(),
-            label: session::focus_label(focus),
-            target_caption: session::target_caption(focus),
-        }
-    }
-
-    fn note_point(&self, point: &NotePoint, confirmed: bool) -> NotePointView {
-        NotePointView {
-            span: point.span,
-            label: session::note_point_label(&point.kind),
-            confirmed,
-        }
-    }
 }
 
 pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> PlayView {
@@ -168,10 +151,6 @@ pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> P
         seconds: play.seconds,
         duration_display: format_duration_display(play.seconds),
         meta_parts: play_meta_parts(play),
-        rep_target: play.rep_target,
-        rep_count: play.rep_count,
-        rep_target_reached: target_reached(play),
-        rep_history: play.rep_history.clone(),
         achieved_tempo: play.achieved_tempo,
         click_pattern: play.click_pattern.clone(),
         tempo_display: play.achieved_tempo.map(|crotchets| {
@@ -192,9 +171,6 @@ fn play_meta_parts(play: &Play) -> Vec<String> {
             .as_ref()
             .map_or(crotchets, |click| click.metre.displayed_bpm(crotchets));
         parts.push(format!("{tempo} bpm"));
-    }
-    if let Some(target) = play.rep_target {
-        parts.push(format!("{} of {target} reps", play.rep_count.unwrap_or(0)));
     }
     parts
 }
@@ -234,10 +210,6 @@ fn reflection_tempos(
         .collect()
 }
 
-fn target_reached(play: &Play) -> Option<bool> {
-    Some(play.rep_count? >= play.rep_target?)
-}
-
 pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryView {
     SetlistEntryView {
         id: entry.id.clone(),
@@ -258,14 +230,12 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
         removable: !(entry.plan.item_type == ItemKind::Piece && entry.plan.group_id.is_some()),
         planned_variation_ids: entry.plan.variation_ids.clone(),
         planned_label: labels.plan(entry),
-        planned_rep_target: entry.plan.rep_target,
         plays: entry
             .plays
             .iter()
             .map(|p| play_to_view(p, entry, labels))
             .collect(),
         score_summary: entry.score_summary(),
-        record: entry_record_view(entry, labels),
         planned_key: entry.plan.key,
         plan_tags: Vec::new(),
     }
@@ -274,52 +244,14 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
 pub(crate) fn plan_tags(
     key: Option<String>,
     variations: impl Iterator<Item = String>,
-    focus: Option<&FocusView>,
 ) -> Vec<String> {
-    key.into_iter()
-        .chain(variations)
-        .chain(focus.map(|f| format!("Focus: {}", f.label)))
-        .collect()
+    key.into_iter().chain(variations).collect()
 }
 
-fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordView {
-    let read = session::intention_met_read(entry);
-    let suggested_focus = entry
-        .plan
-        .intention
-        .as_deref()
-        .and_then(session::suggest_focus)
-        .filter(|suggested| entry.plan.focus.as_ref() != Some(suggested))
-        .map(|suggested| labels.focus(&suggested));
-    EntryRecordView {
-        focus: entry.plan.focus.as_ref().map(|f| labels.focus(f)),
-        suggested_focus,
-        intention_met: entry.intention_met.or(read),
-        intention_met_read: entry.intention_met.is_none() && read.is_some(),
-        felt: entry.felt,
-        got_in_the_way: entry.got_in_the_way.clone(),
-        note_points: entry
-            .note_points
-            .iter()
-            .map(|p| labels.note_point(p, true))
-            .collect(),
-    }
-}
-
-pub fn last_time_view(
-    entry: &SetlistEntry,
-    way: PlayWay,
-    focus: Option<&IntentionFocus>,
-    labels: &PlayLabels,
-) -> LastTimeView {
-    let parts: Vec<String> = labels
-        .way(&way)
-        .into_iter()
-        .chain(focus.map(|f| labels.focus(f).label))
-        .collect();
+pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -> LastTimeView {
     LastTimeView {
         entry_id: entry.id.clone(),
-        label: format!("Last time: {}", parts.join(" · ")),
+        label: format!("Last time: {}", labels.way(&way).unwrap_or_default()),
         variation_ids: way.variation_ids,
         key: way.key,
     }
@@ -491,7 +423,7 @@ fn shown_item_start(active: &ActiveSession) -> DateTime<Utc> {
         })
 }
 
-fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveRecordView {
+fn active_record_view(active: &ActiveSession) -> ActiveRecordView {
     let current = active.current_entry();
     let away_offer = current
         .open_play()
@@ -507,43 +439,11 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
         });
     ActiveRecordView {
         away_offer,
-        finish: active
-            .reflection
-            .as_ref()
-            .map(|draft| finish_sheet_view(current, draft, labels)),
+        finish: active.reflection.as_ref().map(|_| FinishSheetView {
+            rows: Vec::new(),
+            keys: Vec::new(),
+        }),
         last_time: None,
-    }
-}
-
-fn finish_sheet_view(
-    entry: &SetlistEntry,
-    draft: &ReflectionDraft,
-    labels: &PlayLabels,
-) -> FinishSheetView {
-    let read = session::intention_met_read(entry);
-    FinishSheetView {
-        note_offers: session::note_offers(&draft.answers.note)
-            .iter()
-            .map(|p| labels.note_point(p, draft.answers.note_points.contains(&p.span)))
-            .collect(),
-        asks_intention: session::asks_intention(entry),
-        intention_met_read: read,
-        felt_choices: session::FELT_CHOICES
-            .iter()
-            .map(|&felt| FeltChoiceView {
-                felt,
-                label: session::felt_label(felt).to_string(),
-            })
-            .collect(),
-        obstacle_choices: session::OBSTACLE_CHOICES
-            .iter()
-            .map(|&obstacle| ObstacleChoiceView {
-                obstacle,
-                label: session::obstacle_label(obstacle).to_string(),
-            })
-            .collect(),
-        rows: Vec::new(),
-        keys: Vec::new(),
     }
 }
 
@@ -691,15 +591,6 @@ pub fn build_active_session_view(
             .iter()
             .map(|e| entry_to_view(e, labels))
             .collect(),
-        // Repetitions belong to the open play, so they reset when a switch
-        // opens the next one (#1739 decision 6).
-        current_rep_target: open.and_then(|p| p.rep_target),
-        current_rep_count: open.and_then(|p| p.rep_count),
-        current_rep_target_reached: open.and_then(target_reached),
-        current_rep_history: open.and_then(|p| p.rep_history.clone()),
-        current_rep_slots: open
-            .and_then(|p| p.rep_target)
-            .unwrap_or(defaults.rep_target),
         current_key: open.and_then(|p| p.key),
         current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
         current_play_label: open.and_then(|p| labels.play(p)),
@@ -739,16 +630,7 @@ pub fn build_active_session_view(
         click_seed_sounds_target,
         click_seed_presets: click_seed_metre.click_presets(),
         click_seed_metre,
-        current_reps_past_target: open
-            .and_then(|p| Some(p.rep_count?.saturating_sub(p.rep_target?)))
-            .unwrap_or(0),
-        current_can_undo: open
-            .and_then(|p| p.rep_history.as_deref())
-            .is_some_and(|h| {
-                h.len() < crate::validation::MAX_REP_HISTORY
-                    && !crate::domain::session::standing_taps(h).is_empty()
-            }),
-        record: active_record_view(active, labels),
+        record: active_record_view(active),
     }
 }
 
@@ -993,7 +875,7 @@ mod tests {
         }
     }
     use crate::domain::metre::Metre;
-    use crate::domain::session::{ClickState, CompletionStatus, RepEvent};
+    use crate::domain::session::{ClickState, CompletionStatus};
     use crate::model::Model;
     use chrono::Utc;
 
@@ -1187,48 +1069,25 @@ mod tests {
         }
     }
 
-    fn focus_view(label: &str) -> FocusView {
-        FocusView {
-            focus: IntentionFocus {
-                kind: session::FocusKind::FromMemory,
-                target: None,
-            },
-            label: label.to_string(),
-            target_caption: None,
-        }
-    }
-
     #[test]
-    fn tags_name_the_variations_then_the_focus() {
-        /// Name, variation names, focus, tags.
-        type Case<'a> = (&'a str, Vec<&'a str>, Option<FocusView>, Vec<&'a str>);
-        let cases: [Case; 4] = [
-            ("nothing planned", vec![], None, vec![]),
+    fn tags_name_the_variations() {
+        /// Name, variation names, tags.
+        type Case<'a> = (&'a str, Vec<&'a str>, Vec<&'a str>);
+        let cases: [Case; 3] = [
+            ("nothing planned", vec![], vec![]),
             (
                 "each variation is a tag",
                 vec!["Dotted", "Swung"],
-                None,
                 vec!["Dotted", "Swung"],
             ),
             (
                 "a repeated name keeps both tags",
                 vec!["Dotted", "Dotted"],
-                None,
                 vec!["Dotted", "Dotted"],
             ),
-            (
-                "the focus comes last",
-                vec!["Dotted"],
-                Some(focus_view("From memory")),
-                vec!["Dotted", "Focus: From memory"],
-            ),
         ];
-        for (name, variations, focus, expected) in cases {
-            let tags = plan_tags(
-                None,
-                variations.into_iter().map(str::to_string),
-                focus.as_ref(),
-            );
+        for (name, variations, expected) in cases {
+            let tags = plan_tags(None, variations.into_iter().map(str::to_string));
             assert_eq!(tags, expected, "{name}");
         }
     }
@@ -1298,52 +1157,6 @@ mod tests {
             Some("E\u{266d} major · Dotted rhythms")
         );
         assert_eq!(labels.play(&Play::fixture()), None);
-    }
-
-    /// The counter shows going past the target and whether undo has
-    /// anything to reverse; the core works both out (#2107).
-    #[test]
-    fn active_view_says_how_far_past_the_target_and_whether_undo_can_act() {
-        use crate::domain::session::RepAction;
-        let tap = |action| RepEvent {
-            action,
-            at: Utc::now(),
-            tempo: None,
-            click_sounding: None,
-        };
-        let view_of = |count: u8, history: Vec<RepEvent>| {
-            let play = Play {
-                rep_target: Some(3),
-                rep_count: Some(count),
-                rep_history: Some(history),
-                ..Play::fixture()
-            };
-            build_active_session_view(
-                &session_on(vec![play]),
-                &HashMap::new(),
-                &PlayLabels::new(),
-                &[],
-                &PracticeDefaults::default(),
-            )
-        };
-
-        let past = view_of(5, vec![tap(RepAction::Success); 5]);
-        assert_eq!(past.current_reps_past_target, 2);
-        assert_eq!(past.current_rep_target_reached, Some(true));
-        assert!(past.current_can_undo);
-
-        let under = view_of(1, vec![tap(RepAction::Success)]);
-        assert_eq!(under.current_reps_past_target, 0);
-        assert_eq!(under.current_rep_target_reached, Some(false));
-
-        let undone = view_of(0, vec![tap(RepAction::Missed), tap(RepAction::Undo)]);
-        assert!(!undone.current_can_undo);
-
-        let full = view_of(
-            255,
-            vec![tap(RepAction::Success); crate::validation::MAX_REP_HISTORY],
-        );
-        assert!(!full.current_can_undo, "a full history takes no undo");
     }
 
     // ── build_active_session_view ──────────────────────────────────────
@@ -1514,44 +1327,6 @@ mod tests {
         assert_eq!(sounding(1, ClickStart::TwoAndFour), 0b1010);
         assert_eq!(sounding(1, ClickStart::EveryBeat), 0b1111);
         assert_eq!(sounding(2, ClickStart::TwoAndFour), 0b1010);
-    }
-
-    /// The resident counter draws against `current_rep_slots`, so a builder
-    /// target of 7 must not render as ten slots.
-    #[test]
-    fn active_session_view_draws_the_builder_target_or_the_musicians_default() {
-        let mut targeted = make_entry("e1", "i1", "Scale", 0);
-        targeted.plan.rep_target = Some(7);
-        targeted.plays = vec![Play {
-            rep_target: Some(7),
-            ..Play::fixture()
-        }];
-        let active = ActiveSession {
-            id: "as1".to_string(),
-            entries: vec![targeted, make_entry("e2", "i2", "Etude", 1)],
-            current_index: 0,
-            session_started_at: Utc::now(),
-            current_item_started_at: Utc::now(),
-            reflection: None,
-        };
-        let four = PracticeDefaults {
-            rep_target: 4,
-            ..PracticeDefaults::default()
-        };
-        assert_eq!(
-            build_active_session_view(&active, &HashMap::new(), &PlayLabels::new(), &[], &four)
-                .current_rep_slots,
-            7
-        );
-
-        let untouched = ActiveSession {
-            current_index: 1,
-            ..active
-        };
-        let view =
-            build_active_session_view(&untouched, &HashMap::new(), &PlayLabels::new(), &[], &four);
-        assert_eq!(view.current_rep_target, None);
-        assert_eq!(view.current_rep_slots, 4);
     }
 
     #[test]
@@ -2366,31 +2141,22 @@ mod tests {
 
     #[test]
     fn a_plays_facts_name_only_what_it_recorded() {
-        type Row = (Option<u16>, Option<u8>, Option<u8>, &'static [&'static str]);
+        type Row = (Option<u16>, Option<u8>, &'static [&'static str]);
         let table: &[Row] = &[
-            (None, None, None, &["4m 0s"]),
-            (Some(92), None, None, &["4m 0s", "92 bpm"]),
-            (None, Some(6), Some(5), &["4m 0s", "5 of 6 reps"]),
-            (None, Some(6), None, &["4m 0s", "0 of 6 reps"]),
-            (None, None, Some(5), &["4m 0s"]),
-            (
-                Some(92),
-                Some(6),
-                Some(5),
-                &["4m 0s", "92 bpm", "5 of 6 reps"],
-            ),
+            (None, None, &["4m 0s"]),
+            (Some(92), None, &["4m 0s", "92 bpm"]),
+            (None, Some(6), &["4m 0s"]),
         ];
         let entry = make_entry("e1", "i1", "Scale", 0);
-        for (tempo, target, count, expected) in table {
+        for (tempo, score, expected) in table {
             let play = Play {
                 seconds: 240,
                 achieved_tempo: *tempo,
-                rep_target: *target,
-                rep_count: *count,
+                score: *score,
                 ..Play::fixture()
             };
             let view = play_to_view(&play, &entry, &PlayLabels::new());
-            assert_eq!(view.meta_parts, *expected, "{tempo:?} {count:?}/{target:?}");
+            assert_eq!(view.meta_parts, *expected, "{tempo:?} {score:?}");
         }
     }
 
@@ -2486,20 +2252,7 @@ mod tests {
             label: Some("Coda · E\u{266d} major · Hands separately".to_string()),
             seconds: 180,
             duration_display: "3m 0s".to_string(),
-            meta_parts: vec![
-                "3m 0s".to_string(),
-                "84 bpm".to_string(),
-                "4 of 10 reps".to_string(),
-            ],
-            rep_target: Some(10),
-            rep_count: Some(4),
-            rep_target_reached: Some(false),
-            rep_history: Some(vec![RepEvent {
-                action: crate::domain::session::RepAction::Undo,
-                at: Utc::now(),
-                tempo: Some(84),
-                click_sounding: Some(true),
-            }]),
+            meta_parts: vec!["3m 0s".to_string(), "84 bpm".to_string()],
             achieved_tempo: Some(84),
             click_pattern: Some(ClickState {
                 metre: crate::domain::Metre {
@@ -2548,7 +2301,6 @@ mod tests {
         let tags = plan_tags(
             Some("D major".to_string()),
             std::iter::once("Dotted".to_string()),
-            None,
         );
         assert_eq!(tags, vec!["D major", "Dotted"]);
     }
@@ -2857,9 +2609,9 @@ mod tests {
         );
     }
 
-    /// `SkipItem` can leave a play behind that banked a mark or reps before
-    /// the skip (`domain::session`); the card still says "Skipped", not that
-    /// it was played (#1785).
+    /// A skipped entry saved before #1739 with a mark still reads with a play
+    /// (`stored_session`); the card still says "Skipped", not that it was
+    /// played (#1785).
     #[test]
     fn played_summary_ignores_a_skipped_entry_even_with_a_surviving_play() {
         let entries = vec![SetlistEntry {
@@ -2895,7 +2647,6 @@ mod tests {
             plays: vec![Play {
                 seconds: 2,
                 score: None,
-                rep_count: None,
                 ..Play::fixture()
             }],
             ..SetlistEntry::fixture()
@@ -3150,10 +2901,6 @@ mod tests {
             }],
             note: "even quavers".to_string(),
             tempos: vec![],
-            felt: None,
-            got_in_the_way: Vec::new(),
-            note_points: Vec::new(),
-            intention_met: None,
             ways: Vec::new(),
         };
         let reading = TempoReading {

@@ -34,33 +34,6 @@ pub enum CompletionStatus {
     EndedEarly,
 }
 
-/// A single action in the rep history sequence.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
-pub enum RepAction {
-    /// Failed rep: count decremented.
-    Missed,
-    /// Successful rep: count incremented.
-    Success,
-    /// Reverses the last got it or miss still standing, so a correction is
-    /// never recorded as a failure (#2107). Appended last.
-    Undo,
-}
-
-/// One tap on the pass counter, when it landed and what the click was doing.
-/// Sequence alone cannot tell a steady ten from a hard-won one (#1367). Only a
-/// tap with the click sounding is tempo evidence (T16); `None` on taps from
-/// before #2107, and `tempo: None` when the setting gave no crotchet tempo.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct RepEvent {
-    pub action: RepAction,
-    pub at: DateTime<Utc>,
-    pub tempo: Option<u16>,
-    pub click_sounding: Option<bool>,
-}
-
 /// Where the tempo rested during a play, in crotchets (#2107).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -85,9 +58,6 @@ pub struct Play {
     pub variation_ids: Vec<String>,
     pub started_at: DateTime<Utc>,
     pub seconds: u64,
-    pub rep_target: Option<u8>,
-    pub rep_count: Option<u8>,
-    pub rep_history: Option<Vec<RepEvent>>,
     pub tempo_changes: Vec<TempoChange>,
     pub achieved_tempo: Option<u16>,
     pub click_pattern: Option<ClickState>,
@@ -103,16 +73,13 @@ pub struct PlayWay {
 }
 
 impl Play {
-    pub fn opened(way: PlayWay, rep_target: Option<u8>, started_at: DateTime<Utc>) -> Self {
+    pub fn opened(way: PlayWay, started_at: DateTime<Utc>) -> Self {
         Self {
             id: ulid::Ulid::generate().to_string(),
             key: way.key,
             variation_ids: way.variation_ids,
             started_at,
             seconds: 0,
-            rep_target,
-            rep_count: None,
-            rep_history: None,
             tempo_changes: Vec::new(),
             achieved_tempo: None,
             click_pattern: None,
@@ -141,18 +108,13 @@ impl Play {
         same_key && sorted(&self.variation_ids) == sorted(&way.variation_ids)
     }
 
-    /// A mark or a banked repetition. Time alone is not a record: the clock
-    /// runs whether or not the musician played anything.
-    pub fn recorded_something(&self) -> bool {
-        self.score.is_some() || self.rep_count.unwrap_or(0) > 0
-    }
-
-    /// A play nobody practised: no mark, no repetitions and under five seconds.
+    /// A play nobody practised: no mark and under five seconds. Time alone is
+    /// not a record: the clock runs whether or not the musician played anything.
     /// A terminal transition drops these so a stray tap on the picker leaves no
     /// trace. The time bound is what separates a stray tap from a stretch that
     /// was genuinely played and simply not marked.
     pub fn is_incidental(&self) -> bool {
-        !self.recorded_something() && self.seconds < validation::MIN_PLAY_SECONDS
+        self.score.is_none() && self.seconds < validation::MIN_PLAY_SECONDS
     }
 }
 
@@ -164,16 +126,12 @@ pub struct PlannedItem {
     pub item_id: String,
     pub item_type: ItemKind,
     pub intention: Option<String>,
-    pub focus: Option<IntentionFocus>,
     pub duration_secs: Option<u32>,
     /// Block grouping (building phase): entries pulled in alongside a piece via
     /// its related exercises share one `group_id`. A block is the contiguous run
     /// of entries with the same id; `None` = standalone.
     pub group_id: Option<String>,
     pub variation_ids: Vec<String>,
-    /// Every play the entry opens starts from it, so a switch redraws the same
-    /// number of slots.
-    pub rep_target: Option<u8>,
     /// `None` is the written key. The first play opens in it.
     pub key: Option<Key>,
 }
@@ -184,11 +142,9 @@ impl PlannedItem {
             item_id: item_id.to_string(),
             item_type,
             intention: None,
-            focus: None,
             duration_secs: None,
             group_id: None,
             variation_ids: Vec::new(),
-            rep_target: None,
             key: None,
         }
     }
@@ -210,11 +166,6 @@ pub struct SetlistEntry {
     /// attempted; every practised entry has at least one, a piece included
     /// (#1739 decision 3).
     pub plays: Vec<Play>,
-    /// The musician's answer, only when the sheet asked and they gave one.
-    pub intention_met: Option<IntentionMet>,
-    pub felt: Option<Felt>,
-    pub got_in_the_way: Vec<Obstacle>,
-    pub note_points: Vec<NotePoint>,
 }
 
 impl SetlistEntry {
@@ -228,10 +179,6 @@ impl SetlistEntry {
             status: EntryStatus::NotAttempted,
             notes: None,
             plays: Vec::new(),
-            intention_met: None,
-            felt: None,
-            got_in_the_way: Vec::new(),
-            note_points: Vec::new(),
         }
     }
 
@@ -294,9 +241,6 @@ impl Play {
             variation_ids: Vec::new(),
             started_at: DateTime::<Utc>::from_timestamp(0, 0).expect("epoch"),
             seconds: 60,
-            rep_target: None,
-            rep_count: None,
-            rep_history: None,
             tempo_changes: Vec::new(),
             achieved_tempo: None,
             click_pattern: None,
@@ -337,7 +281,7 @@ pub struct PracticeSession {
     pub capture_version: Option<u32>,
 }
 
-/// 1: plays carry a section, a key and variations, taps their tempo (#2246).
+/// 1: plays carry a key and variations (#2246).
 pub const CAPTURE_VERSION: u32 = 1;
 
 /// What the click was doing at the instant a play closed. Facts only: the
@@ -392,11 +336,6 @@ pub struct ReflectionAnswers {
     pub note: String,
     /// Only the rows set by hand; the rest reseed from their stamps.
     pub tempos: Vec<DraftTempo>,
-    pub felt: Option<Felt>,
-    pub got_in_the_way: Vec<Obstacle>,
-    /// The spans of the note's points the musician confirmed.
-    pub note_points: Vec<NoteSpan>,
-    pub intention_met: Option<IntentionMet>,
     /// Only the rows whose key or variations were changed by hand.
     pub ways: Vec<DraftWay>,
 }
@@ -463,15 +402,15 @@ pub struct ActiveSession {
     pub reflection: Option<ReflectionDraft>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 9;
+const RETIRED_BLOB_VERSION_MAX: u32 = 10;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 9 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 10;
+    /// 10 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 11;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
@@ -514,12 +453,6 @@ pub enum SessionEvent {
     SetEntryIntention {
         entry_id: String,
         intention: Option<String>,
-    },
-    /// Set or clear the rep target for an entry during building phase.
-    /// `None` disables the counter; `Some(n)` enables it with target `n`.
-    SetRepTarget {
-        entry_id: String,
-        target: Option<u8>,
     },
     /// Set or clear the planned duration for an entry during building phase.
     /// `None` clears the planned duration; `Some(secs)` sets it (range: 60 to 3600).
@@ -639,20 +572,8 @@ pub enum SessionEvent {
         now: DateTime<Utc>,
         reading: TempoReading,
     },
-    /// Bank a pass on the current entry, past the target too (#2107). The
-    /// first tap on an untouched entry writes the target; see `record_rep`.
-    RepGotIt {
-        now: DateTime<Utc>,
-        reading: TempoReading,
-    },
-    /// Step back a pass on the current entry (floor 0).
-    RepMissed {
-        now: DateTime<Utc>,
-        reading: TempoReading,
-    },
     /// Close the open play and open another played this way (#1739 decision
-    /// 6, #2246). Changing nothing writes nothing, so a stray tap cannot reset
-    /// the repetition counter. Active phase only.
+    /// 6, #2246). Changing nothing writes nothing. Active phase only.
     SwitchPlay {
         entry_id: String,
         key: Option<Key>,
@@ -713,14 +634,9 @@ pub enum SessionEvent {
     },
 
     // === Active Phase, appended (#2107) ===
-    /// Reverse the last got it or miss still standing on the open play.
-    RepUndo {
-        now: DateTime<Utc>,
-        reading: TempoReading,
-    },
-    /// The click's tempo moved. A change under two seconds after the last,
-    /// with no tap between, replaces it, so a stepper climb keeps where it
-    /// rested and the core needs no timer.
+    /// The click's tempo moved. A change under two seconds after the last
+    /// replaces it, so a stepper climb keeps where it rested and the core
+    /// needs no timer.
     TempoChanged {
         now: DateTime<Utc>,
         reading: TempoReading,
@@ -730,10 +646,6 @@ pub enum SessionEvent {
     RetiredSessionFound,
 
     // === v0.17 record (#2249), appended ===
-    SetFocus {
-        entry_id: String,
-        focus: Option<IntentionFocus>,
-    },
     /// Plan the variations and key the item was last played on.
     ApplyLastTime {
         entry_id: String,
@@ -745,24 +657,6 @@ pub enum SessionEvent {
         at: DateTime<Utc>,
     },
     LeaveAwayOut,
-    /// The finish answers, sent after `NextItem` like the marks, so a skipped
-    /// sheet writes none of them. `span` must be a point read from the note.
-    ConfirmNotePoint {
-        entry_id: String,
-        span: NoteSpan,
-    },
-    SetFelt {
-        entry_id: String,
-        felt: Option<Felt>,
-    },
-    ToggleObstacle {
-        entry_id: String,
-        obstacle: Obstacle,
-    },
-    AnswerIntention {
-        entry_id: String,
-        answer: Option<IntentionMet>,
-    },
 
     // === Builder rules (#2393), appended ===
     /// The entry's variations, in order; empty clears. Building only.
@@ -808,7 +702,6 @@ pub enum SessionEvent {
 
 mod active;
 mod building;
-mod finish;
 mod live;
 mod plays;
 mod record;
@@ -819,21 +712,18 @@ mod summary;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use building::{last_plan, last_time};
+pub(crate) use building::last_time;
+pub use record::Away;
 pub(crate) use record::*;
-pub use record::{
-    Away, Felt, FocusKind, IntentionFocus, IntentionMet, NotePoint, NotePointKind, NoteSpan,
-    Obstacle,
-};
 pub(crate) use saved::{forget_restored_delete, undo_offer};
 
 use active::written_key_as_none;
-use plays::{record_rep, record_tempo_change};
+use plays::record_tempo_change;
 
 pub(crate) const RETIRED_SESSION_NOTICE: &str =
     "A practice left open before the update couldn't be picked up again.";
 
-pub(crate) use plays::{item_seconds, play_would_survive_drop, standing_taps};
+pub(crate) use plays::{item_seconds, play_would_survive_drop};
 pub(crate) use summary::{save_acknowledged, save_refused};
 
 // ── Event Handler ──────────────────────────────────────────────────────
@@ -847,10 +737,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             intention,
         } => building::set_entry_intention(model, entry_id, intention),
-
-        SessionEvent::SetRepTarget { entry_id, target } => {
-            building::set_rep_target(model, entry_id, target)
-        }
 
         SessionEvent::SetEntryDuration {
             entry_id,
@@ -930,16 +816,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             active::end_session_early(model, now, reading)
         }
 
-        SessionEvent::RepGotIt { now, reading } => {
-            record_rep(model, RepAction::Success, now, &reading)
-        }
-
-        SessionEvent::RepMissed { now, reading } => {
-            record_rep(model, RepAction::Missed, now, &reading)
-        }
-
-        SessionEvent::RepUndo { now, reading } => record_rep(model, RepAction::Undo, now, &reading),
-
         SessionEvent::TempoChanged { now, reading } => record_tempo_change(model, now, &reading),
 
         SessionEvent::SwitchPlay {
@@ -967,8 +843,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             answers,
         } => active::submit_reflection(model, next_item_started_at, answers),
 
-        SessionEvent::SetFocus { entry_id, focus } => building::set_focus(model, entry_id, focus),
-
         SessionEvent::ApplyLastTime { entry_id } => building::apply_last_time(model, entry_id),
 
         SessionEvent::WentAway { at } => live::went_away(model, at),
@@ -976,20 +850,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::CameBack { at } => live::came_back(model, at),
 
         SessionEvent::LeaveAwayOut => live::leave_away_out(model),
-
-        SessionEvent::ConfirmNotePoint { entry_id, span } => {
-            finish::confirm_note_point(model, entry_id, span)
-        }
-
-        SessionEvent::SetFelt { entry_id, felt } => finish::set_felt(model, entry_id, felt),
-
-        SessionEvent::ToggleObstacle { entry_id, obstacle } => {
-            finish::toggle_obstacle(model, entry_id, obstacle)
-        }
-
-        SessionEvent::AnswerIntention { entry_id, answer } => {
-            finish::answer_intention(model, entry_id, answer)
-        }
 
         SessionEvent::SetEntryVariations {
             entry_id,

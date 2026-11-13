@@ -4,7 +4,7 @@ import Testing
 @testable import Intrada
 
 /// The builder rules the core owns cross the real bridge (#846, #2393): the
-/// variation and focus events from Swift, the tap and target fields back.
+/// variation events from Swift, the tags and captions back.
 @MainActor
 struct BuilderRulesBridgeTests {
 
@@ -36,40 +36,15 @@ struct BuilderRulesBridgeTests {
     try #require(try bridge.rendered().buildingSetlist?.entries.first)
   }
 
-  @Test func aFocusStartsFromThePiecesTempoAndShowsItsCaption() throws {
-    let (bridge, entryId, _) = try twelveMinutePiece()
-    let choices: [FocusChoiceView] = try #require(try bridge.rendered().buildingSetlist)
-      .focusChoices
-    #expect(
-      choices.map(\.target) == [
-        FocusTargetView(min: 40, max: 208, step: 2), FocusTargetView(min: 1, max: 100, step: 1),
-        nil, nil,
-      ])
-
-    _ = try bridge.update(
-      .session(
-        .setFocus(
-          entryId: entryId,
-          focus: IntentionFocus(kind: .tempo, target: nil))))
-
-    let focus: FocusView = try #require(try entry(bridge).record.focus)
-    #expect(focus.focus.target == 72)
-    #expect(focus.targetCaption == "\u{2669} = 72")
-  }
-
   /// The builder's lines arrive ready, so neither phone writes its own (#2467).
   @Test func theBuildersSummaryCaptionAndTagsArriveReady() throws {
     let (bridge, entryId, variationId) = try twelveMinutePiece()
     _ = try bridge.update(
       .session(.setEntryVariations(entryId: entryId, variationIds: [variationId])))
-    _ = try bridge.update(
-      .session(
-        .setFocus(
-          entryId: entryId, focus: IntentionFocus(kind: .fromMemory, target: nil))))
 
     let building = try #require(try bridge.rendered().buildingSetlist)
     let tags: [String] = try entry(bridge).planTags
-    #expect(tags == ["Dotted", "Focus: From memory"])
+    #expect(tags == ["Dotted"])
     let block: SetlistBlockView = try #require(building.blocks.first)
     #expect(block.caption == "Piece \u{B7} 12 min")
     #expect(block.plannedDisplay == "12 min")

@@ -70,13 +70,7 @@ enum IntradaColor {
   static let dialTrack = Color(hex: 0xEDE8DC)
   static let timerTrack = Color(hex: 0xEDE8DC)
   static let consistencyTrack = Color(hex: 0xEDE8DC)
-  /// A "missed" rep is taupe, never red — calm, not shaming.
-  static let repMissedFg = Color(hex: 0x756A5C)
-  static let repMissedBg = Color(hex: 0xF3EFE8)
-  static let repCleanFg = success
-  static let repCleanBg = Color(hex: 0xEDF1EA)
-  static let repCleanBorder = Color(hex: 0xD3DDCC)
-  /// Empty rep-slot ring + missed-button border.
+  /// An empty outline: the mark selector, the click's silent beats, an empty day.
   static let slotOutline = Color(hex: 0xDDD7CA)
   /// Dashed outline on full-width "+ Add …" rows.
   static let addDashOutline = Color(hex: 0xC9BFB0)

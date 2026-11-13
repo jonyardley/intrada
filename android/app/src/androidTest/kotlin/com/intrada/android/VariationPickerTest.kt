@@ -1,10 +1,8 @@
 package com.intrada.android
 
-import androidx.compose.ui.semantics.SemanticsProperties
+import android.os.SystemClock
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasStateDescription
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -30,10 +28,10 @@ class VariationPickerTest {
     @Test
     fun theReflectionOffersAMarkPerVariation() {
         startScalesSession()
-        app.tap("player.gotIt")
+        playLongEnoughToMark()
         app.tap("player.variation")
         app.tapRow("variationPicker.row", "Hands separately")
-        app.tap("player.gotIt")
+        playLongEnoughToMark()
         app.tap("player.advance")
 
         // Two different marks, so one write cannot satisfy both.
@@ -46,34 +44,6 @@ class VariationPickerTest {
         pill("Mark for Hands separately, 3").assertIsSelected()
     }
 
-    @Test
-    fun gotItCountsPastTheTargetAndUndoTakesItBack() {
-        startScalesSession()
-        val reps = app.control("player.reps")
-        val target =
-            reps
-                .fetchSemanticsNode()
-                .config
-                .getOrElseNullable(SemanticsProperties.StateDescription) { null }
-                ?.substringAfterLast(" of ")
-                ?.takeWhile { it.isDigit() }
-                ?.toIntOrNull()
-        checkNotNull(target) { "the counter names its target" }
-        app.assertNeverShows(
-            hasTestTag("player.undo"),
-            withinMillis = 1_000,
-            "nothing to undo before a tap",
-        )
-
-        repeat(target + 1) { app.tap("player.gotIt") }
-        app.await(
-            hasTestTag("player.reps") and hasStateDescription("${target + 1} of $target, 1 extra")
-        )
-
-        app.tap("player.undo")
-        app.await(hasTestTag("player.reps") and hasStateDescription("$target of $target"))
-    }
-
     private fun startScalesSession() {
         app.launch(seed = true)
         app.tapTab(AppTab.PRACTICE.tag)
@@ -84,5 +54,12 @@ class VariationPickerTest {
         app.tap("builder.start")
     }
 
+    // The sheet offers no mark for a play under five seconds: it reads as a stray tap (#1758).
+    private fun playLongEnoughToMark() = SystemClock.sleep(PLAY_MILLIS)
+
     private fun pill(spoken: String) = app.await(hasContentDescription(spoken)).scrolledTo()
+
+    private companion object {
+        const val PLAY_MILLIS = 5_500L
+    }
 }
