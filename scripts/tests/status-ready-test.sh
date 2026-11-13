@@ -30,6 +30,7 @@ case "$1 ${2:-}" in
     body='{"data":{"repository":{"issues":{"nodes":[]}}}}'
     if [[ "$*" == *'labels: ["ready"]'* ]]; then
       if [ -n "${FAIL_READY:-}" ]; then
+        printf '%s' '{"errors":[{"type":"INSUFFICIENT_SCOPES","message":"Your token has not been granted the required scopes."}]}'
         echo "gh: Your token has not been granted the required scopes." >&2
         exit 1
       fi
@@ -158,6 +159,8 @@ ready "[$(issue 42 "Waiting" horizon:now P1)]"
 out="$(FAIL_READY=1 "$script")"
 check "$(section_of "$out")" "names the outage rather than showing an empty queue" "GitHub did not answer"
 check "$(section_of "$out")" "carries GitHub's own words" "required scopes"
+check "$(section_of "$out")" "prints the reason on its own line" "    Your token has not been granted the required scopes."
+refute "$(section_of "$out")" "never prints the raw JSON body" "{"
 check "$out" "keeps the rest of the report" "RECENTLY LANDED"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"

@@ -32,7 +32,13 @@ case "$1 ${2:-}" in
       [ -n "$jq_expr" ] && printf '%s' "$body" | jq -r "$jq_expr" || printf '%s' "$body"
       exit 0
     fi
+    if [ "${FAIL_EPICS:-}" = offline ]; then
+      printf '%s\n' "error connecting to api.github.com" \
+        "check your internet connection or https://githubstatus.com" >&2
+      exit 1
+    fi
     if [ -n "${FAIL_EPICS:-}" ]; then
+      printf '%s' '{"data":null,"errors":[{"type":"INTERNAL","message":"Something went wrong while executing your query."}]}'
       echo "gh: Something went wrong while executing your query." >&2
       exit 1
     fi
@@ -146,7 +152,16 @@ out="$(FAIL_EPICS=1 "$script")"
 section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^READY/p')"
 check "$section" "names the outage rather than showing an empty section" "GitHub did not answer"
 check "$section" "carries GitHub's own words" "Something went wrong"
+check "$section" "prints the reason on its own line" "    Something went wrong while executing your query."
+refute "$section" "never prints the raw JSON body" "{"
 check "$out" "keeps the rest of the report" "RECENTLY LANDED"
+
+# ── Offline: no "gh:" line, so the first line is the reason ─────────────────
+
+out="$(FAIL_EPICS=offline "$script")"
+section="$(printf '%s\n' "$out" | sed -n '/^EPICS/,/^READY/p')"
+check "$section" "still names the outage with no gh: line" "GitHub did not answer"
+check "$section" "falls back to the first line" "    error connecting to api.github.com"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

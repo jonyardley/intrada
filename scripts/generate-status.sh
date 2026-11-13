@@ -42,6 +42,15 @@ if ! milestones=$(gh api "repos/$repo/milestones?state=open" 2>&1); then
   milestones='[]'
 fi
 
+# A failed read joins gh's message onto the JSON body with no newline (#2806),
+# so the reason is what follows the last "gh: "; with none, the first line stands.
+gh_reason() {
+  local reason
+  reason=$(printf '%s\n' "$1" | sed -n 's/.*gh: //p' | tail -1)
+  [ -n "$reason" ] || reason=$(printf '%s' "$1" | head -1)
+  printf '%s' "$reason"
+}
+
 # The epics are the backlog's containers (#1968): the next slice is picked from
 # one of them, not from the flat list of open issues. GitHub caps an epic at
 # 100 sub-issues, so one page of children is all of them.
@@ -57,7 +66,7 @@ epics_query='query($owner: String!, $name: String!, $limit: Int!) {
 }'
 if ! epics=$(gh api graphql -f query="$epics_query" -f owner="${repo%%/*}" \
   -f name="${repo#*/}" -F limit="$epics_limit" --jq '.data.repository.issues.nodes' 2>&1); then
-  epics_error=$(printf '%s' "$epics" | head -1)
+  epics_error=$(gh_reason "$epics")
   epics='[]'
 fi
 
@@ -84,7 +93,7 @@ ready_query='query($owner: String!, $name: String!, $limit: Int!) {
 }'
 if ! ready=$(gh api graphql -f query="$ready_query" -f owner="${repo%%/*}" \
   -f name="${repo#*/}" -F limit="$ready_limit" --jq '.data.repository.issues.nodes' 2>&1); then
-  ready_error=$(printf '%s' "$ready" | head -1)
+  ready_error=$(gh_reason "$ready")
   ready='[]'
 fi
 
