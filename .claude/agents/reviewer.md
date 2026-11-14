@@ -4,8 +4,8 @@ description: Reviews a diff or a plan and reports Blockers, Important and Nits. 
 tools: Bash, Read, Grep, Glob
 model: opus
 # Medium by default. The lead spawns it at high when the diff adds over 200
-# lines or touches a silent-failure surface (bincode bridge, store migrations,
-# the ActiveSession blob, auth): the owner's review levels, #2866.
+# lines or touches a surface .claude/rules/sensitive-surfaces.md lists, as the
+# owner's review levels say (#2866).
 effort: medium
 effort-ceiling: high
 ---

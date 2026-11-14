@@ -13,9 +13,8 @@ runs before the push, because a review left until after it gets skipped
   1 included (#1665), briefed with the worktree and the issue. A docs, roadmap
   or harness-text diff takes `/code-review` inline. No diff lifts the model
   (#2044). Its effort is medium; spawn it with effort high when the diff adds
-  over 200 lines or touches a silent-failure surface (bincode bridge, store
-  migrations, the `ActiveSession` blob, auth), the owner's review levels
-  (#2866). `guard-spawn.sh` allows that lift and no higher.
+  over 200 lines or touches a surface `.claude/rules/sensitive-surfaces.md`
+  lists, the owner's review levels (#2866). `guard-spawn.sh` allows that lift and no higher.
 - **A new or reshaped bridge type ships with a `LiveBridge` test**
   (`LibraryBridgeTests`, `SessionBridgeTests` or `VariationPlayBridgeTests`):
   a Rust round trip cannot see Rust and Swift disagree about the wire (#846,

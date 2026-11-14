@@ -28,7 +28,7 @@ migrations, auth, and any bridge change that is not additive.
    `/effort` before the first edit. An additive change stays on the lead's
    usual effort.
 2. **Pair the `reviewer` agent on the core diff before the screens**, whoever
-   built it.
+   built it, spawned at effort high (#2866).
 3. **One PR across the stack**: core commits first, `reviewer` reads them alone,
    then the screens commits. Lead-only work goes up at least one tier in
    ceremony but is still one PR: a merged core with no caller is shell-dead

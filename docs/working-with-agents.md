@@ -162,7 +162,7 @@ which the recipe writes (#2630); restart Claude Code after. Installs:
 | You are | Do |
 |---|---|
 | Holding a diff that changes code or tests | `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
-| Holding a diff on a sensitive surface | The same `reviewer`, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
+| Holding a diff on a sensitive surface | The same `reviewer` at effort high (#2866), paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
 | Holding a docs-only diff | `/code-review` inline stands in; say "comment-policy violations are Blockers" |
 
 `reviewer` checks the diff against the plan comment first, reports and
