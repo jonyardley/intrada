@@ -53,7 +53,7 @@ ready_order='
     | . + {h: $h, p: $p, hr: ($horizons[$h // ""] // 3), pr: ($priorities[$p // ""] // 3)})
   | sort_by(.hr, .pr, .number)'
 
-# --ready-json: the queue alone, one JSON array in order, for the crew loop.
+# `--ready-json`: the queue alone, one JSON array in order, for the crew loop.
 # Exits 2 when GitHub cannot be read, so an outage never reads as empty.
 if [ "${1:-}" = --ready-json ]; then
   claimed=$(gh issue list --repo "$repo" --label in-flight --state open \

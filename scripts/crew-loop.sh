@@ -9,6 +9,9 @@
 #   crew-loop.sh stop-session <id>   stop one background session and kill its
 #                                    whole process tree; CREW_PARK_STEP for
 #                                    harness check 7 in crew-qualify.sh
+#   crew-loop.sh comments <issue>    the issue's comments by trusted logins, for
+#                                    the brief (.claude/commands/crew.md)
+#   crew-loop.sh lessons             trusted Lessons comments not yet folded in
 #
 # Every outside command has a seam (CREW_* below), so
 # scripts/tests/crew-loop-test.sh runs the loop with stand-ins and no session,
@@ -18,6 +21,9 @@ set -uo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO=${CREW_REPO:-jonyardley/intrada}
+# shellcheck source=crew-trusted.sh
+. "$root/scripts/crew-trusted.sh"
+TRUSTED=$(trusted_jq)
 
 # ── The four figures, set by the owner on 2026-11-12 ──────────────────────────
 WALL_CLOCK=${CREW_WALL_CLOCK:-10800} # seconds per session: 3 hours
@@ -29,6 +35,9 @@ SPEND_CAP=${CREW_SPEND_CAP:-150}     # dollars, the last 24 hours of `just usage
 POLL=${CREW_POLL:-60}
 STOP_FILE=${CREW_STOP_FILE:-$HOME/.intrada-crew-stop}
 SIM_LOCK=${IOS_SIM_LOCK_DIR:-/tmp/intrada-ios-test.lock}
+LOCK=${CREW_LOCK:-/tmp/intrada-crew-loop.lock}
+CAFFEINATE=${CREW_CAFFEINATE:-caffeinate}
+START_TRIES=${CREW_START_TRIES:-5}
 LOG=${CREW_LOG:-$HOME/.claude/crew-loop.log}
 CURRENT_N=""  # the issue being started or watched; INT or TERM stops its session
 STARTED_ID=""
@@ -81,7 +90,7 @@ stop_session() {
   local id=$1 pid tree p left=0 lock_pid
   pid=$(agent_record "$id" | jq -r '.pid // empty')
   # A record's pid may have been reused by another process since.
-  if [ -n "$pid" ] && ! ps -o command= -p "$pid" 2>/dev/null | grep -q claude; then
+  if [ -n "$pid" ] && ! grep -q claude <<<"$(ps -o command= -p "$pid" 2>/dev/null)"; then
     echo "pid $pid of $id is not a claude process, so its tree is left alone"
     pid=""
   fi
@@ -98,7 +107,7 @@ stop_session() {
   done
   # The simulator lock is released only when a process of this session held it.
   lock_pid=$(cat "$SIM_LOCK/pid" 2>/dev/null)
-  if [ -n "$lock_pid" ] && printf '%s\n' "$tree" | grep -qx "$lock_pid"; then
+  if [ -n "$lock_pid" ] && grep -qx "$lock_pid" <<<"$tree"; then
     rm -rf "$SIM_LOCK"
     echo "released the simulator lock held by $lock_pid"
   fi
@@ -126,13 +135,22 @@ stop_named() {
   done
 }
 
-# Sets STARTED_ID. An output it cannot read may still have started a session
-# (#2821), so any session by that name is stopped.
+# Sets STARTED_ID from the session list: the session named crew-N started
+# since $since, in Unix milliseconds as the list counts them, since
+# `claude --bg` prints its id only as text (#2821). One that shows up too late
+# may still run, so any session by that name is stopped.
 start_session() {
-  local wt=$1 n=$2 out id
+  local wt=$1 n=$2 out since try=0
+  since=$(($(now) * 1000))
   out=$(cd "$wt" && INTRADA_CREW=1 claude --bg --model opus --effort high \
     --permission-mode auto -n "crew-$n" "/crew $n" 2>&1)
-  STARTED_ID=$(printf '%s' "$out" | grep -oE 'backgrounded[^0-9a-f]+[0-9a-f]{8}' | grep -oE '[0-9a-f]{8}$' | head -1)
+  STARTED_ID=""
+  while [ -z "$STARTED_ID" ] && [ "$try" -lt "$START_TRIES" ]; do
+    [ "$try" -gt 0 ] && sleep "${CREW_START_WAIT:-2}"
+    try=$((try + 1))
+    STARTED_ID=$(claude agents --json --all 2>/dev/null | jq -r --arg m "crew-$n" --argjson t "$since" \
+      '[.[] | select(.name == $m and (.startedAt // 0) >= $t)] | first | .id // empty')
+  done
   if [ -z "$STARTED_ID" ]; then
     log "could not start a session for #$n: $(printf '%s' "$out" | tail -1)"
     stop_named "$n"
@@ -171,8 +189,8 @@ last_words() {
 # The newest Crew note from $2 on, so an earlier run's park is not this
 # run's outcome.
 last_note() {
-  gh issue view "$1" -R "$REPO" --json comments --jq \
-    '[.comments[] | select(.createdAt >= "'"${2:-}"'") | .body | select(startswith("**Crew: "))
+  gh issue view "$1" -R "$REPO" --json comments --jq "$TRUSTED"'
+    [.comments[] | select(trusted and .createdAt >= "'"${2:-}"'") | .body | select(startswith("**Crew: "))
       | capture("^\\*\\*Crew: (?<s>[A-Za-z]+)\\*\\*").s] | last // ""' 2>/dev/null
 }
 
@@ -251,7 +269,7 @@ spend() {
     out=$(python3 "$HOME/.claude/hooks/usage-report.py" --days 1 --brief 2>/dev/null) || return 1
   fi
   # The report says "nothing recorded" for a day with no sessions at all.
-  if printf '%s' "$out" | grep -q 'nothing recorded'; then
+  if grep -q 'nothing recorded' <<<"$out"; then
     echo 0
     return
   fi
@@ -269,18 +287,20 @@ queue() {
 
 # Crew worktrees left by an earlier run, open, with no draft and not waiting on
 # the owner: no needs-owner label, and no park note without a later comment,
-# the owner's answer. An unreadable issue is skipped (#2821).
+# the owner's answer. Only trusted comments count. An unreadable issue is
+# skipped (#2821).
 unfinished() {
   local n ok
   find "$(worktrees)" -maxdepth 1 -type d -name 'crew-[0-9]*' 2>/dev/null |
     sed -n 's#.*/crew-\([0-9][0-9]*\)$#\1#p' | sort -n |
     while IFS= read -r n; do
-      ok=$(gh issue view "$n" -R "$REPO" --json state,labels,comments --jq '
+      ok=$(gh issue view "$n" -R "$REPO" --json state,labels,comments --jq "$TRUSTED"'
         select(.state == "OPEN" and ([.labels[].name] | index("needs-owner") | not))
-        | ([.comments[].body | startswith("**Crew: ")] | indices(true) | last) as $i
-        | (if $i == null then "" else (.comments[$i].body
+        | [.comments[] | select(trusted)] as $c
+        | ([$c[].body | startswith("**Crew: ")] | indices(true) | last) as $i
+        | (if $i == null then "" else ($c[$i].body
             | capture("^\\*\\*Crew: (?<s>[A-Za-z]+)\\*\\*").s) // "" end) as $s
-        | select($s != "draft" and ($s != "parked" or $i < (.comments | length) - 1)) | "yes"' 2>/dev/null) || {
+        | select($s != "draft" and ($s != "parked" or $i < ($c | length) - 1)) | "yes"' 2>/dev/null) || {
         log "could not read #$n from GitHub, so it is skipped" >&2
       }
       [ "$ok" = yes ] && echo "$n"
@@ -324,7 +344,8 @@ note_outcome() {
 }
 
 # Watches one session to its end and sets OUTCOME: draft, parked, or the reason
-# the loop parks it. Runs in the main shell, so a signal stops the session.
+# the loop parks it; waiting:<what> for a session waiting on someone. Runs in
+# the main shell, so a signal stops the session.
 watch() {
   local id=$1 wt=$2 n=$3 since=$4 started rec sid="" s pid state status waiting ended=0 gone=0 last
   started=$(now)
@@ -339,12 +360,14 @@ watch() {
     status=$(printf '%s' "$rec" | jq -r '.status // empty')
     waiting=$(printf '%s' "$rec" | jq -r '.waitingFor // empty')
 
-    if [ "$waiting" = "permission prompt" ]; then
-      OUTCOME=permission
+    # Nobody answers a crew session, so any wait parks (#2821).
+    if [ -n "$waiting" ] || [ "$status" = waiting ]; then
+      OUTCOME="waiting:$waiting"
       return
     fi
     # State before pid: a finished session reads blocked with no pid (#2821).
-    if [ "$state" = blocked ] || [ "$state" = done ] || [ "$state" = stopped ] || [ "$status" = idle ]; then
+    if [ "$state" = blocked ] || [ "$state" = done ] || [ "$state" = stopped ] ||
+      [ "$state" = failed ] || [ "$status" = idle ]; then
       ended=$((ended + 1))
       gone=0
     elif [ "$state" = working ] || [ "$status" = busy ]; then
@@ -356,7 +379,11 @@ watch() {
     fi
     # Two polls in a row, so one odd read never decides.
     if [ "$ended" -ge 2 ]; then
-      OUTCOME=$(note_outcome "$n" "$since" ended)
+      if [ "$state" = failed ]; then
+        OUTCOME=$(note_outcome "$n" "$since" failed)
+      else
+        OUTCOME=$(note_outcome "$n" "$since" ended)
+      fi
       return
     fi
     if [ "$gone" -ge 2 ]; then
@@ -374,6 +401,27 @@ watch() {
       return
     fi
   done
+}
+
+# A park for each thing Claude Code's agent view says a session can wait on.
+park_waiting() {
+  local n=$1 what=$2 said=$3 answer="Answer here and remove the needs-owner label."
+  case "$what" in
+    "permission prompt") park_issue "$n" "it stopped at a permission prompt" \
+      "Should the crew be allowed what it asked for, or should the plan avoid it? $answer" "$said" ;;
+    "input needed") park_issue "$n" "it stopped for an answer in its own chat" \
+      "What should it be told? Its question is in the last words below. $answer" "$said" ;;
+    "sandbox request") park_issue "$n" "it asked to go outside its sandbox" \
+      "Should the crew be allowed past the sandbox for this, or should the plan avoid it? $answer" "$said" ;;
+    "worker request") park_issue "$n" "one of its workers stopped for a decision" \
+      "What should the worker be allowed, or should the plan avoid it? $answer" "$said" ;;
+    "dialog open") park_issue "$n" "a dialog opened that nobody could close" \
+      "Which step opens a dialog, and can the plan avoid it? $answer" "$said" ;;
+    "") park_issue "$n" "it showed as waiting without saying on what" \
+      "Run it again as it is, or say what to change. $answer" "$said" ;;
+    *) park_issue "$n" "it waited on something the loop does not know: $what" \
+      "What was it waiting for, and should the plan avoid it? $answer" "$said" ;;
+  esac
 }
 
 # Exit 0 to go on; 1 when a park could not label the issue; 2 when no session
@@ -402,8 +450,9 @@ run_issue() {
       ;;
     draft) notify "Crew: draft ready for your review on #$n" ;;
     parked) notify "Crew parked #$n with a question" ;;
-    permission) park_issue "$n" "it stopped at a permission prompt" \
-      "Should the crew be allowed what it asked for, or should the plan avoid it? Answer here and remove the needs-owner label." "$said" ;;
+    waiting:*) park_waiting "$n" "${OUTCOME#waiting:}" "$said" ;;
+    failed) park_issue "$n" "the session failed with an error" \
+      "Remove the needs-owner label to run it again as it is, or say what to change." "$said" ;;
     no-process) park_issue "$n" "the session showed as working with no process behind it" \
       "Remove the needs-owner label to run it again as it is, or say what to change." "$said" ;;
     wall-clock) park_issue "$n" "it hit the $((WALL_CLOCK / 60)) minute wall clock" \
@@ -416,6 +465,35 @@ run_issue() {
 }
 
 # ── The run ──────────────────────────────────────────────────────────────────
+
+# One run at a time: a second would count the first's worktree as unfinished
+# and stop its live session (#2821). A holder that died without its EXIT trap
+# leaves a stale lock, as in ios-sim-lock.sh.
+take_lock() {
+  local holder
+  if ! mkdir "$LOCK" 2>/dev/null; then
+    holder=$(cat "$LOCK/pid" 2>/dev/null)
+    [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null || return 1
+    log "cleared the crew lock of process $holder, which has gone"
+    rm -rf "$LOCK"
+    mkdir "$LOCK" 2>/dev/null || return 1
+  fi
+  echo $$ >"$LOCK/pid"
+}
+
+release_lock() {
+  [ "$(cat "$LOCK/pid" 2>/dev/null)" = "$$" ] && rm -rf "$LOCK"
+}
+
+# A sleep jumps the wall clock and parks the issue as a cap (#2821). Watching
+# this pid, caffeinate ends with the run and leaves its signals alone.
+stay_awake() {
+  if command -v "$CAFFEINATE" >/dev/null 2>&1; then
+    "$CAFFEINATE" -i -w $$ >/dev/null 2>&1 &
+  else
+    log "no caffeinate on this machine, so it may sleep during the run"
+  fi
+}
 
 on_signal() {
   trap - INT TERM
@@ -432,10 +510,16 @@ main() {
     echo "crew-loop.sh starts real sessions on this Mac, never in CI" >&2
     exit 1
   fi
+  if ! take_lock; then
+    log "another crew run holds $LOCK, so this one ends; remove it only if no run is going"
+    exit 0
+  fi
+  trap release_lock EXIT
   if [ -e "$STOP_FILE" ]; then
     log "the stop file $STOP_FILE is there; remove it to run the crew"
     exit 0
   fi
+  stay_awake
   trap 'on_signal 130' INT
   trap 'on_signal 143' TERM
   if ! check_guards; then
@@ -515,14 +599,25 @@ $q"
   exit 0
 }
 
+usage="usage: $0 [stop-session <id> | comments <issue> | lessons]"
 case "${1:-}" in
   "") main ;;
   stop-session)
-    [ $# -eq 2 ] || { echo "usage: $0 stop-session <id>" >&2; exit 2; }
+    [ $# -eq 2 ] || { echo "$usage" >&2; exit 2; }
     stop_session "$2"
     ;;
+  comments)
+    [ $# -eq 2 ] && [[ $2 =~ ^[0-9]+$ ]] || { echo "$usage" >&2; exit 2; }
+    gh issue view "$2" -R "$REPO" --json comments --jq "$TRUSTED"'
+      .comments[] | select(trusted) | "Comment by \(.author.login) on \(.createdAt):\n\(.body)\n"' || exit 2
+    ;;
+  lessons)
+    gh issue list -R "$REPO" --label lessons-pending --state all --limit 100 --json number,comments \
+      --jq "$TRUSTED"'.[] | .number as $n | .comments[]
+        | select(trusted and (.body | startswith("**Lessons**"))) | "#\($n): \(.body)"' || exit 2
+    ;;
   *)
-    echo "usage: $0 [stop-session <id>]" >&2
+    echo "$usage" >&2
     exit 2
     ;;
 esac

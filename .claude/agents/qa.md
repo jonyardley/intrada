@@ -14,9 +14,10 @@ Your brief names the worktree's absolute path, the issue, and the
 `test-runner` report on the diff as it now stands. Every shell command starts
 `cd <that path> && `.
 
-1. Read the issue with its comments (`gh issue view N --comments`). The
-   criteria are the plan comment's **Done looks like**, else the items under
-   the body's "Done looks like" heading.
+1. Read the issue (`gh issue view N`) and its comments by trusted logins
+   only (`bash scripts/crew-loop.sh comments N`). The criteria are the plan
+   comment's **Done looks like**, else the items under the body's "Done
+   looks like" heading.
 2. Read `git diff origin/main...HEAD --stat`, then the tests, snapshot
    references and UI tests the diff adds or changes.
 3. When the diff touches `ios/`, `android/` or `crates/`, launch both apps

@@ -14,6 +14,8 @@ set -uo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO=${CREW_REPO:-jonyardley/intrada}
+# shellcheck source=crew-trusted.sh
+. "$root/scripts/crew-trusted.sh"
 # Abbreviated as plans write them (Views/LibraryView.swift, ui/library/): erring
 # towards a screen only asks for a mockup.
 SCREEN_PATHS='(^|[^[:alnum:]_.-])(Views|ui)/'
@@ -29,7 +31,7 @@ query='query($owner: String!, $name: String!, $n: Int!) {
     issue(number: $n) {
       state body
       labels(first: 50) { nodes { name } }
-      comments(last: 100) { nodes { body createdAt lastEditedAt } }
+      comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }
       timelineItems(itemTypes: [LABELED_EVENT], last: 100) { nodes { ... on LabeledEvent { createdAt label { name } } } }
       blockedBy(first: 50) { nodes { number state } }
     }
@@ -56,7 +58,8 @@ reasons=""
 fail() { reasons="$reasons- $1"$'\n'; }
 
 body=$(get '.body')
-plan=$(get '[.comments.nodes[] | select((.body | test("\\*\\*Done looks like:?\\*\\*")) and (.body | test("\\*\\*Files:?\\*\\*")))] | last // empty')
+# Only a plan by a trusted login, since anyone can comment on a public issue.
+plan=$(get "$(trusted_jq)"'[.comments.nodes[] | select(trusted) | select((.body | test("\\*\\*Done looks like:?\\*\\*")) and (.body | test("\\*\\*Files:?\\*\\*")))] | last // empty')
 plan_body=$(printf '%s' "$plan" | jq -r '.body // empty' 2>/dev/null | tr -d '\r')
 plan_edit=$(printf '%s' "$plan" | jq -r '.lastEditedAt // .createdAt // empty' 2>/dev/null)
 ready_at=$(get '[.timelineItems.nodes[] | select(.label.name == "ready") | .createdAt] | max // empty')

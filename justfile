@@ -203,6 +203,7 @@ pr-visuals:
 # just claim 1650 "the approach is wrong because X" (#1890).
 # The crew loop (#2821, specs/crew-loop.md): ready issues to draft PRs, one at
 # a time, until the queue is empty, a cap is hit or ~/.intrada-crew-stop exists.
+# One run at a time, and the script keeps the Mac awake with caffeinate.
 [doc("Run the crew loop: ready issues to draft PRs, one at a time, until a cap or the stop file")]
 crew:
     bash scripts/crew-loop.sh
