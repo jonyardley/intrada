@@ -298,7 +298,7 @@ setup() {
   for p in $(cat "$FAKE"/pid-* 2>/dev/null); do kill "$p" 2>/dev/null || :; done
   cat "$FAKE/gh.log" >>"$work/gh-all.log" 2>/dev/null || :
   chmod -R u+rw "$work/records" 2>/dev/null || :
-  rm -rf "$FAKE" "$work/home" "$work/wt" "$work/tasks" "$work/stop" "$work/lock" "$work/records"
+  rm -rf "$FAKE" "$work/home" "$work/config" "$work/wt" "$work/tasks" "$work/stop" "$work/lock" "$work/records"
   mkdir -p "$FAKE" "$work/home" "$work/wt" "$work/tmp" "$work/records"
   : >"$FAKE/sessions"
   : >"$FAKE/gh.log"
