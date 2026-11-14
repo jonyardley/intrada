@@ -298,7 +298,7 @@ setup() {
   for p in $(cat "$FAKE"/pid-* 2>/dev/null); do kill "$p" 2>/dev/null || :; done
   cat "$FAKE/gh.log" >>"$work/gh-all.log" 2>/dev/null || :
   chmod -R u+rw "$work/records" 2>/dev/null || :
-  rm -rf "$FAKE" "$work/home" "$work/wt" "$work/tasks" "$work/stop" "$work/lock" "$work/records"
+  rm -rf "$FAKE" "$work/home" "$work/config" "$work/wt" "$work/tasks" "$work/stop" "$work/lock" "$work/records"
   mkdir -p "$FAKE" "$work/home" "$work/wt" "$work/tmp" "$work/records"
   : >"$FAKE/sessions"
   : >"$FAKE/gh.log"
@@ -314,7 +314,8 @@ setup() {
 # "$BASH", so a run of this file under /bin/bash runs the loop under it too.
 # BG=1 leaves the loop running, its pid in LOOP_PID.
 run_loop() {
-  set -- env -u CI PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp" \
+  set -- env -u CI -u CLAUDE_CONFIG_DIR ${CONFIG:+"CLAUDE_CONFIG_DIR=$CONFIG"} \
+    PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp" \
     CREW_QUEUE="$work/bin/queue" CREW_PICK="$work/bin/pick" OSTINATO_HOME="$work/records" \
     CREW_OSTI="${OSTI:-osti}" CREW_PHONE_PUSH="${PUSH:-}" \
     CREW_WORKTREE="$work/bin/mkwt" CREW_WORKTREES="$work/wt" CREW_NOTIFY="${NOTIFY-$work/bin/notify}" \
@@ -906,6 +907,15 @@ echo wait-permission >"$FAKE/scenario-101"
 run_loop
 ok "the park note keeps the last 300 characters inside one closed fence" \
   'body=$(notes 101) && grep -q "@someone" <<<"$body" && ! grep -q START <<<"$body" && [ "$(printf "%s\n" "$body" | grep -c "^\`\`\`")" = 2 ]'
+
+setup 101
+proj="$work/config/projects/$(printf '%s' "$work/wt/crew-101" | sed 's/[^A-Za-z0-9]/-/g')"
+mkdir -p "$proj"
+jq -cn '{type: "assistant", message: {content: [{type: "text", text: "words from the config folder"}]}}' >"$proj/sess-101.jsonl"
+echo wait-permission >"$FAKE/scenario-101"
+CONFIG="$work/config" run_loop
+ok "with CLAUDE_CONFIG_DIR set, the park note reads the transcript kept under it" \
+  'grep -q "words from the config folder" <<<"$(notes 101)"'
 
 setup 101
 echo draft >"$FAKE/scenario-101"

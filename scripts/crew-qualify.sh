@@ -245,7 +245,7 @@ main_checkout() {
 
 transcript_for() {
   local cwd=$1 sid=$2
-  printf '%s/.claude/projects/%s/%s.jsonl' "$HOME" "$(printf '%s' "$cwd" | tr '/.' '--')" "$sid"
+  printf '%s/projects/%s/%s.jsonl' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" "$(printf '%s' "$cwd" | tr '/.' '--')" "$sid"
 }
 
 agent_record() {
@@ -668,12 +668,16 @@ case "${1:-}" in
     [ $# -eq 3 ] || { echo "usage: $0 judge <n> <dir>" >&2; exit 1; }
     "judge_$2" "$3"
     ;;
+  transcript)
+    [ $# -eq 3 ] || { echo "usage: $0 transcript <cwd> <session id>" >&2; exit 1; }
+    transcript_for "$2" "$3"
+    ;;
   calls)
     [ $# -eq 2 ] || { echo "usage: $0 calls <transcript>" >&2; exit 1; }
     calls_from_transcript "$2"
     ;;
   *)
-    echo "usage: $0 run <dir> <n>... | collect <n> <dir> | judge <n> <dir> | calls <transcript>" >&2
+    echo "usage: $0 run <dir> <n>... | collect <n> <dir> | judge <n> <dir> | transcript <cwd> <session id> | calls <transcript>" >&2
     exit 1
     ;;
 esac
