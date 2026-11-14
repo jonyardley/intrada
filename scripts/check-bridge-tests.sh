@@ -9,7 +9,9 @@
 #
 # A Kotlin round trip through LiveBridge counts the way a Swift one does: it is
 # a second decoder of the same wire, and the check asks only that some shell
-# test names the type (#2265).
+# test names the type (#2265). While Android is paused (#2860) its tests never
+# run, so they count only with BRIDGE_COUNT_KOTLIN=1, and the types only they
+# named sit in the allowlist under #2860.
 #
 # The roots are overridable so the self-test can point them at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
@@ -23,6 +25,7 @@ model="${BRIDGE_VIEWMODEL:-crates/intrada-core/src/model.rs}"
 tests="${BRIDGE_TESTS_ROOT:-ios/IntradaTests}"
 android_tests="${BRIDGE_ANDROID_TESTS_ROOT:-android/app/src/test/kotlin}"
 allowlist="${BRIDGE_ALLOWLIST:-scripts/bridge-tests-allowlist.txt}"
+count_kotlin="${BRIDGE_COUNT_KOTLIN:-0}"
 
 for path in "$core" "$model" "$tests" "$android_tests" "$allowlist"; do
   if [ ! -e "$path" ]; then
@@ -70,7 +73,11 @@ if [ -z "$swift_files" ] || [ -z "$kotlin_files" ]; then
   echo "✗ check-bridge-tests: no LiveBridge tests under $tests or under $android_tests" >&2
   exit 2
 fi
-bridge_files=$(printf '%s\n%s\n' "$swift_files" "$kotlin_files")
+if [ "$count_kotlin" = 1 ]; then
+  bridge_files=$(printf '%s\n%s\n' "$swift_files" "$kotlin_files")
+else
+  bridge_files=$swift_files
+fi
 
 named=$(printf '%s\n' "$bridge_files" | tr '\n' '\0' |
   xargs -0 perl -ne 's{"(?:[^"\\]|\\.)*"}{""}g; s{//.*}{}; print "$_\n" for /\b([A-Za-z_]\w*)\b/g' | sort -u)

@@ -5,7 +5,8 @@ else lives in the path-scoped rules, the skills and the docs below. -->
 
 intrada is a **practice notebook** for musicians: plan a session, play it, score it
 (Plan, Practice, Track). Two native shells on one Rust core: SwiftUI in `ios/`, Compose
-in `android/`; every feature ships on both. The web and Tauri shells were deleted
+in `android/`. **Android is paused (#2860): every feature ships on iPhone only, and
+nothing in `android/` changes until the owner restarts it.** The web and Tauri shells were deleted
 (`docs/decisions.md`): **a request implying web work? Confirm the platform first.**
 Direction: `docs/roadmap.md`; in flight: `just status`.
 
@@ -15,7 +16,6 @@ Direction: `docs/roadmap.md`; in flight: `just status`.
 just check            # CI's Rust and hygiene jobs, bar MSRV and coverage; run before pushing
 just ios-run          # build + launch on simulator + screenshot (seeded; SEED=0 to persist)
 just ios-test         # unit + snapshot; just ios-fmt-check for ios/
-just android-run      # regen bindings + emulator + screenshot; android-test: JVM + snapshots
 ```
 
 - **Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP build, run or
@@ -36,7 +36,7 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Reco
 2. **The shell is a dumb pipe.** It renders the `ViewModel` and fulfils effects: local data
    through the shared `intrada-store`, crash recovery through an `AppEffect`.
 3. **Typed bindings, no hand-written FFI.** Never hand-edit `ios/generated/` or
-   `android/generated/`; fix the Rust type and regenerate both.
+   `android/generated/`; fix the Rust type and regenerate the iOS bindings.
 
 ## Gotchas
 

@@ -9,7 +9,7 @@ a private page linked from #2803.
 ## What the owner sees
 
 The owner approves a plan by adding the `ready` label. After a run the issue
-has either a draft pull request with both apps' screenshots and one evidence
+has either a draft pull request with the iPhone screenshot (Android is paused, #2860) and one evidence
 line per "Done looks like" criterion, or a `needs-owner` label and one
 question as a comment. Their phone tells them which. Nothing is ever marked
 ready or merged by the crew: every merge stays the owner's.
@@ -146,8 +146,8 @@ a prompt; the loop takes the next issue.
   `/crew N`. Whether a background session expands a command in its first
   prompt is proved in #2821; if not, the prompt names the file instead.
 - `.claude/agents/qa.md` on Opus, since ticking a criterion against a
-  screenshot is judgement. Read-only on code: it launches both apps with
-  `just ios-run` and `just android-run`, each screenshot kept in the
+  screenshot is judgement. Read-only on code: it launches the iPhone app with
+  `just ios-run` (Android is paused, #2860), the screenshot kept in the
   worktree, leaves the gates to `test-runner`, and reports one line per
   criterion with its evidence; the session posts it. It never uses Xcode's
   tool server, which asks for approval once per new worktree; taps are

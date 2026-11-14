@@ -30,14 +30,15 @@ runs before the push, because a review left until after it gets skipped
   issues open and every check green on the last commit, `just pr-ready PR
   ISSUE` marks it ready and moves the board (#1659). `Closes #N` in the body closes the issue on merge.
 
-## Verifying a change on the simulator and the emulator
+## Verifying a change on the simulator
 
-Every feature ships on both apps in one PR, core commits first, because a
+Android is paused (#2860): a feature ships on iPhone only, and nothing in
+`android/` changes. Every feature ships in one PR, core commits first, because a
 merged core with no caller is shell-dead (#1374). On the sensitive surfaces
 `reviewer` reads the core commits alone before the screens are added.
 
-Drive a UI or interaction change on both apps (`just ios-run`,
-`just android-run`, then the runtime tools) and name in **What I checked**
+Drive a UI or interaction change on iPhone (`just ios-run`, then the
+runtime tools) and name in **What I checked**
 what you drove and saw: a snapshot proves a frame renders, not that a tap
 works or a rejected write restores the old value.
 
@@ -46,8 +47,8 @@ gestures a synthetic touch cannot reproduce, background audio, Live
 Activities. Its **What I checked** names exactly what a person does by hand.
 It is never a way to skip driving the app.
 
-**Eyes before ready.** A screen change opens as a draft with iPhone and
-Android before and after images and the line "Waiting for Jon's word on the
+**Eyes before ready.** A screen change opens as a draft with iPhone before
+and after images and the line "Waiting for Jon's word on the
 screenshot". It goes ready only after Jon's yes, when that line becomes "Jon
 approved the screenshot on YYYY-MM-DD"; a no is a push to the open PR
 (#1891). Run `just pr-visuals` after the push (#1631): its image URLs pin the
@@ -127,13 +128,13 @@ choice he has not made. The build and the reviewer read it.
 **Done looks like**: two or three checks, as the musician or Jon sees them.
 **Time budget**: one session, or two; past it, stop and re-plan.
 **Decisions taken**: each choice, with the option rejected and why.
-**Files**: the files and lines it touches, core, `ios/` and `android/`.
+**Files**: the files and lines it touches, core and `ios/`.
 **Tests**: what proves it on each shell, and the line a deletion should break.
 **Mockup**: for a new screen, the Design canvas link and Jon's word on it, or why none is needed.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.
-**Routing**: the epic from `just claim`, sensitive surfaces or not, where it
-runs on iOS and Android, and any parallel stream.
+**Routing**: the epic from `just claim`, sensitive surfaces or not, and any
+parallel stream.
 ```
 
 Routing follows `docs/working-with-agents.md`. A plan needing more than two

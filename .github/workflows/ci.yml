@@ -47,6 +47,9 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
       native: ${{ steps.filter.outputs.native }}
       android: ${{ steps.filter.outputs.android }}
+      # Android is paused (#2860): the Android jobs skip, which still
+      # satisfies their required check. Set to "false" to restart.
+      android_paused: "true"
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -656,7 +659,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.android == 'true'
+    if: needs.changes.outputs.android_paused != 'true' && (github.event_name == 'push' || needs.changes.outputs.android == 'true')
     steps:
       - uses: actions/checkout@v7
       # rust-toolchain.toml lists no targets, so the two Android ones are added here.
@@ -737,7 +740,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.android == 'true'
+    if: needs.changes.outputs.android_paused != 'true' && (github.event_name == 'push' || needs.changes.outputs.android == 'true')
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master

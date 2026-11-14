@@ -25,8 +25,8 @@ migrated on every device.
 
 ## The ranking
 
-There is one sequence of milestones and no parallel streams. From v0.20.0
-every milestone ships on iPhone and Android together. Where this list and an
+There is one sequence of milestones and no parallel streams. From 2026-11-14
+every milestone ships on iPhone only, while Android is paused (#2860). Where this list and an
 issue's [horizon label](how-the-work-runs.md#horizons) disagree, this list
 wins.
 
@@ -87,10 +87,11 @@ on.
 - **Upkeep, picked up when it blocks**: the iOS test gates (#1981), the agent
   harness (#1983), its usage costs (#1849) and a core that is easy to change
   (#1995). An item joins the current milestone only when it stops that
-  milestone shipping. The Android epic (#2220) closes at 1.0.
-- **Both apps at parity**: from 2026-10-13 every new feature lands on iPhone
-  and Android together, in one PR. The Android epic (#2220) holds only the
-  catch-up list from before that date.
+  milestone shipping.
+- **Android is paused** (#2860): from 2026-11-14 every new feature lands on
+  iPhone only, the Android checks are off, and Android issues carry the
+  `paused` label. A restart begins by catching Android up to the core. The
+  Android items in the milestones above wait with it.
 - **Postponed until after 1.0**: every screen at the largest text sizes
   (#2134), set aside again on 2026-10-13 with its children kept open.
 - **After 1.0, roughly in this order**: know what to practise next (#1978),
@@ -108,10 +109,10 @@ Specs and designs divide a musician's practice into three parts:
 
 ## Platform
 
-intrada is two native apps on a shared Rust core, kept at parity: SwiftUI on
-iPhone and Compose on Android
-([`specs/android-shell.md`](../specs/android-shell.md)). Each keeps everything
-on the phone, and every new feature ships on both. There is no web app and no
+intrada is two native apps on a shared Rust core: SwiftUI on iPhone and
+Compose on Android ([`specs/android-shell.md`](../specs/android-shell.md)).
+Each keeps everything on the phone. Android is paused (#2860), so every new
+feature ships on iPhone only until it restarts. There is no web app and no
 sync yet: the server that once carried sync was removed (#1746), and iCloud
 sync between iPhone and iPad (#2353) with export and restore for both apps
 (#2624) is planned for v0.26.0.

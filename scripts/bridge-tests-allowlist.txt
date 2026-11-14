@@ -58,3 +58,25 @@ ViewModel.availableComposers
 ViewModel.availableTags
 ViewModel.lastPractised
 ViewModel.profile
+
+# Named only by Android round trip tests, which stop running while Android is
+# paused (#2860). A Swift LiveBridge test takes each off this list.
+Accidental
+ClickPreset
+ClickStart
+CompletionStatus
+Direction
+Effect
+EntryStatus
+ItemEvent
+KeyEdit
+Letter
+Modality
+PersistenceOperation
+PracticeDefaultsEvent
+PracticeSession
+RecordKind
+SessionEvent
+StoredPracticeSession
+SyncEvent
+SyncOperation

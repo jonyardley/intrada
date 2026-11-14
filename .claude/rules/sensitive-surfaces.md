@@ -46,7 +46,8 @@ The hazards, by file:
 - **`ios/generated/`.** Never hand-edit; fix the Rust type and regenerate.
   UniFFI output fails under Swift 6.2 `MainActor`-default isolation
   (uniffi-rs#2818); the build recipe keeps the package non-MainActor-defaulted.
-- **`android/generated/` and `CoreBridge.kt`.** The same wire, read by a second
+- **`android/generated/` and `CoreBridge.kt`.** Paused with Android (#2860):
+  leave them alone until it restarts. Then: the same wire, read by a second
   decoder: extend `BridgeRoundTripTest` as well as the Swift `LiveBridge`
   tests. Generate only through `just android-gen`, which runs the
   `uniffi-bindgen` pinned inside `intrada-ffi`, never a global one, or the

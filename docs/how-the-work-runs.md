@@ -69,7 +69,7 @@ then oldest first; an agent takes the top unclaimed one.
 ## Cutting a release
 
 A milestone is one headline plus whatever rides along. **Cut when the headline
-works on iPhone and Android**, not on a fixed day, because the work comes in
+works on iPhone**, not on a fixed day, because the work comes in
 bursts.
 
 Write the headline on the first line of the milestone's description, where

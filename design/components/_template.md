@@ -19,7 +19,8 @@ index. Keys sit one to a line so scripts/check-components.sh can read them:
 - ios_snapshots: paths under ios/IntradaTests/__Snapshots__/.
 - android_snapshots: paths under android/app/src/test/snapshots/.
 - No Android version: drop the three android_ keys and write
-  `not_on_android: <why, or the issue that builds it>`.
+  `not_on_android: <why, or the issue that builds it>`. While Android is paused,
+  a new component writes `not_on_android: Android is paused (#2860)`.
 
 Delete any section below that has nothing to say, rather than filling it.
 The page is the lasting reference: its purpose, the one look and its rules.

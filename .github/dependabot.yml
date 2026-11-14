@@ -27,6 +27,8 @@ updates:
     directory: "/android"
     schedule:
       interval: "weekly"
+    # Android is paused (#2860): no version bumps, security updates only.
+    open-pull-requests-limit: 0
     # JNA is coupled to the UniFFI runtime, so its bump arrives on its own and
     # needs the bridge round-trip test before it merges (#2264).
     groups:

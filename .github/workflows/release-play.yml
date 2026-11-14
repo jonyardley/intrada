@@ -1,7 +1,7 @@
 name: Release, Play internal testing
 
-# Signed release bundle to Play's internal testing track (#2499), on the same
-# tags as release-testflight.yml. Ubuntu, so not 10x-billed like the iOS build.
+# Signed release bundle to Play's internal testing track (#2499), by hand only
+# while Android is paused. Ubuntu, so not 10x-billed like the iOS build.
 on:
   workflow_dispatch:
     inputs:
@@ -14,8 +14,8 @@ on:
         type: choice
         options: [completed, draft]
         default: completed
-  push:
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  # Android is paused (#2860), so a release tag no longer builds it. To
+  # restart, put back the push trigger on tags v[0-9]+.[0-9]+.[0-9]+.
 
 concurrency:
   group: play-${{ github.ref }}
