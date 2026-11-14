@@ -62,7 +62,7 @@ runs:
         key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.plan.outputs.list }}-${{ hashFiles('.github/actions/install-tools/action.yml') }}
     - name: Download the tools (cache miss)
       if: steps.restore.outputs.cache-hit != 'true'
-      uses: taiki-e/install-action@v2.90.1
+      uses: taiki-e/install-action@v2.90.3
       with:
         tool: ${{ inputs.tools }}
     # Where cargo does not run from $CARGO_HOME/bin (Homebrew's, on the macOS
