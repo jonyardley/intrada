@@ -2,8 +2,8 @@
 # Self-test for the judging half of scripts/crew-qualify.sh (#2802) and its
 # transcript reader. Each check is judged against canned evidence shaped like a
 # real run's: one passing folder, and failing folders that each break one
-# assertion, so deleting an assertion from a judge turns this red. No session,
-# network or ~/.claude.
+# assertion, so deleting an assertion from a judge turns this red. Check 1's
+# collecting runs once, on stand-ins. No session, network or ~/.claude.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -41,22 +41,62 @@ lease_for() {
 LEASE_DENIAL='That worktree belongs to another live session: session 3570b2f1 (pid 89345) has held it since 2026-11-12 06:09.'
 READY_DENIAL="A crew session leaves its PR as a draft: marking it ready is the owner's, after the screenshots (intrada #2799, #2812)."
 
-# ── check 1: the hook process sees the flag ─────────────────────────────────
-mkdir -p "$work/1-pass" "$work/1-no-flag" "$work/1-wrong-guard" "$work/1-not-error" "$work/1-no-prefix"
-printf 'event=SessionStart crew=1\nevent=PreToolUse crew=1\n' >"$work/1-pass/marker"
-denied "gh pr ready 999999 -R jonyardley/intrada" "$READY_DENIAL" >"$work/1-pass/calls.jsonl"
-printf 'event=SessionStart crew=unset\nevent=PreToolUse crew=unset\n' >"$work/1-no-flag/marker"
-cp "$work/1-pass/calls.jsonl" "$work/1-no-flag/"
-cp "$work/1-pass/marker" "$work/1-wrong-guard/"
-denied "gh pr ready 999999 -R jonyardley/intrada" "$LEASE_DENIAL" >"$work/1-wrong-guard/calls.jsonl"
-for d in 1-not-error 1-no-prefix; do cp "$work/1-pass/marker" "$work/$d/"; done
-call "gh pr ready 999999 -R jonyardley/intrada" false "PreToolUse:Bash hook error: $READY_DENIAL" >"$work/1-not-error/calls.jsonl"
-call "gh pr ready 999999 -R jonyardley/intrada" true "Exit code 1. $READY_DENIAL" >"$work/1-no-prefix/calls.jsonl"
+# ── check 1: the agent's identity, the probe's hooks, osti's own refusal ────
+OSTI_DENIAL="osti guard refused this command: an Ostinato session leaves its pull request as a draft: marking it ready is the owner's."
+one_pass() {
+  mkdir -p "$work/$1"
+  echo present >"$work/$1/keychain"
+  echo 0 >"$work/$1/guard_install"
+  printf 'event=SessionStart project=jonyardley/intrada\nevent=PreToolUse project=jonyardley/intrada\n' >"$work/$1/marker"
+  {
+    call "gh api user --jq .login" false "ostinato-agent
+"
+    denied "gh pr ready 999999 -R jonyardley/intrada" "$OSTI_DENIAL"
+  } >"$work/$1/calls.jsonl"
+}
+for d in 1-pass 1-both-guards 1-no-keychain 1-no-install 1-no-hooks 1-owner-login 1-login-refused \
+  1-old-guard-only 1-not-error 1-no-prefix; do
+  one_pass "$d"
+done
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$READY_DENIAL $(printf 'x%.0s' $(seq 1 200)) $OSTI_DENIAL"
+} >"$work/1-both-guards/calls.jsonl"
+echo missing >"$work/1-no-keychain/keychain"
+echo 1 >"$work/1-no-install/guard_install"
+echo "osti guard: OSTINATO_AGENT_EMAIL is not set" >"$work/1-no-install/guard_install.err"
+printf 'event=SessionStart project=unset\nevent=PreToolUse project=unset\n' >"$work/1-no-hooks/marker"
+{
+  call "gh api user --jq .login" false "the-owner"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$OSTI_DENIAL"
+} >"$work/1-owner-login/calls.jsonl"
+{
+  call "gh api user --jq .login" true "ostinato-agent"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$OSTI_DENIAL"
+} >"$work/1-login-refused/calls.jsonl"
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$READY_DENIAL"
+} >"$work/1-old-guard-only/calls.jsonl"
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  call "gh pr ready 999999 -R jonyardley/intrada" false "PreToolUse:Bash hook error: $OSTI_DENIAL"
+} >"$work/1-not-error/calls.jsonl"
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  call "gh pr ready 999999 -R jonyardley/intrada" true "Exit code 1. $OSTI_DENIAL"
+} >"$work/1-no-prefix/calls.jsonl"
 expect PASS 1 1-pass "PASS 1"
-expect FAIL 1 1-not-error "did not refuse"
-expect FAIL 1 1-no-prefix "did not refuse"
-expect FAIL 1 1-no-flag "no line from the marker hook"
-expect FAIL 1 1-wrong-guard "did not refuse"
+expect PASS 1 1-both-guards "PASS 1"
+expect FAIL 1 1-no-keychain "Keychain item"
+expect FAIL 1 1-no-install "OSTINATO_AGENT_EMAIL is not set"
+expect FAIL 1 1-no-hooks "saw OSTINATO_PROJECT=jonyardley/intrada"
+expect FAIL 1 1-owner-login "answered 'the-owner'"
+expect FAIL 1 1-login-refused "answered 'nothing'"
+# The owner's guard alone fails, and the FAIL line quotes the refusal it saw.
+expect FAIL 1 1-old-guard-only "(saw: A crew session leaves its PR as a draft: marking it ready"
+expect FAIL 1 1-not-error "osti's own message"
+expect FAIL 1 1-no-prefix "osti's own message"
 
 # ── check 2: own worktree, own lease ────────────────────────────────────────
 sid=3a1d1e5e-0e31-4862-8156-5a59db97adad
@@ -225,6 +265,69 @@ n=$((n + 1))
 got=$(bash "$script" calls "$work/t/transcript.jsonl")
 if [ "$got" != "$want" ]; then
   echo "✗ calls: wanted"$'\n'"$want"$'\n'"got"$'\n'"$got" >&2
+  fails=$((fails + 1))
+fi
+
+# ── collecting check 1: a failed guard install starts no probe session ─────
+# Stand-ins for the Keychain, git and claude; osti is the one CREW_OSTI names,
+# and a bare osti on PATH would be the wrong one.
+mkdir -p "$work/c1/bin" "$work/c1/main/.git" "$work/c1/out"
+cat >"$work/c1/bin/security" <<'S'
+#!/usr/bin/env bash
+exit 0
+S
+cat >"$work/c1/bin/git" <<'G'
+#!/usr/bin/env bash
+case "$*" in
+  *--git-common-dir*) echo "$C1/main/.git" ;;
+  *show-ref*) exit 1 ;;
+  *"worktree add"*) wt=${*: -2:1}; mkdir -p "$wt/.claude"; echo '{}' >"$wt/.claude/settings.json" ;;
+esac
+exit 0
+G
+cat >"$work/c1/bin/claude" <<'C'
+#!/usr/bin/env bash
+echo "claude $*" >>"$C1/calls"
+exit 1
+C
+cat >"$work/c1/bin/osti" <<'O'
+#!/usr/bin/env bash
+echo "bare osti $*" >>"$C1/calls"
+exit 0
+O
+cat >"$work/c1/bin/chosen-osti" <<'O'
+#!/usr/bin/env bash
+echo "chosen osti $*" >>"$C1/calls"
+echo "osti guard: the install failed" >&2
+exit 1
+O
+chmod +x "$work/c1/bin/"*
+n=$((n + 1))
+(cd "$work/c1/main" && C1="$work/c1" PATH="$work/c1/bin:$PATH" CREW_OSTI="$work/c1/bin/chosen-osti" \
+  bash "$script" collect 1 "$work/c1/out" >/dev/null 2>&1) || :
+if ! grep -q "^chosen osti guard install --worktree " "$work/c1/calls" 2>/dev/null ||
+  grep -q "^bare osti\|^claude" "$work/c1/calls" || [ "$(cat "$work/c1/out/guard_install" 2>/dev/null)" != 1 ]; then
+  echo "✗ collect 1: wanted only CREW_OSTI's guard install, recorded as failed, and no session; got:" >&2
+  cat "$work/c1/calls" >&2 2>/dev/null || :
+  fails=$((fails + 1))
+fi
+
+# ── collecting check 1: the probe starts without INTRADA_CREW ──────────────
+# With the flag set, the owner's guard refuses first and hides osti's message.
+mkdir -p "$work/c1b/bin" "$work/c1b/main/.git" "$work/c1b/out"
+cp "$work/c1/bin/security" "$work/c1/bin/git" "$work/c1/bin/osti" "$work/c1b/bin/"
+cat >"$work/c1b/bin/claude" <<'C'
+#!/usr/bin/env bash
+echo "claude INTRADA_CREW=${INTRADA_CREW:-unset} OSTINATO_PROJECT=${OSTINATO_PROJECT:-unset} run=${OSTINATO_RUN:+set}" >>"$C1/calls"
+exit 1
+C
+chmod +x "$work/c1b/bin/claude"
+n=$((n + 1))
+(cd "$work/c1b/main" && C1="$work/c1b" PATH="$work/c1b/bin:$PATH" CREW_OSTI="$work/c1b/bin/osti" INTRADA_CREW=1 \
+  bash "$script" collect 1 "$work/c1b/out" >/dev/null 2>&1) || :
+if ! grep -qx "claude INTRADA_CREW=unset OSTINATO_PROJECT=jonyardley/intrada run=set" "$work/c1b/calls" 2>/dev/null; then
+  echo "✗ collect 1: wanted the probe started without INTRADA_CREW, with OSTINATO_PROJECT and OSTINATO_RUN; got:" >&2
+  cat "$work/c1b/calls" >&2 2>/dev/null || :
   fails=$((fails + 1))
 fi
 

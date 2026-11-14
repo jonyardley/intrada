@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Self-test for scripts/crew-loop.sh (#2821). Stand-in `claude` and `gh` on
-# PATH play one scripted session per issue; the loop's other seams (queue,
-# pick, check 1, spend, worktree, notify) point at small stand-ins. Each case
-# sets one condition and checks what the loop did on the fake GitHub. Every
-# case ends with the guard that the loop never called a ready or merge route.
+# Self-test for scripts/crew-loop.sh (#2821, #2854). Stand-in `claude`, `gh` and
+# `osti` on PATH play one scripted session per issue and the run record; the
+# loop's other seams (queue, pick, check 1, worktree, notify) point at small
+# stand-ins, and the spend cap reads a record file the case writes. Each case
+# sets one condition and checks what the loop did on the fake GitHub and in the
+# record. Every case ends with the guard that the loop never called a ready or
+# merge route.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -29,9 +31,11 @@ cat >"$work/bin/claude" <<'CLAUDE'
 #!/usr/bin/env bash
 printf 'claude %s\n' "$*" >>"$FAKE/calls"
 case "$1" in
+  --version) echo "2.1.325 (Claude Code)" ;;
   --bg)
     printf 'INTRADA_CREW=%s\n' "${INTRADA_CREW:-unset}" >>"$FAKE/calls"
-    issue=${*: -1}; issue=${issue#/crew }
+    printf 'OSTINATO_RUN=%s OSTINATO_PROJECT=%s\n' "${OSTINATO_RUN:-unset}" "${OSTINATO_PROJECT:-unset}" >>"$FAKE/calls"
+    read -r _ issue _ <<<"${*: -1}"
     id=$(printf 'c%07d' "$issue")
     scenario=$(cat "$FAKE/scenario-$issue" 2>/dev/null || echo busy)
     if [ "$scenario" = nostart ]; then
@@ -202,6 +206,53 @@ case "$1 $2" in
 esac
 GH
 
+# The run record's writer: one line of arguments a call in $FAKE/osti.log. Exit
+# 1 writes nothing, 3 writes the line but posts no note, as the real one; the
+# exit for an event comes from $FAKE/osti-exit-<event>, and $FAKE/osti-warn-<event>
+# is printed on stderr with exit 0. A note it posts lands on
+# the fake issue as the owner's comment, as gh would post it.
+cat >"$work/bin/osti" <<'OSTI'
+#!/usr/bin/env bash
+case "$1" in
+  --version) echo "osti 0.1.0"; exit 0 ;;
+  guard)
+    printf 'guard %s agent=%s/%s/%s\n' "$*" "${OSTINATO_AGENT_KEYCHAIN_SERVICE:-}" \
+      "${OSTINATO_AGENT_KEYCHAIN_ACCOUNT:-}" "${OSTINATO_AGENT_EMAIL:-}" >>"$FAKE/osti.log"
+    [ -f "$FAKE/guard-fails" ] && { echo "osti guard: the install failed" >&2; exit 1; }
+    exit 0
+    ;;
+esac
+args=("$@")
+event="" body="" item="" nonote=0
+for i in "${!args[@]}"; do
+  case "${args[$i]}" in
+    run-started | picked | stage | draft | parked | attempt-ended | run-ended) [ -z "$event" ] && event=${args[$i]} ;;
+    --body-file) body=$(cat "${args[$((i + 1))]}") ;;
+    --item) item=${args[$((i + 1))]} ;;
+    --no-note) nonote=1 ;;
+  esac
+done
+rc=$(cat "$FAKE/osti-exit-$event" 2>/dev/null || echo 0)
+if [ "$rc" = 1 ]; then
+  echo "osti write: the record could not be written" >&2
+  exit 1
+fi
+printf '%s\n' "$*" >>"$FAKE/osti.log"
+if [ "$rc" = 3 ]; then
+  echo "osti write: the line is written, but the note was not posted" >&2
+  exit 3
+fi
+if [ "$nonote" = 0 ] && [ -n "$item" ]; then
+  [ -n "$body" ] || body="**Ostinato: $event**"
+  f="$FAKE/issue-${item#*#}.json"
+  jq --arg b "$body" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '.comments += [{author: {login: "the-owner"}, body: $b, createdAt: $t}]' "$f" >"$FAKE/next" && mv "$FAKE/next" "$f"
+fi
+# A warning on exit 0, as the real one gives for a line it could not price.
+[ -f "$FAKE/osti-warn-$event" ] && cat "$FAKE/osti-warn-$event" >&2
+exit 0
+OSTI
+
 cat >"$work/bin/queue" <<'Q'
 #!/usr/bin/env bash
 [ -f "$FAKE/queue-down" ] && exit 2
@@ -213,17 +264,17 @@ printf '%s\n' "$1" >>"$FAKE/picked"
 [ -f "$FAKE/pick-down-$1" ] && exit 2
 [ ! -f "$FAKE/skip-$1" ]
 P
-cat >"$work/bin/spend" <<'S'
-#!/usr/bin/env bash
-cat "$FAKE/spend"
-S
 cat >"$work/bin/mkwt" <<'W'
 #!/usr/bin/env bash
+[ -f "$FAKE/wt-fails" ] && exit 1
 mkdir -p "$2"
 W
+# $FAKE/slow-park holds the park's notification open, for a signal during it.
 cat >"$work/bin/notify" <<'N'
 #!/usr/bin/env bash
 printf '%s\n' "$1" >>"$FAKE/notified"
+case "$1" in "Crew parked"*) [ -f "$FAKE/slow-park" ] && { touch "$FAKE/in-park-notify"; sleep 3; } ;; esac
+exit 0
 N
 cat >"$work/bin/caffeinate" <<'A'
 #!/usr/bin/env bash
@@ -246,11 +297,12 @@ setup() {
   export FAKE="$work/fake"
   for p in $(cat "$FAKE"/pid-* 2>/dev/null); do kill "$p" 2>/dev/null || :; done
   cat "$FAKE/gh.log" >>"$work/gh-all.log" 2>/dev/null || :
-  rm -rf "$FAKE" "$work/home" "$work/wt" "$work/tasks" "$work/stop" "$work/lock"
-  mkdir -p "$FAKE" "$work/home" "$work/wt" "$work/tmp"
+  chmod -R u+rw "$work/records" 2>/dev/null || :
+  rm -rf "$FAKE" "$work/home" "$work/wt" "$work/tasks" "$work/stop" "$work/lock" "$work/records"
+  mkdir -p "$FAKE" "$work/home" "$work/wt" "$work/tmp" "$work/records"
   : >"$FAKE/sessions"
   : >"$FAKE/gh.log"
-  echo 'Claude usage, last 1d: $40 at API prices; opus 90%' >"$FAKE/spend"
+  : >"$FAKE/osti.log"
   local q='[]' i
   for i in "$@"; do
     q=$(printf '%s' "$q" | jq --argjson n "$i" '. + [{number: $n, labels: {nodes: [{name: "ready"}]}}]')
@@ -263,7 +315,8 @@ setup() {
 # BG=1 leaves the loop running, its pid in LOOP_PID.
 run_loop() {
   set -- env -u CI PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp" \
-    CREW_QUEUE="$work/bin/queue" CREW_PICK="$work/bin/pick" CREW_SPEND="$work/bin/spend" \
+    CREW_QUEUE="$work/bin/queue" CREW_PICK="$work/bin/pick" OSTINATO_HOME="$work/records" \
+    CREW_OSTI="${OSTI:-osti}" CREW_PHONE_PUSH="${PUSH:-}" \
     CREW_WORKTREE="$work/bin/mkwt" CREW_WORKTREES="$work/wt" CREW_NOTIFY="${NOTIFY-$work/bin/notify}" \
     CREW_QUALIFY="$work/bin/qualify" CHECK1="${CHECK1:-PASS}" CREW_STOP_FILE="$work/stop" \
     CREW_LOG="$work/log" CREW_TASKS_ROOT="$work/tasks" CREW_PUSH_LIMIT=1 \
@@ -305,7 +358,8 @@ alive() { kill -0 "$(cat "$FAKE/pid-$1")" 2>/dev/null; }
 
 setup 101
 CHECK1=FAIL run_loop
-ok "a failed harness check 1 starts no session" '[ -z "$(started)" ] && grep -q "check 1 failed" "$work/out"'
+ok "a failed harness check 1 starts no session, and the log names its cause, not one guess at it" \
+  '[ -z "$(started)" ] && grep -q "harness check 1 failed, so no issue starts" "$work/out" && grep -q "FAIL 1: refused" "$work/out" && ! grep -q "was not refused" "$work/out"'
 ok "harness check 1's folder is removed after it is read" '[ -s "$FAKE/check1-dir" ] && [ ! -e "$(cat "$FAKE/check1-dir")" ]'
 
 setup 101
@@ -330,21 +384,80 @@ rm -f "$work/stop"
 ok "a stop file that appears during an issue starts no further issue" \
   '[ "$(started)" = 101 ] && grep -q "stop file found; ending the run" "$work/out"'
 
-setup 101
-echo 'Claude usage, last 1d: $151 at API prices' >"$FAKE/spend"
-run_loop
-ok "spend past the cap starts no session" '[ -z "$(started)" ] && grep -q "past the \$150 cap" "$work/out"'
+# ── the spend cap, from the run record ──────────────────────────────────────
+
+# An attempt_ended line $1 hours ago, with session costs $2 as JSON, or a
+# cost_usd alone when $2 is a bare number.
+ended_line() {
+  jq -nc --argjson h "$1" --argjson c "$2" '{v: 1, at: (now - $h * 3600 | todate), run: "r-old",
+    event: "attempt_ended", item: "intrada#9", outcome: "draft"}
+    + (if ($c | type) == "object" then {sessions: ($c | keys), session_costs: $c, cost_usd: ([$c[]] | add)}
+       else {cost_usd: $c} end)'
+}
+record_file="$work/records/the-owner__intrada.jsonl"
 
 setup 101
-echo 'no report' >"$FAKE/spend"
+{
+  ended_line 3 '{"s1": 100}'
+  ended_line 2 '{"s1": 140}'
+  ended_line 1 '{"s2": 10.5}'
+} >"$record_file"
 run_loop
-ok "an unreadable spend report starts no session" '[ -z "$(started)" ] && grep -q "spend blind" "$work/out"'
+ok "each session counts once at its latest figure: \$150.5 starts no session and ends the run as capped" \
+  '[ -z "$(started)" ] && grep -q "cost \$150.5 in the last 24 hours, at or past the \$150 cap" "$work/out" && grep -q "run-ended --attempts 0 --field stopped=spend_cap" "$FAKE/osti.log"'
 
 setup 101
-echo 'Claude usage, last 1d: nothing recorded' >"$FAKE/spend"
+echo draft >"$FAKE/scenario-101"
+{
+  ended_line 30 '{"s1": 500}'
+  ended_line 2 '{"s1": 100}'
+  ended_line 1 '{"s2": 40}'
+  ended_line 1 9.25
+  printf '{"v":1,"at":"%s","run":"r-old","event":"attempt_ended","item":"intrada#9","outcome":"draft","cost_' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} >"$record_file"
+run_loop
+ok "a line older than 24 hours and a torn last line are left out, and a cost with no split counts" \
+  '[ "$(started)" = 101 ] && grep -q "picked --no-note .*--field spend_24h_seen_usd=149.25" "$FAKE/osti.log"'
+
+# A line naming its sessions with no cost_usd is one osti could not price in
+# full: the cap fails closed rather than count it as $0.
+unpriced_line() {
+  jq -nc --argjson h "$1" --argjson extra "$2" '{v: 1, at: (now - $h * 3600 | todate), run: "r-old",
+    event: "attempt_ended", item: "intrada#9", outcome: "draft"} + $extra'
+}
+
+setup 101
+unpriced_line 1 '{"sessions": ["s9"]}' >"$record_file"
+run_loop
+ok "an attempt osti could not price holds the cap as reached, with a log line" \
+  '[ -z "$(started)" ] && grep -q "could not be priced, so the loop treats the \$150 cap as reached" "$work/out" && grep -q "run-ended --attempts 0 --field stopped=spend_cap" "$FAKE/osti.log"'
+
+setup 101
+unpriced_line 1 '{"sessions": ["s1", "s2"], "session_costs": {"s1": 5}}' >"$record_file"
+run_loop
+ok "an attempt priced for only some of its sessions holds the cap too" '[ -z "$(started)" ] && grep -q "could not be priced" "$work/out"'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+{
+  unpriced_line 1 '{}'
+  unpriced_line 30 '{"sessions": ["s9"]}'
+} >"$record_file"
+run_loop
+ok "an attempt with no session to price, or an unpriced one past 24 hours, does not hold the cap" \
+  '[ "$(started)" = 101 ] && grep -q "spend_24h_seen_usd=0$" "$FAKE/osti.log"'
+
+setup 101
+echo '{"v":1}' >"$record_file"
+chmod 000 "$record_file"
+run_loop
+chmod 644 "$record_file"
+ok "a record that cannot be read starts no session" '[ -z "$(started)" ] && grep -q "spend blind" "$work/out"'
+
+setup 101
 echo draft >"$FAKE/scenario-101"
 run_loop
-ok "a day with nothing recorded counts as no spend" '[ "$(started)" = 101 ]'
+ok "no record yet counts as no spend" '[ "$(started)" = 101 ] && grep -q "spend_24h_seen_usd=0" "$FAKE/osti.log"'
 
 setup 101
 touch "$FAKE/queue-down"
@@ -767,6 +880,10 @@ wait "$LOOP_PID" 2>/dev/null || :
 t1=$(date +%s)
 ok "TERM stops the session being watched, at once" \
   '[ -f "$FAKE/stopped-c0000101" ] && ! alive 101 && [ $((t1 - t0)) -le 2 ] && grep -q interrupted "$work/out"'
+ok "the cancelled attempt names the session, known from the start rather than the first poll" \
+  'grep -q "intrada#101 .*--outcome cancelled --session sess-101" "$FAKE/osti.log"'
+ok "TERM closes the record: the attempt ends cancelled, then the run ends" \
+  'grep -q "attempt-ended --no-note --item intrada#101 .*--outcome cancelled" "$FAKE/osti.log" && [ "$(tail -1 "$FAKE/osti.log" | grep -c "run-ended --attempts 1$")" = 1 ]'
 ok "TERM releases the run's lock, as Ctrl-C does through the same trap" '[ ! -e "$work/lock" ]'
 
 setup 101
@@ -792,10 +909,16 @@ ok "the park note keeps the last 300 characters inside one closed fence" \
 
 setup 101
 echo draft >"$FAKE/scenario-101"
-t0=$(date +%s)
 NOTIFY= run_loop
+ok "the phone push is off by default; the Mac notification stays" \
+  'grep -qx "Crew: draft ready for your review on #101" "$FAKE/osascript" && [ ! -e "$FAKE/pushed" ]'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+t0=$(date +%s)
+NOTIFY= PUSH=1 run_loop
 t1=$(date +%s)
-ok "a notification passes the text whole and a push that ignores TERM is killed at its limit" \
+ok "with the push turned on, the text goes whole and a push that ignores TERM is killed at its limit" \
   'grep -qx "Crew: draft ready for your review on #101" "$FAKE/osascript" && grep -q "then stop: Crew: draft ready" "$FAKE/pushed" && ! kill -0 "$(cat "$FAKE/push-pid")" 2>/dev/null && [ $((t1 - t0)) -lt 15 ]'
 
 setup 101
@@ -887,6 +1010,200 @@ echo "$stranger" >"$FAKE/pid-996"
 run_loop stop-session c0000996
 ok "stop-session leaves a pid that is not a claude process" \
   'kill -0 "$stranger" && grep -q "pid $stranger of c0000996 is not a claude process" "$work/out"'
+
+# ── the run record (#2854) ───────────────────────────────────────────────────
+
+w() { grep -c -- "$1" "$FAKE/osti.log"; }
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+run_loop
+ok "run-started names each cap, the Claude Code version and osti's" \
+  'grep -qE "^write --project the-owner/intrada --run r-[0-9]{8}-[0-9]{6} run-started --cap issues=3 --cap spend_24h_usd=150 --cap session_hours=[0-9.]+ --cap silence_min=10 --field claude_version=2.1.325 \(Claude Code\) --field osti_version=osti 0.1.0$" "$FAKE/osti.log"'
+ok "picked takes the attempt, the spend the cap read, and no note" \
+  'grep -q "picked --no-note --item intrada#101 --url https://github.com/the-owner/intrada/issues/101 --attempt 1 --field spend_24h_seen_usd=0$" "$FAKE/osti.log"'
+ok "the worktree gets osti's guard with the agent's identity before its session" \
+  'grep -q "^guard guard install --worktree $work/wt/crew-101 agent=ostinato-intrada-loop/ostinato-agent/356601309+ostinato-agent@users.noreply.github.com$" "$FAKE/osti.log"'
+ok "the session gets the run in its environment and its first prompt, and keeps the crew flag" \
+  'grep -qE "^OSTINATO_RUN=r-[0-9-]+ OSTINATO_PROJECT=the-owner/intrada$" "$FAKE/calls" && grep -qE -- "-n crew-101 /crew 101 r-[0-9]{8}-[0-9]{6} 1$" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
+ok "attempt-ended names the outcome, the session and the worktree, with no note" \
+  'grep -q "attempt-ended --no-note --item intrada#101 --url https://github.com/the-owner/intrada/issues/101 --attempt 1 --outcome draft --session sess-101 --cwd $work/wt/crew-101$" "$FAKE/osti.log"'
+ok "run-ended counts the attempts, and every line names one run" \
+  '[ "$(tail -1 "$FAKE/osti.log" | grep -c "run-ended --attempts 1$")" = 1 ] && [ "$(grep -oE -- "--run r-[0-9-]+" "$FAKE/osti.log" | sort -u | wc -l | tr -d " ")" = 1 ]'
+ok "neither picked nor attempt-ended leaves a note on the issue" '! grep -q Ostinato <<<"$(notes 101)" && ! grep -q "issue comment" "$FAKE/gh.log"'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+printf '%s\n' '{"v":1,"at":"2026-11-01T00:00:00Z","run":"r-old","event":"picked","item":"intrada#101","attempt":2}' \
+  '{"v":1,"at":"2026-11-01T00:00:00Z","run":"r-old","event":"picked","item":"intrada#1010","attempt":7}' \
+  '{"v":1,"at":"2026-11-01T00:00:00Z","run":"r-old","event":"pick' >"$record_file"
+run_loop
+ok "the attempt number follows the issue's own picked lines in the record" \
+  'grep -q "picked --no-note --item intrada#101 .*--attempt 3 " "$FAKE/osti.log" && grep -qE -- "/crew 101 r-[0-9-]+ 3$" "$FAKE/calls"'
+
+setup 101 102
+echo wait-permission >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+run_loop
+ok "a loop park writes parked with its code and question, and osti posts the one Crew note" \
+  'grep -q "parked --item intrada#101 .*--attempt 1 --reason permission_prompt --question Should the crew be allowed .* --body-file .* --session sess-101$" "$FAKE/osti.log" && [ "$(notes 101 | grep -c "^\*\*Crew: parked")" = 1 ] && ! grep -q "issue comment" "$FAKE/gh.log"'
+ok "a parked attempt ends parked, and the next issue is its own attempt" \
+  'grep -q "intrada#101 .*--outcome parked" "$FAKE/osti.log" && grep -q "intrada#102 .*--outcome draft" "$FAKE/osti.log" && grep -q "run-ended --attempts 2$" "$FAKE/osti.log"'
+
+for pair in noproc:no_process ended:no_draft failed:session_failed wait-input:input_needed \
+  wait-sandbox:sandbox_request wait-worker:worker_request wait-dialog:dialog_open wait-bare:waiting \
+  wait-other:waiting; do
+  setup 101
+  echo "${pair%%:*}" >"$FAKE/scenario-101"
+  WALL=30 run_loop
+  ok "${pair%%:*} parks with the code ${pair#*:}" '[ "$(w " --reason ${pair#*:} --question")" = 1 ]'
+done
+setup 101
+WALL=0 run_loop
+ok "the wall clock parks with the code time_cap" '[ "$(w " --reason time_cap ")" = 1 ]'
+setup 101
+SILENCE=0 run_loop
+ok "the silence limit parks with the code silence" '[ "$(w " --reason silence ")" = 1 ]'
+setup 101
+touch "$FAKE/wt-fails"
+run_loop
+ok "a worktree that cannot be made parks with the code no_worktree, and its attempt ends parked" \
+  '[ "$(w " --reason no_worktree ")" = 1 ] && grep -q "intrada#101 .*--outcome parked$" "$FAKE/osti.log" && [ -z "$(started)" ]'
+
+setup 101 102
+echo wait-permission >"$FAKE/scenario-101"
+echo 1 >"$FAKE/osti-exit-parked"
+run_loop
+ok "parked exit 1: nothing in the record, so gh posts the park note itself" \
+  '[ "$(w "parked --item")" = 0 ] && grep -q "could not write parked" "$work/out" && [ "$(notes 101 | grep -c "^\*\*Crew: parked")" = 1 ] && grep -q "issue comment 101" "$FAKE/gh.log"'
+
+setup 101 102
+echo wait-permission >"$FAKE/scenario-101"
+echo 3 >"$FAKE/osti-exit-parked"
+run_loop
+ok "parked exit 3: the line is never written twice, and gh posts the note" \
+  '[ "$(w "parked --item intrada#101")" = 1 ] && grep -q "could not post its note" "$work/out" && [ "$(notes 101 | grep -c "^\*\*Crew: parked")" = 1 ]'
+
+setup 101 102
+echo draft >"$FAKE/scenario-101"
+echo 1 >"$FAKE/osti-exit-picked"
+run_loop
+ok "picked exit 1 starts no session and ends the run, since attempt numbers come from picked lines" \
+  'grep -q "could not write picked" "$work/out" && grep -q "could not take #101.s pick" "$work/out" && [ -z "$(started)" ] && [ "$(w attempt-ended)" = 0 ] && grep -q "run-ended --attempts 0$" "$FAKE/osti.log" && ! grep -qx 102 "$FAKE/picked" && ! grep -q "issue comment" "$FAKE/gh.log"'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+echo "osti: the attempt_ended line is written without cost_usd: no transcript found" >"$FAKE/osti-warn-attempt-ended"
+run_loop
+ok "a warning osti gives with exit 0 is logged, not dropped" \
+  'grep -q "osti on attempt-ended: osti: the attempt_ended line is written without cost_usd" "$work/out"'
+
+setup 101
+echo wait-permission >"$FAKE/scenario-101"
+touch "$FAKE/slow-park"
+BG=1 run_loop
+for _ in $(seq 1 40); do [ -f "$FAKE/in-park-notify" ] && break; sleep 0.25; done
+kill -TERM "$LOOP_PID"
+wait "$LOOP_PID" 2>/dev/null || :
+ok "a signal during the park's notification leaves the attempt ended parked, not cancelled" \
+  '[ -f "$FAKE/in-park-notify" ] && grep -q "intrada#101 .*--outcome parked" "$FAKE/osti.log" && ! grep -q "outcome cancelled" "$FAKE/osti.log"'
+
+setup 101 102
+echo draft >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+echo 1 >"$FAKE/osti-exit-attempt-ended"
+run_loop
+ok "attempt-ended exit 1 posts nothing and ends the run, since the cap could not count the cost" \
+  '[ "$(started)" = 101 ] && grep -q "could not take #101.s end" "$work/out" && ! grep -q "issue comment" "$FAKE/gh.log"'
+
+setup 101
+echo 1 >"$FAKE/osti-exit-run-started"
+run_loop
+ok "run-started exit 1 starts no issue" '[ -z "$(started)" ] && grep -q "could not take the run.s start" "$work/out" && [ "$(w run-ended)" = 0 ]'
+
+setup 101
+OSTI="$work/bin/no-such-osti" run_loop
+ok "no osti ends the run before check 1, with a log line" \
+  '[ -z "$(started)" ] && [ ! -e "$FAKE/check1-dir" ] && grep -q "osti is not installed" "$work/out" && grep -q "exit=1" "$work/rc"'
+
+setup 101 102
+touch "$FAKE/guard-fails"
+run_loop
+ok "a guard install that fails starts no session, ends the attempt as failed and the run" \
+  '[ -z "$(started)" ] && grep -q "osti guard install failed" "$work/out" && grep -q "intrada#101 .*--outcome failed" "$FAKE/osti.log" && ! grep -qx 102 "$FAKE/picked"'
+
+setup 101
+echo nostart >"$FAKE/scenario-101"
+run_loop
+ok "a session that never starts ends its attempt as failed" 'grep -q "intrada#101 .*--outcome failed --cwd" "$FAKE/osti.log"'
+
+# ── the plan's usage limit ───────────────────────────────────────────────────
+
+transcript_101() {
+  local d="$work/home/.claude/projects/$(printf '%s' "$work/wt/crew-101" | sed 's/[^A-Za-z0-9]/-/g')"
+  mkdir -p "$d"
+  cat >"$d/sess-101.jsonl"
+}
+limit_error='{"type":"assistant","isApiErrorMessage":true,"error":"rate_limit","message":{"content":[{"type":"text","text":"Claude AI usage limit reached|1763150400"}]}}'
+
+setup 101 102
+echo ended >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Building."}]}}' "$limit_error" | transcript_101
+run_loop
+ok "the usage limit ends the run: the attempt ends capped, and the run says why" \
+  'grep -q "intrada#101 .*--outcome capped" "$FAKE/osti.log" && grep -q "run-ended --attempts 1 --field stopped=usage_limit$" "$FAKE/osti.log" && [ "$(started)" = 101 ]'
+ok "the usage limit neither parks nor notes the issue, and the raw record is logged" \
+  '! grep -qx needs-owner <<<"$(labels 101)" && [ -z "$(notes 101)" ] && [ "$(w "parked --item")" = 0 ] && grep -q "usage limit: {.*rate_limit" "$work/out"'
+ok "the usage limit tells the owner once, with no finished notification after it" \
+  'grep -q "usage limit on #101" "$FAKE/notified" && ! grep -q "Crew finished" "$FAKE/notified"'
+
+setup 101
+echo ended >"$FAKE/scenario-101"
+echo '{"type":"assistant","isApiErrorMessage":true,"message":{"content":[{"type":"text","text":"You'"'"'ve hit your limit, resets 3pm"}]}}' | transcript_101
+run_loop
+ok "an API error naming the limit in its text ends the run too" 'grep -q "stopped=usage_limit" "$FAKE/osti.log"'
+
+setup 101 102
+echo ended >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+echo '{"type":"assistant","isApiErrorMessage":true,"error":"rate_limit","message":{"content":[{"type":"text","text":"API Error: Rate limit reached"}]}}' | transcript_101
+run_loop
+ok "a short API rate limit is logged, parks as usual and the run goes on" \
+  '! grep -q "stopped=usage_limit" "$FAKE/osti.log" && [ "$(w " --reason no_draft ")" = 1 ] && grep -q "not the plan.s usage limit, so it parks as usual: {.*rate_limit" "$work/out" && grep -q "intrada#102 .*--outcome draft" "$FAKE/osti.log"'
+
+setup 101
+echo ended >"$FAKE/scenario-101"
+echo '{"type":"assistant","message":{"content":[{"type":"text","text":"The usage limit was reached in the test fixture, so I fixed it."}]}}' | transcript_101
+run_loop
+ok "a session that only writes about a usage limit parks as usual" \
+  '! grep -q "stopped=usage_limit" "$FAKE/osti.log" && [ "$(w " --reason no_draft ")" = 1 ]'
+
+setup 101
+echo ended >"$FAKE/scenario-101"
+printf '%s\n' "$limit_error" '{"type":"assistant","message":{"content":[{"type":"text","text":"Carrying on."}]}}' | transcript_101
+run_loop
+ok "a limit the session carried on past does not end the run" \
+  '! grep -q "stopped=usage_limit" "$FAKE/osti.log" && [ "$(w " --reason no_draft ")" = 1 ]'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+echo "$limit_error" | transcript_101
+run_loop
+ok "a draft is a draft even after a limit" 'grep -q "intrada#101 .*--outcome draft" "$FAKE/osti.log" && ! grep -q stopped= "$FAKE/osti.log"'
+
+# ── the session's own writes ─────────────────────────────────────────────────
+
+brief_names() {
+  local b x
+  b=$(cat "$root/.claude/commands/crew.md" "$root/.claude/commands/ship.md")
+  for x in "osti write stage brief" "osti write stage built" "osti write stage reviewed" "osti write stage qa" \
+    "osti write draft" "osti write parked" '--session "$CLAUDE_CODE_SESSION_ID"' needs_decision sensitive_diff \
+    failed_rounds "**Crew: draft**" "--body-file" "Any other exit"; do
+    grep -qF -- "$x" <<<"$b" || { echo "    the briefs do not say: $x"; return 1; }
+  done
+}
+ok "the brief writes each stage, the draft and its parks through osti, naming its session" brief_names
 
 # ── never a ready or merge ───────────────────────────────────────────────────
 

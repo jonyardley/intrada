@@ -16,8 +16,8 @@ Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.
 
 - Retro: post the lessons as one issue comment headed `**Lessons**` and add the `lessons-pending` label to the issue; never edit `docs/lessons.md`, so one run's drafts never conflict.
 - After step 3, the `qa` agent, briefed with the worktree, the issue and the latest `test-runner` report. A failing criterion is fixed like a blocker, then the gates and `qa` run again.
-- Before step 5, the park step on the diff: `git diff origin/main...HEAD > "$TMPDIR/crew-diff-N"`, then `scripts/crew-park.sh` on that file. Exit 3 (a sensitive path) or 2 (unreadable) parks the issue.
-- Notes on the issue, each only on success: `**Crew: reviewed**` once step 3 leaves no blocker, `**Crew: QA**` with the `qa` report once every criterion passes, `**Crew: draft**` with the PR link once CI is green on the last commit. A failure is fixed and rerun, or parks the issue at its second failed round.
+- Before step 5, the park step on the diff: `git diff origin/main...HEAD > "$TMPDIR/crew-diff-N"`, then `scripts/crew-park.sh` on that file. Exit 3 (a sensitive path) or 2 (unreadable) parks the issue with the code `sensitive_diff`.
+- Notes, each only on success and each written through osti as `.claude/commands/crew.md` says, so the run record holds it: `osti write stage reviewed` headed `**Crew: reviewed**` once step 3 leaves no blocker, `osti write stage qa` headed `**Crew: QA**` with the `qa` report once every criterion passes, and `osti write draft --pr intrada#P` headed `**Crew: draft**` with the PR link once CI is green on the last commit. Each names the session with `--session "$CLAUDE_CODE_SESSION_ID"` and reads `--body-file`. A failure is fixed and rerun, or parks the issue at its second failed round with the code `failed_rounds`.
 - Stop after step 6. Step 7 is the owner's, and the guards refuse it.
 
 $ARGUMENTS
