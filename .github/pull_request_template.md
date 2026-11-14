@@ -38,8 +38,7 @@ Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. Tier 1: n/a. -
      owed. -->
 
 - [ ] Roadmap item or issue: #___ (or explicitly agreed with Jon)
-- [ ] One PR across the stack: core, iOS and Android together, core commits first (on the sensitive surfaces, `reviewer` read the core commits alone before the screens commits)
-- [ ] A screen change carries the `just android-run` screenshot beside the iPhone one
+- [ ] One PR across the stack: core and iOS together, core commits first (Android is paused, #2860) (on the sensitive surfaces, `reviewer` read the core commits alone before the screens commits)
 - [ ] New UI uses `Intrada*` tokens (colour, spacing, radius, type), no raw literals
 - [ ] Persistence or new-entity changes: the offline-first checklist in `.claude/rules/offline-first.md` applied
 - [ ] CLAUDE.md updated (if architecture, components or patterns changed)

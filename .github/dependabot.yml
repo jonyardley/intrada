@@ -23,18 +23,7 @@ updates:
       - dependency-name: "uniffi"
       - dependency-name: "uniffi-*"
       - dependency-name: "uniffi_*"
-  - package-ecosystem: "gradle"
-    directory: "/android"
-    schedule:
-      interval: "weekly"
-    # JNA is coupled to the UniFFI runtime, so its bump arrives on its own and
-    # needs the bridge round-trip test before it merges (#2264).
-    groups:
-      android:
-        patterns:
-          - "*"
-        exclude-patterns:
-          - "net.java.dev.jna:*"
+  # The gradle entry is off while Android is paused (#2860); git history has it.
   - package-ecosystem: "github-actions"
     # "/" covers the workflows only; the local composite actions pin actions
     # too, and the install-tools cache key turns over when that pin moves.

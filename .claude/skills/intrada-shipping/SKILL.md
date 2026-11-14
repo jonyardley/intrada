@@ -32,12 +32,13 @@ runs before the push, because a review left until after it gets skipped
 
 ## Verifying a change on the simulator and the emulator
 
-Every feature ships on both apps in one PR, core commits first, because a
+Android is paused (#2860): a feature ships on iPhone only, and nothing in
+`android/` changes. Every feature ships in one PR, core commits first, because a
 merged core with no caller is shell-dead (#1374). On the sensitive surfaces
 `reviewer` reads the core commits alone before the screens are added.
 
-Drive a UI or interaction change on both apps (`just ios-run`,
-`just android-run`, then the runtime tools) and name in **What I checked**
+Drive a UI or interaction change on iPhone (`just ios-run`, then the
+runtime tools) and name in **What I checked**
 what you drove and saw: a snapshot proves a frame renders, not that a tap
 works or a rejected write restores the old value.
 
@@ -46,8 +47,8 @@ gestures a synthetic touch cannot reproduce, background audio, Live
 Activities. Its **What I checked** names exactly what a person does by hand.
 It is never a way to skip driving the app.
 
-**Eyes before ready.** A screen change opens as a draft with iPhone and
-Android before and after images and the line "Waiting for Jon's word on the
+**Eyes before ready.** A screen change opens as a draft with iPhone before
+and after images and the line "Waiting for Jon's word on the
 screenshot". It goes ready only after Jon's yes, when that line becomes "Jon
 approved the screenshot on YYYY-MM-DD"; a no is a push to the open PR
 (#1891). Run `just pr-visuals` after the push (#1631): its image URLs pin the

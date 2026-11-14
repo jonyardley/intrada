@@ -19,11 +19,10 @@ Your brief names the worktree's absolute path, the issue, and the
    the body's "Done looks like" heading.
 2. Read `git diff origin/main...HEAD --stat`, then the tests, snapshot
    references and UI tests the diff adds or changes.
-3. When the diff touches `ios/`, `android/` or `crates/`, launch both apps
-   once, seeded:
-   `SCREENSHOT=<that path>/ios/build/qa/iphone.png just ios-run` and
-   `SCREENSHOT=<that path>/android/build/qa/android.png just android-run`.
-   Run each with `run_in_background` and wait for it: both queue on a
+3. When the diff touches `ios/` or `crates/`, launch the iPhone app once,
+   seeded: `SCREENSHOT=<that path>/ios/build/qa/iphone.png just ios-run`.
+   Android is paused (#2860), so it is never launched. Run it with
+   `run_in_background` and wait for it: it queues on a
    machine-wide lock for up to 30 minutes before building. A launch that
    times out is reported as "no screenshot: the queue timed out", not as a
    failed criterion. Read each screenshot once. Never use Xcode's tool

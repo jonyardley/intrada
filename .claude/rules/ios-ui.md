@@ -23,8 +23,8 @@ A change to what a musician sees opens as a draft with the `just ios-run`
 screenshot under **What it looks like** and the line "Waiting for Jon's word on
 the screenshot". It goes ready only after Jon says yes, and the ready step
 replaces that line with "Jon approved the screenshot on YYYY-MM-DD"; a no is a
-push to the open PR (#1891). The Android half follows
-`.claude/rules/android-quality.md`.
+push to the open PR (#1891). Android is paused (#2860): there is no Android
+half.
 
 ## Tokens, then modifiers, then components, then screens
 
@@ -49,8 +49,8 @@ push to the open PR (#1891). The Android half follows
 
 New screens are built from the catalogue components (`design/components/README.md`)
 and theme values only; `scripts/check-theme-values.sh` fails a raw colour or
-spacing number (#2699). A value the theme lacks becomes a token in both theme
-files; the allowlist holds only what existed on 18 October 2026 and shrinks
+spacing number (#2699). A value the theme lacks becomes a token in `Theme.swift`
+(Android is paused, #2860); the allowlist holds only what existed on 18 October 2026 and shrinks
 under #2706.
 
 Deviation is allowed only in an explicit redesign, a flagged conversation

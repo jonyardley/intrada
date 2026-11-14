@@ -42,7 +42,7 @@ restart and the loop can read where you are.
 2. **Build**, noted `**Crew: built**` with the commits: read the
    `.claude/rules/` file for each surface you touch, then one `task` spawn per
    slice, briefed with the worktree's absolute path, the files and the lines.
-   Core commits first, then iOS, then Android; commit each slice.
+   Core commits first, then iOS; Android is paused (#2860). Commit each slice.
 3. **Ship** with `/ship loop`: the retro as a Lessons comment, the gates, the
    self-review, `qa`, the park step on the diff, the draft and the CI watch.
    It adds three notes, each only on success: `**Crew: reviewed**` (the

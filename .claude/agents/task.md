@@ -43,8 +43,8 @@ Rules that hold regardless of your brief:
 4. **Stay inside your slice.** Do not touch a serialisation point another
    stream owns (`.claude/skills/intrada-parallel-streams/SKILL.md`). An
    additive bridge change, as `.claude/rules/sensitive-surfaces.md` defines
-   it, is yours, with a LiveBridge round-trip test (the Swift bridge tests and
-   `BridgeRoundTripTest` on Android). Stop once the core commits are made and
+   it, is yours, with a LiveBridge round-trip test (the Swift bridge tests; Android is
+   paused, #2860). Stop once the core commits are made and
    report, so the lead can run `reviewer` on the core diff; the screens are a
    second spawn. If the slice reaches the crash-recovery blob, wire-pinned
    settings, a migration, auth, or a non-additive bridge change, stop and
