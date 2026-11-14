@@ -156,7 +156,7 @@ stop_named() {
 # `claude --bg` prints its id only as text (#2821). One that shows up too late
 # may still run, so any session by that name is stopped.
 start_session() {
-  local wt=$1 n=$2 out since try=0
+  local wt=$1 n=$2 out since try=0 found
   since=$(($(now) * 1000))
   # The run and attempt ride in the first prompt too, so every `osti write` the
   # session makes names them (#2854).
@@ -166,8 +166,12 @@ start_session() {
   while [ -z "$STARTED_ID" ] && [ "$try" -lt "$START_TRIES" ]; do
     [ "$try" -gt 0 ] && sleep "${CREW_START_WAIT:-2}"
     try=$((try + 1))
-    STARTED_ID=$(claude agents --json --all 2>/dev/null | jq -r --arg m "crew-$n" --argjson t "$since" \
-      '[.[] | select(.name == $m and (.startedAt // 0) >= $t)] | first | .id // empty')
+    found=$(claude agents --json --all 2>/dev/null | jq -r --arg m "crew-$n" --argjson t "$since" \
+      '[.[] | select(.name == $m and (.startedAt // 0) >= $t)] | first | select(.id != null)
+        | "\(.id) \(.sessionId // "")"')
+    STARTED_ID=${found%% *}
+    # Known from the start, so a stop before the first poll still prices it.
+    [ -n "${found#* }" ] && SESSION_ID=${found#* }
   done
   if [ -z "$STARTED_ID" ]; then
     log "could not start a session for #$n: $(printf '%s' "$out" | tail -1)"
@@ -298,11 +302,14 @@ record_noted() {
 # owner's answer and run the issue again (#2854).
 end_attempt() {
   local n=$1 outcome=$2 wt=${3:-}
-  [ "$ATTEMPT" -gt 0 ] || return 0
-  record attempt-ended --no-note --item "$(item "$n")" --url "$(issue_url "$n")" --attempt "$ATTEMPT" \
-    --outcome "$outcome" ${SESSION_ID:+--session "$SESSION_ID"} ${wt:+--cwd "$wt"} || RECORD_FAILED=1
+  local attempt=$ATTEMPT sid=$SESSION_ID
+  [ "$attempt" -gt 0 ] || return 0
+  # Cleared before the write, so a signal while osti prices it never writes
+  # the end twice.
   ATTEMPT=0
   SESSION_ID=""
+  record attempt-ended --no-note --item "$(item "$n")" --url "$(issue_url "$n")" --attempt "$attempt" \
+    --outcome "$outcome" ${sid:+--session "$sid"} ${wt:+--cwd "$wt"} || RECORD_FAILED=1
 }
 
 # The next attempt at issue $1: one past its newest picked line in the record.
@@ -317,9 +324,10 @@ next_attempt() {
 
 # Ends the run's record once; $1 is an extra field such as stopped=usage_limit.
 end_run() {
-  [ -n "$RUN" ] || return 0
-  record run-ended --attempts "$ATTEMPTS" ${1:+--field "$1"}
+  local run=$RUN
+  [ -n "$run" ] || return 0
   RUN=""
+  RUN=$run record run-ended --attempts "$ATTEMPTS" ${1:+--field "$1"}
 }
 
 # ── The owner's phone ────────────────────────────────────────────────────────

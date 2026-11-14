@@ -51,6 +51,8 @@ osti write --run RUN --project jonyardley/intrada stage brief --item intrada#N \
   --session "$CLAUDE_CODE_SESSION_ID" --body-file "$TMPDIR/crew-note-N"
 ```
 
+- When `CLAUDE_CODE_SESSION_ID` is empty, leave `--session` off, so the line
+  still lands.
 - A stage: `osti write stage brief`, `osti write stage built`,
   `osti write stage reviewed` or `osti write stage qa`.
 - The draft: `osti write draft --pr intrada#P`, the pull request's number.

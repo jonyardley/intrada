@@ -844,6 +844,8 @@ wait "$LOOP_PID" 2>/dev/null || :
 t1=$(date +%s)
 ok "TERM stops the session being watched, at once" \
   '[ -f "$FAKE/stopped-c0000101" ] && ! alive 101 && [ $((t1 - t0)) -le 2 ] && grep -q interrupted "$work/out"'
+ok "the cancelled attempt names the session, known from the start rather than the first poll" \
+  'grep -q "intrada#101 .*--outcome cancelled --session sess-101" "$FAKE/osti.log"'
 ok "TERM closes the record: the attempt ends cancelled, then the run ends" \
   'grep -q "attempt-ended --no-note --item intrada#101 .*--outcome cancelled" "$FAKE/osti.log" && [ "$(tail -1 "$FAKE/osti.log" | grep -c "run-ended --attempts 1$")" = 1 ]'
 ok "TERM releases the run's lock, as Ctrl-C does through the same trap" '[ ! -e "$work/lock" ]'
