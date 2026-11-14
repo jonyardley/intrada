@@ -38,7 +38,11 @@ case "$1 ${2:-}" in
       body="$(cat "$FIXTURES/ready.json")"
     fi
     ;;
-  "issue list") body="$(cat "$FIXTURES/claimed.json")" ;;
+  "issue list")
+    [ -n "${FAIL_CLAIMED:-}" ] && { echo "gh: claimed read refused" >&2; exit 1; }
+    printf '%s\n' "$*" >"$FIXTURES/list.txt"
+    body="$(cat "$FIXTURES/claimed.json")"
+    ;;
 esac
 
 if [ -n "$jq_expr" ]; then
@@ -112,6 +116,8 @@ check "$(section_of "$out")" "says when an issue has neither" "no horizon, P0"
 check "$(section_of "$out")" "says when an issue is off the board" "now, no priority"
 check "$(cat "$FIXTURES/query.txt")" "asks only for ready issues" 'labels: ["ready"]'
 check "$(cat "$FIXTURES/query.txt")" "asks only for open issues" "states: OPEN"
+json_order="$("$script" --ready-json | jq -r '[.[].number] | join(" ")')"
+check "$json_order " "--ready-json, the crew loop's read, keeps the same order" "20 51 52 41 33 60 70 "
 
 # ── A Priority on another project does not count ────────────────────────────
 
@@ -139,6 +145,8 @@ ready "[$(issue 41 "Being built" horizon:now P0), $(issue 42 "Waiting" horizon:n
 out="$("$script")"
 check "$(section_of "$out")" "keeps the unclaimed one" "- #42 Waiting"
 refute "$(section_of "$out")" "drops the claimed one" "- #41"
+check "$("$script" --ready-json | jq -r '[.[].number] | join(" ")')" "--ready-json drops the claimed one too" "42"
+refute "$("$script" --ready-json | jq -r '[.[].number] | join(" ")')" "--ready-json never offers the claimed one" "41"
 echo '[]' >"$FIXTURES/claimed.json"
 
 # ── Nothing ready ───────────────────────────────────────────────────────────
@@ -162,6 +170,15 @@ check "$(section_of "$out")" "carries GitHub's own words" "required scopes"
 check "$(section_of "$out")" "prints the reason on its own line" "    Your token has not been granted the required scopes."
 refute "$(section_of "$out")" "never prints the raw JSON body" "{"
 check "$out" "keeps the rest of the report" "RECENTLY LANDED"
+CREW_REPO=a-fork/app "$script" --ready-json >/dev/null
+check "$(cat "$FIXTURES/query.txt")" "--ready-json reads the crew's repository, CREW_REPO" "owner=a-fork -f name=app"
+check "$(cat "$FIXTURES/list.txt")" "--ready-json reads the claims from CREW_REPO too" "--repo a-fork/app"
+rc=0
+FAIL_READY=1 "$script" --ready-json >/dev/null 2>&1 || rc=$?
+check "$rc" "--ready-json exits 2 on an outage, never an empty queue" "2"
+rc=0
+FAIL_CLAIMED=1 "$script" --ready-json >/dev/null 2>&1 || rc=$?
+check "$rc" "--ready-json exits 2 when the claims cannot be read, never offering a claimed issue" "2"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

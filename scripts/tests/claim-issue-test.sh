@@ -155,7 +155,7 @@ echo 0 >"$FIXTURES/closers_count.txt"
 cat >"$FIXTURES/issue.json" <<'JSON'
 {"labels":[{"name":"in-flight"}],"comments":[
   {"body":"Saw `not-a-branch` mentioned on Slack, unrelated."},
-  {"body":"Claimed: branch `other-branch`, doing the thing."}
+  {"author":{"login":"jonyardley"},"body":"Claimed: branch `other-branch`, doing the thing."}
 ]}
 JSON
 expect_fail "taken by another branch's comment" "already claimed on branch \`other-branch\`"
@@ -168,8 +168,8 @@ expect_fail "stale-claim message names the way out" "post a fresh"
 
 cat >"$FIXTURES/issue.json" <<'JSON'
 {"labels":[{"name":"in-flight"}],"comments":[
-  {"body":"Claimed: branch `stale-branch`, doing the thing."},
-  {"body":"Claimed: branch `other-branch`, doing the thing."}
+  {"author":{"login":"jonyardley"},"body":"Claimed: branch `stale-branch`, doing the thing."},
+  {"author":{"login":"jonyardley"},"body":"Claimed: branch `other-branch`, doing the thing."}
 ]}
 JSON
 expect_fail "newest Claimed comment wins over an older one" "already claimed on branch \`other-branch\`"
@@ -193,7 +193,7 @@ expect_fail "already has a closing PR reference" "check whether it is done"
 echo '[]' >"$FIXTURES/pr_list.json"
 echo 0 >"$FIXTURES/closers_count.txt"
 cat >"$FIXTURES/issue.json" <<'JSON'
-{"labels":[{"name":"in-flight"}],"comments":[{"body":"Claimed: branch `my-branch`, doing the thing."}]}
+{"labels":[{"name":"in-flight"}],"comments":[{"author":{"login":"jonyardley"},"body":"Claimed: branch `my-branch`, doing the thing."}]}
 JSON
 rm -rf "$CALLS" && mkdir -p "$CALLS"
 out="$(run)"
@@ -214,7 +214,7 @@ fi
 # (the retry path after a claim comment posted but the label add then failed)
 
 cat >"$FIXTURES/issue.json" <<'JSON'
-{"labels":[],"comments":[{"body":"Claimed: branch `my-branch`, doing the thing."}]}
+{"labels":[],"comments":[{"author":{"login":"jonyardley"},"body":"Claimed: branch `my-branch`, doing the thing."}]}
 JSON
 rm -rf "$CALLS" && mkdir -p "$CALLS"
 out="$(run)"
@@ -227,9 +227,24 @@ fi
 
 # ── Legacy no-backtick claim format still identifies the owning branch ─────
 
-echo '{"labels":[{"name":"in-flight"}],"comments":[{"body":"Claimed. Branch: other-branch (doing the thing)."}]}' \
+echo '{"labels":[{"name":"in-flight"}],"comments":[{"author":{"login":"jonyardley"},"body":"Claimed. Branch: other-branch (doing the thing)."}]}' \
   >"$FIXTURES/issue.json"
 expect_fail "legacy comment format still names the other branch" "already claimed on branch \`other-branch\`"
+
+# ── A stranger's Claimed comment blocks nothing (#2821) ────────────────────
+
+echo '[]' >"$FIXTURES/pr_list.json"
+echo 0 >"$FIXTURES/closers_count.txt"
+echo '{"labels":[],"comments":[{"author":{"login":"a-stranger"},"body":"Claimed: branch `other-branch`."}]}' \
+  >"$FIXTURES/issue.json"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+out="$(run 2>&1)" || true
+if grep -qF "claimed #42 on my-branch" <<<"$out"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ stranger claim: expected the claim to proceed\n    output: %s\n' "$out" >&2
+fi
 
 # ── Free: claims it ──────────────────────────────────────────────────────────
 
