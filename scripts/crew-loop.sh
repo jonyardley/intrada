@@ -482,7 +482,10 @@ worktree_for() {
 
 # Harness check 1: the agent's Keychain item is there, a live crew session acts
 # as the agent account, and osti's own guard refuses it `gh pr ready` (#2854).
-# The loop starts no issue unless it passes at the start of the run.
+# The probe session starts without INTRADA_CREW: with it, the owner's older
+# guard refuses first and its message is the only one shown, so osti's refusal
+# could never be seen. Loop sessions keep the flag as a backstop. The loop
+# starts no issue unless check 1 passes at the start of the run.
 check_guards() {
   local dir passed=1
   dir=$(mktemp -d "${TMPDIR:-/tmp}/crew-check1.XXXXXX") || return 1

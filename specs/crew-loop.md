@@ -28,10 +28,16 @@ record says the same as data, for the Cockpit card and the weekly report.
   - the agent's Keychain item is there (`security find-generic-password`
     without `-w`, so the token is never read);
   - `osti guard install` succeeds in the probe worktree;
-  - the probe session's hooks see the crew flag;
+  - the probe session's hooks run, and see `OSTINATO_PROJECT` as the loop
+    sets it;
   - inside the session, `gh api user` answers `ostinato-agent`;
   - the session is refused `gh pr ready` with osti's own message, so the
-    owner's guard alone cannot pass it.
+    owner's guard alone cannot pass it. The FAIL line quotes the first 120
+    characters of the refusal it saw.
+
+  The probe starts without `INTRADA_CREW`: with it set, the owner's older
+  guard refuses first, and Claude Code shows only that refusal, so osti's
+  could never be seen. Loop sessions keep `INTRADA_CREW=1` as the backstop.
 - A stop file, checked before each issue, ends the run cleanly.
 - One run at a time. The loop takes a `mkdir` lock before it touches any
   worktree or session, and releases it on every exit, Ctrl-C and a closed
