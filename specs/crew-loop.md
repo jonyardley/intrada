@@ -124,9 +124,9 @@ worktree before doing anything.
 In a git worktree Claude Code reads the main checkout's
 `.claude/settings.local.json` too, and its value wins on a shared key, so a
 `"disableAllHooks": true` there would switch off the hooks osti installs in
-every crew worktree (Ostinato's `docs/guards.md`, "In a git worktree"). A
+every crew worktree (jonyardley/ostinato `docs/guards.md`, "In a git worktree"). A
 launch flag outranks it. So every session the loop starts, and every session
-the harness checks in `crew-qualify.sh` start, passes
+`crew-qualify.sh`'s checks start, passes
 `--settings '{"disableAllHooks":false}'`. The value comes from one function
 in `scripts/crew-loop.sh`, which `crew-qualify.sh` reads through
 `crew-loop.sh session-settings`, so the sandbox keys #2869 adds join the same
@@ -145,9 +145,7 @@ here.
 
 The phone push's `claude -p` does not take it. It runs in `$TMPDIR`, outside
 any worktree, where osti installs no guard for the flag to keep on, and the
-sandbox keys #2869 adds are meant for worktree sessions too. Its
-`--allowedTools PushNotification` pre-approves that tool; it does not take the
-others away.
+sandbox keys #2869 adds are meant for worktree sessions too.
 
 ### Trust
 
@@ -156,9 +154,8 @@ flag started and answered in a throwaway worktree made beside the crew's,
 under `intrada-worktrees`, with the owner's usual settings folder and with
 `CLAUDE_CONFIG_DIR` set to another one. Neither had a trust entry for that
 worktree, and the second trusted no folder above it either; both trust the
-main checkout. A worktree of a
-scratch repository whose main checkout was never trusted was refused
-("Workspace not trusted"), as Ostinato's check saw. So, inferred from those
+main checkout. A worktree of a scratch repository whose main checkout was
+never trusted was refused ("Workspace not trusted"), as Ostinato's check saw. So, inferred from those
 three starts, trust follows the main checkout, and the loop needs no trust
 step and no other launch. If that ever changes, check 1's probe, which starts
 a `--bg` session in the same worktrees folder, fails at the start of the run
