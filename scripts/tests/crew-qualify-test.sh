@@ -2,8 +2,8 @@
 # Self-test for the judging half of scripts/crew-qualify.sh (#2802) and its
 # transcript reader. Each check is judged against canned evidence shaped like a
 # real run's: one passing folder, and failing folders that each break one
-# assertion, so deleting an assertion from a judge turns this red. No session,
-# network or ~/.claude.
+# assertion, so deleting an assertion from a judge turns this red. Check 1's
+# collecting runs once, on stand-ins. No session, network or ~/.claude.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

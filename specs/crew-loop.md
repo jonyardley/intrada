@@ -55,7 +55,7 @@ turn limit:
 | Wall clock per session | 3 hours | Stop the session and its process tree, park |
 | Silence limit | 45 minutes with no write to the session's transcript, its subagents' or its background tasks' output | Stop, park |
 | Issues per run | 3 | The loop ends |
-| Daily spend | $150 across the loop's own sessions in the last 24 hours, from the run record; a record that cannot be read counts as past | The loop ends before the next issue |
+| Daily spend | $150 across the loop's own sessions in the last 24 hours, from the run record; a record that cannot be read, or an attempt osti could not price, counts as past | The loop ends before the next issue |
 
 The silence limit is longer than the simulator queue, which waits up to 1800
 seconds (`IOS_SIM_LOCK_TIMEOUT` in `scripts/ios-sim-lock.sh`), so a session
