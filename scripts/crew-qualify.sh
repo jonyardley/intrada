@@ -282,13 +282,20 @@ drop_worktree() {
 
 # A fourth argument, probe, starts check 1's session as the loop would but
 # without INTRADA_CREW, so only osti's guard can refuse it (#2854).
+#
+# Both start with the loop's own --settings value (#2865).
 start_session() {
-  local wt=$1 name=$2 prompt=$3 out id
+  local wt=$1 name=$2 prompt=$3 out id settings launch
+  settings=$(bash "$(dirname "${BASH_SOURCE[0]}")/crew-loop.sh" session-settings) || {
+    echo "could not read the loop's session settings" >&2
+    return 1
+  }
+  launch=(claude --bg --model sonnet --permission-mode auto --settings "$settings" -n "$name" "$prompt")
   if [ "${4:-}" = probe ]; then
     out=$(cd "$wt" && env -u INTRADA_CREW OSTINATO_RUN="qualify-$(date -u +%Y%m%d-%H%M%S)" \
-      OSTINATO_PROJECT="$REPO" claude --bg --model sonnet --permission-mode auto -n "$name" "$prompt" 2>&1)
+      OSTINATO_PROJECT="$REPO" "${launch[@]}" 2>&1)
   else
-    out=$(cd "$wt" && INTRADA_CREW=1 claude --bg --model sonnet --permission-mode auto -n "$name" "$prompt" 2>&1)
+    out=$(cd "$wt" && INTRADA_CREW=1 "${launch[@]}" 2>&1)
   fi
   id=$(printf '%s' "$out" | grep -oE 'backgrounded[^0-9a-f]+[0-9a-f]{8}' | grep -oE '[0-9a-f]{8}$' | head -1)
   if [ -z "$id" ]; then
