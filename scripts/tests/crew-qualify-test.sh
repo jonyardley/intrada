@@ -267,6 +267,50 @@ if [ "$got" != "$want" ]; then
   fails=$((fails + 1))
 fi
 
+# ── collecting check 1: a failed guard install starts no probe session ─────
+# Stand-ins for the Keychain, git and claude; osti is the one CREW_OSTI names,
+# and a bare osti on PATH would be the wrong one.
+mkdir -p "$work/c1/bin" "$work/c1/main/.git" "$work/c1/out"
+cat >"$work/c1/bin/security" <<'S'
+#!/usr/bin/env bash
+exit 0
+S
+cat >"$work/c1/bin/git" <<'G'
+#!/usr/bin/env bash
+case "$*" in
+  *--git-common-dir*) echo "$C1/main/.git" ;;
+  *show-ref*) exit 1 ;;
+  *"worktree add"*) wt=${*: -2:1}; mkdir -p "$wt/.claude"; echo '{}' >"$wt/.claude/settings.json" ;;
+esac
+exit 0
+G
+cat >"$work/c1/bin/claude" <<'C'
+#!/usr/bin/env bash
+echo "claude $*" >>"$C1/calls"
+exit 1
+C
+cat >"$work/c1/bin/osti" <<'O'
+#!/usr/bin/env bash
+echo "bare osti $*" >>"$C1/calls"
+exit 0
+O
+cat >"$work/c1/bin/chosen-osti" <<'O'
+#!/usr/bin/env bash
+echo "chosen osti $*" >>"$C1/calls"
+echo "osti guard: the install failed" >&2
+exit 1
+O
+chmod +x "$work/c1/bin/"*
+n=$((n + 1))
+(cd "$work/c1/main" && C1="$work/c1" PATH="$work/c1/bin:$PATH" CREW_OSTI="$work/c1/bin/chosen-osti" \
+  bash "$script" collect 1 "$work/c1/out" >/dev/null 2>&1) || :
+if ! grep -q "^chosen osti guard install --worktree " "$work/c1/calls" 2>/dev/null ||
+  grep -q "^bare osti\|^claude" "$work/c1/calls" || [ "$(cat "$work/c1/out/guard_install" 2>/dev/null)" != 1 ]; then
+  echo "✗ collect 1: wanted only CREW_OSTI's guard install, recorded as failed, and no session; got:" >&2
+  cat "$work/c1/calls" >&2 2>/dev/null || :
+  fails=$((fails + 1))
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "✗ crew-qualify: $fails of $n judgements wrong" >&2
   exit 1

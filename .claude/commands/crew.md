@@ -59,11 +59,11 @@ osti write --run RUN --project jonyardley/intrada stage brief --item intrada#N \
 - A park: `osti write parked --reason CODE --question "the one question"`,
   with a code from Parking below.
 
-Read its exit code. 0: done. 1: nothing was written, so post the same file
-with `gh issue comment N --body-file <file>`. 3: the line is written but the
-note is not: post it with gh the same way, and never run the write again, as
-the record would hold it twice. Never post a note with gh as well as through
-osti.
+Read its exit code. 0: done. 3: the line is written but the note is not:
+post the same file with `gh issue comment N --body-file <file>`, and never run
+the write again, as the record would hold it twice. Any other exit, 1 or 2 (a
+bad argument) among them, means nothing was written: post the note with gh the
+same way. Never post a note with gh as well as through osti.
 
 ## The steps
 

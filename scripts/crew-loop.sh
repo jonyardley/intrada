@@ -43,6 +43,7 @@ RUN=""         # the run's name, once run_started is written
 ATTEMPT=0      # the open attempt's number; 0 when none is open
 ATTEMPTS=0     # attempts this run
 SESSION_ID=""  # the open attempt's Claude Code session, once known
+CURRENT_WT=""  # the open attempt's worktree, once made
 SPEND_SEEN=0   # the spend figure the cap last read, on each picked line
 RECORD_FAILED=0
 # ──────────────────────────────────────────────────────────────────────────────
@@ -210,18 +211,23 @@ last_words() {
     tail -c 300 | tr '`' "'"
 }
 
-# The session's last assistant record, when it is Claude Code's own error for
-# the plan's usage limit (#2854). Only an API error record counts, never what
-# the session wrote, and only the last, so a limit it recovered from does not.
-# The wording is unverified, so the caller logs the record whole.
-usage_limit() {
+# The session's last assistant record, when it is Claude Code's own API error.
+# Only such a record counts, never what the session wrote, and only the last,
+# so an error it recovered from does not.
+last_api_error() {
   local f
   f=$(transcript "$1" "$2")
   [ -n "$2" ] && [ -f "$f" ] || return 1
   jq -cR 'fromjson? // empty | select(.type == "assistant")' "$f" 2>/dev/null | tail -1 |
-    jq -ce 'select(.isApiErrorMessage == true and ((.error // "") == "rate_limit"
-      or ([.message.content[]? | select(.type == "text") | .text] | join(" ")
-        | test("usage limit|hit your limit|limit reached|limit will reset"; "i"))))' 2>/dev/null
+    jq -ce 'select(.isApiErrorMessage == true)' 2>/dev/null
+}
+
+# True when API error record $1 is the plan's usage limit (#2854), by its
+# wording alone: a short API rate limit carries the same error code and passes.
+# The wording is unverified, so the caller logs the record whole.
+usage_limit() {
+  printf '%s' "$1" | jq -e '[.message.content[]? | select(.type == "text") | .text] | join(" ")
+    | test("usage limit|hit your limit|(5-hour|session|weekly|opus) limit|limit will reset"; "i")' >/dev/null 2>&1
 }
 
 # ── GitHub ───────────────────────────────────────────────────────────────────
@@ -262,6 +268,9 @@ $said
   record_noted "$n" "$body" parked --item "$(item "$n")" --url "$(issue_url "$n")" --attempt "$ATTEMPT" \
     --reason "$code" --question "$question" --body-file "$file" ${SESSION_ID:+--session "$SESSION_ID"}
   rm -f "$file"
+  # Ended before the notification, so a signal during it cannot end it as
+  # cancelled.
+  end_attempt "$n" parked "$CURRENT_WT"
   notify "Crew parked #$n: $why"
   return "$labelled"
 }
@@ -278,7 +287,8 @@ record() {
   local rc=0 err
   err=$("$OSTI" write --project "$REPO" --run "$RUN" "$@" 2>&1 >/dev/null) || rc=$?
   case $rc in
-    0) ;;
+    # A warning, such as a line osti could not price, is logged too.
+    0) [ -z "$err" ] || log "osti on $1: $(printf '%s' "$err" | tail -1)" ;;
     3) log "the record has $1, but osti could not post its note: $(printf '%s' "$err" | tail -1)" ;;
     *) log "could not write $1 to the run record (osti exit $rc): $(printf '%s' "$err" | tail -1)" ;;
   esac
@@ -374,19 +384,23 @@ bound() {
 # Dollars the loop's own sessions cost in the last 24 hours, from the run
 # record (#2854): each session once, at its latest running total on an
 # attempt_ended line, since a session's figure is everything it has cost so
-# far. A line osti could not price per session counts its cost_usd. No record
-# yet is $0; one that cannot be read fails, so the loop stops rather than
-# spends blind. A torn line, from a writer killed mid line, is skipped.
+# far. A line given a cost with no split counts its cost_usd. A line naming
+# sessions with no cost_usd is one osti could not price in full, so it prints
+# "unpriced" and the caller holds the cap as reached rather than count $0. No
+# record yet is $0; one that cannot be read fails, so the loop stops rather
+# than spends blind. A torn line, from a writer killed mid line, is skipped.
 spend() {
   [ -f "$RECORD" ] || { echo 0; return; }
   [ -r "$RECORD" ] || return 1
-  jq -nR '[inputs | fromjson? // empty
+  jq -nrR '[inputs | fromjson? // empty
       | select(.event == "attempt_ended")
       | select((.at // "" | sub("\\.[0-9]+Z$"; "Z") | try fromdateiso8601 catch 0) >= (now - 86400))]
-    | (reduce (.[] | .session_costs // {} | to_entries[]) as $e ({}; .[$e.key] = $e.value)
-        | [.[]] | add // 0) as $sessions
-    | ([.[] | select(.session_costs == null) | .cost_usd // 0] | add // 0) as $unsplit
-    | ($sessions + $unsplit) * 100 | round / 100' "$RECORD" 2>/dev/null
+    | if any(.[]; (.sessions // []) != [] and .cost_usd == null) then "unpriced"
+      else (reduce (.[] | .session_costs // {} | to_entries[]) as $e ({}; .[$e.key] = $e.value)
+          | [.[]] | add // 0) as $sessions
+        | ([.[] | select(.session_costs == null) | .cost_usd // 0] | add // 0) as $unsplit
+        | ($sessions + $unsplit) * 100 | round / 100
+      end' "$RECORD" 2>/dev/null
 }
 
 # The ready queue in `just status` order, less any issue parked for the owner;
@@ -585,22 +599,32 @@ park_waiting() {
 
 # Exit 0 to go on; 1 when a park could not label the issue; 2 when no session
 # started; 3 when the notes could not be read; 4 when the session hit the
-# plan's usage limit. All but 0 end the run.
+# plan's usage limit; 5 when the record could not take the pick. All but 0 end
+# the run.
 run_issue() {
-  local n=$1 wt id sid said since hit rc
+  local n=$1 wt id sid said since hit rc=0
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  CURRENT_WT=""
   ATTEMPT=$(next_attempt "$n")
   ATTEMPTS=$((ATTEMPTS + 1))
   CURRENT_N=$n
+  # Attempt numbers come from picked lines, so a pick the record lacks would
+  # give the next run the same number: the run ends, as for its own start.
   record picked --no-note --item "$(item "$n")" --url "$(issue_url "$n")" --attempt "$ATTEMPT" \
-    --field "spend_24h_seen_usd=$SPEND_SEEN"
+    --field "spend_24h_seen_usd=$SPEND_SEEN" || rc=$?
+  if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then
+    ATTEMPT=0
+    ATTEMPTS=$((ATTEMPTS - 1))
+    CURRENT_N=""
+    return 5
+  fi
   wt=$(worktree_for "$n") || {
     park_issue "$n" no_worktree "it could not make the worktree crew-$n" "Is a branch or folder of that name in the way?"
     rc=$?
-    end_attempt "$n" parked
     CURRENT_N=""
     return "$rc"
   }
+  CURRENT_WT=$wt
   stop_live_in "$wt"
   if ! guard_worktree "$wt" || ! start_session "$wt" "$n"; then
     end_attempt "$n" failed "$wt"
@@ -620,11 +644,14 @@ run_issue() {
   case "$OUTCOME" in
     draft | parked | unread | waiting:*) ;;
     *)
-      if hit=$(usage_limit "$wt" "$sid"); then
-        log "#$n: the session hit the plan's usage limit: $hit"
-        end_attempt "$n" capped "$wt"
-        CURRENT_N=""
-        return 4
+      if hit=$(last_api_error "$wt" "$sid"); then
+        if usage_limit "$hit"; then
+          log "#$n: the session hit the plan's usage limit: $hit"
+          end_attempt "$n" capped "$wt"
+          CURRENT_N=""
+          return 4
+        fi
+        log "#$n: the session ended on an API error, not the plan's usage limit, so it parks as usual: $hit"
       fi
       ;;
   esac
@@ -656,7 +683,6 @@ run_issue() {
     *) park_issue "$n" no_draft "the session ended its turn without a draft or a park note" \
       "What should the crew do next on this issue?" "$said" || rc=$? ;;
   esac
-  [ "$ATTEMPT" -gt 0 ] && end_attempt "$n" parked "$wt"
   CURRENT_N=""
   return "$rc"
 }
@@ -750,7 +776,7 @@ main() {
   trap 'on_signal 143' TERM
   trap 'on_signal 129' HUP
   if ! check_guards; then
-    log "harness check 1 failed: a crew session was not refused gh pr ready, so no issue starts this run"
+    log "harness check 1 failed, so no issue starts this run"
     notify "Crew did not start: the guards check failed"
     exit 1
   fi
@@ -776,7 +802,14 @@ main() {
       log "ran $count issues, the cap for a run"
       break
     fi
-    if ! dollars=$(spend) || ! [[ $dollars =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    if ! dollars=$(spend); then
+      dollars=""
+    elif [ "$dollars" = unpriced ]; then
+      log "an attempt in the last 24 hours could not be priced, so the loop treats the \$$SPEND_CAP cap as reached; osti's warning is in this log"
+      stopped=spend_cap
+      break
+    fi
+    if ! [[ $dollars =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
       log "could not read the run record $RECORD, so the loop stops rather than spend blind"
       break
     fi
@@ -824,6 +857,10 @@ $q"
       log "ending the run: no session started for #$n"
       break
     fi
+    if [ "$rc" -eq 5 ]; then
+      log "ending the run: the run record could not take #$n's pick, so the next attempt number would repeat"
+      break
+    fi
     count=$((count + 1))
     if [ "$rc" -eq 1 ]; then
       log "ending the run: #$n is parked without its needs-owner label"
@@ -846,7 +883,8 @@ $q"
   done
   end_run ${stopped:+"stopped=$stopped"}
   log "run over: $(issues "$count") run"
-  [ "$count" -gt 0 ] && notify "Crew finished: $(issues "$count") run, details on each issue"
+  # A usage limit stop has told the owner already.
+  [ "$count" -gt 0 ] && [ "$stopped" != usage_limit ] && notify "Crew finished: $(issues "$count") run, details on each issue"
   exit 0
 }
 

@@ -7,6 +7,7 @@
 # session, network or ~/.claude.
 #
 #   crew-qualify.sh run <dir> <n>...    fresh baseline, collect and judge each, leak check
+#   crew-qualify.sh collect <n> <dir>  one check's evidence into <dir>, unjudged
 #   crew-qualify.sh judge <n> <dir>     PASS or FAIL line from <dir>/<n>/, exit 0 or 1
 #   crew-qualify.sh calls <transcript>  one line per tool call, as the judges read them
 #
@@ -333,7 +334,7 @@ describe_pids() {
 }
 
 collect_1() {
-  local d=$1 wt id rec sid marker settings
+  local d=$1 wt id rec sid marker settings rc=0
   # Never -w: the item's presence is the check, and the token is never read.
   if security find-generic-password -s "$OSTINATO_AGENT_KEYCHAIN_SERVICE" \
     -a "$OSTINATO_AGENT_KEYCHAIN_ACCOUNT" >/dev/null 2>&1; then
@@ -343,8 +344,10 @@ collect_1() {
     return 0
   fi
   wt=$(new_worktree 1) || return 1
-  osti guard install --worktree "$wt" >/dev/null 2>"$d/guard_install.err"
-  echo $? >"$d/guard_install"
+  "${CREW_OSTI:-osti}" guard install --worktree "$wt" >/dev/null 2>"$d/guard_install.err" || rc=$?
+  echo "$rc" >"$d/guard_install"
+  # The judge names the failed install; a probe session would only wait.
+  [ "$rc" -eq 0 ] || return 0
   marker="$d/marker"
   : >"$marker"
   settings="$wt/.claude/settings.json"
@@ -643,6 +646,14 @@ case "${1:-}" in
     shift
     run "$@"
     ;;
+  collect)
+    # One check's evidence, unjudged and with nothing cleaned up, for the
+    # self-test's stand-ins.
+    [ $# -eq 3 ] || { echo "usage: $0 collect <n> <dir>" >&2; exit 1; }
+    STATE="$3/.state"
+    mkdir -p "$STATE"
+    "collect_$2" "$3"
+    ;;
   judge)
     [ $# -eq 3 ] || { echo "usage: $0 judge <n> <dir>" >&2; exit 1; }
     "judge_$2" "$3"
@@ -652,7 +663,7 @@ case "${1:-}" in
     calls_from_transcript "$2"
     ;;
   *)
-    echo "usage: $0 run <dir> <n>... | judge <n> <dir> | calls <transcript>" >&2
+    echo "usage: $0 run <dir> <n>... | collect <n> <dir> | judge <n> <dir> | calls <transcript>" >&2
     exit 1
     ;;
 esac

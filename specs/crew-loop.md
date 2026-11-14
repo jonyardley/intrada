@@ -277,14 +277,17 @@ as the owner's answer, and the issue would run again.
 
 osti's exit codes:
 
-- **0**: done.
-- **1**: nothing was written. The loop logs it, and a noted event's note is
-  posted with gh, since the notes are what a restart reads.
+- **0**: done. A warning on stderr, such as a line it could not price, is
+  logged.
+- **1**, or any exit but 0 and 3 (2 for a bad argument): nothing was
+  written. The loop logs it, and a noted event's note is posted with gh,
+  since the notes are what a restart reads.
 - **3**: the line is written but its note is not. The note is posted with gh,
   and the write never runs again, so the record never holds a line twice.
 
 A `run-started` that fails ends the run, and so does an `attempt-ended` that
-fails, since the spend cap reads those lines.
+fails, since the spend cap reads those lines. So does a `picked` that fails,
+before its session starts, since attempt numbers come from `picked` lines.
 
 Outcomes: `draft`; `parked`; `failed` for a session that never starts or a
 guard install that fails; `cancelled` when Ctrl-C, TERM or a closed terminal
@@ -317,8 +320,10 @@ Reason codes:
 The cap sums the run record's `attempt_ended` lines from the last 24 hours.
 Each session counts once, at its latest running total in `session_costs`,
 since a session's figure is everything it has cost so far. A line with no
-`session_costs` counts its `cost_usd`. A torn line is skipped, and no record
-yet is $0. These are API-equivalent figures, a weight, not a bill: the
+`session_costs` counts its `cost_usd`. A line that names sessions with no
+`cost_usd` is one osti could not price in full, so the cap counts as reached
+until it is 24 hours old, rather than count it as $0. A torn line is skipped,
+and no record yet is $0. These are API-equivalent figures, a weight, not a bill: the
 sessions run on the owner's Claude subscription.
 
 ### The plan's usage limit
@@ -329,8 +334,10 @@ neither labelled nor noted, so the next run resumes its worktree. The loop
 reads the session's transcript when the turn ended with no draft or park
 note, failed, lost its process, or went silent. It counts only when the last
 assistant record is Claude Code's own API error (`isApiErrorMessage`) with
-the error `rate_limit` or text naming the limit. The exact wording is
-unverified, so the loop logs the record whole when it fires.
+text naming the plan's limit. The error code alone does not count, since a
+short API rate limit shares it: that record is logged and the issue parks as
+usual. The exact wording is unverified, so the loop logs the record whole
+either way.
 
 ## The owner's phone
 

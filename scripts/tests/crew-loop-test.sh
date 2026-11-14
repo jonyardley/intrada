@@ -208,7 +208,8 @@ GH
 
 # The run record's writer: one line of arguments a call in $FAKE/osti.log. Exit
 # 1 writes nothing, 3 writes the line but posts no note, as the real one; the
-# exit for an event comes from $FAKE/osti-exit-<event>. A note it posts lands on
+# exit for an event comes from $FAKE/osti-exit-<event>, and $FAKE/osti-warn-<event>
+# is printed on stderr with exit 0. A note it posts lands on
 # the fake issue as the owner's comment, as gh would post it.
 cat >"$work/bin/osti" <<'OSTI'
 #!/usr/bin/env bash
@@ -247,6 +248,9 @@ if [ "$nonote" = 0 ] && [ -n "$item" ]; then
   jq --arg b "$body" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '.comments += [{author: {login: "the-owner"}, body: $b, createdAt: $t}]' "$f" >"$FAKE/next" && mv "$FAKE/next" "$f"
 fi
+# A warning on exit 0, as the real one gives for a line it could not price.
+[ -f "$FAKE/osti-warn-$event" ] && cat "$FAKE/osti-warn-$event" >&2
+exit 0
 OSTI
 
 cat >"$work/bin/queue" <<'Q'
@@ -265,9 +269,12 @@ cat >"$work/bin/mkwt" <<'W'
 [ -f "$FAKE/wt-fails" ] && exit 1
 mkdir -p "$2"
 W
+# $FAKE/slow-park holds the park's notification open, for a signal during it.
 cat >"$work/bin/notify" <<'N'
 #!/usr/bin/env bash
 printf '%s\n' "$1" >>"$FAKE/notified"
+case "$1" in "Crew parked"*) [ -f "$FAKE/slow-park" ] && { touch "$FAKE/in-park-notify"; sleep 3; } ;; esac
+exit 0
 N
 cat >"$work/bin/caffeinate" <<'A'
 #!/usr/bin/env bash
@@ -351,7 +358,8 @@ alive() { kill -0 "$(cat "$FAKE/pid-$1")" 2>/dev/null; }
 
 setup 101
 CHECK1=FAIL run_loop
-ok "a failed harness check 1 starts no session" '[ -z "$(started)" ] && grep -q "check 1 failed" "$work/out"'
+ok "a failed harness check 1 starts no session, and the log names its cause, not one guess at it" \
+  '[ -z "$(started)" ] && grep -q "harness check 1 failed, so no issue starts" "$work/out" && grep -q "FAIL 1: refused" "$work/out" && ! grep -q "was not refused" "$work/out"'
 ok "harness check 1's folder is removed after it is read" '[ -s "$FAKE/check1-dir" ] && [ ! -e "$(cat "$FAKE/check1-dir")" ]'
 
 setup 101
@@ -410,6 +418,34 @@ echo draft >"$FAKE/scenario-101"
 run_loop
 ok "a line older than 24 hours and a torn last line are left out, and a cost with no split counts" \
   '[ "$(started)" = 101 ] && grep -q "picked --no-note .*--field spend_24h_seen_usd=149.25" "$FAKE/osti.log"'
+
+# A line naming its sessions with no cost_usd is one osti could not price in
+# full: the cap fails closed rather than count it as $0.
+unpriced_line() {
+  jq -nc --argjson h "$1" --argjson extra "$2" '{v: 1, at: (now - $h * 3600 | todate), run: "r-old",
+    event: "attempt_ended", item: "intrada#9", outcome: "draft"} + $extra'
+}
+
+setup 101
+unpriced_line 1 '{"sessions": ["s9"]}' >"$record_file"
+run_loop
+ok "an attempt osti could not price holds the cap as reached, with a log line" \
+  '[ -z "$(started)" ] && grep -q "could not be priced, so the loop treats the \$150 cap as reached" "$work/out" && grep -q "run-ended --attempts 0 --field stopped=spend_cap" "$FAKE/osti.log"'
+
+setup 101
+unpriced_line 1 '{"sessions": ["s1", "s2"], "session_costs": {"s1": 5}}' >"$record_file"
+run_loop
+ok "an attempt priced for only some of its sessions holds the cap too" '[ -z "$(started)" ] && grep -q "could not be priced" "$work/out"'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+{
+  unpriced_line 1 '{}'
+  unpriced_line 30 '{"sessions": ["s9"]}'
+} >"$record_file"
+run_loop
+ok "an attempt with no session to price, or an unpriced one past 24 hours, does not hold the cap" \
+  '[ "$(started)" = 101 ] && grep -q "spend_24h_seen_usd=0$" "$FAKE/osti.log"'
 
 setup 101
 echo '{"v":1}' >"$record_file"
@@ -1048,12 +1084,29 @@ run_loop
 ok "parked exit 3: the line is never written twice, and gh posts the note" \
   '[ "$(w "parked --item intrada#101")" = 1 ] && grep -q "could not post its note" "$work/out" && [ "$(notes 101 | grep -c "^\*\*Crew: parked")" = 1 ]'
 
-setup 101
+setup 101 102
 echo draft >"$FAKE/scenario-101"
 echo 1 >"$FAKE/osti-exit-picked"
 run_loop
-ok "picked exit 1 is logged and posts nothing on the issue, and the run goes on" \
-  'grep -q "could not write picked" "$work/out" && [ "$(started)" = 101 ] && ! grep -q "issue comment" "$FAKE/gh.log"'
+ok "picked exit 1 starts no session and ends the run, since attempt numbers come from picked lines" \
+  'grep -q "could not write picked" "$work/out" && grep -q "could not take #101.s pick" "$work/out" && [ -z "$(started)" ] && [ "$(w attempt-ended)" = 0 ] && grep -q "run-ended --attempts 0$" "$FAKE/osti.log" && ! grep -qx 102 "$FAKE/picked" && ! grep -q "issue comment" "$FAKE/gh.log"'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+echo "osti: the attempt_ended line is written without cost_usd: no transcript found" >"$FAKE/osti-warn-attempt-ended"
+run_loop
+ok "a warning osti gives with exit 0 is logged, not dropped" \
+  'grep -q "osti on attempt-ended: osti: the attempt_ended line is written without cost_usd" "$work/out"'
+
+setup 101
+echo wait-permission >"$FAKE/scenario-101"
+touch "$FAKE/slow-park"
+BG=1 run_loop
+for _ in $(seq 1 40); do [ -f "$FAKE/in-park-notify" ] && break; sleep 0.25; done
+kill -TERM "$LOOP_PID"
+wait "$LOOP_PID" 2>/dev/null || :
+ok "a signal during the park's notification leaves the attempt ended parked, not cancelled" \
+  '[ -f "$FAKE/in-park-notify" ] && grep -q "intrada#101 .*--outcome parked" "$FAKE/osti.log" && ! grep -q "outcome cancelled" "$FAKE/osti.log"'
 
 setup 101 102
 echo draft >"$FAKE/scenario-101"
@@ -1102,12 +1155,22 @@ ok "the usage limit ends the run: the attempt ends capped, and the run says why"
   'grep -q "intrada#101 .*--outcome capped" "$FAKE/osti.log" && grep -q "run-ended --attempts 1 --field stopped=usage_limit$" "$FAKE/osti.log" && [ "$(started)" = 101 ]'
 ok "the usage limit neither parks nor notes the issue, and the raw record is logged" \
   '! grep -qx needs-owner <<<"$(labels 101)" && [ -z "$(notes 101)" ] && [ "$(w "parked --item")" = 0 ] && grep -q "usage limit: {.*rate_limit" "$work/out"'
+ok "the usage limit tells the owner once, with no finished notification after it" \
+  'grep -q "usage limit on #101" "$FAKE/notified" && ! grep -q "Crew finished" "$FAKE/notified"'
 
 setup 101
 echo ended >"$FAKE/scenario-101"
 echo '{"type":"assistant","isApiErrorMessage":true,"message":{"content":[{"type":"text","text":"You'"'"'ve hit your limit, resets 3pm"}]}}' | transcript_101
 run_loop
 ok "an API error naming the limit in its text ends the run too" 'grep -q "stopped=usage_limit" "$FAKE/osti.log"'
+
+setup 101 102
+echo ended >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+echo '{"type":"assistant","isApiErrorMessage":true,"error":"rate_limit","message":{"content":[{"type":"text","text":"API Error: Rate limit reached"}]}}' | transcript_101
+run_loop
+ok "a short API rate limit is logged, parks as usual and the run goes on" \
+  '! grep -q "stopped=usage_limit" "$FAKE/osti.log" && [ "$(w " --reason no_draft ")" = 1 ] && grep -q "not the plan.s usage limit, so it parks as usual: {.*rate_limit" "$work/out" && grep -q "intrada#102 .*--outcome draft" "$FAKE/osti.log"'
 
 setup 101
 echo ended >"$FAKE/scenario-101"
@@ -1136,7 +1199,7 @@ brief_names() {
   b=$(cat "$root/.claude/commands/crew.md" "$root/.claude/commands/ship.md")
   for x in "osti write stage brief" "osti write stage built" "osti write stage reviewed" "osti write stage qa" \
     "osti write draft" "osti write parked" '--session "$CLAUDE_CODE_SESSION_ID"' needs_decision sensitive_diff \
-    failed_rounds "**Crew: draft**" "--body-file"; do
+    failed_rounds "**Crew: draft**" "--body-file" "Any other exit"; do
     grep -qF -- "$x" <<<"$b" || { echo "    the briefs do not say: $x"; return 1; }
   done
 }
