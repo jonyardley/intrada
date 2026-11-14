@@ -59,9 +59,10 @@ then refuses every git command.
 | Reaching work on the sensitive surfaces | The level the role table gives sensitive surfaces, set with `/effort` before it starts, saying so, and back after; never a new chat |
 | Handing work down | Settled work goes to a subagent (step 5); a new chat only frees the session (#1836) |
 
-Every model and effort choice, for a session or a spawn, comes from the role
-table in `~/.claude/CLAUDE.md` (Subagents, review and lane size), named on
-each Agent call; this repo keeps no levels of its own.
+A session opens on `.claude/settings.json`. Every spawn's model and effort,
+and the lead's raise for sensitive surfaces, come from the role table in
+`~/.claude/CLAUDE.md` (Subagents, review and lane size), named on each Agent
+call, a crew session's included; this repo keeps no levels of its own.
 
 `/effort` saves to settings unless you choose session-only, which is why a
 raised stretch ends by setting it back. Fast mode costs twice the standard
@@ -113,8 +114,8 @@ issues go under it the same turn with `just epic-add`; three or more ordered
 issues with no epic are a new one ([Epics](how-the-work-runs.md#epics)).
 
 Every plan names, per task, whether it is on the sensitive surfaces (a
-hand-written opener then starts with `/effort` at the role table's level for sensitive surfaces), where it runs, and its
-streams and serialisation points per `intrada-parallel-streams`. Worked tier
+hand-written opener then starts with `/effort` at the role table's level for
+sensitive surfaces), where it runs, and its streams and serialisation points per `intrada-parallel-streams`. Worked tier
 examples: [`reference.md`](reference.md).
 
 ## 5. Build

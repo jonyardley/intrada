@@ -13,8 +13,8 @@ runs before the push, because a review left until after it gets skipped
   1 included (#1665), briefed with the worktree and the issue. A docs, roadmap
   or harness-text diff takes `/code-review` inline. Spawn it at the model and
   effort the role table in `~/.claude/CLAUDE.md` gives (Subagents, review and
-  lane size); `guard-spawn.sh` brings any spawn above that table to Jon as a
-  permission prompt.
+  lane size); `guard-spawn.sh` brings a spawn with no model named, on Fable,
+  or above medium effort to Jon as a permission prompt.
 - **A new or reshaped bridge type ships with a `LiveBridge` test**
   (`LibraryBridgeTests`, `SessionBridgeTests` or `VariationPlayBridgeTests`):
   a Rust round trip cannot see Rust and Swift disagree about the wire (#846,
