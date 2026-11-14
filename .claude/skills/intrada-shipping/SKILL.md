@@ -30,7 +30,7 @@ runs before the push, because a review left until after it gets skipped
   issues open and every check green on the last commit, `just pr-ready PR
   ISSUE` marks it ready and moves the board (#1659). `Closes #N` in the body closes the issue on merge.
 
-## Verifying a change on the simulator and the emulator
+## Verifying a change on the simulator
 
 Android is paused (#2860): a feature ships on iPhone only, and nothing in
 `android/` changes. Every feature ships in one PR, core commits first, because a
@@ -128,13 +128,13 @@ choice he has not made. The build and the reviewer read it.
 **Done looks like**: two or three checks, as the musician or Jon sees them.
 **Time budget**: one session, or two; past it, stop and re-plan.
 **Decisions taken**: each choice, with the option rejected and why.
-**Files**: the files and lines it touches, core, `ios/` and `android/`.
+**Files**: the files and lines it touches, core and `ios/`.
 **Tests**: what proves it on each shell, and the line a deletion should break.
 **Mockup**: for a new screen, the Design canvas link and Jon's word on it, or why none is needed.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.
-**Routing**: the epic from `just claim`, sensitive surfaces or not, where it
-runs on iOS and Android, and any parallel stream.
+**Routing**: the epic from `just claim`, sensitive surfaces or not, and any
+parallel stream.
 ```
 
 Routing follows `docs/working-with-agents.md`. A plan needing more than two

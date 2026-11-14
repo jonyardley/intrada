@@ -143,6 +143,10 @@ order, in one PR:
 4. **`just check`.** `scripts/check-components.sh` fails when a page and the
    code disagree on a file, a symbol or a snapshot.
 
+While Android is paused (#2860), `Theme.kt`, `just android-test` and the
+Android snapshots below are skipped, and a new kit icon needs an Android
+`ic_*.xml` drawable, since the kit reads its icons from there.
+
 A new token goes into `Theme.swift` and `Theme.kt` in the same PR, before any
 screen uses it, with its usage note in `design/sketch-kit/token-notes.json`
 and a run of `just sketch-kit`. A changed token runs in this order, in one PR:

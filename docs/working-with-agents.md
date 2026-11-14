@@ -100,8 +100,8 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   PR's first commit, never its own PR. The spec is deleted once the screens
   ship, unless an open issue cites it (`specs/README.md`).
 
-A feature ships as one PR across the stack, core commits first, then iOS and
-Android: a merged core with no caller is shell-dead (#1374). On the sensitive
+A feature ships as one PR across the stack, core commits first, then iOS
+(Android is paused, #2860): a merged core with no caller is shell-dead (#1374). On the sensitive
 surfaces, `reviewer` reviews the core commits before the screens commits
 start, and lead-only work goes up a tier.
 
@@ -173,7 +173,7 @@ summary verbatim at PR creation, naming the agent.
 |---|---|
 | About to open or update a PR | `/ship`: two or three lessons to [`lessons.md`](lessons.md) before the PR first opens, gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
 | A crew session about to open its PR | `/ship loop`: the same gates and review, then `qa`, the park step on the diff, the draft and the CI watch, and stop; ready and merge are the owner's, and the guards refuse them |
-| The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone and Android screenshots |
+| The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone screenshots |
 | Jon, reviewing | Read the body and the self-review; merge when green |
 | The unit has shipped | `/clear` in the same sitting, after `just worktree-rm` |
 | Leaving for over an hour | Finish or `/clear` first: the cache expires and the first turn back re-sends everything at write price (#1842) |

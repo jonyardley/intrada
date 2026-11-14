@@ -73,4 +73,4 @@ emerges from behind is also opaque and sits on top (`.zIndex(1)`).
 
 A new screen follows the route in `docs/design-workflow.md`: a mockup on a
 Design canvas, Jon's word on it, then the build against the copy saved in its
-spec folder. A new token goes into `Theme.swift` and `Theme.kt` first.
+spec folder. A new token goes into `Theme.swift` first.

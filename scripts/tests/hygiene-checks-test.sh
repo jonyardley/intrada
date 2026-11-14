@@ -707,7 +707,7 @@ mkdir -p "$bridge/core" "$bridge/tests" "$bridge/android"
 bridge_check() {
   BRIDGE_CORE_ROOT="$bridge/core" BRIDGE_VIEWMODEL="$bridge/core/model.rs" \
     BRIDGE_TESTS_ROOT="$bridge/tests" BRIDGE_ANDROID_TESTS_ROOT="$bridge/android" \
-    BRIDGE_ALLOWLIST="$bridge/allow.txt" \
+    BRIDGE_ALLOWLIST="$bridge/allow.txt" BRIDGE_COUNT_KOTLIN="${count_kotlin-1}" \
     bash "$repo_root/scripts/check-bridge-tests.sh"
 }
 facet='#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]'
@@ -752,6 +752,7 @@ printf 'val i = Iota.A\n' >"$bridge/android/StoreTest.kt"
 expect 1 "a new type named only in a Kotlin test that is not a round trip" bridge_check
 printf 'val i = Iota.A\n' >"$bridge/android/LibraryRoundTripTest.kt"
 expect 0 "a new type named in a Kotlin round trip test" bridge_check
+count_kotlin=0 expect 1 "a new type named only in Kotlin while Android is paused" bridge_check
 rm "$bridge/core/iota.rs" "$bridge/android/StoreTest.kt" "$bridge/android/LibraryRoundTripTest.kt"
 
 cp "$bridge/core/model.rs" "$bridge/model.orig"

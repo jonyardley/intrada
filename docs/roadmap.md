@@ -25,8 +25,8 @@ migrated on every device.
 
 ## The ranking
 
-There is one sequence of milestones and no parallel streams. From v0.20.0
-every milestone ships on iPhone and Android together. Where this list and an
+There is one sequence of milestones and no parallel streams. From 2026-11-14
+every milestone ships on iPhone only, while Android is paused (#2860). Where this list and an
 issue's [horizon label](how-the-work-runs.md#horizons) disagree, this list
 wins.
 
@@ -87,11 +87,11 @@ on.
 - **Upkeep, picked up when it blocks**: the iOS test gates (#1981), the agent
   harness (#1983), its usage costs (#1849) and a core that is easy to change
   (#1995). An item joins the current milestone only when it stops that
-  milestone shipping. The Android epic (#2220) closes at 1.0.
+  milestone shipping.
 - **Android is paused** (#2860): from 2026-11-14 every new feature lands on
   iPhone only, the Android checks are off, and Android issues carry the
-  `paused` label. Restarting it starts with catching it up to the core. The
-  Android items in the milestones below wait with it.
+  `paused` label. A restart begins by catching Android up to the core. The
+  Android items in the milestones above wait with it.
 - **Postponed until after 1.0**: every screen at the largest text sizes
   (#2134), set aside again on 2026-10-13 with its children kept open.
 - **After 1.0, roughly in this order**: know what to practise next (#1978),

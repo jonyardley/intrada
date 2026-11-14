@@ -15,8 +15,8 @@ streams colliding in the same files.
   it owns before it starts. Editing runs concurrently, testing does not: test
   runs serialise on app launch whatever device they name (#1621;
   `docs/ios-testing.md`, "Running alongside another checkout (worktrees)").
-- **Android is paused** (#2860): no Android lanes run. When it restarts:
-  **Android runs up to four lanes of its own beside the iOS streams** (#2220),
+- **Android is paused** (#2860): no Android lanes run. When it restarts,
+  Android runs up to four lanes of its own beside the iOS streams (#2220),
   because its JVM tests need no device. The lanes and their order are in
   #2220. An Android lane needing a core change takes the one core slot shared
   with every iOS stream; it never runs a core change of its own alongside one.

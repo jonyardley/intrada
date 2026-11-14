@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Ticks each "Done looks like" criterion of an issue against evidence, after the gates and the self-review, for `/ship loop` in a crew session. Reads the tests the diff adds, the test-runner report it is handed and a fresh launch of both apps; reports one line per criterion. Read-only on code; runs no gates; never posts to GitHub.
+description: Ticks each "Done looks like" criterion of an issue against evidence, after the gates and the self-review, for `/ship loop` in a crew session. Reads the tests the diff adds, the test-runner report it is handed and a fresh launch of the iPhone app; reports one line per criterion. Read-only on code; runs no gates; never posts to GitHub.
 tools: Bash, Read, Grep, Glob
 model: opus
 effort: medium
@@ -25,7 +25,7 @@ Your brief names the worktree's absolute path, the issue, and the
    `run_in_background` and wait for it: it queues on a
    machine-wide lock for up to 30 minutes before building. A launch that
    times out is reported as "no screenshot: the queue timed out", not as a
-   failed criterion. Read each screenshot once. Never use Xcode's tool
+   failed criterion. Read the screenshot once. Never use Xcode's tool
    server: it asks the owner to approve each new worktree, which stalls a
    crew session. Leave taps to the UI tests.
 4. Judge each criterion against evidence: a test the diff adds or changes, in

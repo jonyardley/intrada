@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Every component in the catalogue index has a page, every page is in the
 # index, and each page names a real file, symbol and snapshot on both apps
-# (#2620). An Android gap passes only with `not_on_android:` and a reason.
+# (#2620). An Android gap passes only with `not_on_android:` and a reason;
+# while Android is paused, new pages give #2860 as theirs.
 #
 # The page proves the component exists and has pictures, not that its words
 # are still true; that stays with review.

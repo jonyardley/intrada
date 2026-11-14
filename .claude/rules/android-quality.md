@@ -6,7 +6,7 @@ paths:
 # The Android shell
 
 **Paused (#2860).** Nothing in `android/` changes until the owner restarts
-Android. When it does, catch it up to the core first.
+Android. When Android restarts, catch it up to the core first.
 
 The second native shell on the unchanged core (epic #2220). `CLAUDE.md`, and
 the iOS bars in `ios-quality.md` and `ios-ui.md`, bind it as they bind Swift;
