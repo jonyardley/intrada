@@ -29,7 +29,22 @@ TRUSTED=$(trusted_jq)
 WALL_CLOCK=${CREW_WALL_CLOCK:-10800} # seconds per session: 3 hours
 SILENCE=${CREW_SILENCE:-2700}        # 45 minutes; the simulator queue waits up to 1800
 MAX_ISSUES=${CREW_MAX_ISSUES:-3}     # issues a run
-SPEND_CAP=${CREW_SPEND_CAP:-150}     # dollars, the last 24 hours of `just usage`
+SPEND_CAP=${CREW_SPEND_CAP:-150}     # dollars, the loop's own sessions in the last 24 hours
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Ostinato (#2854): the run record and the agent's identity ───────────────
+OSTI=${CREW_OSTI:-osti}
+export OSTINATO_PROJECT=$REPO
+export OSTINATO_AGENT_KEYCHAIN_SERVICE=${OSTINATO_AGENT_KEYCHAIN_SERVICE:-ostinato-intrada-loop}
+export OSTINATO_AGENT_KEYCHAIN_ACCOUNT=${OSTINATO_AGENT_KEYCHAIN_ACCOUNT:-ostinato-agent}
+export OSTINATO_AGENT_EMAIL=${OSTINATO_AGENT_EMAIL:-356601309+ostinato-agent@users.noreply.github.com}
+RECORD="${OSTINATO_HOME:-$HOME/.local/state/ostinato/records}/$(printf '%s' "$REPO" | sed 's#/#__#' | tr '[:upper:]' '[:lower:]').jsonl"
+RUN=""         # the run's name, once run_started is written
+ATTEMPT=0      # the open attempt's number; 0 when none is open
+ATTEMPTS=0     # attempts this run
+SESSION_ID=""  # the open attempt's Claude Code session, once known
+SPEND_SEEN=0   # the spend figure the cap last read, on each picked line
+RECORD_FAILED=0
 # ──────────────────────────────────────────────────────────────────────────────
 
 POLL=${CREW_POLL:-60}
@@ -143,8 +158,10 @@ stop_named() {
 start_session() {
   local wt=$1 n=$2 out since try=0
   since=$(($(now) * 1000))
-  out=$(cd "$wt" && INTRADA_CREW=1 claude --bg --model opus --effort high \
-    --permission-mode auto -n "crew-$n" "/crew $n" 2>&1)
+  # The run and attempt ride in the first prompt too, so every `osti write` the
+  # session makes names them (#2854).
+  out=$(cd "$wt" && INTRADA_CREW=1 OSTINATO_RUN=$RUN OSTINATO_PROJECT=$REPO claude --bg --model opus \
+    --effort high --permission-mode auto -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
   STARTED_ID=""
   while [ -z "$STARTED_ID" ] && [ "$try" -lt "$START_TRIES" ]; do
     [ "$try" -gt 0 ] && sleep "${CREW_START_WAIT:-2}"
@@ -177,12 +194,30 @@ last_activity() {
 
 # The last thing the session said, for a park comment, with no backtick that
 # could close the fence it goes in.
+transcript() {
+  printf '%s/.claude/projects/%s/%s.jsonl' "$HOME" "$(printf '%s' "$1" | sed 's/[^A-Za-z0-9]/-/g')" "$2"
+}
+
 last_words() {
-  local cwd=$1 sid=$2 f
-  f="$HOME/.claude/projects/$(printf '%s' "$cwd" | sed 's/[^A-Za-z0-9]/-/g')/$sid.jsonl"
+  local f
+  f=$(transcript "$1" "$2")
   [ -f "$f" ] || return 0
   jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text' "$f" 2>/dev/null |
     tail -c 300 | tr '`' "'"
+}
+
+# The session's last assistant record, when it is Claude Code's own error for
+# the plan's usage limit (#2854). Only an API error record counts, never what
+# the session wrote, and only the last, so a limit it recovered from does not.
+# The wording is unverified, so the caller logs the record whole.
+usage_limit() {
+  local f
+  f=$(transcript "$1" "$2")
+  [ -n "$2" ] && [ -f "$f" ] || return 1
+  jq -cR 'fromjson? // empty | select(.type == "assistant")' "$f" 2>/dev/null | tail -1 |
+    jq -ce 'select(.isApiErrorMessage == true and ((.error // "") == "rate_limit"
+      or ([.message.content[]? | select(.type == "text") | .text] | join(" ")
+        | test("usage limit|hit your limit|limit reached|limit will reset"; "i"))))' 2>/dev/null
 }
 
 # ── GitHub ───────────────────────────────────────────────────────────────────
@@ -197,8 +232,11 @@ last_note() {
 
 # The issue half of parking. Fails when the label could not be added, since an
 # unlabelled issue would be taken again (#2821).
+#
+# $2 is the reason code the run record counts (#2854); the note keeps the Crew
+# heading, since the restart and the outcome read only that.
 park_issue() {
-  local n=$1 why=$2 question=$3 said=${4:-} labelled=0
+  local n=$1 code=$2 why=$3 question=$4 said=${5:-} labelled=0 file
   if ! gh issue edit "$n" -R "$REPO" --add-label needs-owner >/dev/null 2>&1; then
     log "could not add needs-owner to #$n"
     labelled=1
@@ -215,16 +253,79 @@ The session's last words:
 \`\`\`text
 $said
 \`\`\`"
-  gh issue comment "$n" -R "$REPO" --body "$body" >/dev/null 2>&1 ||
-    log "could not post the park note on #$n"
+  file=$(mktemp "${TMPDIR:-/tmp}/crew-park.XXXXXX")
+  printf '%s\n' "$body" >"$file"
+  record_noted "$n" "$body" parked --item "$(item "$n")" --url "$(issue_url "$n")" --attempt "$ATTEMPT" \
+    --reason "$code" --question "$question" --body-file "$file" ${SESSION_ID:+--session "$SESSION_ID"}
+  rm -f "$file"
   notify "Crew parked #$n: $why"
   return "$labelled"
 }
 
+# ── The run record (#2854, the Ostinato record format) ──────────────────────
+
+item() { printf '%s#%s' "${REPO#*/}" "$1"; }
+issue_url() { printf 'https://github.com/%s/issues/%s' "$REPO" "$1"; }
+
+# One line in the run record. Exit 1 means nothing was written and 3 that the
+# line was written but its note was not; either way it is never run again,
+# since a repeat would hold the line twice.
+record() {
+  local rc=0 err
+  err=$("$OSTI" write --project "$REPO" --run "$RUN" "$@" 2>&1 >/dev/null) || rc=$?
+  case $rc in
+    0) ;;
+    3) log "the record has $1, but osti could not post its note: $(printf '%s' "$err" | tail -1)" ;;
+    *) log "could not write $1 to the run record (osti exit $rc): $(printf '%s' "$err" | tail -1)" ;;
+  esac
+  return "$rc"
+}
+
+# A line with a note: when osti did not post the note, gh posts it, since the
+# notes are what a restart reads.
+record_noted() {
+  local n=$1 body=$2 rc=0
+  shift 2
+  record "$@" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    gh issue comment "$n" -R "$REPO" --body "$body" >/dev/null 2>&1 ||
+      log "could not post the $1 note on #$n"
+  fi
+  return 0
+}
+
+# The attempt's end, with no note: one after a park note would read as the
+# owner's answer and run the issue again (#2854).
+end_attempt() {
+  local n=$1 outcome=$2 wt=${3:-}
+  [ "$ATTEMPT" -gt 0 ] || return 0
+  record attempt-ended --no-note --item "$(item "$n")" --url "$(issue_url "$n")" --attempt "$ATTEMPT" \
+    --outcome "$outcome" ${SESSION_ID:+--session "$SESSION_ID"} ${wt:+--cwd "$wt"} || RECORD_FAILED=1
+  ATTEMPT=0
+  SESSION_ID=""
+}
+
+# The next attempt at issue $1: one past its newest picked line in the record.
+next_attempt() {
+  local last
+  [ -f "$RECORD" ] || { echo 1; return; }
+  last=$(jq -R --arg i "$(item "$1")" 'fromjson? // empty
+    | select(.event == "picked" and ((.item // "") | ascii_downcase) == ($i | ascii_downcase)) | .attempt' \
+    "$RECORD" 2>/dev/null | sort -n | tail -1)
+  echo $((${last:-0} + 1))
+}
+
+# Ends the run's record once; $1 is an extra field such as stopped=usage_limit.
+end_run() {
+  [ -n "$RUN" ] || return 0
+  record run-ended --attempts "$ATTEMPTS" ${1:+--field "$1"}
+  RUN=""
+}
+
 # ── The owner's phone ────────────────────────────────────────────────────────
 
-# A Mac notification, then Claude's own push, the only route found to the
-# phone without an outside service (#2821).
+# A Mac notification, and Claude's own push to the phone only when
+# CREW_PHONE_PUSH=1: the owner turned the push off by default (#2854).
 notify() {
   local msg=$1 job
   if [ -n "${CREW_NOTIFY:-}" ]; then
@@ -233,10 +334,12 @@ notify() {
   fi
   osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title "Intrada crew"' \
     -e 'end run' "$msg" >/dev/null 2>&1 || :
-  (cd "${TMPDIR:-/tmp}" && exec claude -p --model haiku --allowedTools PushNotification \
-    "Send this exact text with the PushNotification tool, then stop: $msg") >/dev/null 2>&1 &
-  job=$!
-  bound "$job" "${CREW_PUSH_LIMIT:-120}"
+  if [ "${CREW_PHONE_PUSH:-}" = 1 ]; then
+    (cd "${TMPDIR:-/tmp}" && exec claude -p --model haiku --allowedTools PushNotification \
+      "Send this exact text with the PushNotification tool, then stop: $msg") >/dev/null 2>&1 &
+    job=$!
+    bound "$job" "${CREW_PUSH_LIMIT:-120}"
+  fi
   log "told the owner: $msg"
   return 0
 }
@@ -260,21 +363,22 @@ bound() {
 
 # ── Caps and the queue ───────────────────────────────────────────────────────
 
-# Dollars in the last 24 hours across every project on this Mac. Fails when the
-# report cannot be read, so the loop stops rather than spends blind.
+# Dollars the loop's own sessions cost in the last 24 hours, from the run
+# record (#2854): each session once, at its latest running total on an
+# attempt_ended line, since a session's figure is everything it has cost so
+# far. A line osti could not price per session counts its cost_usd. No record
+# yet is $0; one that cannot be read fails, so the loop stops rather than
+# spends blind. A torn line, from a writer killed mid line, is skipped.
 spend() {
-  local out
-  if [ -n "${CREW_SPEND:-}" ]; then
-    out=$($CREW_SPEND) || return 1
-  else
-    out=$(python3 "$HOME/.claude/hooks/usage-report.py" --days 1 --brief 2>/dev/null) || return 1
-  fi
-  # The report says "nothing recorded" for a day with no sessions at all.
-  if grep -q 'nothing recorded' <<<"$out"; then
-    echo 0
-    return
-  fi
-  printf '%s' "$out" | grep -oE '\$[0-9,]+' | head -1 | tr -d '$,' | grep -E '^[0-9]+$'
+  [ -f "$RECORD" ] || { echo 0; return; }
+  [ -r "$RECORD" ] || return 1
+  jq -nR '[inputs | fromjson? // empty
+      | select(.event == "attempt_ended")
+      | select((.at // "" | sub("\\.[0-9]+Z$"; "Z") | try fromdateiso8601 catch 0) >= (now - 86400))]
+    | (reduce (.[] | .session_costs // {} | to_entries[]) as $e ({}; .[$e.key] = $e.value)
+        | [.[]] | add // 0) as $sessions
+    | ([.[] | select(.session_costs == null) | .cost_usd // 0] | add // 0) as $unsplit
+    | ($sessions + $unsplit) * 100 | round / 100' "$RECORD" 2>/dev/null
 }
 
 # The ready queue in `just status` order, less any issue parked for the owner;
@@ -354,15 +458,29 @@ worktree_for() {
   printf '%s' "$wt"
 }
 
-# Harness check 1: a live crew session is refused `gh pr ready`. The loop
-# starts no issue unless it passes at the start of the run.
+# Harness check 1: the agent's Keychain item is there, a live crew session acts
+# as the agent account, and osti's own guard refuses it `gh pr ready` (#2854).
+# The loop starts no issue unless it passes at the start of the run.
 check_guards() {
   local dir passed=1
   dir=$(mktemp -d "${TMPDIR:-/tmp}/crew-check1.XXXXXX") || return 1
   ${CREW_QUALIFY:-"$root/scripts/crew-qualify.sh"} run "$dir" 1 >/dev/null 2>&1
-  grep -q '^PASS 1:' "$dir/results.txt" 2>/dev/null && passed=0
+  if grep -q '^PASS 1:' "$dir/results.txt" 2>/dev/null; then
+    passed=0
+  else
+    log "$(grep -m1 '^FAIL 1:' "$dir/results.txt" 2>/dev/null || echo "check 1 left no result")"
+  fi
   rm -rf "$dir"
   return "$passed"
+}
+
+# Each worktree gets osti's guard, with the agent's identity from the
+# environment, before its session starts (#2854).
+guard_worktree() {
+  local err
+  err=$("$OSTI" guard install --worktree "$1" 2>&1) && return 0
+  log "osti guard install failed in $1: $(printf '%s' "$err" | tail -1)"
+  return 1
 }
 
 # ── One issue ────────────────────────────────────────────────────────────────
@@ -386,7 +504,7 @@ watch() {
     wait $!
     rec=$(agent_record "$id")
     s=$(printf '%s' "$rec" | jq -r '.sessionId // empty')
-    [ -n "$s" ] && sid=$s
+    [ -n "$s" ] && sid=$s && SESSION_ID=$s
     pid=$(printf '%s' "$rec" | jq -r '.pid // empty')
     state=$(printf '%s' "$rec" | jq -r '.state // empty')
     status=$(printf '%s' "$rec" | jq -r '.status // empty')
@@ -435,65 +553,104 @@ watch() {
   done
 }
 
-# A park for each thing Claude Code's agent view says a session can wait on.
+# A park for each thing Claude Code's agent view says a session can wait on,
+# each with the reason code the run record counts (#2854).
 park_waiting() {
   local n=$1 what=$2 said=$3 answer="Answer here and remove the needs-owner label."
   case "$what" in
-    "permission prompt") park_issue "$n" "it stopped at a permission prompt" \
+    "permission prompt") park_issue "$n" permission_prompt "it stopped at a permission prompt" \
       "Should the crew be allowed what it asked for, or should the plan avoid it? $answer" "$said" ;;
-    "input needed") park_issue "$n" "it stopped for an answer in its own chat" \
+    "input needed") park_issue "$n" input_needed "it stopped for an answer in its own chat" \
       "What should it be told? Its question is in the last words below. $answer" "$said" ;;
-    "sandbox request") park_issue "$n" "it asked to go outside its sandbox" \
+    "sandbox request") park_issue "$n" sandbox_request "it asked to go outside its sandbox" \
       "Should the crew be allowed past the sandbox for this, or should the plan avoid it? $answer" "$said" ;;
-    "worker request") park_issue "$n" "one of its workers stopped for a decision" \
+    "worker request") park_issue "$n" worker_request "one of its workers stopped for a decision" \
       "What should the worker be allowed, or should the plan avoid it? $answer" "$said" ;;
-    "dialog open") park_issue "$n" "a dialog opened that nobody could close" \
+    "dialog open") park_issue "$n" dialog_open "a dialog opened that nobody could close" \
       "Which step opens a dialog, and can the plan avoid it? $answer" "$said" ;;
-    "") park_issue "$n" "it showed as waiting without saying on what" \
+    "") park_issue "$n" waiting "it showed as waiting without saying on what" \
       "Run it again as it is, or say what to change. $answer" "$said" ;;
-    *) park_issue "$n" "it waited on something the loop does not know: $what" \
+    *) park_issue "$n" waiting "it waited on something the loop does not know: $what" \
       "What was it waiting for, and should the plan avoid it? $answer" "$said" ;;
   esac
 }
 
 # Exit 0 to go on; 1 when a park could not label the issue; 2 when no session
-# started; 3 when the notes could not be read. All but 0 end the run.
+# started; 3 when the notes could not be read; 4 when the session hit the
+# plan's usage limit. All but 0 end the run.
 run_issue() {
-  local n=$1 wt id sid said since
+  local n=$1 wt id sid said since hit rc
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  ATTEMPT=$(next_attempt "$n")
+  ATTEMPTS=$((ATTEMPTS + 1))
+  CURRENT_N=$n
+  record picked --no-note --item "$(item "$n")" --url "$(issue_url "$n")" --attempt "$ATTEMPT" \
+    --field "spend_24h_seen_usd=$SPEND_SEEN"
   wt=$(worktree_for "$n") || {
-    park_issue "$n" "it could not make the worktree crew-$n" "Is a branch or folder of that name in the way?"
-    return
+    park_issue "$n" no_worktree "it could not make the worktree crew-$n" "Is a branch or folder of that name in the way?"
+    rc=$?
+    end_attempt "$n" parked
+    CURRENT_N=""
+    return "$rc"
   }
   stop_live_in "$wt"
-  CURRENT_N=$n
-  start_session "$wt" "$n" || { CURRENT_N=""; return 2; }
+  if ! guard_worktree "$wt" || ! start_session "$wt" "$n"; then
+    end_attempt "$n" failed "$wt"
+    CURRENT_N=""
+    return 2
+  fi
   id=$STARTED_ID
   log "#$n: session $id in $wt"
   watch "$id" "$wt" "$n" "$since"
   sid=$(agent_record "$id" | jq -r '.sessionId // empty')
+  [ -n "$sid" ] && SESSION_ID=$sid
+  sid=$SESSION_ID
   said=$(last_words "$wt" "$sid")
   log "#$n: $(stop_session "$id")"
-  CURRENT_N=""
+  # A session stopped by the plan's usage limit is not the issue's fault, so it
+  # is neither parked nor announced: the run ends and the next one resumes it.
+  case "$OUTCOME" in
+    draft | parked | unread | waiting:*) ;;
+    *)
+      if hit=$(usage_limit "$wt" "$sid"); then
+        log "#$n: the session hit the plan's usage limit: $hit"
+        end_attempt "$n" capped "$wt"
+        CURRENT_N=""
+        return 4
+      fi
+      ;;
+  esac
+  rc=0
   case "$OUTCOME" in
     unread)
       log "could not read the notes on #$n, so it is neither announced nor parked"
+      end_attempt "$n" stalled "$wt"
+      CURRENT_N=""
       return 3
       ;;
-    draft) notify "Crew: draft ready for your review on #$n" ;;
-    parked) notify "Crew parked #$n with a question" ;;
-    waiting:*) park_waiting "$n" "${OUTCOME#waiting:}" "$said" ;;
-    failed) park_issue "$n" "the session failed with an error" \
-      "Remove the needs-owner label to run it again as it is, or say what to change." "$said" ;;
-    no-process) park_issue "$n" "the session showed as working with no process behind it" \
-      "Remove the needs-owner label to run it again as it is, or say what to change." "$said" ;;
-    wall-clock) park_issue "$n" "it hit the $((WALL_CLOCK / 60)) minute wall clock" \
-      "Should this issue be split, or run again as it is?" "$said" ;;
-    silence) park_issue "$n" "nothing was written for $((SILENCE / 60)) minutes" \
-      "Run it again as it is, or is something on this issue likely to hang?" "$said" ;;
-    *) park_issue "$n" "the session ended its turn without a draft or a park note" \
-      "What should the crew do next on this issue?" "$said" ;;
+    draft)
+      end_attempt "$n" draft "$wt"
+      notify "Crew: draft ready for your review on #$n"
+      ;;
+    parked)
+      end_attempt "$n" parked "$wt"
+      notify "Crew parked #$n with a question"
+      ;;
+    waiting:*) park_waiting "$n" "${OUTCOME#waiting:}" "$said" || rc=$? ;;
+    failed) park_issue "$n" session_failed "the session failed with an error" \
+      "Remove the needs-owner label to run it again as it is, or say what to change." "$said" || rc=$? ;;
+    no-process) park_issue "$n" no_process "the session showed as working with no process behind it" \
+      "Remove the needs-owner label to run it again as it is, or say what to change." "$said" || rc=$? ;;
+    wall-clock) park_issue "$n" time_cap "it hit the $((WALL_CLOCK / 60)) minute wall clock" \
+      "Should this issue be split, or run again as it is?" "$said" || rc=$? ;;
+    silence) park_issue "$n" silence "nothing was written for $((SILENCE / 60)) minutes" \
+      "Run it again as it is, or is something on this issue likely to hang?" "$said" || rc=$? ;;
+    *) park_issue "$n" no_draft "the session ended its turn without a draft or a park note" \
+      "What should the crew do next on this issue?" "$said" || rc=$? ;;
   esac
+  [ "$ATTEMPT" -gt 0 ] && end_attempt "$n" parked "$wt"
+  CURRENT_N=""
+  return "$rc"
 }
 
 # ── The run ──────────────────────────────────────────────────────────────────
@@ -550,14 +707,19 @@ stay_awake() {
 on_signal() {
   trap - INT TERM HUP
   log "interrupted"
-  [ -n "$CURRENT_N" ] && stop_named "$CURRENT_N"
+  if [ -n "$CURRENT_N" ]; then
+    stop_named "$CURRENT_N"
+    # A stopped run still closes its record (#2854).
+    end_attempt "$CURRENT_N" cancelled "$(worktrees)/crew-$CURRENT_N"
+  fi
+  end_run
   exit "$1"
 }
 
 issues() { if [ "$1" -eq 1 ]; then echo "1 issue"; else echo "$1 issues"; fi; }
 
 main() {
-  local count=0 tried=" " n cand candidates q qrc prc pickfail dollars rc
+  local count=0 tried=" " n cand candidates q qrc prc pickfail dollars rc stopped="" ver
   if [ -n "${CI:-}" ]; then
     echo "crew-loop.sh starts real sessions on this Mac, never in CI" >&2
     exit 1
@@ -571,6 +733,10 @@ main() {
     log "the stop file $STOP_FILE is there; remove it to run the crew"
     exit 0
   fi
+  if ! ver=$("$OSTI" --version 2>/dev/null); then
+    log "osti is not installed (just install in the Ostinato repo), so no run starts: the run record and the guard need it"
+    exit 1
+  fi
   stay_awake
   trap 'on_signal 130' INT
   trap 'on_signal 143' TERM
@@ -581,6 +747,17 @@ main() {
     exit 1
   fi
   log "harness check 1 passed; caps: $MAX_ISSUES issues, \$$SPEND_CAP, $((WALL_CLOCK / 60)) min a session, $((SILENCE / 60)) min silence"
+  RUN="r-$(date -u +%Y%m%d-%H%M%S)"
+  if ! record run-started --cap "issues=$MAX_ISSUES" --cap "spend_24h_usd=$SPEND_CAP" \
+    --cap "session_hours=$(awk -v s="$WALL_CLOCK" 'BEGIN { print s / 3600 }')" \
+    --cap "silence_min=$(awk -v s="$SILENCE" 'BEGIN { print s / 60 }')" \
+    --field "claude_version=$(claude --version 2>/dev/null | head -1)" --field "osti_version=$ver"; then
+    RUN=""
+    log "the run record could not take the run's start, so no issue starts: the spend cap reads that record"
+    notify "Crew did not start: the run record could not be written"
+    exit 1
+  fi
+  log "run $RUN started, $ver"
 
   while :; do
     if [ -e "$STOP_FILE" ]; then
@@ -591,14 +768,16 @@ main() {
       log "ran $count issues, the cap for a run"
       break
     fi
-    if ! dollars=$(spend) || ! [[ $dollars =~ ^[0-9]+$ ]]; then
-      log "could not read the spend report, so the loop stops rather than spend blind"
+    if ! dollars=$(spend) || ! [[ $dollars =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+      log "could not read the run record $RECORD, so the loop stops rather than spend blind"
       break
     fi
-    if [ "$dollars" -ge "$SPEND_CAP" ]; then
-      log "spend in the last 24 hours is \$$dollars, at or past the \$$SPEND_CAP cap"
+    if awk -v d="$dollars" -v c="$SPEND_CAP" 'BEGIN { exit !(d >= c) }'; then
+      log "the loop's sessions cost \$$dollars in the last 24 hours, at or past the \$$SPEND_CAP cap"
+      stopped=spend_cap
       break
     fi
+    SPEND_SEEN=$dollars
 
     n=""
     pickfail=0
@@ -646,7 +825,18 @@ $q"
       log "ending the run: GitHub could not be read for #$n's outcome"
       break
     fi
+    if [ "$rc" -eq 4 ]; then
+      log "ending the run: the plan's usage limit stopped #$n's session, so the next run resumes it"
+      notify "Crew stopped at the plan's usage limit on #$n"
+      stopped=usage_limit
+      break
+    fi
+    if [ "$RECORD_FAILED" -eq 1 ]; then
+      log "ending the run: the run record could not take #$n's end, so the spend cap cannot count its cost"
+      break
+    fi
   done
+  end_run ${stopped:+"stopped=$stopped"}
   log "run over: $(issues "$count") run"
   [ "$count" -gt 0 ] && notify "Crew finished: $(issues "$count") run, details on each issue"
   exit 0

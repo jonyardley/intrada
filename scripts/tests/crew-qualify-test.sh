@@ -41,22 +41,61 @@ lease_for() {
 LEASE_DENIAL='That worktree belongs to another live session: session 3570b2f1 (pid 89345) has held it since 2026-11-12 06:09.'
 READY_DENIAL="A crew session leaves its PR as a draft: marking it ready is the owner's, after the screenshots (intrada #2799, #2812)."
 
-# ── check 1: the hook process sees the flag ─────────────────────────────────
-mkdir -p "$work/1-pass" "$work/1-no-flag" "$work/1-wrong-guard" "$work/1-not-error" "$work/1-no-prefix"
-printf 'event=SessionStart crew=1\nevent=PreToolUse crew=1\n' >"$work/1-pass/marker"
-denied "gh pr ready 999999 -R jonyardley/intrada" "$READY_DENIAL" >"$work/1-pass/calls.jsonl"
+# ── check 1: the agent's identity, the flag, and osti's own refusal ─────────
+OSTI_DENIAL="osti guard refused this command: an Ostinato session leaves its pull request as a draft: marking it ready is the owner's."
+one_pass() {
+  mkdir -p "$work/$1"
+  echo present >"$work/$1/keychain"
+  echo 0 >"$work/$1/guard_install"
+  printf 'event=SessionStart crew=1\nevent=PreToolUse crew=1\n' >"$work/$1/marker"
+  {
+    call "gh api user --jq .login" false "ostinato-agent
+"
+    denied "gh pr ready 999999 -R jonyardley/intrada" "$OSTI_DENIAL"
+  } >"$work/$1/calls.jsonl"
+}
+for d in 1-pass 1-both-guards 1-no-keychain 1-no-install 1-no-flag 1-owner-login 1-login-refused \
+  1-old-guard-only 1-not-error 1-no-prefix; do
+  one_pass "$d"
+done
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$READY_DENIAL $(printf 'x%.0s' $(seq 1 200)) $OSTI_DENIAL"
+} >"$work/1-both-guards/calls.jsonl"
+echo missing >"$work/1-no-keychain/keychain"
+echo 1 >"$work/1-no-install/guard_install"
+echo "osti guard: OSTINATO_AGENT_EMAIL is not set" >"$work/1-no-install/guard_install.err"
 printf 'event=SessionStart crew=unset\nevent=PreToolUse crew=unset\n' >"$work/1-no-flag/marker"
-cp "$work/1-pass/calls.jsonl" "$work/1-no-flag/"
-cp "$work/1-pass/marker" "$work/1-wrong-guard/"
-denied "gh pr ready 999999 -R jonyardley/intrada" "$LEASE_DENIAL" >"$work/1-wrong-guard/calls.jsonl"
-for d in 1-not-error 1-no-prefix; do cp "$work/1-pass/marker" "$work/$d/"; done
-call "gh pr ready 999999 -R jonyardley/intrada" false "PreToolUse:Bash hook error: $READY_DENIAL" >"$work/1-not-error/calls.jsonl"
-call "gh pr ready 999999 -R jonyardley/intrada" true "Exit code 1. $READY_DENIAL" >"$work/1-no-prefix/calls.jsonl"
+{
+  call "gh api user --jq .login" false "the-owner"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$OSTI_DENIAL"
+} >"$work/1-owner-login/calls.jsonl"
+{
+  call "gh api user --jq .login" true "ostinato-agent"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$OSTI_DENIAL"
+} >"$work/1-login-refused/calls.jsonl"
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  denied "gh pr ready 999999 -R jonyardley/intrada" "$READY_DENIAL"
+} >"$work/1-old-guard-only/calls.jsonl"
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  call "gh pr ready 999999 -R jonyardley/intrada" false "PreToolUse:Bash hook error: $OSTI_DENIAL"
+} >"$work/1-not-error/calls.jsonl"
+{
+  call "gh api user --jq .login" false "ostinato-agent"
+  call "gh pr ready 999999 -R jonyardley/intrada" true "Exit code 1. $OSTI_DENIAL"
+} >"$work/1-no-prefix/calls.jsonl"
 expect PASS 1 1-pass "PASS 1"
-expect FAIL 1 1-not-error "did not refuse"
-expect FAIL 1 1-no-prefix "did not refuse"
+expect PASS 1 1-both-guards "PASS 1"
+expect FAIL 1 1-no-keychain "Keychain item"
+expect FAIL 1 1-no-install "OSTINATO_AGENT_EMAIL is not set"
 expect FAIL 1 1-no-flag "no line from the marker hook"
-expect FAIL 1 1-wrong-guard "did not refuse"
+expect FAIL 1 1-owner-login "answered 'the-owner'"
+expect FAIL 1 1-login-refused "answered 'nothing'"
+expect FAIL 1 1-old-guard-only "osti's own message"
+expect FAIL 1 1-not-error "osti's own message"
+expect FAIL 1 1-no-prefix "osti's own message"
 
 # ── check 2: own worktree, own lease ────────────────────────────────────────
 sid=3a1d1e5e-0e31-4862-8156-5a59db97adad

@@ -3,24 +3,35 @@
 A script that builds ready issues unattended, one at a time, each in its own
 Claude Code background session, and leaves a draft pull request for the
 owner. Epic #2799, parent issue #2803, built in three slices: #2819 (park and
-pick), #2820 (the session side) and #2821 (the loop itself). The full plan is
-a private page linked from #2803.
+pick), #2820 (the session side) and #2821 (the loop itself). #2854 wires it to
+Ostinato's kit, `osti`: the run record, the guard and the agent's identity.
+The full plan is a private page linked from #2803.
 
 ## What the owner sees
 
 The owner approves a plan by adding the `ready` label. After a run the issue
 has either a draft pull request with the iPhone screenshot (Android is paused, #2860) and one evidence
 line per "Done looks like" criterion, or a `needs-owner` label and one
-question as a comment. Their phone tells them which. Nothing is ever marked
-ready or merged by the crew: every merge stays the owner's.
+question as a comment. A Mac notification tells them which. Nothing is ever
+marked ready or merged by the crew: every merge stays the owner's. The run
+record says the same as data, for the Cockpit card and the weekly report.
 
 ## Starting and stopping
 
 - Started by hand with `just crew`. There is no launchd job: the owner decides
   each time whether the crew runs.
-- At each start the loop runs harness check 1 from `scripts/crew-qualify.sh`
-  (a crew session's hooks see the crew marker and refuse `gh pr ready`). A
-  failure stops the loop before any issue is touched.
+- The loop checks `osti --version` first; with no osti the run ends with a
+  log line before anything else.
+- At each start the loop runs harness check 1 from `scripts/crew-qualify.sh`,
+  and logs its FAIL line when it fails. A failure stops the loop before any
+  issue is touched. Check 1 passes only when all of these hold:
+  - the agent's Keychain item is there (`security find-generic-password`
+    without `-w`, so the token is never read);
+  - `osti guard install` succeeds in the probe worktree;
+  - the probe session's hooks see the crew flag;
+  - inside the session, `gh api user` answers `ostinato-agent`;
+  - the session is refused `gh pr ready` with osti's own message, so the
+    owner's guard alone cannot pass it.
 - A stop file, checked before each issue, ends the run cleanly.
 - One run at a time. The loop takes a `mkdir` lock before it touches any
   worktree or session, and releases it on every exit, Ctrl-C and a closed
@@ -44,7 +55,7 @@ turn limit:
 | Wall clock per session | 3 hours | Stop the session and its process tree, park |
 | Silence limit | 45 minutes with no write to the session's transcript, its subagents' or its background tasks' output | Stop, park |
 | Issues per run | 3 | The loop ends |
-| Daily spend | the last 24 hours of `just usage` past $150; an unreadable report counts as past | The loop ends before the next issue |
+| Daily spend | $150 across the loop's own sessions in the last 24 hours, from the run record; a record that cannot be read counts as past | The loop ends before the next issue |
 
 The silence limit is longer than the simulator queue, which waits up to 1800
 seconds (`IOS_SIM_LOCK_TIMEOUT` in `scripts/ios-sim-lock.sh`), so a session
@@ -63,9 +74,13 @@ waiting its turn for the simulator is not mistaken for a stalled one.
    tried once a run.
 2. **Worktree.** The script makes the worktree; the session runs
    `just claim` inside it, so a restart finds both and never claims twice.
-3. **Session.** One `INTRADA_CREW=1 claude --bg` session on Opus at high
-   effort, started inside the worktree, after stopping any live session
-   already there. No session handles two issues. The loop reads the new
+3. **Session.** First `osti guard install --worktree` with the agent's
+   identity, which writes the guard's hooks and the marker
+   `.claude/ostinato-session` (both gitignored); a failed install ends the
+   run. Then one `INTRADA_CREW=1 claude --bg` session on Opus at high
+   effort, started inside the worktree with `OSTINATO_RUN` and
+   `OSTINATO_PROJECT` set and `/crew N RUN ATTEMPT` as its first prompt,
+   after stopping any live session already there. No session handles two issues. The loop reads the new
    session's id from `claude agents --json`: the session named `crew-N` whose
    `startedAt` is no earlier than the start, since `claude --bg` prints its id
    only as text. A start that never shows in the list stops any session named
@@ -91,8 +106,8 @@ waiting its turn for the simulator is not mistaken for a stalled one.
    `docs/lessons.md` from main plus every trusted Lessons comment under that
    label, open or closed, so a merged draft's lessons are not lost; the monthly prune
    folds them into the file and removes the label.
-7. **Push.** The owner's phone is told the outcome, then the next issue
-   starts.
+7. **Tell.** A Mac notification gives the owner the outcome, then the next
+   issue starts.
 
 Every step posts its note on the issue. A restart reads the last note and the
 worktree before doing anything.
@@ -172,12 +187,13 @@ An issue parks on any of:
 - a plan that needs a choice the owner has not made;
 - a sensitive path in the diff (`crew-park.sh` exit 3).
 
-Parking has two halves in `scripts/crew-loop.sh`. `stop-session <id>` reads
+Each park has a reason code in the run record (below). Parking has two
+halves in `scripts/crew-loop.sh`. `stop-session <id>` reads
 the session's process tree, stops it, kills what is left and releases the
 simulator lock only when one of those processes held it; harness check 7 calls
 it as `CREW_PARK_STEP`. The issue half then adds the
-`needs-owner` label, posts the question as a comment, keeps the claim and
-pushes to the owner's phone. Nothing waits on
+`needs-owner` label, writes the `parked` line, whose note osti posts, keeps
+the claim and tells the owner. Nothing waits on
 a prompt; the loop takes the next issue. When the label cannot be added the
 run ends, and a later run passes the issue over until a trusted comment
 follows the park note or a trusted login removes the label. When GitHub cannot be read for the outcome, twice, the run ends
@@ -186,7 +202,7 @@ with the issue neither announced nor parked.
 ## The session side (slice 2, #2820)
 
 - `.claude/commands/crew.md` is the brief: the loop starts the session with
-  `/crew N`. A background session expands a command in its first prompt
+  `/crew N RUN ATTEMPT`. A background session expands a command in its first prompt
   (proved by hand with a stand-in command; the #2821 row of
   `docs/harness-log.md`).
 - `.claude/agents/qa.md` on Opus, since ticking a criterion against a
@@ -203,19 +219,26 @@ with the issue neither announced nor parked.
 ### Notes on the issue
 
 Every step ends with one comment headed `**Crew: <step>**`, posted only on
-success, the record a restart and the loop read: the newest such comment is
+success through `osti write`, which adds the step's line to the run record
+and posts the note in the same call. The note keeps the Crew heading, given
+with `--body-file`, since osti's own heading would read as no note. These
+notes are the record a restart and the loop read: the newest such comment is
 the last step done. A restart finding `draft`, or `parked` with `needs-owner`
 still on, does nothing; `parked` with the label removed carries on from the
 step that parked, with the owner's answer.
 
-| Heading | Posted when |
-|---|---|
-| `**Crew: brief**` | Before building: the plan it follows, the slices, the criteria |
-| `**Crew: built**` | The slices are committed |
-| `**Crew: reviewed**` | The self-review leaves no blocker: rounds and verdict |
-| `**Crew: QA**` | Every criterion passes: the `qa` report, one line each |
-| `**Crew: draft**` | The draft is open and CI is green on the last commit |
-| `**Crew: parked**` | The issue parks: what is done, and one question |
+| Heading | Written as | Posted when |
+|---|---|---|
+| `**Crew: brief**` | `stage brief` | Before building: the plan it follows, the slices, the criteria |
+| `**Crew: built**` | `stage built` | The slices are committed |
+| `**Crew: reviewed**` | `stage reviewed` | The self-review leaves no blocker: rounds and verdict |
+| `**Crew: QA**` | `stage qa` | Every criterion passes: the `qa` report, one line each |
+| `**Crew: draft**` | `draft --pr` | The draft is open and CI is green on the last commit |
+| `**Crew: parked**` | `parked --reason` | The issue parks: what is done, and one question |
+
+Each session write names the session with `--session
+"$CLAUDE_CODE_SESSION_ID"`, so the Cockpit's stage ledger can show its model
+and tokens.
 
 The Lessons comment is headed `**Lessons**`, outside this sequence.
 
@@ -232,16 +255,93 @@ only from a trusted login, and so does a Claimed comment in `just claim`. The ow
 author does not prove the owner wrote it: removing `needs-owner` stays the
 real answered signal.
 
+## The run record (#2854)
+
+The loop and its sessions write one line per event to the project's run
+record through `osti write`, in the format Ostinato's
+`docs/record-format.md` sets: one file per project,
+`${OSTINATO_HOME:-~/.local/state/ostinato/records}/jonyardley__intrada.jsonl`.
+The run is named `r-<UTC date>-<time>`.
+
+| Event | Written by | With |
+|---|---|---|
+| `run-started` | Loop, after check 1 | a `--cap` for each cap; `claude_version` and `osti_version` fields |
+| `picked` | Loop | `--attempt`, one past the issue's newest `picked` line; `spend_24h_seen_usd`, the figure the cap read; no note |
+| `stage`, `draft` | Session | the session; the Crew note |
+| `parked` | Loop or session | the reason code and question; the Crew note |
+| `attempt-ended` | Loop | the outcome, the session and the worktree, so osti prices it; no note |
+| `run-ended` | Loop | `--attempts`; `stopped=spend_cap` or `stopped=usage_limit` when one ended the run |
+
+`picked` and `attempt-ended` post no note: one after a park note would read
+as the owner's answer, and the issue would run again.
+
+osti's exit codes:
+
+- **0**: done.
+- **1**: nothing was written. The loop logs it, and a noted event's note is
+  posted with gh, since the notes are what a restart reads.
+- **3**: the line is written but its note is not. The note is posted with gh,
+  and the write never runs again, so the record never holds a line twice.
+
+A `run-started` that fails ends the run, and so does an `attempt-ended` that
+fails, since the spend cap reads those lines.
+
+Outcomes: `draft`; `parked`; `failed` for a session that never starts or a
+guard install that fails; `cancelled` when Ctrl-C, TERM or a closed terminal
+stops the loop mid attempt; `capped` for the plan's usage limit; `stalled`
+when GitHub cannot be read for the outcome. The interrupt trap writes the
+open attempt's end, then `run-ended`, so a stopped run closes its record.
+
+Reason codes:
+
+| Park | Written by | Code |
+|---|---|---|
+| A permission prompt | Loop | `permission_prompt` |
+| Waiting for an answer in its own chat | Loop | `input_needed` |
+| A request to go outside its sandbox | Loop | `sandbox_request` |
+| A worker's request | Loop | `worker_request` |
+| A dialog left open | Loop | `dialog_open` |
+| Waiting on nothing named, or on something the loop does not know | Loop | `waiting` |
+| A session that failed with an error | Loop | `session_failed` |
+| Working with no process behind it | Loop | `no_process` |
+| The 45 minute silence limit | Loop | `silence` |
+| The 3 hour wall clock | Loop | `time_cap` |
+| A turn that ended with no draft and no park note | Loop | `no_draft` |
+| The worktree could not be made | Loop | `no_worktree` |
+| A question, a plan choice the owner has not made, or a claim held elsewhere | Session | `needs_decision` |
+| A sensitive path in the diff, or a park step that cannot read its list | Session | `sensitive_diff` |
+| A second failed review, QA or CI round | Session | `failed_rounds` |
+
+### The spend cap
+
+The cap sums the run record's `attempt_ended` lines from the last 24 hours.
+Each session counts once, at its latest running total in `session_costs`,
+since a session's figure is everything it has cost so far. A line with no
+`session_costs` counts its `cost_usd`. A torn line is skipped, and no record
+yet is $0. These are API-equivalent figures, a weight, not a bill: the
+sessions run on the owner's Claude subscription.
+
+### The plan's usage limit
+
+A session that hits the subscription's usage limit ends the run: the attempt
+ends `capped`, then `run-ended` carries `stopped=usage_limit`. The issue is
+neither labelled nor noted, so the next run resumes its worktree. The loop
+reads the session's transcript when the turn ended with no draft or park
+note, failed, lost its process, or went silent. It counts only when the last
+assistant record is Claude Code's own API error (`isApiErrorMessage`) with
+the error `rate_limit` or text naming the limit. The exact wording is
+unverified, so the loop logs the record whole when it fires.
+
 ## The owner's phone
 
-Every outcome raises a Mac notification, then a short print-mode session sends
-it with Claude's own push tool, the only route found to the phone without an
-outside service. That tool holds a push back while the owner is active at a
-terminal (the #2821 row of `docs/harness-log.md`), so it reaches the phone when
-they are away. Whether it lands is the owner's to confirm on the first run
-with the owner away.
+Every outcome raises a Mac notification. The push to the phone is off by
+default (the owner's call, 14 November 2026). `CREW_PHONE_PUSH=1` turns it
+on: a short print-mode session then sends the outcome with Claude's own push
+tool, the only route found to the phone without an outside service. That
+tool holds a push back while the owner is active at a terminal (the #2821
+row of `docs/harness-log.md`).
 
 ## Out of scope
 
 More than one issue at a time, any merge, a planning step that writes plans,
-and the crew's own GitHub login (#2811).
+and the rename of the crew to Ostinato, which follows the first real run.

@@ -23,6 +23,13 @@ set -uo pipefail
 REPO=jonyardley/intrada
 NOPE=999999
 DENIED_PREFIX='PreToolUse:Bash hook error:'
+# osti's own refusal, so the owner's guard alone cannot pass check 1 (#2854).
+OSTI_READY_DENIAL="osti guard refused this command: an Ostinato session leaves its pull request as a draft: marking it ready is the owner's."
+AGENT_LOGIN=${CREW_AGENT_LOGIN:-ostinato-agent}
+# The agent's identity for `osti guard install`; crew-loop.sh passes its own.
+export OSTINATO_AGENT_KEYCHAIN_SERVICE=${OSTINATO_AGENT_KEYCHAIN_SERVICE:-ostinato-intrada-loop}
+export OSTINATO_AGENT_KEYCHAIN_ACCOUNT=${OSTINATO_AGENT_KEYCHAIN_ACCOUNT:-ostinato-agent}
+export OSTINATO_AGENT_EMAIL=${OSTINATO_AGENT_EMAIL:-356601309+ostinato-agent@users.noreply.github.com}
 
 # ── judging: reads only the evidence folder ─────────────────────────────────
 
@@ -37,7 +44,7 @@ calls_from_transcript() {
          result: (.content | if type == "array" then (map(.text? // "") | join("")) else tostring end)}] as $results
     | $uses[] | . as $u
     | ($results | map(select(.id == $u.id)) | first) as $r
-    | $u + {is_error: (if $r == null then null else $r.is_error end), result: (($r.result // "") | .[0:400])}
+    | $u + {is_error: (if $r == null then null else $r.is_error end), result: (($r.result // "") | .[0:1200])}
   ' "$1"
 }
 
@@ -63,16 +70,29 @@ field() {
 }
 
 judge_1() {
-  local d=$1
+  local d=$1 login
+  if [ "$(cat "$d/keychain" 2>/dev/null)" != present ]; then
+    echo "FAIL 1: the agent's Keychain item ($OSTINATO_AGENT_KEYCHAIN_SERVICE, $OSTINATO_AGENT_KEYCHAIN_ACCOUNT) is missing, so no session could act as the agent account"
+    return 1
+  fi
+  if [ "$(cat "$d/guard_install" 2>/dev/null)" != 0 ]; then
+    echo "FAIL 1: osti guard install failed in the probe worktree ($(tail -1 "$d/guard_install.err" 2>/dev/null))"
+    return 1
+  fi
   if ! grep -q '^event=PreToolUse crew=1$' "$d/marker" 2>/dev/null; then
     echo "FAIL 1: no line from the marker hook's own process saying it saw INTRADA_CREW=1 on a tool call ($(tr '\n' ' ' <"$d/marker" 2>/dev/null))"
     return 1
   fi
-  if ! denied_with "$d/calls.jsonl" "pr ready $NOPE" "A crew session leaves its PR as a draft"; then
-    echo "FAIL 1: the marker hook fired, but guard-bash.sh did not refuse \`gh pr ready\` with its crew wording, so the guard's process did not see the flag"
+  login=$(call_matching "$d/calls.jsonl" "gh api user" | jq -r 'select(.is_error == false) | .result | gsub("^\\s+|\\s+$"; "")')
+  if [ "$login" != "$AGENT_LOGIN" ]; then
+    echo "FAIL 1: inside the session gh api user answered '${login:-nothing}', not $AGENT_LOGIN, so the session does not act as the agent account"
     return 1
   fi
-  echo "PASS 1: marker hook wrote 'event=PreToolUse crew=1'; guard-bash.sh refused \`gh pr ready $NOPE\` with its crew wording"
+  if ! denied_with "$d/calls.jsonl" "pr ready $NOPE" "$OSTI_READY_DENIAL"; then
+    echo "FAIL 1: \`gh pr ready\` was not refused with osti's own message, so osti's guard did not see the session"
+    return 1
+  fi
+  echo "PASS 1: Keychain item present; the session acts as $AGENT_LOGIN; osti's guard refused \`gh pr ready $NOPE\` with its own message"
 }
 
 judge_2() {
@@ -314,7 +334,17 @@ describe_pids() {
 
 collect_1() {
   local d=$1 wt id rec sid marker settings
+  # Never -w: the item's presence is the check, and the token is never read.
+  if security find-generic-password -s "$OSTINATO_AGENT_KEYCHAIN_SERVICE" \
+    -a "$OSTINATO_AGENT_KEYCHAIN_ACCOUNT" >/dev/null 2>&1; then
+    echo present >"$d/keychain"
+  else
+    echo missing >"$d/keychain"
+    return 0
+  fi
   wt=$(new_worktree 1) || return 1
+  osti guard install --worktree "$wt" >/dev/null 2>"$d/guard_install.err"
+  echo $? >"$d/guard_install"
   marker="$d/marker"
   : >"$marker"
   settings="$wt/.claude/settings.json"
@@ -323,7 +353,9 @@ collect_1() {
     .hooks.SessionStart = ((.hooks.SessionStart // []) + [{hooks: [mark("SessionStart")]}])
     | .hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{matcher: "Bash", hooks: [mark("PreToolUse")]}])
   ' "$settings" >"$settings.new" && mv "$settings.new" "$settings"
-  id=$(start_session "$wt" qualify-1 "Run this one Bash command exactly, then stop and report its result: gh pr ready $NOPE -R $REPO") || return 1
+  id=$(start_session "$wt" qualify-1 "Run these two Bash commands exactly, one Bash call each, carrying on after any refusal, then stop and report each result:
+1) gh api user --jq .login
+2) gh pr ready $NOPE -R $REPO") || return 1
   rec=$(wait_session "$id" 180)
   printf '%s\n' "$rec" >"$d/agent.json"
   sid=$(printf '%s' "$rec" | jq -r '.sessionId')
