@@ -319,6 +319,11 @@ cp "$work/c1/bin/security" "$work/c1/bin/git" "$work/c1/bin/osti" "$work/c1b/bin
 cat >"$work/c1b/bin/claude" <<'C'
 #!/usr/bin/env bash
 echo "claude INTRADA_CREW=${INTRADA_CREW:-unset} OSTINATO_PROJECT=${OSTINATO_PROJECT:-unset} run=${OSTINATO_RUN:+set}" >>"$C1/calls"
+prev=""
+for a in "$@"; do
+  [ "$prev" = --settings ] && printf 'settings %s\n' "$a" >>"$C1/calls"
+  prev=$a
+done
 exit 1
 C
 chmod +x "$work/c1b/bin/claude"
@@ -342,6 +347,15 @@ n=$((n + 1))
 got=$(env -u CLAUDE_CONFIG_DIR HOME=/h bash "$script" transcript /a/b.c sid)
 if [ "$got" != "/h/.claude/projects/-a-b-c/sid.jsonl" ]; then
   echo "✗ transcript: wanted it under ~/.claude with no CLAUDE_CONFIG_DIR, got $got" >&2
+  fails=$((fails + 1))
+fi
+
+# ── collecting check 1: the probe keeps the guard on as the loop does (#2865)
+n=$((n + 1))
+if [ "$(grep -c '^settings ' "$work/c1b/calls")" -ne 1 ] ||
+  ! sed -n 's/^settings //p' "$work/c1b/calls" | jq -e '.disableAllHooks == false' >/dev/null 2>&1; then
+  echo "✗ collect 1: wanted the probe started with --settings keeping hooks on; got:" >&2
+  cat "$work/c1b/calls" >&2 2>/dev/null || :
   fails=$((fails + 1))
 fi
 

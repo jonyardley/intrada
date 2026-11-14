@@ -90,7 +90,8 @@ waiting its turn for the simulator is not mistaken for a stalled one.
    session's id from `claude agents --json`: the session named `crew-N` whose
    `startedAt` is no earlier than the start, since `claude --bg` prints its id
    only as text. A start that never shows in the list stops any session named
-   `crew-N` and ends the run without parking.
+   `crew-N` and ends the run without parking. See "Keeping the guard on"
+   below for the `--settings` value it starts with.
 4. **Build.** The session posts its brief on the issue, builds with `task`,
    reviews with `reviewer`, runs the QA agent, and opens the draft with
    `just pr-open --draft`. `/ship` in loop mode ends at the draft.
@@ -117,6 +118,51 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 
 Every step posts its note on the issue. A restart reads the last note and the
 worktree before doing anything.
+
+## Keeping the guard on (#2865)
+
+In a git worktree Claude Code reads the main checkout's
+`.claude/settings.local.json` too, and its value wins on a shared key, so a
+`"disableAllHooks": true` there would switch off the hooks osti installs in
+every crew worktree (Ostinato's `docs/guards.md`, "In a git worktree"). A
+launch flag outranks it. So every session the loop starts, and every session
+the harness checks in `crew-qualify.sh` start, passes
+`--settings '{"disableAllHooks":false}'`. The value comes from one function
+in `scripts/crew-loop.sh`, which `crew-qualify.sh` reads through
+`crew-loop.sh session-settings`, so the sandbox keys #2869 adds join the same
+JSON object rather than a second flag.
+
+The self-tests prove the loop sends it: the stand-in `claude` reads the
+argument after `--settings` on every `--bg` start across the loop's cases, and
+on check 1's probe, and fails unless it parses with `disableAllHooks` false.
+There is no separate check at run time: the value is a fixed string in the
+script, with no seam that changes it, so the test sees what a run would send.
+They do not prove the flag wins. Ostinato showed that in print mode only;
+nobody has planted `"disableAllHooks": true` in the main checkout under a
+background session, since that would switch hooks off for every live session
+there. A Claude Code upgrade that changed the order would pass every test
+here.
+
+The phone push's `claude -p` does not take it. It runs in `$TMPDIR`, outside
+any worktree, where osti installs no guard for the flag to keep on, and the
+sandbox keys #2869 adds are meant for worktree sessions too. Its
+`--allowedTools PushNotification` pre-approves that tool; it does not take the
+others away.
+
+### Trust
+
+Checked on 14 November 2026 with Claude Code 2.1.325: `claude --bg` with the
+flag started and answered in a throwaway worktree made beside the crew's,
+under `intrada-worktrees`, with the owner's usual settings folder and with
+`CLAUDE_CONFIG_DIR` set to another one. Neither had a trust entry for that
+worktree, and the second trusted no folder above it either; both trust the
+main checkout. A worktree of a
+scratch repository whose main checkout was never trusted was refused
+("Workspace not trusted"), as Ostinato's check saw. So, inferred from those
+three starts, trust follows the main checkout, and the loop needs no trust
+step and no other launch. If that ever changes, check 1's probe, which starts
+a `--bg` session in the same worktrees folder, fails at the start of the run
+before any issue, and a refused issue start logs Claude Code's last line.
 
 ## Qualifying an issue (slice 1, `crew-pick.sh`)
 

@@ -12,6 +12,8 @@
 #   crew-loop.sh issue <issue>       the issue as the briefs read it: its body
 #                                    only when trusted, and trusted comments
 #   crew-loop.sh lessons             trusted Lessons comments not yet folded in
+#   crew-loop.sh session-settings    the --settings value every worktree
+#                                    session starts with, for crew-qualify.sh
 #
 # Every outside command has a seam (CREW_* below), so
 # scripts/tests/crew-loop-test.sh runs the loop with stand-ins and no session,
@@ -85,6 +87,13 @@ worktrees() {
 }
 
 # ── Sessions ─────────────────────────────────────────────────────────────────
+
+# Passed as --settings to every session started in a worktree (#2865): a launch
+# flag outranks the main checkout's local settings, which can otherwise switch
+# off the hooks osti installs. Later keys (#2869) join this one object.
+session_settings() {
+  printf '%s' '{"disableAllHooks":false}'
+}
 
 agent_record() {
   claude agents --json --all 2>/dev/null | jq -c --arg id "$1" '.[] | select(.id == $id)'
@@ -162,7 +171,7 @@ start_session() {
   # The run and attempt ride in the first prompt too, so every `osti write` the
   # session makes names them (#2854).
   out=$(cd "$wt" && INTRADA_CREW=1 OSTINATO_RUN=$RUN OSTINATO_PROJECT=$REPO claude --bg --model opus \
-    --effort high --permission-mode auto -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
+    --effort high --permission-mode auto --settings "$(session_settings)" -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
   STARTED_ID=""
   while [ -z "$STARTED_ID" ] && [ "$try" -lt "$START_TRIES" ]; do
     [ "$try" -gt 0 ] && sleep "${CREW_START_WAIT:-2}"
@@ -358,6 +367,8 @@ notify() {
   osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title "Intrada crew"' \
     -e 'end run' "$msg" >/dev/null 2>&1 || :
   if [ "${CREW_PHONE_PUSH:-}" = 1 ]; then
+    # No session_settings (#2865): $TMPDIR is no worktree, so osti installs no
+    # guard there for the flag to keep on.
     (cd "${TMPDIR:-/tmp}" && exec claude -p --model haiku --allowedTools PushNotification \
       "Send this exact text with the PushNotification tool, then stop: $msg") >/dev/null 2>&1 &
     job=$!
@@ -896,9 +907,10 @@ $q"
   exit 0
 }
 
-usage="usage: $0 [stop-session <id> | issue <issue> | lessons]"
+usage="usage: $0 [stop-session <id> | issue <issue> | lessons | session-settings]"
 case "${1:-}" in
   "") main ;;
+  session-settings) session_settings ;;
   stop-session)
     [ $# -eq 2 ] || { echo "$usage" >&2; exit 2; }
     stop_session "$2"

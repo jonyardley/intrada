@@ -35,6 +35,18 @@ case "$1" in
   --bg)
     printf 'INTRADA_CREW=%s\n' "${INTRADA_CREW:-unset}" >>"$FAKE/calls"
     printf 'OSTINATO_RUN=%s OSTINATO_PROJECT=%s\n' "${OSTINATO_RUN:-unset}" "${OSTINATO_PROJECT:-unset}" >>"$FAKE/calls"
+    # Every start, across all cases, kept in $work/launches (#2865).
+    settings=""
+    prev=""
+    for a in "$@"; do
+      [ "$prev" = --settings ] && settings=$a
+      prev=$a
+    done
+    if jq -e '.disableAllHooks == false' <<<"$settings" >/dev/null 2>&1; then
+      echo "kept on" >>"$FAKE/../launches"
+    else
+      printf 'no guard flag: %s\n' "$*" >>"$FAKE/../launches"
+    fi
     read -r _ issue _ <<<"${*: -1}"
     id=$(printf 'c%07d' "$issue")
     scenario=$(cat "$FAKE/scenario-$issue" 2>/dev/null || echo busy)
@@ -574,7 +586,7 @@ run_loop
 ok "a draft is announced, with no park" \
   'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! grep -qx needs-owner <<<"$(labels 101)" && grep -q "run over: 1 issue run" "$work/out" && grep -qx "Crew finished: 1 issue run, details on each issue" "$FAKE/notified"'
 ok "the session is started as the crew, on Opus at high effort, with the brief" \
-  'grep -qE -- "--bg --model opus --effort high --permission-mode auto -n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
+  'grep -qF -- "--bg --model opus --effort high --permission-mode auto --settings {\"disableAllHooks\":false} -n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
 
 setup 101
@@ -1223,6 +1235,8 @@ ok "the guard below catches a planted merge and ready label" \
 setup
 ok "across every case above the loop called GitHub, and never a ready or merge route" \
   'grep -q "add-label needs-owner" "$work/gh-all.log" && never_ready_or_merge "$work/gh-all.log"'
+ok "across every case above each session started with the hooks kept on by --settings" \
+  '[ "$(grep -c "^kept on$" "$work/launches")" -gt 0 ] && ! grep -v "^kept on$" "$work/launches"'
 
 echo
 if [ "$fails" -eq 0 ]; then
