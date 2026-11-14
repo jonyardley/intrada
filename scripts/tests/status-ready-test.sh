@@ -40,6 +40,7 @@ case "$1 ${2:-}" in
     ;;
   "issue list")
     [ -n "${FAIL_CLAIMED:-}" ] && { echo "gh: claimed read refused" >&2; exit 1; }
+    printf '%s\n' "$*" >"$FIXTURES/list.txt"
     body="$(cat "$FIXTURES/claimed.json")"
     ;;
 esac
@@ -169,6 +170,9 @@ check "$(section_of "$out")" "carries GitHub's own words" "required scopes"
 check "$(section_of "$out")" "prints the reason on its own line" "    Your token has not been granted the required scopes."
 refute "$(section_of "$out")" "never prints the raw JSON body" "{"
 check "$out" "keeps the rest of the report" "RECENTLY LANDED"
+CREW_REPO=a-fork/app "$script" --ready-json >/dev/null
+check "$(cat "$FIXTURES/query.txt")" "--ready-json reads the crew's repository, CREW_REPO" "owner=a-fork -f name=app"
+check "$(cat "$FIXTURES/list.txt")" "--ready-json reads the claims from CREW_REPO too" "--repo a-fork/app"
 rc=0
 FAIL_READY=1 "$script" --ready-json >/dev/null 2>&1 || rc=$?
 check "$rc" "--ready-json exits 2 on an outage, never an empty queue" "2"

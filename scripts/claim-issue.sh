@@ -40,6 +40,11 @@ project_status_field="PVTSSF_lAHOAAr6vs4A1_pqzgrX99A"
 project_status_in_progress="47fc9ee4"
 
 repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+# Only a trusted login's claim counts: on a public repository anyone can
+# comment "Claimed" and block every `just claim` (#2821).
+REPO=$repo
+# shellcheck source=crew-trusted.sh
+source "$lib_dir/crew-trusted.sh"
 branch="$(git rev-parse --abbrev-ref HEAD)"
 
 if [ "$branch" = "main" ]; then
@@ -70,7 +75,7 @@ fi
 # mistaken for a live claim.
 issue="$(gh issue view "$number" --repo "$repo" --json labels,comments,parent)"
 has_label="$(printf '%s' "$issue" | jq -r '([.labels[].name] | index("in-flight")) != null')"
-claim_body="$(printf '%s' "$issue" | jq -r '[.comments[] | select(.body | test("^Claimed"; "i"))] | last | .body // empty')"
+claim_body="$(printf '%s' "$issue" | jq -r "$(trusted_jq)"'[.comments[] | select(trusted and (.body | test("^Claimed"; "i")))] | last | .body // empty')"
 claim_branch="$(claim_branch_from_body "$claim_body")"
 epic_number="$(printf '%s' "$issue" | jq -r '.parent.number // empty')"
 epic_title="$(printf '%s' "$issue" | jq -r '.parent.title // empty')"

@@ -29,7 +29,7 @@ n=$1
 query='query($owner: String!, $name: String!, $n: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $n) {
-      state body
+      state body author { login } editor { login }
       labels(first: 50) { nodes { name } }
       comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }
       timelineItems(itemTypes: [LABELED_EVENT], last: 100) { nodes { ... on LabeledEvent { createdAt label { name } } } }
@@ -57,7 +57,18 @@ fi
 reasons=""
 fail() { reasons="$reasons- $1"$'\n'; }
 
-body=$(get '.body')
+# The body only when the owner or the agent account opened the issue and last
+# edited it: anyone's issue can carry the ready label, and its author can edit
+# the body afterwards. An untrusted body is never read, so no line of it is
+# quoted in the Crew skipped comment a trusted login posts.
+body=""
+if ! printf '%s' "$issue" | jq -e "$(trusted_jq)"' trusted' >/dev/null 2>&1; then
+  fail "The issue was opened by someone other than the owner or the agent account, so the crew does not read its body: open it again as the owner."
+elif ! printf '%s' "$issue" | jq -e "$(trusted_jq)"' trusted_body' >/dev/null 2>&1; then
+  fail "The issue body was last edited by someone other than the owner or the agent account: edit it once as the owner to vouch for it."
+else
+  body=$(get '.body')
+fi
 # Only a plan by a trusted login, since anyone can comment on a public issue.
 plan=$(get "$(trusted_jq)"'[.comments.nodes[] | select(trusted) | select((.body | test("\\*\\*Done looks like:?\\*\\*")) and (.body | test("\\*\\*Files:?\\*\\*")))] | last // empty')
 plan_body=$(printf '%s' "$plan" | jq -r '.body // empty' 2>/dev/null | tr -d '\r')
@@ -149,7 +160,7 @@ printf '#%s skipped:\n%s' "$n" "$reasons"
 since=$ready_at
 [[ $plan_edit > $since ]] && since=$plan_edit
 said=$(printf '%s' "$issue" | jq -r --arg s "$since" \
-  '[.comments.nodes[] | select((.body | test("^(\\*\\*)?Crew skipped")) and .createdAt > $s)] | length')
+  "$(trusted_jq)"'[.comments.nodes[] | select(trusted and (.body | test("^(\\*\\*)?Crew skipped")) and .createdAt > $s)] | length')
 if [ "$said" != 0 ]; then
   echo "Already said on #$n since the plan or the label last changed; no new comment."
   exit 1

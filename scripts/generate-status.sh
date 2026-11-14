@@ -56,6 +56,7 @@ ready_order='
 # `--ready-json`: the queue alone, one JSON array in order, for the crew loop.
 # Exits 2 when GitHub cannot be read, so an outage never reads as empty.
 if [ "${1:-}" = --ready-json ]; then
+  repo=${CREW_REPO:-$repo}
   claimed=$(gh issue list --repo "$repo" --label in-flight --state open \
     --limit "$claimed_limit" --json number,title,updatedAt) || exit 2
   ready=$(gh api graphql -f query="$ready_query" -f owner="${repo%%/*}" \

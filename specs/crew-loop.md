@@ -23,10 +23,12 @@ ready or merged by the crew: every merge stays the owner's.
   failure stops the loop before any issue is touched.
 - A stop file, checked before each issue, ends the run cleanly.
 - One run at a time. The loop takes a `mkdir` lock before it touches any
-  worktree or session, and releases it on every exit, Ctrl-C included. A
-  second run finds it held, logs that and ends, since it would count the
-  first run's worktree as unfinished and stop its live session. A lock whose
-  process has gone is cleared.
+  worktree or session, and releases it on every exit, Ctrl-C and a closed
+  terminal included. A second run finds it held, logs that and ends, since it
+  would count the first run's worktree as unfinished and stop its live
+  session. A lock is cleared when its pid is no crew run, or when it has no
+  pid 10 seconds after it was made. It is moved aside before it is removed,
+  so two starters cannot each clear the other's fresh lock.
 - The run keeps the Mac awake with `caffeinate -i`, watching the loop's own
   process, so a sleep never jumps the wall clock and parks an issue as a cap.
   A machine without `caffeinate` logs that and runs anyway.
@@ -51,9 +53,10 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 ## One issue, start to finish
 
 1. **Pick.** First any crew worktree left by an earlier run whose issue is
-   open, has no draft note, no `needs-owner` label and no park note without a
-   later comment, counting trusted comments only and skipping any issue GitHub
-   cannot read; then the ready queue
+   open, has no draft note, no `needs-owner` label, and no park note unless
+   a later comment or the label's removal follows it, counting trusted logins
+   only. One GraphQL read covers every such worktree, and an issue GitHub
+   cannot read is skipped. Then the ready queue
    (`scripts/generate-status.sh --ready-json`, the READY section's order:
    horizon, Priority, then age), less any issue labelled `needs-owner`. Take
    the first for which `scripts/crew-pick.sh <issue>` exits 0; an issue is
@@ -80,8 +83,8 @@ waiting its turn for the simulator is not mistaken for a stalled one.
    working with a missing or dead pid on two polls in a row. Silence is read
    from the newest write to the session's transcript, its subagents' or its
    background tasks' output, since a lead waiting on `task` writes nothing
-   itself. Stopping the loop with Ctrl-C or TERM stops the session it is
-   watching.
+   itself. Stopping the loop with Ctrl-C, TERM or a closed terminal stops the
+   session it is watching.
 6. **Lessons.** The retro posts its lessons as an issue comment headed
    Lessons and labels the issue `lessons-pending`, never writing
    `docs/lessons.md`, so two drafts never conflict. The next brief carries
@@ -101,6 +104,9 @@ the issue, its labels, comments, label events and blockers.
 
 - **Ready.** It is open and carries `ready`. An issue without it is passed
   over in silence: it is not in the queue.
+- **A body it can trust.** The owner or the agent account opened the issue
+  and made its last edit, since anyone's issue can be labelled and its author
+  can edit it after. Otherwise the body is never read.
 - **Plan.** Every issue, whatever its tier, has a plan comment: the newest
   trusted comment with both the `**Done looks like**` and `**Files**` headings of the
   shipping skill's skeleton, and non-empty Files, Tests and Routing too. A
@@ -174,7 +180,7 @@ it as `CREW_PARK_STEP`. The issue half then adds the
 pushes to the owner's phone. Nothing waits on
 a prompt; the loop takes the next issue. When the label cannot be added the
 run ends, and a later run passes the issue over until a trusted comment
-follows the park note. When GitHub cannot be read for the outcome, twice, the run ends
+follows the park note or a trusted login removes the label. When GitHub cannot be read for the outcome, twice, the run ends
 with the issue neither announced nor parked.
 
 ## The session side (slice 2, #2820)
@@ -219,8 +225,10 @@ The repository is public, so the crew reads lessons, plans, notes and answers
 only from the owner's login, the repository's owner, and the agent account its
 sessions act as, `ostinato-agent` (`scripts/crew-trusted.sh`). The loop, the
 pick and the brief all filter by author, and a comment with no author is not
-trusted. The brief reads comments through `crew-loop.sh comments N` and
-`crew-loop.sh lessons`. The owner's own sessions post as the owner, so an
+trusted. The brief, `qa` and `reviewer` read the issue through
+`crew-loop.sh issue N`, which prints the body only under the pick's body rule,
+and the lessons through `crew-loop.sh lessons`. A Crew skipped comment counts
+only from a trusted login, and so does a Claimed comment in `just claim`. The owner's own sessions post as the owner, so an
 author does not prove the owner wrote it: removing `needs-owner` stays the
 real answered signal.
 

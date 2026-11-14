@@ -9,8 +9,8 @@
 #   crew-loop.sh stop-session <id>   stop one background session and kill its
 #                                    whole process tree; CREW_PARK_STEP for
 #                                    harness check 7 in crew-qualify.sh
-#   crew-loop.sh comments <issue>    the issue's comments by trusted logins, for
-#                                    the brief (.claude/commands/crew.md)
+#   crew-loop.sh issue <issue>       the issue as the briefs read it: its body
+#                                    only when trusted, and trusted comments
 #   crew-loop.sh lessons             trusted Lessons comments not yet folded in
 #
 # Every outside command has a seam (CREW_* below), so
@@ -36,10 +36,11 @@ POLL=${CREW_POLL:-60}
 STOP_FILE=${CREW_STOP_FILE:-$HOME/.intrada-crew-stop}
 SIM_LOCK=${IOS_SIM_LOCK_DIR:-/tmp/intrada-ios-test.lock}
 LOCK=${CREW_LOCK:-/tmp/intrada-crew-loop.lock}
+LOCK_GRACE=${CREW_LOCK_GRACE:-10} # seconds a lock may lack its pid while a run writes it
 CAFFEINATE=${CREW_CAFFEINATE:-caffeinate}
 START_TRIES=${CREW_START_TRIES:-5}
 LOG=${CREW_LOG:-$HOME/.claude/crew-loop.log}
-CURRENT_N=""  # the issue being started or watched; INT or TERM stops its session
+CURRENT_N=""  # the issue being started or watched; INT, TERM or HUP stops its session
 STARTED_ID=""
 OUTCOME=""
 
@@ -285,26 +286,57 @@ queue() {
     return 2
 }
 
+# Issues $@ in one GraphQL read, each under the alias i<number>, so the reads
+# do not grow by a call per crew worktree (#2821). GitHub answers a missing
+# issue with null and an error, so the caller reads each alias on its own.
+read_issues() {
+  local q n
+  q='fragment F on Issue {
+    number state title body author { login } editor { login }
+    labels(first: 50) { nodes { name } }
+    comments(last: 100) { nodes { author { login } body createdAt } }
+    timelineItems(itemTypes: [UNLABELED_EVENT], last: 50) {
+      nodes { ... on UnlabeledEvent { createdAt actor { login } label { name } } } }
+  }
+  query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) {'
+  for n in "$@"; do q="$q i$n: issue(number: $n) { ...F }"; done
+  gh api graphql -f query="$q } }" -f owner="${REPO%%/*}" -f name="${REPO#*/}" 2>/dev/null
+}
+
 # Crew worktrees left by an earlier run, open, with no draft and not waiting on
-# the owner: no needs-owner label, and no park note without a later comment,
-# the owner's answer. Only trusted comments count. An unreadable issue is
-# skipped (#2821).
+# the owner: no needs-owner label, and no park note unless a trusted comment
+# follows it or a trusted login removed needs-owner after it, which the park
+# question offers as "run it again". A park whose label never landed has
+# neither, so it stays (#2821). An unreadable issue is skipped.
 unfinished() {
-  local n ok
-  find "$(worktrees)" -maxdepth 1 -type d -name 'crew-[0-9]*' 2>/dev/null |
-    sed -n 's#.*/crew-\([0-9][0-9]*\)$#\1#p' | sort -n |
-    while IFS= read -r n; do
-      ok=$(gh issue view "$n" -R "$REPO" --json state,labels,comments --jq "$TRUSTED"'
-        select(.state == "OPEN" and ([.labels[].name] | index("needs-owner") | not))
-        | [.comments[] | select(trusted)] as $c
-        | ([$c[].body | startswith("**Crew: ")] | indices(true) | last) as $i
-        | (if $i == null then "" else ($c[$i].body
-            | capture("^\\*\\*Crew: (?<s>[A-Za-z]+)\\*\\*").s) // "" end) as $s
-        | select($s != "draft" and ($s != "parked" or $i < ($c | length) - 1)) | "yes"' 2>/dev/null) || {
-        log "could not read #$n from GitHub, so it is skipped" >&2
-      }
-      [ "$ok" = yes ] && echo "$n"
-    done
+  local nums n raw ok
+  nums=$(find "$(worktrees)" -maxdepth 1 -type d -name 'crew-[0-9]*' 2>/dev/null |
+    sed -n 's#.*/crew-\([0-9][0-9]*\)$#\1#p' | sort -n)
+  [ -n "$nums" ] || return 0
+  # shellcheck disable=SC2086 # one argument per issue number
+  raw=$(read_issues $nums)
+  for n in $nums; do
+    ok=$(printf '%s' "$raw" | jq -r --arg k "i$n" "$TRUSTED"'
+      .data.repository[$k] // null
+      | if . == null then "unread"
+        elif .state != "OPEN" or ([.labels.nodes[].name] | index("needs-owner")) then "no"
+        else
+          [.comments.nodes[] | select(trusted)] as $c
+          | ([$c[].body | startswith("**Crew: ")] | indices(true) | last) as $i
+          | (if $i == null then "" else ($c[$i].body
+              | capture("^\\*\\*Crew: (?<s>[A-Za-z]+)\\*\\*").s) // "" end) as $s
+          | if $s == "draft" then "no"
+            elif $s != "parked" or $i < ($c | length) - 1 then "yes"
+            elif any(.timelineItems.nodes[]; .label.name == "needs-owner"
+              and (.actor.login // "" | trusted_login) and .createdAt > $c[$i].createdAt) then "yes"
+            else "no" end
+        end' 2>/dev/null)
+    case $ok in
+      yes) echo "$n" ;;
+      no) ;;
+      *) log "could not read #$n from GitHub, so it is skipped" >&2 ;;
+    esac
+  done
 }
 
 # A crew worktree, made from the main checkout like any other.
@@ -468,17 +500,37 @@ run_issue() {
 
 # One run at a time: a second would count the first's worktree as unfinished
 # and stop its live session (#2821). A holder that died without its EXIT trap
-# leaves a stale lock, as in ios-sim-lock.sh.
+# leaves a stale lock, as in ios-sim-lock.sh: a pid that is no crew run, or no
+# pid past the grace a starting run takes to write it.
 take_lock() {
-  local holder
+  local holder stale m
   if ! mkdir "$LOCK" 2>/dev/null; then
     holder=$(cat "$LOCK/pid" 2>/dev/null)
-    [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null || return 1
-    log "cleared the crew lock of process $holder, which has gone"
-    rm -rf "$LOCK"
+    if [ -n "$holder" ]; then
+      crew_run "$holder" && return 1
+    else
+      m=$(stat -c %Y "$LOCK" 2>/dev/null || stat -f %m "$LOCK" 2>/dev/null || echo 0)
+      [ $(($(now) - m)) -ge "$LOCK_GRACE" ] || return 1
+    fi
+    # Moved aside, never removed in place: two starters that both judged it
+    # stale would otherwise each clear the other's fresh lock.
+    stale="$LOCK.stale.$$"
+    mv "$LOCK" "$stale" 2>/dev/null || return 1
+    if [ "$(cat "$stale/pid" 2>/dev/null)" != "$holder" ]; then
+      [ -e "$LOCK" ] || mv "$stale" "$LOCK" 2>/dev/null
+      rm -rf "$stale"
+      return 1
+    fi
+    rm -rf "$stale"
+    log "cleared the crew lock of process ${holder:-unknown}, which has gone"
     mkdir "$LOCK" 2>/dev/null || return 1
   fi
-  echo $$ >"$LOCK/pid"
+  echo $$ >"$LOCK/pid" 2>/dev/null && [ "$(cat "$LOCK/pid" 2>/dev/null)" = "$$" ]
+}
+
+# A live process running this script, not a pid reused by something else.
+crew_run() {
+  grep -q 'crew-loop' <<<"$(ps -o command= -p "$1" 2>/dev/null)"
 }
 
 release_lock() {
@@ -496,7 +548,7 @@ stay_awake() {
 }
 
 on_signal() {
-  trap - INT TERM
+  trap - INT TERM HUP
   log "interrupted"
   [ -n "$CURRENT_N" ] && stop_named "$CURRENT_N"
   exit "$1"
@@ -522,6 +574,7 @@ main() {
   stay_awake
   trap 'on_signal 130' INT
   trap 'on_signal 143' TERM
+  trap 'on_signal 129' HUP
   if ! check_guards; then
     log "harness check 1 failed: a crew session was not refused gh pr ready, so no issue starts this run"
     notify "Crew did not start: the guards check failed"
@@ -599,17 +652,22 @@ $q"
   exit 0
 }
 
-usage="usage: $0 [stop-session <id> | comments <issue> | lessons]"
+usage="usage: $0 [stop-session <id> | issue <issue> | lessons]"
 case "${1:-}" in
   "") main ;;
   stop-session)
     [ $# -eq 2 ] || { echo "$usage" >&2; exit 2; }
     stop_session "$2"
     ;;
-  comments)
+  issue)
     [ $# -eq 2 ] && [[ $2 =~ ^[0-9]+$ ]] || { echo "$usage" >&2; exit 2; }
-    gh issue view "$2" -R "$REPO" --json comments --jq "$TRUSTED"'
-      .comments[] | select(trusted) | "Comment by \(.author.login) on \(.createdAt):\n\(.body)\n"' || exit 2
+    read_issues "$2" | jq -er --arg k "i$2" "$TRUSTED"'
+      .data.repository[$k] // error("no issue")
+      | "Issue #\(.number), \(.state), labels: \([.labels.nodes[].name] | join(", "))\n\n"
+        + (if trusted_body then "Title: \(.title)\n\n\(.body)\n"
+          else "Title and body left out: the issue was opened or last edited by someone other than the owner or the agent account.\n" end)
+        + ([.comments.nodes[] | select(trusted) | "\nComment by \(.author.login) on \(.createdAt):\n\(.body)\n"] | join(""))' ||
+      exit 2
     ;;
   lessons)
     gh issue list -R "$REPO" --label lessons-pending --state all --limit 100 --json number,comments \
