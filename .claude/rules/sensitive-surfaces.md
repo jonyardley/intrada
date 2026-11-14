@@ -24,11 +24,12 @@ crash-recovery blob, any type under a wire-pinned settings key (library sort,
 profile, practice defaults: bincode on the device, like the blob), store
 migrations, auth, and any bridge change that is not additive.
 
-1. **Lead-only work runs on Opus at `high` effort** (#2044, #2052), set with
+1. **Lead-only work runs at the level the role table in `~/.claude/CLAUDE.md`
+   gives sensitive surfaces** (Subagents, review and lane size), set with
    `/effort` before the first edit. An additive change stays on the lead's
    usual effort.
 2. **Pair the `reviewer` agent on the core diff before the screens**, whoever
-   built it, spawned at effort high (#2866).
+   built it, spawned at the model and effort that table gives a second reviewer.
 3. **One PR across the stack**: core commits first, `reviewer` reads them alone,
    then the screens commits. Lead-only work goes up at least one tier in
    ceremony but is still one PR: a merged core with no caller is shell-dead
