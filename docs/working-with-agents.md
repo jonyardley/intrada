@@ -55,16 +55,17 @@ then refuses every git command.
 
 | You are | Do |
 |---|---|
-| Opening a session | Opus 5.5 `medium`, which it opens on; name the rung only for sensitive-surface work |
-| Reaching work on the sensitive surfaces | `/effort high` before it starts, saying so, and `/effort medium` after; never a new chat |
+| Opening a session | The model and effort `.claude/settings.json` opens it on |
+| Reaching work on the sensitive surfaces | The level the role table gives sensitive surfaces, set with `/effort` before it starts, saying so, and back after; never a new chat |
 | Handing work down | Settled work goes to a subagent (step 5); a new chat only frees the session (#1836) |
 
-Nothing with judgement runs below Opus: the lower rungs cost more in
-corrections than they saved (#1893). `test-runner` runs on Sonnet and
-`Explore` on Haiku; pins live in `.claude/agents/` and `.claude/settings.json`.
+A session opens on `.claude/settings.json`. Every spawn's model and effort,
+and the lead's raise for sensitive surfaces, come from the role table in
+`~/.claude/CLAUDE.md` (Subagents, review and lane size), named on each Agent
+call, a crew session's included; this repo keeps no levels of its own.
 
 `/effort` saves to settings unless you choose session-only, which is why a
-`high` stretch ends with `/effort medium`. Fast mode costs twice the standard
+raised stretch ends by setting it back. Fast mode costs twice the standard
 rate: use it only when latency matters, never to save money.
 
 Superpowers is disabled on purpose, because its "invoke a skill for anything"
@@ -113,8 +114,8 @@ issues go under it the same turn with `just epic-add`; three or more ordered
 issues with no epic are a new one ([Epics](how-the-work-runs.md#epics)).
 
 Every plan names, per task, whether it is on the sensitive surfaces (a
-hand-written opener then starts with `/effort high`), where it runs, and its
-streams and serialisation points per `intrada-parallel-streams`. Worked tier
+hand-written opener then starts with `/effort` at the role table's level for
+sensitive surfaces), where it runs, and its streams and serialisation points per `intrada-parallel-streams`. Worked tier
 examples: [`reference.md`](reference.md).
 
 ## 5. Build
@@ -123,7 +124,7 @@ examples: [`reference.md`](reference.md).
 |---|---|
 | Holding a settled plan on an existing pattern | One slice per `task` spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files (#1846) |
 | About to run a gate | `test-runner`, never in the lead or inside `task`; a fan-out runs the suites once at the end |
-| Needing facts from many files | `Explore` with `model: haiku`; its findings are leads, not facts |
+| Needing facts from many files | `Explore`, at the role table's level for searches; its findings are leads, not facts |
 | Looking at a file for the second time | grep, then a range; a screenshot is read once and described. The read guard denies a repeat whole-file read, by Read or `cat`, `sed`, `head` or `tail` (#1986), and one over 400 lines (#1844) |
 | Warned at 150k context | Finish the slice in hand; the rest goes to `task` |
 | At 200k | The rest of the unit goes to a subagent now |
@@ -136,10 +137,9 @@ Context length sets the bill (#1985, #1849).
   lead integrates.
 - **`task` takes a settled slice of at most ten hand-written files**
   (`.claude/agents/task.md`, #1888); the sensitive surfaces stay with the lead.
-- **Pin model and effort in the definition**, not the spawn. `guard-spawn.sh`
-  refuses a lift above the pin, or above an `effort-ceiling:` the definition
-  names, and any Fable spawn (#2044, #2866); `Explore`, `fork`
-  and `general-purpose` inherit the session (#1838).
+- **Name model and effort on every spawn**, from the role table; agent
+  definitions carry no pins. `guard-spawn.sh` brings a spawn with no model
+  named, on Fable, or above medium effort to Jon as a permission prompt.
 - **Brief by file and line**, with acceptance criteria that can fail tomorrow,
   and have research agents mark observed against inferred.
 - **A fan-out, a Workflow or a full-repo scan** is costed before it runs, and
@@ -162,7 +162,7 @@ which the recipe writes (#2630); restart Claude Code after. Installs:
 | You are | Do |
 |---|---|
 | Holding a diff that changes code or tests | `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
-| Holding a diff on a sensitive surface | The same `reviewer` at effort high (#2866), paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
+| Holding a diff on a sensitive surface | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
 | Holding a docs-only diff | `/code-review` inline stands in; say "comment-policy violations are Blockers" |
 
 `reviewer` checks the diff against the plan comment first, reports and

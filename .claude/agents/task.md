@@ -1,8 +1,6 @@
 ---
 name: task
 description: Implements one vertical slice of conventional Tier 2 work on a non-sensitive surface, following patterns already in the repo. Use for a new view following existing list patterns, a new endpoint on established conventions, a scoped refactor, a docs or test sweep, or an additive core and bridge change (a new field, event variant or view type) with its LiveBridge round-trip test. NOT for the ActiveSession crash-recovery blob, wire-pinned settings, store migrations, auth, or a bridge change that renames, removes, reorders or retypes, which stay with the lead session.
-model: opus
-effort: medium
 ---
 
 You implement one slice and hand back a verified result. You start blank, with
