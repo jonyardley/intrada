@@ -137,7 +137,8 @@ Context length sets the bill (#1985, #1849).
 - **`task` takes a settled slice of at most ten hand-written files**
   (`.claude/agents/task.md`, #1888); the sensitive surfaces stay with the lead.
 - **Pin model and effort in the definition**, not the spawn. `guard-spawn.sh`
-  refuses a lift above the pin and any Fable spawn (#2044); `Explore`, `fork`
+  refuses a lift above the pin, or above an `effort-ceiling:` the definition
+  names, and any Fable spawn (#2044, #2866); `Explore`, `fork`
   and `general-purpose` inherit the session (#1838).
 - **Brief by file and line**, with acceptance criteria that can fail tomorrow,
   and have research agents mark observed against inferred.
@@ -161,7 +162,7 @@ which the recipe writes (#2630); restart Claude Code after. Installs:
 | You are | Do |
 |---|---|
 | Holding a diff that changes code or tests | `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
-| Holding a diff on a sensitive surface | The same `reviewer`, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
+| Holding a diff on a sensitive surface | The same `reviewer` at effort high (#2866), paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
 | Holding a docs-only diff | `/code-review` inline stands in; say "comment-policy violations are Blockers" |
 
 `reviewer` checks the diff against the plan comment first, reports and
