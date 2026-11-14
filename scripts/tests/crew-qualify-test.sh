@@ -331,6 +331,20 @@ if ! grep -qx "claude INTRADA_CREW=unset OSTINATO_PROJECT=jonyardley/intrada run
   fails=$((fails + 1))
 fi
 
+# ── transcripts follow CLAUDE_CONFIG_DIR (#2854) ────────────────────────────
+n=$((n + 1))
+got=$(CLAUDE_CONFIG_DIR=/cfg bash "$script" transcript /a/b.c sid)
+if [ "$got" != "/cfg/projects/-a-b-c/sid.jsonl" ]; then
+  echo "✗ transcript: wanted it under CLAUDE_CONFIG_DIR, got $got" >&2
+  fails=$((fails + 1))
+fi
+n=$((n + 1))
+got=$(env -u CLAUDE_CONFIG_DIR HOME=/h bash "$script" transcript /a/b.c sid)
+if [ "$got" != "/h/.claude/projects/-a-b-c/sid.jsonl" ]; then
+  echo "✗ transcript: wanted it under ~/.claude with no CLAUDE_CONFIG_DIR, got $got" >&2
+  fails=$((fails + 1))
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "✗ crew-qualify: $fails of $n judgements wrong" >&2
   exit 1

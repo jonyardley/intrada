@@ -181,12 +181,17 @@ start_session() {
   fi
 }
 
+# Sessions keep transcripts under CLAUDE_CONFIG_DIR when it is set (#2854).
+projects_dir() {
+  printf '%s/projects' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+}
+
 # Newest change to the session's transcript, its subagents' or its background
 # tasks' output: a lead waiting on a task agent writes nothing itself (#2821).
 last_activity() {
   local cwd=$1 sid=$2 key dir tasks newest=0 f m
   key=$(printf '%s' "$cwd" | sed 's/[^A-Za-z0-9]/-/g')
-  dir="$HOME/.claude/projects/$key"
+  dir="$(projects_dir)/$key"
   tasks="${CREW_TASKS_ROOT:-/private/tmp/claude-$(id -u)}/$key/$sid/tasks"
   for f in "$dir/$sid.jsonl" "$dir/$sid"/subagents/*.jsonl "$tasks"/*.output; do
     [ -f "$f" ] || continue
@@ -200,7 +205,7 @@ last_activity() {
 # The last thing the session said, for a park comment, with no backtick that
 # could close the fence it goes in.
 transcript() {
-  printf '%s/.claude/projects/%s/%s.jsonl' "$HOME" "$(printf '%s' "$1" | sed 's/[^A-Za-z0-9]/-/g')" "$2"
+  printf '%s/%s/%s.jsonl' "$(projects_dir)" "$(printf '%s' "$1" | sed 's/[^A-Za-z0-9]/-/g')" "$2"
 }
 
 last_words() {
