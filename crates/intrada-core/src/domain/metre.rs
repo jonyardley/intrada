@@ -80,6 +80,11 @@ impl Metre {
         options.iter().map(|g| g.to_vec()).collect()
     }
 
+    /// The pattern a newly chosen bar opens on.
+    pub fn click_opening(&self) -> u16 {
+        ClickPreset::EveryBeat.sounding(self)
+    }
+
     pub fn click_presets(&self) -> Vec<ClickPresetOption> {
         let mut offered = vec![ClickPreset::EveryBeat];
         if self.groups.is_some() {
@@ -161,6 +166,7 @@ pub struct ClickBarOption {
     pub beats: u8,
     pub groups: Option<Vec<u8>>,
     pub presets: Vec<ClickPresetOption>,
+    pub opening: u16,
 }
 
 /// The bars the click sheet names before "Other".
@@ -195,6 +201,7 @@ pub fn click_bars() -> Vec<ClickBarOption> {
                     };
                     ClickBarOption {
                         presets: metre.click_presets(),
+                        opening: metre.click_opening(),
                         beats,
                         groups: metre.groups,
                     }
@@ -475,7 +482,37 @@ mod tests {
     }
 
     #[test]
+    fn a_newly_chosen_bar_opens_on_every_beat() {
+        let bars = click_bars();
+        let opening = |beats: u8, groups: Option<&[u8]>| {
+            bars.iter()
+                .find(|b| b.beats == beats && b.groups.as_deref() == groups)
+                .map(|b| b.opening)
+        };
+        let table: [(u8, Option<&[u8]>, u16); 6] = [
+            (2, None, 0b11),
+            (3, None, 0b111),
+            (4, None, 0b1111),
+            (6, Some(&[3, 3]), 0b11_1111),
+            (7, Some(&[2, 2, 3]), 0b111_1111),
+            (12, Some(&[3, 3, 3, 3]), 0xFFF),
+        ];
+        for (beats, groups, expected) in table {
+            assert_eq!(opening(beats, groups), Some(expected), "{beats} {groups:?}");
+        }
+        for bar in &bars {
+            let every_beat = bar
+                .presets
+                .iter()
+                .find(|o| o.preset == ClickPreset::EveryBeat)
+                .map(|o| o.sounding);
+            assert_eq!(Some(bar.opening), every_beat, "{bar:?}");
+        }
+    }
+
+    #[test]
     fn the_click_tables_cross_the_bridge() {
+        assert!(click_bars().iter().all(|b| b.opening != 0));
         crate::domain::types::assert_round_trips(click_bars());
         crate::domain::types::assert_round_trips(click_tempo_bands());
     }

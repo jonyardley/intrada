@@ -629,6 +629,7 @@ pub fn build_active_session_view(
         click_seed_bpm,
         click_seed_sounds_target,
         click_seed_presets: click_seed_metre.click_presets(),
+        click_seed_opening: click_seed_metre.click_opening(),
         click_seed_metre,
         record: active_record_view(active),
     }
@@ -1270,6 +1271,7 @@ mod tests {
                 (crate::domain::metre::ClickPreset::Downbeat, 1),
             ]
         );
+        assert_eq!(first.click_seed_opening, 0b1111);
         let second = view(&ActiveSession {
             current_index: 1,
             ..active
@@ -1327,6 +1329,32 @@ mod tests {
         assert_eq!(sounding(1, ClickStart::TwoAndFour), 0b1010);
         assert_eq!(sounding(1, ClickStart::EveryBeat), 0b1111);
         assert_eq!(sounding(2, ClickStart::TwoAndFour), 0b1010);
+    }
+
+    #[test]
+    fn active_session_view_opens_a_rechosen_bar_on_every_beat_whatever_the_default() {
+        use crate::domain::practice_defaults::ClickStart;
+        let mut waltz = make_item("i1", "Waltz", ItemKind::Piece);
+        waltz.metre = Some(Metre {
+            beats: 3,
+            unit: 4,
+            groups: None,
+        });
+        let items: HashMap<&str, &Item> = [("i1", &waltz)].into_iter().collect();
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![make_entry("e1", "i1", "Waltz", 0)],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            reflection: None,
+        };
+        let defaults = PracticeDefaults {
+            click: ClickStart::TwoAndFour,
+            ..PracticeDefaults::default()
+        };
+        let view = build_active_session_view(&active, &items, &PlayLabels::new(), &[], &defaults);
+        assert_eq!(view.click_seed_opening, 0b111);
     }
 
     #[test]
@@ -1807,6 +1835,7 @@ mod tests {
             &PracticeDefaults::default(),
         );
         assert_eq!(view.current_variations.len(), 1);
+        assert_eq!(view.click_seed_opening, 0b1111);
         assert_eq!(
             view.current_item_notes.as_deref(),
             Some("Watch the thumb crossing")
