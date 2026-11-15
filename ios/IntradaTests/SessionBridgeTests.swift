@@ -148,7 +148,10 @@ final class SessionBridgeTests: XCTestCase {
           ClickPresetOption(preset: .everyBeat, sounding: 0b111_1111),
           ClickPresetOption(preset: .groupStarts, sounding: 0b010_1001),
           ClickPresetOption(preset: .downbeat, sounding: 1),
-        ]))
+        ], opening: 0b111_1111))
+    XCTAssertEqual(
+      limits.clickBars.first { $0.beats == 3 && $0.groups == nil }?.opening, 0b111,
+      "each bar carries the pattern it opens on")
 
     _ = try bridge.update(
       .item(
@@ -171,6 +174,8 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(
       active.clickSeedPresets.map(\.sounding), [0b1111, 0b0101, 1],
       "a grouping the bars table does not list still gets its patterns")
+    XCTAssertEqual(
+      active.clickSeedOpening, 0b1111, "the item's own bar opens on the core's pattern too")
   }
 
   /// The saved defaults reach the click across the bincode wire; an optional

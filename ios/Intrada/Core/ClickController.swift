@@ -26,6 +26,7 @@ final class ClickController {
   /// (4/8 as 2 + 2), so its patterns come with the seed (#2225).
   private var seedMetre: Metre?
   private var seedPresets: [ClickPresetOption] = []
+  private var seedOpening: UInt16?
   private var configured = false
 
   /// A bar change to another beat unit re-reads the same number as a different
@@ -43,11 +44,13 @@ final class ClickController {
   var tempoStep: Int { limits?.clickStep ?? 0 }
   var band: ClosedRange<Int> { limits?.clickBand(unit: metre.unit) ?? bpm...bpm }
 
+  private var isOnSeedBar: Bool {
+    guard let seedMetre else { return false }
+    return seedMetre.beats == metre.beats && seedMetre.groups == metre.groups
+  }
+
   var presets: [ClickPresetOption] {
-    if let seedMetre, seedMetre.beats == metre.beats, seedMetre.groups == metre.groups {
-      return seedPresets
-    }
-    return limits?.clickPresets(for: metre) ?? []
+    isOnSeedBar ? seedPresets : limits?.clickPresets(for: metre) ?? []
   }
 
   var matchingPreset: ClickPreset? {
@@ -63,6 +66,7 @@ final class ClickController {
     metre = active.clickSeedMetre
     seedMetre = active.clickSeedMetre
     seedPresets = active.clickSeedPresets
+    seedOpening = active.clickSeedOpening
     seeded = Int(active.clickSeedBpm)
     seededUnit = metre.unit
     soundsTarget = active.clickSeedSoundsTarget
@@ -101,7 +105,8 @@ final class ClickController {
     guard next != metre else { return }
     metre = next
     bpm = clamped(bpm, unit: next.unit)
-    sounding = presets.first { $0.preset == .everyBeat }?.sounding ?? 1
+    let opening = isOnSeedBar ? seedOpening : limits?.clickOpening(for: next)
+    if let opening { sounding = opening }
     configured = true
     if isRunning { start() }
   }
