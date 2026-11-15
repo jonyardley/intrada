@@ -1240,8 +1240,12 @@ ok "a path relative to the worktree becomes absolute, and the hook scripts are c
 ok "the iPhone builds are told they run inside the sandbox" 'has ".env.INTRADA_SANDBOXED == \"1\""'
 ok "the simulators' socket folder is allowed whole, so a simulator booted mid-session can reach its test runner" \
   'jq -e --arg s "$work/sock" ".sandbox.network.allowUnixSockets == [\$s]" <<<"$settings" >/dev/null'
-ok "the dependency audit can lock the advisory database the deny settings name" \
-  'has ".sandbox.filesystem.allowWrite | index(\"~/.cargo/advisory-db\")"'
+ok "by default the socket folder is the simulators' one" \
+  'bash "$script" session-settings "$sbx" | jq -e ".sandbox.network.allowUnixSockets == [\"/private/var/tmp\"]" >/dev/null'
+ok "a socket folder at the home folder gets no settings" \
+  '! CREW_SOCKET_ROOT="$HOME" bash "$script" session-settings "$sbx" >/dev/null 2>&1'
+ok "the dependency audit can take its lock, and only its lock, in the advisory database" \
+  'has ".sandbox.filesystem.allowWrite | index(\"~/.cargo/advisory-db/db.lock\")"'
 ok "no command is let out of the sandbox" 'has ".sandbox.excludedCommands == []"'
 mkdir -p "$work/sbx-bare/.claude"
 echo '{"sandbox": {"enabled": true}}' >"$work/sbx-bare/.claude/settings.local.json"

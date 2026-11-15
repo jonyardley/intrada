@@ -123,10 +123,14 @@ session_settings() {
   # The test runner's sockets: each simulator boot makes a launchd folder of
   # its own with a random name, so a session that boots or reboots one (the
   # idle shutdown takes it down after ten minutes) needs a socket no list made
-  # at launch can name. A folder in this list covers every socket under it
-  # (seen live on Claude Code 2.1.325), and this one holds only the
-  # simulators' (#2854).
-  sockets=$(jq -nc --arg d "${CREW_SOCKET_ROOT:-/private/var/tmp}" '[$d]')
+  # at launch can name. A folder in this list covers every socket under it,
+  # and the setting takes no wildcards (both seen live on Claude Code
+  # 2.1.325), so the folder is the narrowest rule that holds. On a dev Mac it
+  # holds only simulator sockets today (#2854). A test may point it
+  # elsewhere, never at the disk or home.
+  sockets=${CREW_SOCKET_ROOT:-/private/var/tmp}
+  case "$sockets" in / | "$HOME" | "$HOME"/*) echo "refusing to let sessions reach every socket in $sockets" >&2; return 1 ;; esac
+  sockets=$(jq -nc --arg d "$sockets" '[$d]')
   jq -ce --slurpfile own "$root/scripts/crew-sandbox.json" --arg wt "$wt" --arg tmp "$tmp" --argjson sockets "$sockets" '
     def abs: if startswith("./") then $wt + .[1:] else . end;
     def join(a; b): (a // []) as $a | $a + [(b // [])[] | select(. as $x | $a | index([$x]) | not)];
