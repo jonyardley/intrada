@@ -100,9 +100,10 @@ worktrees() {
 # worktree. A local file without osti's block would leave ~/.ssh readable and
 # git's config writable, so it is refused. mktemp and Xcode write to the user
 # temp folder whatever TMPDIR says, and the sandbox wants its real /private
-# path. The SessionStart hooks run the main checkout's scripts, so the one
-# worktree path run outside the sandbox is git's hooks folder (core.hooksPath),
-# denied here and to the file tools, which run outside it too.
+# path. The SessionStart hooks run the main checkout's scripts. Git's hooks
+# folder (core.hooksPath) and .mcp.json, whose xcode server a session starts
+# by name, run outside the sandbox, so both are denied here and to the file
+# tools, which run outside it too.
 # INTRADA_SANDBOXED tells the iPhone builds to leave Xcode's own package
 # sandbox off, since it cannot start inside this one.
 #

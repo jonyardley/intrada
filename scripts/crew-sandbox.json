@@ -11,7 +11,8 @@
       "/private/tmp/ios-build.log"
     ],
     "denyWrite": [
-      "./.githooks"
+      "./.githooks",
+      "./.mcp.json"
     ]
   },
   "network": {
