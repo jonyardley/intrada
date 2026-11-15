@@ -135,11 +135,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/install-git-hooks.sh >/dev/null 2>&1 || true"
+            "command": "m=$(git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && bash \"$(dirname \"$m\")\"/scripts/install-git-hooks.sh >/dev/null 2>&1 || true"
           },
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/session-claims.sh 2>/dev/null || true"
+            "command": "m=$(git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && bash \"$(dirname \"$m\")\"/scripts/session-claims.sh 2>/dev/null || true"
           },
           {
             "type": "command",
@@ -154,7 +154,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *ios/generated/*) ;; *.rs) command -v rustfmt >/dev/null 2>&1 && rustfmt --edition 2021 \"$f\" >/dev/null 2>&1 ;; *.swift) swift format --in-place \"$f\" >/dev/null 2>&1 ;; esac; exit 0"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *ios/generated/*) ;; *.rs) command -v rustfmt >/dev/null 2>&1 && (cd \"$HOME\" && RUSTUP_TOOLCHAIN=stable rustfmt --edition 2021 \"$f\") >/dev/null 2>&1 ;; *.swift) swift format --in-place \"$f\" >/dev/null 2>&1 ;; esac; exit 0"
           }
         ]
       }
