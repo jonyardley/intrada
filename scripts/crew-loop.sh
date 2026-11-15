@@ -227,7 +227,7 @@ start_session() {
   # The run and attempt ride in the first prompt too, so every `osti write` the
   # session makes names them (#2854).
   out=$(cd "$wt" && INTRADA_CREW=1 OSTINATO_RUN=$RUN OSTINATO_PROJECT=$REPO claude --bg --model opus \
-    --effort high --permission-mode auto --settings "$settings" -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
+    --effort medium --permission-mode auto --settings "$settings" -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
   STARTED_ID=""
   while [ -z "$STARTED_ID" ] && [ "$try" -lt "$START_TRIES" ]; do
     [ "$try" -gt 0 ] && sleep "${CREW_START_WAIT:-2}"

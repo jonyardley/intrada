@@ -4,17 +4,22 @@ description: A crew session's brief, started by the crew loop as `/crew N RUN AT
 
 You are a crew session. Your arguments, `$ARGUMENTS`, are the issue number,
 the run's name and the attempt number, in that order; below they are N, RUN
-and ATTEMPT. The crew loop started you with `INTRADA_CREW=1`, on Opus at high
+and ATTEMPT. The crew loop started you with `INTRADA_CREW=1`, on Opus at medium
 effort, in a worktree it made for this issue, with Ostinato's guard installed:
-you act on GitHub as the agent account. Nobody is watching. The owner approved the plan by adding the `ready`
-label: that is your go, so build without waiting for another. You take the
-issue to a draft PR and stop.
+you act on GitHub as the agent account. Nobody is watching.
+
+One approved plan per change: the plan comment, naming any screenshots the
+owner wants to see, approved by his `ready` label. That is your go: build
+without waiting for another, and run to a draft ready for his review without
+asking again. Only a plan that breaks stops you, and it parks (Parking,
+below). You take the issue to a draft PR and stop.
 
 Never ask a question in the chat or wait for a reply: anything you would ask
-the owner parks the issue (Parking, below). Name the model and effort on
-every agent spawn, from the role table in `~/.claude/CLAUDE.md`, never above
-medium effort: the definitions carry no pins, and a spawn with no model named,
-or above medium, stops on a permission prompt nobody will answer. Never mark a PR ready, merge, add
+the owner parks the issue (Parking, below). Model, effort, review and lane
+size follow `~/.claude/CLAUDE.md` ("Subagents, review and lane size" and "Speed
+and reliability"). The local detail: definitions carry no pins, so name both
+on every spawn, never above medium effort, since one with no model named, or
+above medium, stops on a permission prompt nobody will answer. Never mark a PR ready, merge, add
 the `ready` label or start a second issue; the guards refuse the first three.
 
 ## Start, or restart
@@ -83,6 +88,7 @@ are.
    Core commits first, then iOS; Android is paused (#2860). Commit each slice.
 3. **Ship** with `/ship loop`: the retro as a Lessons comment, the gates, the
    self-review, `qa`, the park step on the diff, the draft and the CI watch.
+   Its gates are `just pre-review`, and the review starts only once they pass.
    It adds three notes, each only on success: `**Crew: reviewed**` (stage
    `reviewed`: the rounds and the verdict, once no blocker is left),
    `**Crew: QA**` (stage `qa`: the `qa` report verbatim, naming the agent,
@@ -92,8 +98,8 @@ are.
 Then end the turn, with no question.
 
 Never use Xcode's tool server: it asks the owner to approve each new
-worktree, which stalls the session. `qa` takes the screenshots, and UI tests
-prove taps.
+worktree, which stalls the session. `qa` takes the screenshots, the plan's
+named ones among them, and UI tests prove taps.
 
 ## Parking
 

@@ -14,6 +14,7 @@ Direction: `docs/roadmap.md`; in flight: `just status`.
 
 ```bash
 just check            # CI's Rust and hygiene jobs, bar MSRV and coverage; run before pushing
+just pre-review       # check, plus ios-fmt-check (and Android gates, unpaused) for what changed
 just ios-run          # build + launch on simulator + screenshot (seeded; SEED=0 to persist)
 just ios-test         # unit + snapshot; just ios-fmt-check for ios/
 ```
@@ -51,6 +52,8 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Reco
   and `android/` files; offline-first, UI, quality bars and silent-failure surfaces: the
   other `.claude/rules/`. They do not load in a worktree: read them by hand before
   editing. Every rule binds either way.
+- Review, model, effort and lane size: `~/.claude/CLAUDE.md`, "Subagents, review and lane
+  size" and "Speed and reliability"; here only the local detail.
 - Claim, worktree, tiers, plan comments and routing (unplanned work: discuss first):
   [`docs/working-with-agents.md`](docs/working-with-agents.md); epics:
   [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md#epics).

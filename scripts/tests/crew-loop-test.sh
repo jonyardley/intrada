@@ -617,8 +617,8 @@ echo draft >"$FAKE/scenario-101"
 run_loop
 ok "a draft is announced, with no park" \
   'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! grep -qx needs-owner <<<"$(labels 101)" && grep -q "run over: 1 issue run" "$work/out" && grep -qx "Crew finished: 1 issue run, details on each issue" "$FAKE/notified"'
-ok "the session is started as the crew, on Opus at high effort, with the brief" \
-  'grep -qF -- "--bg --model opus --effort high --permission-mode auto --settings {\"disableAllHooks\":false," "$FAKE/calls" && grep -qF -- "-n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
+ok "the session is started as the crew, on Opus at medium effort, with the brief" \
+  'grep -qF -- "--bg --model opus --effort medium --permission-mode auto --settings {\"disableAllHooks\":false," "$FAKE/calls" && grep -qF -- "-n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
 
 setup 101
