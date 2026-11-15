@@ -56,8 +56,11 @@ expect() {
 
 title="::error title=Mac runner broken%2C not your code::"
 expect 0 "runner healthy" "healthy machine passes"
-expect 1 "${title}Only 10 GB free" "low disk fails" FREE_KB=$((10 * 1024 * 1024))
-expect 1 "IOS_RUNNER=hosted" "the failure names the hosted fallback" FREE_KB=$((10 * 1024 * 1024))
+expect 1 "${title}Only 3 GB free" "low disk fails" FREE_KB=$((3 * 1024 * 1024))
+expect 0 "runner healthy" "12 GB free passes, as the gate does" FREE_KB=$((12 * 1024 * 1024))
+expect 0 "runner healthy" "exactly the 8 GB floor passes" FREE_KB=$((8 * 1024 * 1024))
+expect 1 "${title}Only 7 GB free" "just under the 8 GB floor fails" FREE_KB=$((8 * 1024 * 1024 - 1))
+expect 1 "IOS_RUNNER=hosted" "the failure names the hosted fallback" FREE_KB=$((3 * 1024 * 1024))
 expect 1 "$title" "forced threshold fails" RUNNER_MIN_FREE_GB=100000
 expect 1 "${title}The runner is on Xcode 1.0" "wrong Xcode fails" HAVE_XCODE=1.0
 expect 1 "${title}The iOS $runtime simulator runtime" "missing runtime fails" HAVE_RUNTIME=1.0
