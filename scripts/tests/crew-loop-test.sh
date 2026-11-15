@@ -1224,6 +1224,7 @@ sbx="$work/sbx"
 mkdir -p "$sbx/.claude"
 cp "$work/osti-settings.json" "$sbx/.claude/settings.local.json"
 sbx_real=$(cd "$sbx" && pwd -P)
+mkdir -p "$work/nogetconf" && printf '#!/bin/sh\nexit 1\n' >"$work/nogetconf/getconf" && chmod +x "$work/nogetconf/getconf"
 # The user temp folder on a Mac, TMPDIR elsewhere (CI runs these on Linux).
 tmp_real=$(cd "$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}")" && pwd -P)
 mkdir -p "$work/sock/com.apple.launchd.Ab12/other" "$work/sock/com.apple.launchd.Cd34"
@@ -1251,6 +1252,8 @@ ok "a local block that leaves git's config writable gets no settings" '! bash "$
 mkdir -p "$work/sbx-nossh/.claude"
 jq '.sandbox.filesystem.denyRead = []' "$work/osti-settings.json" >"$work/sbx-nossh/.claude/settings.local.json"
 ok "a local block that leaves ~/.ssh readable gets no settings" '! bash "$script" session-settings "$work/sbx-nossh" >/dev/null 2>&1'
+ok "a temp folder in the home folder is refused off the Mac" \
+  '! PATH="$work/nogetconf:$PATH" TMPDIR="$HOME" bash "$script" session-settings "$sbx" >/dev/null 2>&1'
 ok "a worktree with no local settings gets none" '! bash "$script" session-settings "$work/no-such-worktree" >/dev/null 2>&1'
 
 # ── hooks that run outside the sandbox (#2869) ───────────────────────────────
