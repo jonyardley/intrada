@@ -120,10 +120,13 @@ session_settings() {
   wt=$(cd "$1" && pwd -P) && tmp=$(cd "$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}")" && pwd -P) || return 1
   # TMPDIR is read only off the Mac; never let it open the disk or the home folder.
   case "$tmp" in / | "$HOME" | "$HOME"/*) echo "refusing to let sessions write to $tmp" >&2; return 1 ;; esac
-  # The test runner's sockets, in launchd's folders, which are named afresh at
-  # each start of the Mac, so they are looked up here.
-  sockets=$(printf '%s\n' "${CREW_SOCKET_ROOT:-/private/var/tmp}"/com.apple.launchd.*/com.apple.testmanagerd.unix-domain.socket |
-    grep -v '\*' | jq -R . | jq -sc .)
+  # The test runner's sockets: each simulator boot makes a launchd folder of
+  # its own with a random name, so a session that boots or reboots one (the
+  # idle shutdown takes it down after ten minutes) needs a socket no list made
+  # at launch can name. A folder in this list covers every socket under it
+  # (seen live on Claude Code 2.1.325), and this one holds only the
+  # simulators' (#2854).
+  sockets=$(jq -nc --arg d "${CREW_SOCKET_ROOT:-/private/var/tmp}" '[$d]')
   jq -ce --slurpfile own "$root/scripts/crew-sandbox.json" --arg wt "$wt" --arg tmp "$tmp" --argjson sockets "$sockets" '
     def abs: if startswith("./") then $wt + .[1:] else . end;
     def join(a; b): (a // []) as $a | $a + [(b // [])[] | select(. as $x | $a | index([$x]) | not)];
