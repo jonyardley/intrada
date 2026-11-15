@@ -23,6 +23,10 @@ extension LimitsView {
     clickBars.first { $0.beats == metre.beats && $0.groups == metre.groups }?.presets ?? []
   }
 
+  func clickOpening(for metre: Metre) -> UInt16? {
+    clickBars.first { $0.beats == metre.beats && $0.groups == metre.groups }?.opening
+  }
+
   func clickGroupings(beats: Int) -> [[UInt8]] {
     clickBars.compactMap { $0.beats == beats ? $0.groups : nil }
   }
