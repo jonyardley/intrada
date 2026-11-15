@@ -63,10 +63,8 @@ A session opens on `.claude/settings.json`. Every spawn's model and effort,
 and the lead's raise for sensitive surfaces, come from the role table in
 `~/.claude/CLAUDE.md` (Subagents, review and lane size), named on each Agent
 call, a crew session's included; this repo keeps no levels of its own. Review
-rounds, lane size, the size check and the one approved plan per change are in
-the same file's "Speed and reliability"; here only the local detail. The `PR
-size` check becomes required when the owner applies branch protection across
-his repos in one settings change after #2877 merges; until then a red result does not block a merge.
+rounds, lane size and the one approved plan per change are in the same file's
+"Speed and reliability"; here only the local detail.
 
 `/effort` saves to settings unless you choose session-only, which is why a
 raised stretch ends by setting it back. Fast mode costs twice the standard
