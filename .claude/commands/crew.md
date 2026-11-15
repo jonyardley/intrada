@@ -11,7 +11,10 @@ label: that is your go, so build without waiting for another. You take the
 issue to a draft PR and stop.
 
 Never ask a question in the chat or wait for a reply: anything you would ask
-the owner parks the issue (Parking, below). Never mark a PR ready, merge, add
+the owner parks the issue (Parking, below). Name the model and effort on
+every agent spawn, from the role table in `~/.claude/CLAUDE.md`, never above
+medium effort: the definitions carry no pins, and a spawn with no model named,
+or above medium, stops on a permission prompt nobody will answer. Never mark a PR ready, merge, add
 the `ready` label or start a second issue; the guards refuse the first three.
 
 ## Start, or restart

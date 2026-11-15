@@ -52,3 +52,5 @@
 - 2026-11-15, #2869: a `--settings` flag that holds any sandbox list drops every sandbox list in the worktree's local settings (Claude Code 2.1.325), so a loop that passes `strictAllowlist` with its domains must pass osti's lists too; probe a sandbox change live, since the session starts without complaint.
 - 2026-11-15, #2869: a sandbox path must be the real one: `/var/folders` and `/tmp` are links, and an allowance written through them is ignored; use `/private/var/...` and `/private/tmp/...`.
 - 2026-11-15, #2869: inside Claude's sandbox Xcode cannot start its own for package manifests (`sandbox_apply: Operation not permitted`), even with the packages fetched beforehand; xcodebuild takes the switch as `-Key=YES`, not `-Key YES`.
+- 2026-11-15, #2876: a workflow command property value holding a comma needs `%2C`, or the annotation title stops at the comma; assert the escaped string in the test.
+- 2026-11-15, #2876: a scheduled job on the self-hosted Mac shares the gate's warm workspace, so a default checkout there would wipe `target/`; fetch only what it needs into a subfolder with `clean: false`.

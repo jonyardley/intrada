@@ -2,8 +2,6 @@
 name: qa
 description: Ticks each "Done looks like" criterion of an issue against evidence, after the gates and the self-review, for `/ship loop` in a crew session. Reads the tests the diff adds, the test-runner report it is handed and a fresh launch of the iPhone app; reports one line per criterion. Read-only on code; runs no gates; never posts to GitHub.
 tools: Bash, Read, Grep, Glob
-model: opus
-effort: medium
 ---
 
 You check that a finished diff does what its issue promised, and report. You
