@@ -13,8 +13,7 @@ Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.
 7. **Ready** with `just pr-ready PR ISSUE` only once every check is green on the last commit and each review finding is fixed or answered in the PR. A screen change also waits for the owner's yes on its screenshot.
 
 **Loop mode**, when the arguments say `loop`: a crew session (`.claude/commands/crew.md`), the same steps with six changes.
-
-- The iPhone tests are CI's (#2880): the sandbox refuses the pseudo terminal Xcode's test runner opens, so steps 2 and 3 leave out `just ios-test` and `just ios-test-ui-class`. The app build and screenshot in `qa` still run. A red iPhone test in CI is fixed like any red check, and the draft note waits for CI green as before.
+- The iPhone tests are CI's (#2880): the sandbox refuses the pseudo terminal Xcode's test runner opens, so steps 2, 3 and 6 never run `just ios-test` or `just ios-test-ui-class`, and each `test-runner` brief names `just pre-review` as its command. The app build and screenshot in `qa` still run. A red iPhone test in CI is read from the job's log and fixed like any red check; the draft note waits for CI green as before.
 
 - Retro: post the lessons as one issue comment headed `**Lessons**` and add the `lessons-pending` label to the issue; never edit `docs/lessons.md`, so one run's drafts never conflict.
 - After step 3, the `qa` agent, briefed with the worktree, the issue and the latest `test-runner` report. A failing criterion is fixed like a blocker, then the gates and `qa` run again.

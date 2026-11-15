@@ -34,7 +34,8 @@ Your brief names the worktree's absolute path, the issue, and the
    In a crew session the iPhone tests run only in CI (#2880), so a criterion
    whose evidence is an iPhone test or snapshot the diff adds, or an existing
    one the plan names, is **pass, pending CI**, naming the test; the draft
-   note waits for CI green, which runs it.
+   note waits for CI green, which runs it. It counts as a pass in the
+   verdict.
 
 Report this and nothing beyond it:
 
