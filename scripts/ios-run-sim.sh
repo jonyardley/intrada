@@ -49,10 +49,12 @@ if [ -z "${REUSE_BUILD:-}" ]; then
     # justfile, so a run after a test build reuses its Swift instead of
     # recompiling it (#2733).
     # In a crew loop session Claude's sandbox wraps the build and refuses the
-    # one Xcode starts to read package manifests, so the loop sets
-    # INTRADA_SANDBOXED and Xcode's is left off; the owner chose that (#2869).
+    # ones Xcode and Swift start to read package manifests and run macros, so
+    # the loop sets INTRADA_SANDBOXED and theirs are left off; the owner chose
+    # that (#2869).
     sbx=()
-    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES)
+    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES \
+        'OTHER_SWIFT_FLAGS=$(inherited) -disable-sandbox')
     xcodebuild -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$UDID" -derivedDataPath "$DD" -configuration Debug \
         -clonedSourcePackagesDirPath build/spm ${sbx[@]+"${sbx[@]}"} \

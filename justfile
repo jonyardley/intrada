@@ -496,6 +496,15 @@ ios-run: _ios-sync
     cd ios && xcodegen generate --use-cache
     bash scripts/ios-run-sim.sh
 
+# Fetches the Swift packages into build/spm. The crew loop runs it before a
+# session starts (#2869): inside Claude's sandbox a package checkout cannot be
+# made, since the sandbox refuses every write to a .git/config.
+[doc("Fetch the iOS app's Swift packages into ios/build/spm")]
+[group('iOS')]
+ios-packages: _ios-sync
+    cd ios && xcodegen generate --use-cache && xcodebuild -resolvePackageDependencies \
+        -project Intrada.xcodeproj -scheme Intrada -clonedSourcePackagesDirPath build/spm -quiet
+
 # Stream the app's logs from the booted simulator, filtered to our subsystem —
 # drops the UIKit/keyboard/gesture noise so first-party signal is visible.
 # `report(_:)` (Core/Logging.swift) logs swallowed FFI errors here (#846 class).
@@ -796,10 +805,12 @@ _ios-build-for-testing:
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
     # In a crew loop session Claude's sandbox wraps the build and refuses the
-    # one Xcode starts to read package manifests, so the loop sets
-    # INTRADA_SANDBOXED and Xcode's is left off; the owner chose that (#2869).
+    # ones Xcode and Swift start to read package manifests and run macros, so
+    # the loop sets INTRADA_SANDBOXED and theirs are left off; the owner chose
+    # that (#2869).
     sbx=()
-    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES)
+    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES \
+        'OTHER_SWIFT_FLAGS=$(inherited) -disable-sandbox')
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet ${sbx[@]+"${sbx[@]}"} \

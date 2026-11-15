@@ -105,10 +105,14 @@ worktrees() {
 # INTRADA_SANDBOXED tells the iPhone builds to leave Xcode's own package
 # sandbox off, since it cannot start inside this one.
 session_settings() {
-  local wt tmp
+  local wt tmp sockets
   [ -f "$1/.claude/settings.local.json" ] || { echo "no local settings in $1: osti has not installed its guard" >&2; return 1; }
   wt=$(cd "$1" && pwd -P) && tmp=$(cd "$(getconf DARWIN_USER_TEMP_DIR)" && pwd -P) || return 1
-  jq -ce --slurpfile own "$root/scripts/crew-sandbox.json" --arg wt "$wt" --arg tmp "$tmp" '
+  # The test runner's sockets, in launchd's folders, which are named afresh at
+  # each start of the Mac, so they are looked up here.
+  sockets=$(printf '%s\n' /private/var/tmp/com.apple.launchd.*/com.apple.testmanagerd.unix-domain.socket |
+    grep -v '\*' | jq -R . | jq -sc .)
+  jq -ce --slurpfile own "$root/scripts/crew-sandbox.json" --arg wt "$wt" --arg tmp "$tmp" --argjson sockets "$sockets" '
     def abs: if startswith("./") then $wt + .[1:] else . end;
     def join(a; b): (a // []) as $a | $a + [(b // [])[] | select(. as $x | $a | index([$x]) | not)];
     (.sandbox // {}) as $o | $own[0] as $i
@@ -122,6 +126,7 @@ session_settings() {
            denyWrite: $deny}),
          network: (($o.network // {}) + {
            allowMachLookup: join($o.network.allowMachLookup; $i.network.allowMachLookup),
+           allowUnixSockets: join($o.network.allowUnixSockets; $sockets),
            allowedDomains: join($o.network.allowedDomains; $i.network.allowedDomains),
            strictAllowlist: true})})}' "$1/.claude/settings.local.json"
 }
@@ -569,6 +574,16 @@ guard_worktree() {
   return 1
 }
 
+# Fetches the iPhone app's Swift packages before the session (#2869): the
+# sandbox refuses every .git/config write, so Xcode cannot check a package out
+# inside it. Runs outside it, on a worktree nobody has touched yet. A failure
+# is logged, not fatal, since an issue may need no iPhone build.
+fetch_packages() {
+  local err
+  err=$(cd "$1" && ${CREW_JUST:-just} ios-packages 2>&1) && return 0
+  log "the Swift packages could not be fetched in $1, so its session cannot build the iPhone app: $(printf '%s' "$err" | tail -1)"
+}
+
 # ── One issue ────────────────────────────────────────────────────────────────
 
 # The newest note decides a turn that ended; $3 when there is none, and
@@ -690,7 +705,7 @@ run_issue() {
   }
   CURRENT_WT=$wt
   stop_live_in "$wt"
-  if ! guard_worktree "$wt" || ! start_session "$wt" "$n"; then
+  if ! guard_worktree "$wt" || ! { fetch_packages "$wt"; start_session "$wt" "$n"; }; then
     end_attempt "$n" failed "$wt"
     CURRENT_N=""
     return 2

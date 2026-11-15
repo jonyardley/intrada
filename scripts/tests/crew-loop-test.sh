@@ -321,6 +321,14 @@ cat >"$work/bin/rustup" <<'C'
 echo aarch64-apple-darwin
 C
 
+# just, fetching the Swift packages, unless told it fails (#2869).
+cat >"$work/bin/just" <<'C'
+#!/usr/bin/env bash
+echo "just $* in $PWD" >>"$FAKE/just.log"
+[ -f "$FAKE/packages-fail" ] && { echo "error: no network"; exit 1; }
+exit 0
+C
+
 cat >"$work/bin/qualify" <<'C'
 #!/usr/bin/env bash
 echo "$2" >"$FAKE/check1-dir"
@@ -1185,6 +1193,17 @@ ok "a worktree with no sandbox settings starts no session and ends its attempt a
   '[ -z "$(started)" ] && grep -q "sandbox settings could not be built" "$work/out" && grep -q "intrada#101 .*--outcome failed" "$FAKE/osti.log"'
 
 setup 101
+echo draft >"$FAKE/scenario-101"
+run_loop
+ok "the Swift packages are fetched in the worktree before its session" 'grep -qx "just ios-packages in $work/wt/crew-101" "$FAKE/just.log" && [ "$(started)" = 101 ]'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+touch "$FAKE/packages-fail"
+run_loop
+ok "a failed fetch is logged and the session still starts" 'grep -q "Swift packages could not be fetched" "$work/out" && [ "$(started)" = 101 ]'
+
+setup 101
 touch "$FAKE/no-ios-target"
 run_loop
 ok "a missing iPhone simulator target ends the run before check 1" \
@@ -1207,6 +1226,7 @@ ok "Intrada's allowances are added once each, the simulator service and the temp
 ok "a path relative to the worktree becomes absolute, and the hook scripts are closed to the file tools too" \
   'jq -e --arg w "$sbx_real" "(.sandbox.filesystem.denyWrite | index(\$w + \"/.claude/settings.local.json\") and index(\$w + \"/.githooks\") and index(\"/abs/.git/hooks\")) and (.permissions.deny | index(\"Edit(/\" + \$w + \"/.githooks/**)\"))" <<<"$settings" >/dev/null'
 ok "the iPhone builds are told they run inside the sandbox" 'has ".env.INTRADA_SANDBOXED == \"1\""'
+ok "the test runner's sockets are allowed as found at launch" 'has "(.sandbox.network.allowUnixSockets // []) | all(endswith(\"com.apple.testmanagerd.unix-domain.socket\"))"'
 ok "no command is let out of the sandbox" 'has "(.sandbox.excludedCommands // []) == []"'
 mkdir -p "$work/sbx-bare/.claude"
 echo '{"sandbox": {"enabled": true}}' >"$work/sbx-bare/.claude/settings.local.json"
