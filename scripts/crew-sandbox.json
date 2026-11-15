@@ -1,6 +1,7 @@
 {
   "filesystem": {
     "allowWrite": [
+      "~/.cargo/advisory-db/db.lock",
       "~/Library/Developer/CoreSimulator",
       "~/Library/Logs/CoreSimulator",
       "~/Library/Caches/org.swift.swiftpm",

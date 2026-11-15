@@ -1227,8 +1227,6 @@ sbx_real=$(cd "$sbx" && pwd -P)
 mkdir -p "$work/nogetconf" && printf '#!/bin/sh\nexit 1\n' >"$work/nogetconf/getconf" && chmod +x "$work/nogetconf/getconf"
 # The user temp folder on a Mac, TMPDIR elsewhere (CI runs these on Linux).
 tmp_real=$(cd "$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}")" && pwd -P)
-mkdir -p "$work/sock/com.apple.launchd.Ab12/other" "$work/sock/com.apple.launchd.Cd34"
-: >"$work/sock/com.apple.launchd.Ab12/com.apple.testmanagerd.unix-domain.socket"
 settings=$(CREW_SOCKET_ROOT="$work/sock" bash "$script" session-settings "$sbx" 2>&1) || settings="failed: $settings"
 has() { jq -e "$1" <<<"$settings" >/dev/null 2>&1; }
 ok "the session settings keep the hooks on and every sandbox switch shut" \
@@ -1240,8 +1238,14 @@ ok "Intrada's allowances are added once each, the simulator service and the temp
 ok "a path relative to the worktree becomes absolute, and the hook scripts are closed to the file tools too" \
   'jq -e --arg w "$sbx_real" "(.sandbox.filesystem.denyWrite | index(\$w + \"/.claude/settings.local.json\") and index(\$w + \"/.githooks\") and index(\$w + \"/.mcp.json\") and index(\"/abs/.git/hooks\")) and (.permissions.deny | index(\"Edit(/\" + \$w + \"/.githooks/**)\"))" <<<"$settings" >/dev/null'
 ok "the iPhone builds are told they run inside the sandbox" 'has ".env.INTRADA_SANDBOXED == \"1\""'
-ok "the test runner's sockets are allowed as found at launch" \
-  'jq -e --arg s "$work/sock/com.apple.launchd.Ab12/com.apple.testmanagerd.unix-domain.socket" ".sandbox.network.allowUnixSockets == [\$s]" <<<"$settings" >/dev/null'
+ok "the simulators' socket folder is allowed whole, so a simulator booted mid-session can reach its test runner" \
+  'jq -e --arg s "$work/sock" ".sandbox.network.allowUnixSockets == [\$s]" <<<"$settings" >/dev/null'
+ok "by default the socket folder is the simulators' one" \
+  'bash "$script" session-settings "$sbx" | jq -e ".sandbox.network.allowUnixSockets == [\"/private/var/tmp\"]" >/dev/null'
+ok "a socket folder at the home folder gets no settings" \
+  '! CREW_SOCKET_ROOT="$HOME" bash "$script" session-settings "$sbx" >/dev/null 2>&1'
+ok "the dependency audit can take its lock, and only its lock, in the advisory database" \
+  'has ".sandbox.filesystem.allowWrite | index(\"~/.cargo/advisory-db/db.lock\")"'
 ok "no command is let out of the sandbox" 'has ".sandbox.excludedCommands == []"'
 mkdir -p "$work/sbx-bare/.claude"
 echo '{"sandbox": {"enabled": true}}' >"$work/sbx-bare/.claude/settings.local.json"
