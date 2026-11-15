@@ -117,7 +117,7 @@ session_settings() {
     and (.sandbox.filesystem.denyWrite // [] | any(endswith("/.git/config") or . == "./.git"))' \
     "$1/.claude/settings.local.json" >/dev/null 2>&1 ||
     { echo "the local settings in $1 lack osti's sandbox block" >&2; return 1; }
-  wt=$(cd "$1" && pwd -P) && tmp=$(cd "$(getconf DARWIN_USER_TEMP_DIR)" && pwd -P) || return 1
+  wt=$(cd "$1" && pwd -P) && tmp=$(cd "$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}")" && pwd -P) || return 1
   # The test runner's sockets, in launchd's folders, which are named afresh at
   # each start of the Mac, so they are looked up here.
   sockets=$(printf '%s\n' "${CREW_SOCKET_ROOT:-/private/var/tmp}"/com.apple.launchd.*/com.apple.testmanagerd.unix-domain.socket |

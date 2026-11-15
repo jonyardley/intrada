@@ -1224,6 +1224,8 @@ sbx="$work/sbx"
 mkdir -p "$sbx/.claude"
 cp "$work/osti-settings.json" "$sbx/.claude/settings.local.json"
 sbx_real=$(cd "$sbx" && pwd -P)
+# The user temp folder on a Mac, TMPDIR elsewhere (CI runs these on Linux).
+tmp_real=$(cd "$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}")" && pwd -P)
 mkdir -p "$work/sock/com.apple.launchd.Ab12/other" "$work/sock/com.apple.launchd.Cd34"
 : >"$work/sock/com.apple.launchd.Ab12/com.apple.testmanagerd.unix-domain.socket"
 settings=$(CREW_SOCKET_ROOT="$work/sock" bash "$script" session-settings "$sbx" 2>&1) || settings="failed: $settings"
@@ -1233,7 +1235,7 @@ ok "the session settings keep the hooks on and every sandbox switch shut" \
 ok "osti's lists and switches are carried, since a launch flag with lists drops the local ones" \
   'has ".sandbox.enableWeakerNetworkIsolation and (.sandbox.filesystem.denyRead == [\"~/.ssh\"]) and (.sandbox.network.allowedDomains[:2] == [\"github.com\", \"crates.io\"]) and (.sandbox.filesystem.allowWrite[0] == \"~/.cargo/registry\") and (.permissions.deny[0] == \"Read(~/.ssh)\") and (.permissions.allow == [\"Bash(ls:*)\"])"'
 ok "Intrada's allowances are added once each, the simulator service and the temp folder among them" \
-  'has "(.sandbox.network.allowMachLookup | index(\"com.apple.CoreSimulator.CoreSimulatorService\")) and (.sandbox.network.allowedDomains | length == (unique | length)) and (.sandbox.filesystem.allowWrite | any(startswith(\"/private/var/folders/\")))"'
+  'has "(.sandbox.network.allowMachLookup | index(\"com.apple.CoreSimulator.CoreSimulatorService\")) and (.sandbox.network.allowedDomains | length == (unique | length)) and (.sandbox.filesystem.allowWrite | index(\"$tmp_real\"))"'
 ok "a path relative to the worktree becomes absolute, and the hook scripts are closed to the file tools too" \
   'jq -e --arg w "$sbx_real" "(.sandbox.filesystem.denyWrite | index(\$w + \"/.claude/settings.local.json\") and index(\$w + \"/.githooks\") and index(\$w + \"/.mcp.json\") and index(\"/abs/.git/hooks\")) and (.permissions.deny | index(\"Edit(/\" + \$w + \"/.githooks/**)\"))" <<<"$settings" >/dev/null'
 ok "the iPhone builds are told they run inside the sandbox" 'has ".env.INTRADA_SANDBOXED == \"1\""'
