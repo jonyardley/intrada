@@ -102,6 +102,8 @@ worktrees() {
 # worktree code hooks run outside the sandbox: the SessionStart scripts, git's
 # hooks folder (core.hooksPath) and the toolchain pin rustfmt's hook obeys; the
 # Edit rules keep the file tools, which run outside it too, off them.
+# INTRADA_SANDBOXED tells the iPhone builds to leave Xcode's own package
+# sandbox off, since it cannot start inside this one.
 session_settings() {
   local wt tmp
   [ -f "$1/.claude/settings.local.json" ] || { echo "no local settings in $1: osti has not installed its guard" >&2; return 1; }
@@ -111,7 +113,7 @@ session_settings() {
     def join(a; b): (a // []) as $a | $a + [(b // [])[] | select(. as $x | $a | index([$x]) | not)];
     (.sandbox // {}) as $o | $own[0] as $i
     | join($o.filesystem.denyWrite // [] | map(abs); $i.filesystem.denyWrite | map(abs)) as $deny
-    | {disableAllHooks: false,
+    | {disableAllHooks: false, env: {INTRADA_SANDBOXED: "1"},
        permissions: ((.permissions // {}) + {deny: join(.permissions.deny; [$deny[] | "Edit(/\(.))", "Edit(/\(.)/**)"])}),
        sandbox: ($o + {enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true,
          allowUnsandboxedCommands: false,

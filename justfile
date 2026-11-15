@@ -795,9 +795,14 @@ _ios-build-for-testing:
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
+    # In a crew loop session Claude's sandbox wraps the build and refuses the
+    # one Xcode starts to read package manifests, so the loop sets
+    # INTRADA_SANDBOXED and Xcode's is left off; the owner chose that (#2869).
+    sbx=()
+    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox YES -IDEPackageSupportDisablePluginExecutionSandbox YES)
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
-        -clonedSourcePackagesDirPath build/spm -quiet \
+        -clonedSourcePackagesDirPath build/spm -quiet ${sbx[@]+"${sbx[@]}"} \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
     # Swift Testing runs the unit tests in parallel inside one process, still on
     # one simulator (#2741). Set here because XcodeGen writes only on or off for

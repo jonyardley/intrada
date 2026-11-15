@@ -1206,6 +1206,7 @@ ok "Intrada's allowances are added once each, the simulator service and the temp
   'has "(.sandbox.network.allowMachLookup | index(\"com.apple.CoreSimulator.CoreSimulatorService\")) and (.sandbox.network.allowedDomains | length == (unique | length)) and (.sandbox.filesystem.allowWrite | any(startswith(\"/private/var/folders/\")))"'
 ok "a path relative to the worktree becomes absolute, and the hook scripts are closed to the file tools too" \
   'jq -e --arg w "$sbx_real" "(.sandbox.filesystem.denyWrite | index(\$w + \"/.claude/settings.local.json\") and index(\$w + \"/.githooks\") and index(\"/abs/.git/hooks\")) and (.permissions.deny | index(\"Edit(/\" + \$w + \"/.githooks/**)\"))" <<<"$settings" >/dev/null'
+ok "the iPhone builds are told they run inside the sandbox" 'has ".env.INTRADA_SANDBOXED == \"1\""'
 ok "no command is let out of the sandbox" 'has "(.sandbox.excludedCommands // []) == []"'
 mkdir -p "$work/sbx-bare/.claude"
 echo '{"sandbox": {"enabled": true}}' >"$work/sbx-bare/.claude/settings.local.json"
