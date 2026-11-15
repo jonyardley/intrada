@@ -231,6 +231,13 @@ case "$1" in
     printf 'guard %s agent=%s/%s/%s\n' "$*" "${OSTINATO_AGENT_KEYCHAIN_SERVICE:-}" \
       "${OSTINATO_AGENT_KEYCHAIN_ACCOUNT:-}" "${OSTINATO_AGENT_EMAIL:-}" >>"$FAKE/osti.log"
     [ -f "$FAKE/guard-fails" ] && { echo "osti guard: the install failed" >&2; exit 1; }
+    # The real install writes the sandbox block into the worktree (#2869).
+    wt="" prev=""
+    for a in "$@"; do
+      [ "$prev" = --worktree ] && wt=$a
+      prev=$a
+    done
+    [ -f "$FAKE/guard-no-settings" ] || { mkdir -p "$wt/.claude" && cp "$FAKE/../osti-settings.json" "$wt/.claude/settings.local.json"; }
     exit 0
     ;;
 esac
@@ -297,6 +304,31 @@ cat >"$work/bin/osascript" <<'O'
 printf '%s\n' "${*: -1}" >>"$FAKE/osascript"
 O
 # Harness check 1: writes a result, as crew-qualify.sh does, and keeps its folder.
+# Osti's own block, a cut down copy of what its install writes (#2869).
+cat >"$work/osti-settings.json" <<'J'
+{"permissions": {"deny": ["Read(~/.ssh)"], "allow": ["Bash(ls:*)"]},
+ "sandbox": {"enabled": true, "enableWeakerNetworkIsolation": true, "excludedCommands": ["git"],
+   "filesystem": {"denyRead": ["~/.ssh"], "allowWrite": ["~/.cargo/registry"],
+     "denyWrite": ["./.claude/settings.local.json", "/abs/.git/hooks", "/abs/.git/config"]},
+   "network": {"allowedDomains": ["github.com", "crates.io"], "strictAllowlist": false}}}
+J
+
+# rustup with the pinned toolchain and the simulator target, unless told the
+# target is missing (#2869).
+cat >"$work/bin/rustup" <<'C'
+#!/usr/bin/env bash
+[ -f "$FAKE/no-ios-target" ] || echo aarch64-apple-ios-sim
+echo aarch64-apple-darwin
+C
+
+# just, fetching the Swift packages, unless told it fails (#2869).
+cat >"$work/bin/just" <<'C'
+#!/usr/bin/env bash
+echo "just $* in $PWD" >>"$FAKE/just.log"
+[ -f "$FAKE/packages-fail" ] && { echo "error: no network"; exit 1; }
+exit 0
+C
+
 cat >"$work/bin/qualify" <<'C'
 #!/usr/bin/env bash
 echo "$2" >"$FAKE/check1-dir"
@@ -586,7 +618,7 @@ run_loop
 ok "a draft is announced, with no park" \
   'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! grep -qx needs-owner <<<"$(labels 101)" && grep -q "run over: 1 issue run" "$work/out" && grep -qx "Crew finished: 1 issue run, details on each issue" "$FAKE/notified"'
 ok "the session is started as the crew, on Opus at high effort, with the brief" \
-  'grep -qF -- "--bg --model opus --effort high --permission-mode auto --settings {\"disableAllHooks\":false} -n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
+  'grep -qF -- "--bg --model opus --effort high --permission-mode auto --settings {\"disableAllHooks\":false," "$FAKE/calls" && grep -qF -- "-n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
 
 setup 101
@@ -1153,6 +1185,110 @@ touch "$FAKE/guard-fails"
 run_loop
 ok "a guard install that fails starts no session, ends the attempt as failed and the run" \
   '[ -z "$(started)" ] && grep -q "osti guard install failed" "$work/out" && grep -q "intrada#101 .*--outcome failed" "$FAKE/osti.log" && ! grep -qx 102 "$FAKE/picked"'
+
+setup 101 102
+touch "$FAKE/guard-no-settings"
+run_loop
+ok "a worktree with no sandbox settings starts no session and ends its attempt as failed" \
+  '[ -z "$(started)" ] && grep -q "sandbox settings could not be built" "$work/out" && grep -q "intrada#101 .*--outcome failed" "$FAKE/osti.log"'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+run_loop
+ok "the Swift packages are fetched in the worktree before its session" 'grep -qx "just ios-packages in $work/wt/crew-101" "$FAKE/just.log" && [ "$(started)" = 101 ]'
+
+# A reused worktree holds what an earlier session wrote, and the fetch runs
+# outside the sandbox.
+setup 101
+echo draft >"$FAKE/scenario-101"
+mkdir -p "$work/wt/crew-101"
+run_loop
+ok "a worktree already there gets no fetch outside the sandbox, and its session still starts" \
+  '! grep -q "^just " "$FAKE/just.log" 2>/dev/null && grep -q "crew-101 was already there" "$work/out" && [ "$(started)" = 101 ]'
+
+setup 101
+echo draft >"$FAKE/scenario-101"
+touch "$FAKE/packages-fail"
+run_loop
+ok "a failed fetch is logged and the session still starts" 'grep -q "Swift packages could not be fetched" "$work/out" && [ "$(started)" = 101 ]'
+
+setup 101
+touch "$FAKE/no-ios-target"
+run_loop
+ok "a missing iPhone simulator target ends the run before check 1" \
+  '[ -z "$(started)" ] && [ ! -e "$FAKE/check1-dir" ] && grep -q "iPhone simulator target is missing" "$work/out" && grep -q "exit=1" "$work/rc"'
+
+# ── the sandbox block a session starts with (#2869) ──────────────────────────
+
+sbx="$work/sbx"
+mkdir -p "$sbx/.claude"
+cp "$work/osti-settings.json" "$sbx/.claude/settings.local.json"
+sbx_real=$(cd "$sbx" && pwd -P)
+mkdir -p "$work/nogetconf" && printf '#!/bin/sh\nexit 1\n' >"$work/nogetconf/getconf" && chmod +x "$work/nogetconf/getconf"
+# The user temp folder on a Mac, TMPDIR elsewhere (CI runs these on Linux).
+tmp_real=$(cd "$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}")" && pwd -P)
+mkdir -p "$work/sock/com.apple.launchd.Ab12/other" "$work/sock/com.apple.launchd.Cd34"
+: >"$work/sock/com.apple.launchd.Ab12/com.apple.testmanagerd.unix-domain.socket"
+settings=$(CREW_SOCKET_ROOT="$work/sock" bash "$script" session-settings "$sbx" 2>&1) || settings="failed: $settings"
+has() { jq -e "$1" <<<"$settings" >/dev/null 2>&1; }
+ok "the session settings keep the hooks on and every sandbox switch shut" \
+  'has ".disableAllHooks == false and .sandbox.enabled and .sandbox.failIfUnavailable and .sandbox.allowUnsandboxedCommands == false and .sandbox.autoAllowBashIfSandboxed and .sandbox.network.strictAllowlist"'
+ok "osti's lists and switches are carried, since a launch flag with lists drops the local ones" \
+  'has ".sandbox.enableWeakerNetworkIsolation and (.sandbox.filesystem.denyRead == [\"~/.ssh\"]) and (.sandbox.network.allowedDomains[:2] == [\"github.com\", \"crates.io\"]) and (.sandbox.filesystem.allowWrite[0] == \"~/.cargo/registry\") and (.permissions.deny[0] == \"Read(~/.ssh)\") and (.permissions.allow == [\"Bash(ls:*)\"])"'
+ok "Intrada's allowances are added once each, the simulator service and the temp folder among them" \
+  'has "(.sandbox.network.allowMachLookup | index(\"com.apple.CoreSimulator.CoreSimulatorService\")) and (.sandbox.network.allowedDomains | length == (unique | length)) and (.sandbox.filesystem.allowWrite | index(\"$tmp_real\"))"'
+ok "a path relative to the worktree becomes absolute, and the hook scripts are closed to the file tools too" \
+  'jq -e --arg w "$sbx_real" "(.sandbox.filesystem.denyWrite | index(\$w + \"/.claude/settings.local.json\") and index(\$w + \"/.githooks\") and index(\$w + \"/.mcp.json\") and index(\"/abs/.git/hooks\")) and (.permissions.deny | index(\"Edit(/\" + \$w + \"/.githooks/**)\"))" <<<"$settings" >/dev/null'
+ok "the iPhone builds are told they run inside the sandbox" 'has ".env.INTRADA_SANDBOXED == \"1\""'
+ok "the test runner's sockets are allowed as found at launch" \
+  'jq -e --arg s "$work/sock/com.apple.launchd.Ab12/com.apple.testmanagerd.unix-domain.socket" ".sandbox.network.allowUnixSockets == [\$s]" <<<"$settings" >/dev/null'
+ok "no command is let out of the sandbox" 'has ".sandbox.excludedCommands == []"'
+mkdir -p "$work/sbx-bare/.claude"
+echo '{"sandbox": {"enabled": true}}' >"$work/sbx-bare/.claude/settings.local.json"
+ok "a local file without osti's block gets no settings" '! bash "$script" session-settings "$work/sbx-bare" >/dev/null 2>&1'
+mkdir -p "$work/sbx-nogit/.claude"
+jq '.sandbox.filesystem.denyWrite -= ["/abs/.git/config"]' "$work/osti-settings.json" >"$work/sbx-nogit/.claude/settings.local.json"
+ok "a local block that leaves git's config writable gets no settings" '! bash "$script" session-settings "$work/sbx-nogit" >/dev/null 2>&1'
+mkdir -p "$work/sbx-nossh/.claude"
+jq '.sandbox.filesystem.denyRead = []' "$work/osti-settings.json" >"$work/sbx-nossh/.claude/settings.local.json"
+ok "a local block that leaves ~/.ssh readable gets no settings" '! bash "$script" session-settings "$work/sbx-nossh" >/dev/null 2>&1'
+ok "a temp folder in the home folder is refused off the Mac" \
+  '! PATH="$work/nogetconf:$PATH" TMPDIR="$HOME" bash "$script" session-settings "$sbx" >/dev/null 2>&1'
+ok "a worktree with no local settings gets none" '! bash "$script" session-settings "$work/no-such-worktree" >/dev/null 2>&1'
+
+# ── hooks that run outside the sandbox (#2869) ───────────────────────────────
+
+# The rustfmt hook ignores any toolchain file a session could write.
+hk="$work/hooks"
+mkdir -p "$hk/bin" "$hk/home" "$hk/src"
+cat >"$hk/bin/rustfmt" <<'R'
+#!/usr/bin/env bash
+printf '%s|%s|%s\n' "${RUSTUP_TOOLCHAIN:-unset}" "$PWD" "$*" >>"$HK/rustfmt.log"
+R
+chmod +x "$hk/bin/rustfmt"
+echo 'nightly' >"$hk/src/rust-toolchain"
+fmt_hook=$(jq -r '.hooks.PostToolUse[] | select(.matcher == "Edit|Write") | .hooks[0].command' "$root/.claude/settings.json")
+(cd "$hk/src" && jq -n --arg f "$hk/src/a.rs" '{tool_input: {file_path: $f}}' |
+  HK="$hk" HOME="$hk/home" PATH="$hk/bin:$PATH" bash -c "$fmt_hook")
+ok "the rustfmt hook runs the stable toolchain from the home folder on the edited file" \
+  '[ "$(cat "$hk/rustfmt.log" 2>/dev/null)" = "stable|$(cd "$hk/home" && pwd)|--edition 2021 $hk/src/a.rs" ]'
+
+# The SessionStart scripts run from the main checkout, never the worktree's copy.
+gm="$work/gitmain"
+mkdir -p "$gm"
+git -C "$gm" init -q
+git -C "$gm" -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+git -C "$gm" worktree add -q "$work/gitwt" 2>/dev/null
+for s in install-git-hooks.sh session-claims.sh; do
+  mkdir -p "$gm/scripts" "$work/gitwt/scripts"
+  printf 'echo "main %s $PWD" >>"%s"\n' "$s" "$work/hook-runs" >"$gm/scripts/$s"
+  printf 'echo "worktree %s" >>"%s"\n' "$s" "$work/hook-runs" >"$work/gitwt/scripts/$s"
+done
+jq -r '.hooks.SessionStart[].hooks[].command' "$root/.claude/settings.json" | while IFS= read -r c; do
+  (cd "$work/gitwt" && CLAUDE_PROJECT_DIR="$work/gitwt" bash -c "$c") >/dev/null 2>&1 || :
+done
+ok "the SessionStart scripts run from the main checkout, in the worktree" \
+  '[ "$(sort "$work/hook-runs" 2>/dev/null)" = "$(printf "main install-git-hooks.sh %s\nmain session-claims.sh %s" "$work/gitwt" "$work/gitwt")" ]'
 
 setup 101
 echo nostart >"$FAKE/scenario-101"

@@ -283,13 +283,23 @@ drop_worktree() {
 # A fourth argument, probe, starts check 1's session as the loop would but
 # without INTRADA_CREW, so only osti's guard can refuse it (#2854).
 #
-# Both start with the loop's own --settings value (#2865).
+# Both start with the loop's own --settings value (#2865), which is built from
+# the sandbox block osti's install writes, so a worktree without one gets the
+# install first, as every loop worktree does (#2869).
 start_session() {
-  local wt=$1 name=$2 prompt=$3 out id settings launch
-  settings=$(bash "$(dirname "${BASH_SOURCE[0]}")/crew-loop.sh" session-settings) || {
-    echo "could not read the loop's session settings" >&2
-    return 1
-  }
+  local wt=$1 name=$2 prompt=$3 out id settings launch err loop
+  loop="$(dirname "${BASH_SOURCE[0]}")/crew-loop.sh"
+  # No local file, or one without osti's block, gets the install (#2869).
+  if ! settings=$(bash "$loop" session-settings "$wt" 2>/dev/null); then
+    err=$("${CREW_OSTI:-osti}" guard install --worktree "$wt" 2>&1 >/dev/null) || {
+      echo "osti guard install failed in $wt: $(printf '%s' "$err" | tail -1)" >&2
+      return 1
+    }
+    settings=$(bash "$loop" session-settings "$wt" 2>&1) || {
+      echo "could not read the loop's session settings: $(printf '%s' "$settings" | tail -1)" >&2
+      return 1
+    }
+  fi
   launch=(claude --bg --model sonnet --permission-mode auto --settings "$settings" -n "$name" "$prompt")
   if [ "${4:-}" = probe ]; then
     out=$(cd "$wt" && env -u INTRADA_CREW OSTINATO_RUN="qualify-$(date -u +%Y%m%d-%H%M%S)" \
