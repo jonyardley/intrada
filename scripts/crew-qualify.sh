@@ -283,10 +283,13 @@ drop_worktree() {
 # A fourth argument, probe, starts check 1's session as the loop would but
 # without INTRADA_CREW, so only osti's guard can refuse it (#2854).
 #
-# Both start with the loop's own --settings value (#2865).
+# Both start with the loop's own --settings value (#2865), which is built from
+# the sandbox block osti's install writes, so a worktree without one gets the
+# install first, as every loop worktree does (#2869).
 start_session() {
   local wt=$1 name=$2 prompt=$3 out id settings launch
-  settings=$(bash "$(dirname "${BASH_SOURCE[0]}")/crew-loop.sh" session-settings) || {
+  [ -f "$wt/.claude/settings.local.json" ] || "${CREW_OSTI:-osti}" guard install --worktree "$wt" >/dev/null 2>&1
+  settings=$(bash "$(dirname "${BASH_SOURCE[0]}")/crew-loop.sh" session-settings "$wt") || {
     echo "could not read the loop's session settings" >&2
     return 1
   }

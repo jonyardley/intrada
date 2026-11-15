@@ -88,11 +88,39 @@ worktrees() {
 
 # ── Sessions ─────────────────────────────────────────────────────────────────
 
-# Passed as --settings to every session started in a worktree (#2865): a launch
-# flag outranks the main checkout's local settings, which can otherwise switch
-# off the hooks osti installs. Later keys (#2869) join this one object.
+# Passed as --settings to every session started in a worktree, $1 (#2865): a
+# launch flag outranks the main checkout's local settings, which can otherwise
+# switch off the hooks osti installs.
+#
+# The sandbox (#2869): strictAllowlist counts only from a launch flag, and a
+# flag that holds any sandbox list drops every list in the worktree's local
+# settings (seen live on Claude Code 2.1.325). So the flag carries the whole
+# block: osti's, read from the worktree after its install, with Intrada's from
+# crew-sandbox.json on top, read from the loop's own checkout, never the
+# worktree. mktemp and Xcode write to the user temp folder whatever TMPDIR says,
+# and the sandbox wants its real /private path. The denyWrite entries are the
+# worktree code hooks run outside the sandbox: the SessionStart scripts, git's
+# hooks folder (core.hooksPath) and the toolchain pin rustfmt's hook obeys; the
+# Edit rules keep the file tools, which run outside it too, off them.
 session_settings() {
-  printf '%s' '{"disableAllHooks":false}'
+  local wt tmp
+  [ -f "$1/.claude/settings.local.json" ] || { echo "no local settings in $1: osti has not installed its guard" >&2; return 1; }
+  wt=$(cd "$1" && pwd -P) && tmp=$(cd "$(getconf DARWIN_USER_TEMP_DIR)" && pwd -P) || return 1
+  jq -ce --slurpfile own "$root/scripts/crew-sandbox.json" --arg wt "$wt" --arg tmp "$tmp" '
+    def abs: if startswith("./") then $wt + .[1:] else . end;
+    def join(a; b): (a // []) as $a | $a + [(b // [])[] | select(. as $x | $a | index([$x]) | not)];
+    (.sandbox // {}) as $o | $own[0] as $i | ($i.filesystem.denyWrite | map(abs)) as $deny
+    | {disableAllHooks: false,
+       permissions: ((.permissions // {}) + {deny: join(.permissions.deny; [$deny[] | "Edit(/\(.))", "Edit(/\(.)/**)"])}),
+       sandbox: ($o + {enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true,
+         allowUnsandboxedCommands: false,
+         filesystem: (($o.filesystem // {}) + {
+           allowWrite: join($o.filesystem.allowWrite; $i.filesystem.allowWrite + [$tmp]),
+           denyWrite: join($o.filesystem.denyWrite // [] | map(abs); $deny)}),
+         network: (($o.network // {}) + {
+           allowMachLookup: join($o.network.allowMachLookup; $i.network.allowMachLookup),
+           allowedDomains: join($o.network.allowedDomains; $i.network.allowedDomains),
+           strictAllowlist: true})})}' "$1/.claude/settings.local.json"
 }
 
 agent_record() {
@@ -166,12 +194,16 @@ stop_named() {
 # `claude --bg` prints its id only as text (#2821). One that shows up too late
 # may still run, so any session by that name is stopped.
 start_session() {
-  local wt=$1 n=$2 out since try=0 found
+  local wt=$1 n=$2 out since try=0 found settings
+  settings=$(session_settings "$wt" 2>&1) || {
+    log "#$n: no session starts, since its sandbox settings could not be built: $(printf '%s' "$settings" | tail -1)"
+    return 1
+  }
   since=$(($(now) * 1000))
   # The run and attempt ride in the first prompt too, so every `osti write` the
   # session makes names them (#2854).
   out=$(cd "$wt" && INTRADA_CREW=1 OSTINATO_RUN=$RUN OSTINATO_PROJECT=$REPO claude --bg --model opus \
-    --effort high --permission-mode auto --settings "$(session_settings)" -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
+    --effort high --permission-mode auto --settings "$settings" -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
   STARTED_ID=""
   while [ -z "$STARTED_ID" ] && [ "$try" -lt "$START_TRIES" ]; do
     [ "$try" -gt 0 ] && sleep "${CREW_START_WAIT:-2}"
@@ -515,6 +547,16 @@ check_guards() {
   return "$passed"
 }
 
+# A sandboxed session can neither write ~/.rustup nor reach rustup's host, so
+# the pinned toolchain and the target the simulator build needs come first (#2869).
+toolchain_ready() {
+  local channel targets
+  channel=$(sed -n 's/^channel *= *"\(.*\)"$/\1/p' "$root/rust-toolchain.toml")
+  # Read whole first: grep -q stopping early would fail the pipe under pipefail.
+  [ -n "$channel" ] && targets=$(rustup target list --installed --toolchain "$channel" 2>/dev/null) &&
+    grep -qx aarch64-apple-ios-sim <<<"$targets"
+}
+
 # Each worktree gets osti's guard, with the agent's identity from the
 # environment, before its session starts (#2854).
 guard_worktree() {
@@ -790,6 +832,10 @@ main() {
     log "osti is not installed (just install in the Ostinato repo), so no run starts: the run record and the guard need it"
     exit 1
   fi
+  if ! toolchain_ready; then
+    log "the pinned Rust toolchain or its iPhone simulator target is missing, and a sandboxed session cannot install either: run rustup target add aarch64-apple-ios-sim in the main checkout"
+    exit 1
+  fi
   stay_awake
   trap 'on_signal 130' INT
   trap 'on_signal 143' TERM
@@ -907,10 +953,13 @@ $q"
   exit 0
 }
 
-usage="usage: $0 [stop-session <id> | issue <issue> | lessons | session-settings]"
+usage="usage: $0 [stop-session <id> | issue <issue> | lessons | session-settings <worktree>]"
 case "${1:-}" in
   "") main ;;
-  session-settings) session_settings ;;
+  session-settings)
+    [ $# -eq 2 ] || { echo "$usage" >&2; exit 2; }
+    session_settings "$2"
+    ;;
   stop-session)
     [ $# -eq 2 ] || { echo "$usage" >&2; exit 2; }
     stop_session "$2"

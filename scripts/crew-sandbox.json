@@ -1,0 +1,35 @@
+{
+  "filesystem": {
+    "allowWrite": [
+      "~/Library/Developer/CoreSimulator",
+      "~/Library/Logs/CoreSimulator",
+      "~/Library/Caches/org.swift.swiftpm",
+      "~/Library/org.swift.swiftpm",
+      "~/.xcodegen",
+      "/private/tmp/intrada-ios-test.lock",
+      "/private/tmp/intrada-ios-sim-template.lock",
+      "/private/tmp/ios-build.log"
+    ],
+    "denyWrite": [
+      "./.githooks",
+      "./scripts/install-git-hooks.sh",
+      "./scripts/session-claims.sh",
+      "./scripts/lib/claim-branch.sh",
+      "./rust-toolchain.toml"
+    ]
+  },
+  "network": {
+    "allowMachLookup": [
+      "com.apple.CoreSimulator.CoreSimulatorService",
+      "com.apple.CoreSimulator.simdiskimaged",
+      "com.apple.CoreSimulator.SimLaunchHost-arm64",
+      "com.apple.CoreSimulator.SimulatorTrampoline",
+      "com.apple.testmanagerd"
+    ],
+    "allowedDomains": [
+      "codeload.github.com",
+      "objects.githubusercontent.com",
+      "release-assets.githubusercontent.com"
+    ]
+  }
+}

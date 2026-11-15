@@ -290,9 +290,11 @@ cat >"$work/c1/bin/claude" <<'C'
 echo "claude $*" >>"$C1/calls"
 exit 1
 C
+# Writes a sandbox block, as the real install does (#2869).
 cat >"$work/c1/bin/osti" <<'O'
 #!/usr/bin/env bash
 echo "bare osti $*" >>"$C1/calls"
+[ "$3" = --worktree ] && mkdir -p "$4/.claude" && echo '{"sandbox":{"enabled":true}}' >"$4/.claude/settings.local.json"
 exit 0
 O
 cat >"$work/c1/bin/chosen-osti" <<'O'

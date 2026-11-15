@@ -231,6 +231,13 @@ case "$1" in
     printf 'guard %s agent=%s/%s/%s\n' "$*" "${OSTINATO_AGENT_KEYCHAIN_SERVICE:-}" \
       "${OSTINATO_AGENT_KEYCHAIN_ACCOUNT:-}" "${OSTINATO_AGENT_EMAIL:-}" >>"$FAKE/osti.log"
     [ -f "$FAKE/guard-fails" ] && { echo "osti guard: the install failed" >&2; exit 1; }
+    # The real install writes the sandbox block into the worktree (#2869).
+    wt="" prev=""
+    for a in "$@"; do
+      [ "$prev" = --worktree ] && wt=$a
+      prev=$a
+    done
+    [ -f "$FAKE/guard-no-settings" ] || { mkdir -p "$wt/.claude" && cp "$FAKE/../osti-settings.json" "$wt/.claude/settings.local.json"; }
     exit 0
     ;;
 esac
@@ -297,6 +304,23 @@ cat >"$work/bin/osascript" <<'O'
 printf '%s\n' "${*: -1}" >>"$FAKE/osascript"
 O
 # Harness check 1: writes a result, as crew-qualify.sh does, and keeps its folder.
+# Osti's own block, a cut down copy of what its install writes (#2869).
+cat >"$work/osti-settings.json" <<'J'
+{"permissions": {"deny": ["Read(~/.ssh)"], "allow": ["Bash(ls:*)"]},
+ "sandbox": {"enabled": true, "enableWeakerNetworkIsolation": true,
+   "filesystem": {"denyRead": ["~/.ssh"], "allowWrite": ["~/.cargo/registry"],
+     "denyWrite": ["./.claude/settings.local.json", "/abs/.git/hooks"]},
+   "network": {"allowedDomains": ["github.com", "crates.io"], "strictAllowlist": false}}}
+J
+
+# rustup with the pinned toolchain and the simulator target, unless told the
+# target is missing (#2869).
+cat >"$work/bin/rustup" <<'C'
+#!/usr/bin/env bash
+[ -f "$FAKE/no-ios-target" ] || echo aarch64-apple-ios-sim
+echo aarch64-apple-darwin
+C
+
 cat >"$work/bin/qualify" <<'C'
 #!/usr/bin/env bash
 echo "$2" >"$FAKE/check1-dir"
@@ -586,7 +610,7 @@ run_loop
 ok "a draft is announced, with no park" \
   'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! grep -qx needs-owner <<<"$(labels 101)" && grep -q "run over: 1 issue run" "$work/out" && grep -qx "Crew finished: 1 issue run, details on each issue" "$FAKE/notified"'
 ok "the session is started as the crew, on Opus at high effort, with the brief" \
-  'grep -qF -- "--bg --model opus --effort high --permission-mode auto --settings {\"disableAllHooks\":false} -n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
+  'grep -qF -- "--bg --model opus --effort high --permission-mode auto --settings {\"disableAllHooks\":false," "$FAKE/calls" && grep -qF -- "-n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
 
 setup 101
@@ -1153,6 +1177,41 @@ touch "$FAKE/guard-fails"
 run_loop
 ok "a guard install that fails starts no session, ends the attempt as failed and the run" \
   '[ -z "$(started)" ] && grep -q "osti guard install failed" "$work/out" && grep -q "intrada#101 .*--outcome failed" "$FAKE/osti.log" && ! grep -qx 102 "$FAKE/picked"'
+
+setup 101 102
+touch "$FAKE/guard-no-settings"
+run_loop
+ok "a worktree with no sandbox settings starts no session and ends its attempt as failed" \
+  '[ -z "$(started)" ] && grep -q "sandbox settings could not be built" "$work/out" && grep -q "intrada#101 .*--outcome failed" "$FAKE/osti.log"'
+
+setup 101
+touch "$FAKE/no-ios-target"
+run_loop
+ok "a missing iPhone simulator target ends the run before check 1" \
+  '[ -z "$(started)" ] && [ ! -e "$FAKE/check1-dir" ] && grep -q "iPhone simulator target is missing" "$work/out" && grep -q "exit=1" "$work/rc"'
+
+# ── the sandbox block a session starts with (#2869) ──────────────────────────
+
+sbx="$work/sbx"
+mkdir -p "$sbx/.claude"
+cp "$work/osti-settings.json" "$sbx/.claude/settings.local.json"
+sbx_real=$(cd "$sbx" && pwd -P)
+settings=$(bash "$script" session-settings "$sbx" 2>&1) || settings="failed: $settings"
+has() { jq -e "$1" <<<"$settings" >/dev/null 2>&1; }
+ok "the session settings keep the hooks on and every sandbox switch shut" \
+  'has ".disableAllHooks == false and .sandbox.enabled and .sandbox.failIfUnavailable and .sandbox.allowUnsandboxedCommands == false and .sandbox.autoAllowBashIfSandboxed and .sandbox.network.strictAllowlist"'
+ok "osti's lists and switches are carried, since a launch flag with lists drops the local ones" \
+  'has ".sandbox.enableWeakerNetworkIsolation and (.sandbox.filesystem.denyRead == [\"~/.ssh\"]) and (.sandbox.network.allowedDomains[:2] == [\"github.com\", \"crates.io\"]) and (.sandbox.filesystem.allowWrite[0] == \"~/.cargo/registry\") and (.permissions.deny[0] == \"Read(~/.ssh)\") and (.permissions.allow == [\"Bash(ls:*)\"])"'
+ok "Intrada's allowances are added once each, the simulator service and the temp folder among them" \
+  'has "(.sandbox.network.allowMachLookup | index(\"com.apple.CoreSimulator.CoreSimulatorService\")) and (.sandbox.network.allowedDomains | length == (unique | length)) and (.sandbox.filesystem.allowWrite | any(startswith(\"/private/var/folders/\")))"'
+ok "a path relative to the worktree becomes absolute, and the hook scripts are closed to the file tools too" \
+  'jq -e --arg w "$sbx_real" "(.sandbox.filesystem.denyWrite | index(\$w + \"/.claude/settings.local.json\") and index(\$w + \"/.githooks\") and index(\"/abs/.git/hooks\")) and (.permissions.deny | index(\"Edit(/\" + \$w + \"/.githooks/**)\"))" <<<"$settings" >/dev/null'
+ok "no command is let out of the sandbox" 'has "(.sandbox.excludedCommands // []) == []"'
+mkdir -p "$work/sbx-bare/.claude"
+echo '{"sandbox": {"enabled": true}}' >"$work/sbx-bare/.claude/settings.local.json"
+ok "a local block with no lists still gets Intrada's" \
+  'bash "$script" session-settings "$work/sbx-bare" | jq -e ".sandbox.filesystem.denyWrite | length == 5" >/dev/null'
+ok "a worktree with no local settings gets none" '! bash "$script" session-settings "$work/no-such-worktree" >/dev/null 2>&1'
 
 setup 101
 echo nostart >"$FAKE/scenario-101"
