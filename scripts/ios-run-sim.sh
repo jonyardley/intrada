@@ -52,7 +52,7 @@ if [ -z "${REUSE_BUILD:-}" ]; then
     # one Xcode starts to read package manifests, so the loop sets
     # INTRADA_SANDBOXED and Xcode's is left off; the owner chose that (#2869).
     sbx=()
-    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox YES -IDEPackageSupportDisablePluginExecutionSandbox YES)
+    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES)
     xcodebuild -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$UDID" -derivedDataPath "$DD" -configuration Debug \
         -clonedSourcePackagesDirPath build/spm ${sbx[@]+"${sbx[@]}"} \
