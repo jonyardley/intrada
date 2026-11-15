@@ -34,6 +34,9 @@ env:
   # Asserted by the self-hosted gate, which runs on a machine that updates
   # itself (#1637).
   SELFHOSTED_XCODE: "27.2"
+  # The simulator runtime the snapshot references pin; read by
+  # scripts/runner-health.sh, here and hourly (#2876).
+  SELFHOSTED_IOS_RUNTIME: "26.5"
 
 jobs:
   # Detects which paths changed: against the base branch on a PR, against the
@@ -344,6 +347,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      # A full disk fails the checkout itself, so the copy the last run left
+      # in this workspace checks the machine first, in seconds, with a "not
+      # your code" annotation (#2876). The fresh copy runs again below.
+      - name: Check the runner before checkout
+        run: "[ ! -f scripts/runner-health.sh ] || bash scripts/runner-health.sh"
       # `clean: true` would take `target/`, `ios/build` and `ios/generated`
       # with it, which is the warm state this machine exists for.
       # `persist-credentials: false` keeps the token out of a `.git/config`
@@ -352,6 +360,12 @@ jobs:
         with:
           clean: false
           persist-credentials: false
+      # Disk space, and the Xcode and iOS runtime pinned above: snapshot
+      # pixels come from the runtime and `swift format` defaults ship inside
+      # Xcode, so a Software Update here could move the gate with no code
+      # change (#1637).
+      - name: Check the runner (disk, Xcode, iOS runtime)
+        run: bash scripts/runner-health.sh
       # `_ios-inputs-fingerprint` hashes untracked filenames under `ios/`, so
       # one stray file makes the test step refuse. No `-x`: the ignored warm
       # caches survive, the strays do not.
@@ -374,20 +388,6 @@ jobs:
                 echo "shutting down stale simulator $udid"
                 xcrun simctl shutdown "$udid" || true
               done
-      # Snapshot pixels come from the iOS runtime and `swift format` defaults
-      # ship inside Xcode, so a Software Update on this machine could move the
-      # gate with no code change. Both are asserted rather than assumed.
-      - name: Assert the pinned toolchain
-        run: |
-          have="$(xcodebuild -version | head -1)"
-          if [ "$have" != "Xcode $SELFHOSTED_XCODE" ]; then
-            echo "runner is on $have, this gate expects Xcode $SELFHOSTED_XCODE (#1637)" >&2
-            exit 1
-          fi
-          if ! xcrun simctl list runtimes | grep -q "iOS 26.5 "; then
-            echo "the iOS 26.5 simulator runtime the snapshot references pin is missing" >&2
-            exit 1
-          fi
       # The same tree on the same Xcode and runtime gives the same answer, and
       # a merge with no other merge since its PR's last run lands exactly the
       # tree that run tested, so a tree already green here skips the three test steps below (#2113). The build stays:
@@ -1068,6 +1068,8 @@ jobs:
       # recompiles all the Swift after a logic-only core change (#2732).
       - name: The bindings sync still writes only changed files
         run: bash scripts/tests/sync-if-changed-test.sh
+      - name: The runner health check still says when the Mac is broken
+        run: bash scripts/tests/runner-health-test.sh
       # ── cargo-deny ─────────────────────────────────────────────────────
       # Replaces cargo-audit. Checks advisories (same RustSec DB), license
       # compliance, crate bans, and source restrictions in one pass.

@@ -1,0 +1,76 @@
+name: Runner health
+
+# The self-hosted Mac once failed every draft for days on its own faults, a
+# full disk and then an Xcode the gate did not expect, and each failure read as
+# a red pull request (#2876). This runs the gate's own first check hourly and
+# keeps one issue labelled runner-broken open while it fails, closed once it
+# passes. No assignee and no mentions: the issue is the only signal.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+# A runner that is away leaves hourly runs queued; one queued run is enough.
+concurrency:
+  group: runner-health
+
+jobs:
+  check:
+    name: Check the self-hosted Mac
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 5
+    # Allow-listed, as in ci.yml: a trigger added here later has to be named
+    # before it can reach the machine.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    steps:
+      # The gate's workspace is shared and warm, so only the script and the
+      # pins it reads are fetched, into a folder the gate's `git clean -ffd`
+      # drops, and nothing is cleaned.
+      - uses: actions/checkout@v7
+        with:
+          path: .runner-health
+          clean: false
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/runner-health.sh
+            .github/workflows/ci.yml
+      - name: Check disk, Xcode and iOS runtime
+        run: bash .runner-health/scripts/runner-health.sh
+
+  # On GitHub's own runner, so the issues token never reaches the Mac, and a
+  # check that died before its script (a full disk fails the checkout) still
+  # files the issue. A cancelled or skipped check changes nothing.
+  report:
+    name: Open or close the runner-broken issue
+    runs-on: ubuntu-latest
+    needs: check
+    if: always() && (needs.check.result == 'success' || needs.check.result == 'failure')
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RESULT: ${{ needs.check.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Update the issue
+        run: |
+          set -euo pipefail
+          open="$(gh issue list --label runner-broken --state open --json number --jq '.[0].number // empty')"
+          if [ "$RESULT" = success ]; then
+            [ -z "$open" ] || gh issue close "$open" --comment "Passing again: $RUN_URL"
+            exit 0
+          fi
+          body="The self-hosted Mac failed its health check at $(date -u '+%Y-%m-%d %H:%M UTC'): $RUN_URL
+
+          The run's annotations say what is wrong. Fix: prune the runner (the Runner housekeeping workflow, or free space by hand), or set the repository variable IOS_RUNNER to hosted to move the gate to GitHub's Mac. This issue closes itself on the first passing hourly run."
+          if [ -n "$open" ]; then
+            gh issue edit "$open" --body "$body"
+          else
+            gh issue create --title "Mac runner broken, not your code" --label runner-broken --body "$body"
+          fi
