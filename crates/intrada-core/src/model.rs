@@ -940,6 +940,8 @@ pub struct ActiveSessionView {
     /// The seed bar's patterns: an item may carry a valid grouping the
     /// sheet's `click_bars` table does not list.
     pub click_seed_presets: Vec<ClickPresetOption>,
+    /// The pattern the item's own bar opens on when chosen again, since the table may not list it.
+    pub click_seed_opening: u16,
     pub record: ActiveRecordView,
 }
 
