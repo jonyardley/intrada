@@ -11,11 +11,7 @@
       "/private/tmp/ios-build.log"
     ],
     "denyWrite": [
-      "./.githooks",
-      "./scripts/install-git-hooks.sh",
-      "./scripts/session-claims.sh",
-      "./scripts/lib/claim-branch.sh",
-      "./rust-toolchain.toml"
+      "./.githooks"
     ]
   },
   "network": {

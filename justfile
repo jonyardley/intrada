@@ -804,10 +804,8 @@ _ios-build-for-testing:
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
-    # In a crew loop session Claude's sandbox wraps the build and refuses the
-    # ones Xcode and Swift start to read package manifests and run macros, so
-    # the loop sets INTRADA_SANDBOXED and theirs are left off; the owner chose
-    # that (#2869).
+    # Xcode's own package and macro sandboxes cannot start inside Claude's,
+    # which the crew loop wraps the build in (#2869).
     sbx=()
     [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES \
         'OTHER_SWIFT_FLAGS=$(inherited) -disable-sandbox')

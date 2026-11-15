@@ -97,20 +97,29 @@ worktrees() {
 # settings (seen live on Claude Code 2.1.325). So the flag carries the whole
 # block: osti's, read from the worktree after its install, with Intrada's from
 # crew-sandbox.json on top, read from the loop's own checkout, never the
-# worktree. mktemp and Xcode write to the user temp folder whatever TMPDIR says,
-# and the sandbox wants its real /private path. The denyWrite entries are the
-# worktree code hooks run outside the sandbox: the SessionStart scripts, git's
-# hooks folder (core.hooksPath) and the toolchain pin rustfmt's hook obeys; the
-# Edit rules keep the file tools, which run outside it too, off them.
+# worktree. A local file without osti's block would leave ~/.ssh readable and
+# git's config writable, so it is refused. mktemp and Xcode write to the user
+# temp folder whatever TMPDIR says, and the sandbox wants its real /private
+# path. The SessionStart hooks run the main checkout's scripts, so the one
+# worktree path run outside the sandbox is git's hooks folder (core.hooksPath),
+# denied here and to the file tools, which run outside it too.
 # INTRADA_SANDBOXED tells the iPhone builds to leave Xcode's own package
 # sandbox off, since it cannot start inside this one.
+#
+# A known limit: a push from a crew worktree outside the sandbox runs its
+# .githooks, and those call other worktree scripts nobody denies. The loop
+# itself never pushes outside the sandbox.
 session_settings() {
   local wt tmp sockets
   [ -f "$1/.claude/settings.local.json" ] || { echo "no local settings in $1: osti has not installed its guard" >&2; return 1; }
+  jq -e '(.sandbox.filesystem.denyRead // [] | index("~/.ssh"))
+    and (.sandbox.filesystem.denyWrite // [] | any(endswith("/.git/config") or . == "./.git"))' \
+    "$1/.claude/settings.local.json" >/dev/null 2>&1 ||
+    { echo "the local settings in $1 lack osti's sandbox block" >&2; return 1; }
   wt=$(cd "$1" && pwd -P) && tmp=$(cd "$(getconf DARWIN_USER_TEMP_DIR)" && pwd -P) || return 1
   # The test runner's sockets, in launchd's folders, which are named afresh at
   # each start of the Mac, so they are looked up here.
-  sockets=$(printf '%s\n' /private/var/tmp/com.apple.launchd.*/com.apple.testmanagerd.unix-domain.socket |
+  sockets=$(printf '%s\n' "${CREW_SOCKET_ROOT:-/private/var/tmp}"/com.apple.launchd.*/com.apple.testmanagerd.unix-domain.socket |
     grep -v '\*' | jq -R . | jq -sc .)
   jq -ce --slurpfile own "$root/scripts/crew-sandbox.json" --arg wt "$wt" --arg tmp "$tmp" --argjson sockets "$sockets" '
     def abs: if startswith("./") then $wt + .[1:] else . end;
@@ -120,7 +129,7 @@ session_settings() {
     | {disableAllHooks: false, env: {INTRADA_SANDBOXED: "1"},
        permissions: ((.permissions // {}) + {deny: join(.permissions.deny; [$deny[] | "Edit(/\(.))", "Edit(/\(.)/**)"])}),
        sandbox: ($o + {enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true,
-         allowUnsandboxedCommands: false,
+         allowUnsandboxedCommands: false, excludedCommands: [],
          filesystem: (($o.filesystem // {}) + {
            allowWrite: join($o.filesystem.allowWrite; $i.filesystem.allowWrite + [$tmp]),
            denyWrite: $deny}),
@@ -202,11 +211,15 @@ stop_named() {
 # `claude --bg` prints its id only as text (#2821). One that shows up too late
 # may still run, so any session by that name is stopped.
 start_session() {
-  local wt=$1 n=$2 out since try=0 found settings
-  settings=$(session_settings "$wt" 2>&1) || {
-    log "#$n: no session starts, since its sandbox settings could not be built: $(printf '%s' "$settings" | tail -1)"
+  local wt=$1 n=$2 out since try=0 found settings err
+  # Its stderr apart, so a warning never lands in the --settings value.
+  err=$(mktemp "${TMPDIR:-/tmp}/crew-settings.XXXXXX") || return 1
+  settings=$(session_settings "$wt" 2>"$err") || {
+    log "#$n: no session starts, since its sandbox settings could not be built: $(tail -1 "$err")"
+    rm -f "$err"
     return 1
   }
+  rm -f "$err"
   since=$(($(now) * 1000))
   # The run and attempt ride in the first prompt too, so every `osti write` the
   # session makes names them (#2854).
@@ -556,7 +569,8 @@ check_guards() {
 }
 
 # A sandboxed session can neither write ~/.rustup nor reach rustup's host, so
-# the pinned toolchain and the target the simulator build needs come first (#2869).
+# the pinned toolchain and the target the simulator build needs come first
+# (#2869). Only the simulator target, while Android is paused (#2860).
 toolchain_ready() {
   local channel targets
   channel=$(sed -n 's/^channel *= *"\(.*\)"$/\1/p' "$root/rust-toolchain.toml")
@@ -576,8 +590,9 @@ guard_worktree() {
 
 # Fetches the iPhone app's Swift packages before the session (#2869): the
 # sandbox refuses every .git/config write, so Xcode cannot check a package out
-# inside it. Runs outside it, on a worktree nobody has touched yet. A failure
-# is logged, not fatal, since an issue may need no iPhone build.
+# inside it. Runs outside it, so only on a worktree the loop has just made: a
+# reused one holds what an earlier session wrote. A failure is logged, not
+# fatal, since an issue may need no iPhone build.
 fetch_packages() {
   local err
   err=$(cd "$1" && ${CREW_JUST:-just} ios-packages 2>&1) && return 0
@@ -681,7 +696,7 @@ park_waiting() {
 # plan's usage limit; 5 when the record could not take the pick. All but 0 end
 # the run.
 run_issue() {
-  local n=$1 wt id sid said since hit rc=0
+  local n=$1 wt id sid said since hit rc=0 fresh
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   CURRENT_WT=""
   ATTEMPT=$(next_attempt "$n")
@@ -697,6 +712,8 @@ run_issue() {
     CURRENT_N=""
     return 5
   fi
+  fresh=0
+  [ -d "$(worktrees)/crew-$n" ] || fresh=1
   wt=$(worktree_for "$n") || {
     park_issue "$n" no_worktree "it could not make the worktree crew-$n" "Is a branch or folder of that name in the way?"
     rc=$?
@@ -705,7 +722,8 @@ run_issue() {
   }
   CURRENT_WT=$wt
   stop_live_in "$wt"
-  if ! guard_worktree "$wt" || ! { fetch_packages "$wt"; start_session "$wt" "$n"; }; then
+  [ "$fresh" = 1 ] || log "#$n: crew-$n was already there, so its Swift packages are not fetched outside the sandbox"
+  if ! guard_worktree "$wt" || ! { [ "$fresh" = 0 ] || fetch_packages "$wt"; start_session "$wt" "$n"; }; then
     end_attempt "$n" failed "$wt"
     CURRENT_N=""
     return 2

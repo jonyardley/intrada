@@ -294,7 +294,8 @@ C
 cat >"$work/c1/bin/osti" <<'O'
 #!/usr/bin/env bash
 echo "bare osti $*" >>"$C1/calls"
-[ "$3" = --worktree ] && mkdir -p "$4/.claude" && echo '{"sandbox":{"enabled":true}}' >"$4/.claude/settings.local.json"
+[ "$3" = --worktree ] && mkdir -p "$4/.claude" &&
+  echo '{"sandbox":{"filesystem":{"denyRead":["~/.ssh"],"denyWrite":["./.git"]}}}' >"$4/.claude/settings.local.json"
 exit 0
 O
 cat >"$work/c1/bin/chosen-osti" <<'O'
@@ -335,6 +336,20 @@ n=$((n + 1))
 if ! grep -qx "claude INTRADA_CREW=unset OSTINATO_PROJECT=jonyardley/intrada run=set" "$work/c1b/calls" 2>/dev/null; then
   echo "✗ collect 1: wanted the probe started without INTRADA_CREW, with OSTINATO_PROJECT and OSTINATO_RUN; got:" >&2
   cat "$work/c1b/calls" >&2 2>/dev/null || :
+  fails=$((fails + 1))
+fi
+
+# ── a session with no sandbox block gets the install, and its error (#2869)
+# Check 2 starts its session with no install of its own, and osti fails here.
+mkdir -p "$work/c2/bin" "$work/c2/main/.git" "$work/c2/out"
+cp "$work/c1/bin/security" "$work/c1/bin/git" "$work/c1/bin/claude" "$work/c1/bin/chosen-osti" "$work/c2/bin/"
+n=$((n + 1))
+got=$(cd "$work/c2/main" && C1="$work/c2" PATH="$work/c2/bin:$PATH" CREW_OSTI="$work/c2/bin/chosen-osti" \
+  bash "$script" collect 2 "$work/c2/out" 2>&1) || :
+if ! grep -q "^chosen osti guard install --worktree " "$work/c2/calls" 2>/dev/null || grep -q "^claude" "$work/c2/calls" ||
+  [[ "$got" != *"osti guard install failed in "*": osti guard: the install failed"* ]]; then
+  echo "✗ collect 2: wanted the install run, its own error reported and no session; got: $got" >&2
+  cat "$work/c2/calls" >&2 2>/dev/null || :
   fails=$((fails + 1))
 fi
 

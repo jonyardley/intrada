@@ -287,12 +287,19 @@ drop_worktree() {
 # the sandbox block osti's install writes, so a worktree without one gets the
 # install first, as every loop worktree does (#2869).
 start_session() {
-  local wt=$1 name=$2 prompt=$3 out id settings launch
-  [ -f "$wt/.claude/settings.local.json" ] || "${CREW_OSTI:-osti}" guard install --worktree "$wt" >/dev/null 2>&1
-  settings=$(bash "$(dirname "${BASH_SOURCE[0]}")/crew-loop.sh" session-settings "$wt") || {
-    echo "could not read the loop's session settings" >&2
-    return 1
-  }
+  local wt=$1 name=$2 prompt=$3 out id settings launch err loop
+  loop="$(dirname "${BASH_SOURCE[0]}")/crew-loop.sh"
+  # No local file, or one without osti's block, gets the install (#2869).
+  if ! settings=$(bash "$loop" session-settings "$wt" 2>/dev/null); then
+    err=$("${CREW_OSTI:-osti}" guard install --worktree "$wt" 2>&1 >/dev/null) || {
+      echo "osti guard install failed in $wt: $(printf '%s' "$err" | tail -1)" >&2
+      return 1
+    }
+    settings=$(bash "$loop" session-settings "$wt" 2>&1) || {
+      echo "could not read the loop's session settings: $(printf '%s' "$settings" | tail -1)" >&2
+      return 1
+    }
+  fi
   launch=(claude --bg --model sonnet --permission-mode auto --settings "$settings" -n "$name" "$prompt")
   if [ "${4:-}" = probe ]; then
     out=$(cd "$wt" && env -u INTRADA_CREW OSTINATO_RUN="qualify-$(date -u +%Y%m%d-%H%M%S)" \
