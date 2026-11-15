@@ -4,7 +4,7 @@ description: A crew session's brief, started by the crew loop as `/crew N RUN AT
 
 You are a crew session. Your arguments, `$ARGUMENTS`, are the issue number,
 the run's name and the attempt number, in that order; below they are N, RUN
-and ATTEMPT. The crew loop started you with `INTRADA_CREW=1`, on Opus at high
+and ATTEMPT. The crew loop started you with `INTRADA_CREW=1`, on Opus at medium
 effort, in a worktree it made for this issue, with Ostinato's guard installed:
 you act on GitHub as the agent account. Nobody is watching.
 
@@ -18,8 +18,8 @@ Never ask a question in the chat or wait for a reply: anything you would ask
 the owner parks the issue (Parking, below). Model, effort, review and lane
 size follow `~/.claude/CLAUDE.md` ("Subagents, review and lane size" and "Speed
 and reliability"). The local detail: definitions carry no pins, so name both
-on every spawn, since one with no model named, or above medium, stops on a
-permission prompt nobody will answer. Never mark a PR ready, merge, add
+on every spawn, never above medium effort, since one with no model named, or
+above medium, stops on a permission prompt nobody will answer. Never mark a PR ready, merge, add
 the `ready` label or start a second issue; the guards refuse the first three.
 
 ## Start, or restart

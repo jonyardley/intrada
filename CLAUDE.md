@@ -14,7 +14,7 @@ Direction: `docs/roadmap.md`; in flight: `just status`.
 
 ```bash
 just check            # CI's Rust and hygiene jobs, bar MSRV and coverage; run before pushing
-just pre-review       # check, plus the iOS and Android gates for what changed; before review
+just pre-review       # check, plus ios-fmt-check (and Android gates, unpaused) for what changed
 just ios-run          # build + launch on simulator + screenshot (seeded; SEED=0 to persist)
 just ios-test         # unit + snapshot; just ios-fmt-check for ios/
 ```

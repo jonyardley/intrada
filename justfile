@@ -307,7 +307,8 @@ pre-push: check
 # The one command before review (#2877): `just check` holds fmt, lint, test
 # and the hygiene rule checks; the platform gates run only for what changed,
 # and everything runs when the diff cannot be read, as diff-scope.sh does.
-[doc("Run the checks before review: check, plus the iOS format and Android gates for what changed")]
+# The Android gates follow CI's own `android` filter and pause flag in ci.yml.
+[doc("Run the checks before review: check, plus iOS format and, unless paused, the Android gates for what changed")]
 pre-review:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -315,7 +316,12 @@ pre-review:
     source scripts/lib/diff-scope.sh
     paths=$(diff_scope_paths) || paths=$'ios/\nandroid/'
     if grep -q '^ios/' <<<"$paths"; then just ios-fmt-check; fi
-    if grep -q '^android/' <<<"$paths"; then just android-gen; just android-check; fi
+    if ci_android_paused; then
+      echo "skipped: Android is paused in ci.yml (#2860), so not running the Android gates"
+    elif ci_android_changed <<<"$paths"; then
+      just android-gen
+      just android-check
+    fi
     echo "✓ pre-review"
 
 # Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.

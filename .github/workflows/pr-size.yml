@@ -2,7 +2,8 @@ name: PR size
 
 # Fails a pull request over 800 added lines unless its description has a
 # "## Size" section saying why (#2877). `edited` reruns it when the
-# description changes; scripts/check-pr-size.sh holds what is left out.
+# description changes; scripts/check-pr-size.sh holds what is left out. The
+# script comes from the base commit, so a pull request cannot edit its judge.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -19,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout: scripts/check-pr-size.sh
           sparse-checkout-cone-mode: false
       - name: Count added lines
@@ -27,6 +29,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
         run: |
+          set -euo pipefail
+          # The pull request that adds the script has no base copy to run.
+          if [ ! -f scripts/check-pr-size.sh ]; then
+            echo "No check-pr-size.sh on the base branch yet; skipping"
+            exit 0
+          fi
           gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
-            --jq '.[] | "\(.additions)\t\(.filename)"' | bash scripts/check-pr-size.sh
+            --jq '.[] | "\(.additions)\t\(.filename)"' >"$RUNNER_TEMP/files.tsv"
+          rows=$(wc -l <"$RUNNER_TEMP/files.tsv")
+          if [ "$rows" -eq 0 ] || [ "$rows" -ne "$CHANGED_FILES" ]; then
+            echo "✗ the files API listed $rows of $CHANGED_FILES changed files (it stops at 3000)" >&2
+            exit 1
+          fi
+          bash scripts/check-pr-size.sh <"$RUNNER_TEMP/files.tsv"

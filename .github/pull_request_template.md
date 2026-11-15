@@ -31,6 +31,10 @@ Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. Tier 1: n/a. -
 <!-- Tier 3 and the sensitive surfaces only; delete it otherwise. At most
      five lines: the files worth opening first, each with why. -->
 
+<!-- Over 800 added lines (lock files, fixtures, snapshots and generated
+     files aside)? Add a "## Size" section saying why, or the PR size check
+     fails. -->
+
 ## Checklist
 
 <!-- Only what CI cannot prove: the gates, formatting and snapshots run in

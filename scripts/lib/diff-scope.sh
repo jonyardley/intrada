@@ -37,3 +37,29 @@ diff_scope_select_checks() {
     echo "skipped: no change under scripts/, the justfile or .github/, so not running $skipped" >&2
   fi
 }
+
+# CI's Android settings, read from ci.yml so the local gates cannot drift from
+# them (#2877). Succeeds when the `changes` job says Android is paused.
+ci_android_paused() {
+  grep -qE '^[[:space:]]*android_paused:[[:space:]]*"true"' .github/workflows/ci.yml
+}
+
+# Succeeds when a path on stdin matches CI's `android` path filter, or when
+# that list cannot be read ("run everything").
+ci_android_changed() {
+  local patterns pattern changed
+  patterns=$(awk '
+    /^[[:space:]]*filters:[[:space:]]*\|/ { infilters = 1; next }
+    infilters && /^[[:space:]]*android:[[:space:]]*$/ { inandroid = 1; next }
+    inandroid && /^[[:space:]]*- / { sub(/^[[:space:]]*- /, ""); gsub(/\x27|"/, ""); print; next }
+    inandroid { exit }' .github/workflows/ci.yml)
+  [ -n "$patterns" ] || return 0
+  while IFS= read -r changed; do
+    [ -n "$changed" ] || continue
+    while IFS= read -r pattern; do
+      # shellcheck disable=SC2053 # the pattern is a glob on purpose
+      [[ $changed == ${pattern//\*\*/*} ]] && return 0
+    done <<<"$patterns"
+  done
+  return 1
+}
