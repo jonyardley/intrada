@@ -87,16 +87,18 @@ struct ClickControlTests {
 private func seededClick(
   bpm: UInt16 = 66, metre: Metre = Metre(beats: 4, unit: 4, groups: nil),
   soundsTarget: Bool = true, sounding: UInt16 = 0b1111,
-  presets: [ClickPresetOption]? = nil
+  presets: [ClickPresetOption]? = nil, opening: UInt16 = 0b1111,
+  limits: LimitsView = .preview
 ) -> ClickController {
   var active = ActiveSessionView.previewActive
   active.clickSeedBpm = bpm
   active.clickSeedMetre = metre
   active.clickSeedSoundsTarget = soundsTarget
-  active.clickSeedPresets = presets ?? LimitsView.preview.clickPresets(for: metre)
+  active.clickSeedPresets = presets ?? limits.clickPresets(for: metre)
+  active.clickSeedOpening = opening
   active.currentClickSounding = sounding
   let click = ClickController()
-  click.reseed(from: active, limits: .preview)
+  click.reseed(from: active, limits: limits)
   return click
 }
 
@@ -180,6 +182,30 @@ struct ClickControllerTests {
 
     click.setMetre(Metre(beats: 3, unit: 4, groups: nil))
     #expect(click.presets == LimitsView.preview.clickPresets(for: click.metre))
+  }
+
+  @Test func aNewBarOpensOnTheTablesOpeningNotEveryBeat() {
+    let fiveFour = Metre(beats: 5, unit: 4, groups: nil)
+    var limits = LimitsView.preview
+    limits.clickBars = limits.clickBars.map { bar in
+      var bar = bar
+      if bar.beats == 5 && bar.groups == nil { bar.opening = 0b00101 }
+      return bar
+    }
+    let click = seededClick(limits: limits)
+
+    click.setMetre(fiveFour)
+    #expect(click.sounding == 0b00101)
+  }
+
+  @Test func theItemsOwnBarInAnotherUnitOpensOnTheSeedsOpening() {
+    let twoTwo = Metre(beats: 4, unit: 8, groups: [2, 2])
+    let click = seededClick(bpm: 240, metre: twoTwo, sounding: 0b1111, opening: 0b0101)
+
+    click.setMetre(Metre(beats: 3, unit: 4, groups: nil))
+    #expect(click.sounding == 0b111)
+    click.setMetre(Metre(beats: 4, unit: 4, groups: [2, 2]))
+    #expect(click.sounding == 0b0101)
   }
 
   @Test func aPatternTheBarDoesNotOfferChangesNothing() {

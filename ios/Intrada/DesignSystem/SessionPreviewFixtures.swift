@@ -467,6 +467,7 @@
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
           for: Metre(beats: 4, unit: 4, groups: nil)),
+        clickSeedOpening: 0b1111,
         record: .empty)
     }
 
@@ -492,6 +493,7 @@
         currentVariations: [], reflection: nil,
         clickSeedMetre: base.clickSeedMetre, clickSeedBpm: base.clickSeedBpm,
         clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets,
+        clickSeedOpening: base.clickSeedOpening,
         record: .empty)
     }
 
@@ -531,6 +533,7 @@
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
           for: Metre(beats: 4, unit: 4, groups: nil)),
+        clickSeedOpening: 0b1111,
         record: .empty)
     }
 
