@@ -109,14 +109,15 @@ session_settings() {
   jq -ce --slurpfile own "$root/scripts/crew-sandbox.json" --arg wt "$wt" --arg tmp "$tmp" '
     def abs: if startswith("./") then $wt + .[1:] else . end;
     def join(a; b): (a // []) as $a | $a + [(b // [])[] | select(. as $x | $a | index([$x]) | not)];
-    (.sandbox // {}) as $o | $own[0] as $i | ($i.filesystem.denyWrite | map(abs)) as $deny
+    (.sandbox // {}) as $o | $own[0] as $i
+    | join($o.filesystem.denyWrite // [] | map(abs); $i.filesystem.denyWrite | map(abs)) as $deny
     | {disableAllHooks: false,
        permissions: ((.permissions // {}) + {deny: join(.permissions.deny; [$deny[] | "Edit(/\(.))", "Edit(/\(.)/**)"])}),
        sandbox: ($o + {enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true,
          allowUnsandboxedCommands: false,
          filesystem: (($o.filesystem // {}) + {
            allowWrite: join($o.filesystem.allowWrite; $i.filesystem.allowWrite + [$tmp]),
-           denyWrite: join($o.filesystem.denyWrite // [] | map(abs); $deny)}),
+           denyWrite: $deny}),
          network: (($o.network // {}) + {
            allowMachLookup: join($o.network.allowMachLookup; $i.network.allowMachLookup),
            allowedDomains: join($o.network.allowedDomains; $i.network.allowedDomains),
