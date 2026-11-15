@@ -115,6 +115,7 @@ hygiene:
         "sync-if-changed-test:bash scripts/tests/sync-if-changed-test.sh"
         "sketch-kit-test:bash scripts/tests/sketch-kit-test.sh"
         "pr-size-test:bash scripts/tests/pr-size-test.sh"
+        "runner-health-test:bash scripts/tests/runner-health-test.sh"
     )
     source scripts/lib/diff-scope.sh
     selected=()
