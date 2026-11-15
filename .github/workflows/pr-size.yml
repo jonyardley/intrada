@@ -1,0 +1,32 @@
+name: PR size
+
+# Fails a pull request over 800 added lines unless its description has a
+# "## Size" section saying why (#2877). `edited` reruns it when the
+# description changes; scripts/check-pr-size.sh holds what is left out.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  size:
+    name: PR size
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/check-pr-size.sh
+          sparse-checkout-cone-mode: false
+      - name: Count added lines
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | "\(.additions)\t\(.filename)"' | bash scripts/check-pr-size.sh

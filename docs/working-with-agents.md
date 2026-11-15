@@ -62,7 +62,9 @@ then refuses every git command.
 A session opens on `.claude/settings.json`. Every spawn's model and effort,
 and the lead's raise for sensitive surfaces, come from the role table in
 `~/.claude/CLAUDE.md` (Subagents, review and lane size), named on each Agent
-call, a crew session's included; this repo keeps no levels of its own.
+call, a crew session's included; this repo keeps no levels of its own. Review
+rounds, lane size, the size check and the one approved plan per change are in
+the same file's "Speed and reliability"; here only the local detail.
 
 `/effort` saves to settings unless you choose session-only, which is why a
 raised stretch ends by setting it back. Fast mode costs twice the standard
@@ -76,8 +78,8 @@ posture fights the tiers; four of its skills stay as globals
 **The sensitive surfaces** are where wrong is silent: the FFI bridge
 (positional bincode, #846), store migrations, the `ActiveSession`
 crash-recovery blob and auth. That work, including any bridge change that is
-not additive (`.claude/rules/sensitive-surfaces.md`), runs at `high` (#2044,
-#2052) with `reviewer` paired from the core diff. A plan comment, direction
+not additive (`.claude/rules/sensitive-surfaces.md`), runs at the role
+table's level for sensitive surfaces with `reviewer` paired from the core diff. A plan comment, direction
 call or unexplained bug counts only when its work is on that list (#1985).
 
 ## 4. Plan
@@ -161,7 +163,7 @@ which the recipe writes (#2630); restart Claude Code after. Installs:
 
 | You are | Do |
 |---|---|
-| Holding a diff that changes code or tests | `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
+| Holding a diff that changes code or tests | `just pre-review` first, then `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
 | Holding a diff on a sensitive surface | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
 | Holding a docs-only diff | `/code-review` inline stands in; say "comment-policy violations are Blockers" |
 

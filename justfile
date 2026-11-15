@@ -114,6 +114,7 @@ hygiene:
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
         "sync-if-changed-test:bash scripts/tests/sync-if-changed-test.sh"
         "sketch-kit-test:bash scripts/tests/sketch-kit-test.sh"
+        "pr-size-test:bash scripts/tests/pr-size-test.sh"
     )
     source scripts/lib/diff-scope.sh
     selected=()
@@ -302,6 +303,20 @@ check:
 
 [doc("Alias for check")]
 pre-push: check
+
+# The one command before review (#2877): `just check` holds fmt, lint, test
+# and the hygiene rule checks; the platform gates run only for what changed,
+# and everything runs when the diff cannot be read, as diff-scope.sh does.
+[doc("Run the checks before review: check, plus the iOS format and Android gates for what changed")]
+pre-review:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just check
+    source scripts/lib/diff-scope.sh
+    paths=$(diff_scope_paths) || paths=$'ios/\nandroid/'
+    if grep -q '^ios/' <<<"$paths"; then just ios-fmt-check; fi
+    if grep -q '^android/' <<<"$paths"; then just android-gen; just android-check; fi
+    echo "✓ pre-review"
 
 # Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
 # Slower — builds the iOS app — so run it before pushing changes under `ios/`.
