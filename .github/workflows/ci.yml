@@ -347,11 +347,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      # A full disk fails the checkout itself, so the copy the last run left
-      # in this workspace checks the machine first, in seconds, with a "not
-      # your code" annotation (#2876). The fresh copy runs again below.
-      - name: Check the runner before checkout
-        run: "[ ! -f scripts/runner-health.sh ] || bash scripts/runner-health.sh"
       # `clean: true` would take `target/`, `ios/build` and `ios/generated`
       # with it, which is the warm state this machine exists for.
       # `persist-credentials: false` keeps the token out of a `.git/config`
@@ -363,7 +358,9 @@ jobs:
       # Disk space, and the Xcode and iOS runtime pinned above: snapshot
       # pixels come from the runtime and `swift format` defaults ship inside
       # Xcode, so a Software Update here could move the gate with no code
-      # change (#1637).
+      # change (#1637). Each problem is annotated "not your code" (#2876); a
+      # disk too full to check out fails before this, and the hourly Runner
+      # health workflow files that one.
       - name: Check the runner (disk, Xcode, iOS runtime)
         run: bash scripts/runner-health.sh
       # `_ios-inputs-fingerprint` hashes untracked filenames under `ios/`, so

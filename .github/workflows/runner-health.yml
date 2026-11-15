@@ -12,15 +12,17 @@ on:
 
 permissions: {}
 
-# A runner that is away leaves hourly runs queued; one queued run is enough.
-concurrency:
-  group: runner-health
-
 jobs:
   check:
     name: Check the self-hosted Mac
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 5
+    # A runner that is away leaves hourly checks queued; one queued check is
+    # enough. On the job, not the workflow, so the stale job below still runs.
+    concurrency:
+      group: runner-health-check
+    outputs:
+      broken: ${{ steps.health.outputs.broken }}
     # Allow-listed, as in ci.yml: a trigger added here later has to be named
     # before it can reach the machine.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -39,17 +41,20 @@ jobs:
           sparse-checkout: |
             scripts/runner-health.sh
             .github/workflows/ci.yml
+      # Only the script's own verdict files the issue; a GitHub-side blip
+      # fails the job without it, and the stale job catches a lasting one.
       - name: Check disk, Xcode and iOS runtime
-        run: bash .runner-health/scripts/runner-health.sh
+        id: health
+        run: bash .runner-health/scripts/runner-health.sh || { echo "broken=true" >>"$GITHUB_OUTPUT"; exit 1; }
 
-  # On GitHub's own runner, so the issues token never reaches the Mac, and a
-  # check that died before its script (a full disk fails the checkout) still
-  # files the issue. A cancelled or skipped check changes nothing.
+  # On GitHub's own runner, so the issues token never reaches the Mac. A
+  # cancelled or skipped check, or one that failed before the script ran,
+  # changes nothing here.
   report:
     name: Open or close the runner-broken issue
     runs-on: ubuntu-latest
     needs: check
-    if: always() && (needs.check.result == 'success' || needs.check.result == 'failure')
+    if: always() && (needs.check.result == 'success' || needs.check.outputs.broken == 'true')
     permissions:
       issues: write
     env:
@@ -74,3 +79,31 @@ jobs:
           else
             gh issue create --title "Mac runner broken, not your code" --label runner-broken --body "$body"
           fi
+
+  # A Mac that is offline, or too full to check out, never reaches the script,
+  # so its checks sit queued or fail silently. Without needing the check, this
+  # opens the issue once no run has passed for three hours. It never closes
+  # it: the report job does, on the first passing check.
+  stale:
+    name: Open the issue when no check has passed for three hours
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      actions: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Check the last passing run
+        run: |
+          set -euo pipefail
+          last="$(gh run list --workflow runner-health.yml --status success --limit 1 --json createdAt --jq '.[0].createdAt // empty')"
+          # No passing run yet means the workflow is new; nothing to compare.
+          [ -n "$last" ] || exit 0
+          [ $(( $(date -u +%s) - $(date -u -d "$last" +%s) )) -gt 10800 ] || exit 0
+          [ -z "$(gh issue list --label runner-broken --state open --json number --jq '.[0].number // empty')" ] || exit 0
+          gh issue create --title "Mac runner broken, not your code" --label runner-broken --body "The self-hosted Mac has not passed its hourly health check since $last: $RUN_URL
+
+          It is offline, busy for hours, or too full to check out. Fix: start or prune the runner (the Runner housekeeping workflow, or free space by hand), or set the repository variable IOS_RUNNER to hosted to move the gate to GitHub's Mac. This issue closes itself on the first passing hourly run."
