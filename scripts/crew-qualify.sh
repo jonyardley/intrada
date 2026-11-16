@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Seven pass or fail checks that qualify `claude --bg` background sessions as
 # the crew's harness (#2802, epic #2799). Collecting starts real sessions, one
-# at a time, on Sonnet with INTRADA_CREW=1 (check 1's probe without it), each
-# in a throwaway worktree, and writes what they did into an evidence folder;
-# judging reads only that folder,
+# at a time, on Sonnet, each in a throwaway worktree, and writes what they did
+# into an evidence folder; judging reads only that folder,
 # so scripts/tests/crew-qualify-test.sh can judge canned evidence with no
 # session, network or ~/.claude.
 #
@@ -280,8 +279,8 @@ drop_worktree() {
   return 0
 }
 
-# A fourth argument, probe, starts check 1's session as the loop would but
-# without INTRADA_CREW, so only osti's guard can refuse it (#2854).
+# A fourth argument, probe, starts check 1's session as the loop would, with
+# OSTINATO_RUN and OSTINATO_PROJECT set, so osti's guard knows it (#2854, #2858).
 #
 # Both start with the loop's own --settings value (#2865), which is built from
 # the sandbox block osti's install writes, so a worktree without one gets the
@@ -302,10 +301,10 @@ start_session() {
   fi
   launch=(claude --bg --model sonnet --permission-mode auto --settings "$settings" -n "$name" "$prompt")
   if [ "${4:-}" = probe ]; then
-    out=$(cd "$wt" && env -u INTRADA_CREW OSTINATO_RUN="qualify-$(date -u +%Y%m%d-%H%M%S)" \
+    out=$(cd "$wt" && OSTINATO_RUN="qualify-$(date -u +%Y%m%d-%H%M%S)" \
       OSTINATO_PROJECT="$REPO" "${launch[@]}" 2>&1)
   else
-    out=$(cd "$wt" && INTRADA_CREW=1 "${launch[@]}" 2>&1)
+    out=$(cd "$wt" && "${launch[@]}" 2>&1)
   fi
   id=$(printf '%s' "$out" | grep -oE 'backgrounded[^0-9a-f]+[0-9a-f]{8}' | grep -oE '[0-9a-f]{8}$' | head -1)
   if [ -z "$id" ]; then

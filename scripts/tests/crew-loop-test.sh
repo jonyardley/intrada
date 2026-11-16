@@ -618,7 +618,7 @@ run_loop
 ok "a draft is announced, with no park" \
   'grep -q "draft ready for your review on #101" "$FAKE/notified" && ! grep -qx needs-owner <<<"$(labels 101)" && grep -q "run over: 1 issue run" "$work/out" && grep -qx "Crew finished: 1 issue run, details on each issue" "$FAKE/notified"'
 ok "the session is started as the crew, on Opus at medium effort, with the brief" \
-  'grep -qF -- "--bg --model opus --effort medium --permission-mode auto --settings {\"disableAllHooks\":false," "$FAKE/calls" && grep -qF -- "-n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
+  'grep -qF -- "--bg --model opus --effort medium --permission-mode auto --settings {\"disableAllHooks\":false," "$FAKE/calls" && grep -qF -- "-n crew-101 /crew 101" "$FAKE/calls" && grep -qx INTRADA_CREW=unset "$FAKE/calls"'
 ok "the session is started in its own crew worktree" 'grep -q " 101 $work/wt/crew-101$" "$FAKE/sessions"'
 
 setup 101
@@ -1079,7 +1079,7 @@ ok "picked takes the attempt, the spend the cap read, and no note" \
 ok "the worktree gets osti's guard with the agent's identity before its session" \
   'grep -q "^guard guard install --worktree $work/wt/crew-101 agent=ostinato-intrada-loop/ostinato-agent/356601309+ostinato-agent@users.noreply.github.com$" "$FAKE/osti.log"'
 ok "the session gets the run in its environment and its first prompt, and keeps the crew flag" \
-  'grep -qE "^OSTINATO_RUN=r-[0-9-]+ OSTINATO_PROJECT=the-owner/intrada$" "$FAKE/calls" && grep -qE -- "-n crew-101 /crew 101 r-[0-9]{8}-[0-9]{6} 1$" "$FAKE/calls" && grep -qx INTRADA_CREW=1 "$FAKE/calls"'
+  'grep -qE "^OSTINATO_RUN=r-[0-9-]+ OSTINATO_PROJECT=the-owner/intrada$" "$FAKE/calls" && grep -qE -- "-n crew-101 /crew 101 r-[0-9]{8}-[0-9]{6} 1$" "$FAKE/calls" && grep -qx INTRADA_CREW=unset "$FAKE/calls"'
 ok "attempt-ended names the outcome, the session and the worktree, with no note" \
   'grep -q "attempt-ended --no-note --item intrada#101 --url https://github.com/the-owner/intrada/issues/101 --attempt 1 --outcome draft --session sess-101 --cwd $work/wt/crew-101$" "$FAKE/osti.log"'
 ok "run-ended counts the attempts, and every line names one run" \

@@ -4,7 +4,7 @@ description: A crew session's brief, started by the crew loop as `/crew N RUN AT
 
 You are a crew session. Your arguments, `$ARGUMENTS`, are the issue number,
 the run's name and the attempt number, in that order; below they are N, RUN
-and ATTEMPT. The crew loop started you with `INTRADA_CREW=1`, on Opus at medium
+and ATTEMPT. The crew loop started you on Opus at medium
 effort, in a worktree it made for this issue, with Ostinato's guard installed:
 you act on GitHub as the agent account. Nobody is watching.
 

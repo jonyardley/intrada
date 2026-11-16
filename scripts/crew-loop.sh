@@ -233,7 +233,7 @@ start_session() {
   since=$(($(now) * 1000))
   # The run and attempt ride in the first prompt too, so every `osti write` the
   # session makes names them (#2854).
-  out=$(cd "$wt" && INTRADA_CREW=1 OSTINATO_RUN=$RUN OSTINATO_PROJECT=$REPO claude --bg --model opus \
+  out=$(cd "$wt" && OSTINATO_RUN=$RUN OSTINATO_PROJECT=$REPO claude --bg --model opus \
     --effort medium --permission-mode auto --settings "$settings" -n "crew-$n" "/crew $n $RUN $ATTEMPT" 2>&1)
   STARTED_ID=""
   while [ -z "$STARTED_ID" ] && [ "$try" -lt "$START_TRIES" ]; do
@@ -561,10 +561,9 @@ worktree_for() {
 
 # Harness check 1: the agent's Keychain item is there, a live crew session acts
 # as the agent account, and osti's own guard refuses it `gh pr ready` (#2854).
-# The probe session starts without INTRADA_CREW: with it, the owner's older
-# guard refuses first and its message is the only one shown, so osti's refusal
-# could never be seen. Loop sessions keep the flag as a backstop. The loop
-# starts no issue unless check 1 passes at the start of the run.
+# The probe session starts as a loop session does, so osti's guard alone stands
+# between it and the refusal (#2858). The loop starts no issue unless check 1
+# passes at the start of the run.
 check_guards() {
   local dir passed=1
   dir=$(mktemp -d "${TMPDIR:-/tmp}/crew-check1.XXXXXX") || return 1

@@ -315,13 +315,12 @@ if ! grep -q "^chosen osti guard install --worktree " "$work/c1/calls" 2>/dev/nu
   fails=$((fails + 1))
 fi
 
-# ── collecting check 1: the probe starts without INTRADA_CREW ──────────────
-# With the flag set, the owner's guard refuses first and hides osti's message.
+# ── collecting check 1: the probe names its run and project to osti ────────
 mkdir -p "$work/c1b/bin" "$work/c1b/main/.git" "$work/c1b/out"
 cp "$work/c1/bin/security" "$work/c1/bin/git" "$work/c1/bin/osti" "$work/c1b/bin/"
 cat >"$work/c1b/bin/claude" <<'C'
 #!/usr/bin/env bash
-echo "claude INTRADA_CREW=${INTRADA_CREW:-unset} OSTINATO_PROJECT=${OSTINATO_PROJECT:-unset} run=${OSTINATO_RUN:+set}" >>"$C1/calls"
+echo "claude OSTINATO_PROJECT=${OSTINATO_PROJECT:-unset} run=${OSTINATO_RUN:+set}" >>"$C1/calls"
 prev=""
 for a in "$@"; do
   [ "$prev" = --settings ] && printf 'settings %s\n' "$a" >>"$C1/calls"
@@ -331,10 +330,10 @@ exit 1
 C
 chmod +x "$work/c1b/bin/claude"
 n=$((n + 1))
-(cd "$work/c1b/main" && C1="$work/c1b" PATH="$work/c1b/bin:$PATH" CREW_OSTI="$work/c1b/bin/osti" INTRADA_CREW=1 \
+(cd "$work/c1b/main" && C1="$work/c1b" PATH="$work/c1b/bin:$PATH" CREW_OSTI="$work/c1b/bin/osti" \
   bash "$script" collect 1 "$work/c1b/out" >/dev/null 2>&1) || :
-if ! grep -qx "claude INTRADA_CREW=unset OSTINATO_PROJECT=jonyardley/intrada run=set" "$work/c1b/calls" 2>/dev/null; then
-  echo "✗ collect 1: wanted the probe started without INTRADA_CREW, with OSTINATO_PROJECT and OSTINATO_RUN; got:" >&2
+if ! grep -qx "claude OSTINATO_PROJECT=jonyardley/intrada run=set" "$work/c1b/calls" 2>/dev/null; then
+  echo "✗ collect 1: wanted the probe started with OSTINATO_PROJECT and OSTINATO_RUN; got:" >&2
   cat "$work/c1b/calls" >&2 2>/dev/null || :
   fails=$((fails + 1))
 fi
