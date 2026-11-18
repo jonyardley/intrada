@@ -14,12 +14,13 @@ no-default-features = false
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-# Unmaintained crates are informational, not vulnerabilities — warn, don't fail.
+# Unmaintained notices fail only for crates the workspace depends on directly.
 unmaintained = "workspace"
 ignore = [
-    # chrono is unmaintained with no fixed version, and Crux pulls it in through
-    # facet-core, so swapping our own use would not remove it (#2901).
-    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; Crux still depends on it, tracked in #2901" },
+    # chrono is unmaintained with no fixed version. Only our own crates pull it
+    # in (directly and through facet's chrono feature); swapping it changes the
+    # bridge format, so it waits on #2901.
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; our own swap to a maintained date library is #2901" },
 ]
 
 # ── Licenses ─────────────────────────────────────────────────────────────
