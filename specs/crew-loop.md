@@ -317,8 +317,10 @@ the token once at start from the Keychain item the sessions' guard reads, and
 stops when the item is missing, empty or cannot be read, the log giving
 `security`'s exit and error, or when the read waits past ten seconds on an
 access prompt. `osti write` runs wholly as the agent, its own reads included,
-so only the loop's own `gh` reads stay on the owner's login. `crew-pick.sh` run
-by hand posts its Crew skipped comment as the owner, on `gh`'s own login.
+so only the loop's own `gh` reads stay on the owner's login. The roadmap board
+is the one write on it: the agent cannot see the board, so a session's claim
+leaves it, and the loop sets the issue In progress as its session starts
+(#2859). `crew-pick.sh` run by hand posts its Crew skipped comment as the owner, on `gh`'s own login.
 
 ## The run record (#2854)
 

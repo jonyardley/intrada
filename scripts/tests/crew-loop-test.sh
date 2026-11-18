@@ -219,6 +219,10 @@ case "$1 $2" in
     printf '%s\n' "$*" >"$FAKE/list-args"
     jq -r "$jqx" "$FAKE/lessons.json"
     ;;
+  "project item-add")
+    [ -f "$FAKE/board-fails" ] && exit 1
+    echo item-1 ;;
+  "project item-edit") ;;
   *) echo "stand-in gh: unexpected call: $*" >&2; exit 9 ;;
 esac
 GH
@@ -436,6 +440,23 @@ echo draft >"$FAKE/scenario-101"
 run_loop
 ok "a passing harness check 1 lets the run start, and its folder is removed" \
   '[ "$(started)" = 101 ] && [ ! -e "$(cat "$FAKE/check1-dir")" ]'
+
+# #2859: the session claims as the agent, which cannot see the owner's board.
+setup 101 102
+echo draft >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+run_loop
+ok "each session start sets its issue In progress on the board once, with the owner's login" \
+  '[ "$(started)" = "101 102" ] && [ "$(grep -c "gh project item-add" "$FAKE/tokens")" = 2 ] &&
+   [ "$(grep -c "gh project item-edit" "$FAKE/tokens")" = 2 ] && ! grep -qv "^none " <<<"$(grep "gh project" "$FAKE/tokens")" &&
+   grep -q "item-add 2 --owner jonyardley --url https://github.com/the-owner/intrada/issues/101 " "$FAKE/gh.log" &&
+   grep -q "item-add 2 --owner jonyardley --url https://github.com/the-owner/intrada/issues/102 " "$FAKE/gh.log"'
+setup 101
+echo draft >"$FAKE/scenario-101"
+touch "$FAKE/board-fails"
+run_loop
+ok "a board that cannot be set is logged, and the session runs on" \
+  '[ "$(started)" = 101 ] && grep -q "#101: the board could not be set to In progress" "$work/out" && grep -q "intrada#101 .*--outcome draft" "$FAKE/osti.log"'
 
 setup 101
 touch "$work/stop"

@@ -25,6 +25,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO=${CREW_REPO:-jonyardley/intrada}
 # shellcheck source=crew-trusted.sh
 . "$root/scripts/crew-trusted.sh"
+# shellcheck source=board.sh
+. "$root/scripts/board.sh"
 TRUSTED=$(trusted_jq)
 
 # ── The four figures, set by the owner on 2026-11-12 ──────────────────────────
@@ -777,6 +779,8 @@ run_issue() {
   fi
   id=$STARTED_ID
   log "#$n: session $id in $wt"
+  # The session claims as the agent, which cannot see the owner's board (#2859).
+  crew_post --owner board_in_progress "$n" || log "#$n: the board could not be set to In progress"
   watch "$id" "$wt" "$n" "$since"
   sid=$(agent_record "$id" | jq -r '.sessionId // empty')
   [ -n "$sid" ] && SESSION_ID=$sid
