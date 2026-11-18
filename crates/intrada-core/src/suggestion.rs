@@ -229,7 +229,7 @@ fn latest_mark(item: &LibraryItemView) -> Option<u8> {
 fn mark_clause(mark: Option<u8>) -> String {
     match mark {
         Some(m) => marked_clause(m),
-        None => "Not marked with this piece".to_string(),
+        None => "No confidence with this piece yet".to_string(),
     }
 }
 
@@ -239,13 +239,13 @@ fn mark_clause(mark: Option<u8>) -> String {
 fn piece_mark_clause(mark: Option<u8>) -> String {
     match mark {
         Some(m) => marked_clause(m),
-        None => "Not marked yet".to_string(),
+        None => "No confidence yet".to_string(),
     }
 }
 
 fn marked_clause(mark: u8) -> String {
     format!(
-        "Marked {mark} of {} last time",
+        "Confidence {mark} of {} last time",
         crate::validation::MAX_SCORE
     )
 }
@@ -595,7 +595,7 @@ mod tests {
             piece_row.reason, session.reason,
             "the headline says when, the row says how it went"
         );
-        assert_eq!(piece_row.reason, "Not marked yet");
+        assert_eq!(piece_row.reason, "No confidence yet");
     }
 
     /// The reasons a real library actually produces, not sentences written to
@@ -654,9 +654,16 @@ mod tests {
                 assert!(!reason.ends_with('.'), "full stop on a label: {reason}");
                 assert!(!reason.contains('!'), "exclamation mark: {reason}");
                 assert!(
-                    !reason.to_lowercase().contains("score"),
-                    "the screen says mark, not score: {reason}"
+                    !reason.to_lowercase().contains("score")
+                        && !reason.to_lowercase().contains("mark"),
+                    "the screen says confidence, not score or mark: {reason}"
                 );
+                if reason.contains(" of 10 ") {
+                    assert!(
+                        reason.starts_with("Confidence "),
+                        "the number a musician gave is their confidence: {reason}"
+                    );
+                }
                 assert!(
                     !reason.to_lowercase().contains("you"),
                     "second person is for the user's own words: {reason}"
@@ -840,7 +847,7 @@ mod tests {
                     item_title: format!("{id} {i}"),
                     item_type: ItemKind::Exercise,
                     latest_score: None,
-                    reason: "Not marked yet".to_string(),
+                    reason: "No confidence yet".to_string(),
                 })
                 .collect(),
             estimated_minutes: minutes,
@@ -913,6 +920,6 @@ mod tests {
 
     #[test]
     fn unmarked_reason_names_the_piece() {
-        assert_eq!(mark_clause(None), "Not marked with this piece");
+        assert_eq!(mark_clause(None), "No confidence with this piece yet");
     }
 }
