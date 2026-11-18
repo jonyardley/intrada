@@ -12,9 +12,11 @@
 
 set -uo pipefail
 
-# The agent account's token when the loop passes it (#2857), kept from every
-# command but the Crew skipped comment. Run by hand, gh's own login posts.
-agent_token=${CREW_AGENT_TOKEN:-}
+# Who posts the Crew skipped comment (#2857): the agent account when the loop
+# passes its token, kept from every other command, and gh's own login, the
+# owner's, when run by hand. Set but empty is refused, never posted as the owner.
+unset poster
+if [ -n "${CREW_AGENT_TOKEN+set}" ]; then poster=$CREW_AGENT_TOKEN; else poster=--owner; fi
 unset CREW_AGENT_TOKEN
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -173,8 +175,9 @@ fi
 comment="**Crew skipped**: the crew passes over this issue while any reason below holds, and says so once until the plan is edited or the ready label is added again.
 
 $reasons"
-post() { if [ -n "$agent_token" ]; then GH_TOKEN=$agent_token "$@"; else "$@"; fi; }
-if post gh api "repos/$REPO/issues/$n/comments" -f body="$comment" >/dev/null 2>&1; then
+if [ -z "$poster" ]; then
+  echo "crew-pick: the agent's token is empty, so the Crew skipped comment on #$n is refused rather than posted as the owner" >&2
+elif crew_post "$poster" gh api "repos/$REPO/issues/$n/comments" -f body="$comment" >/dev/null 2>&1; then
   echo "Commented on #$n."
 else
   echo "crew-pick: could not post the Crew skipped comment on #$n" >&2

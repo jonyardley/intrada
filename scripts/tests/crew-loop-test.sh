@@ -30,6 +30,7 @@ mkdir -p "$work/bin"
 cat >"$work/bin/claude" <<'CLAUDE'
 #!/usr/bin/env bash
 printf 'claude %s\n' "$*" >>"$FAKE/calls"
+[ -z "${AGENT_TOKEN:-}" ] || echo "claude $1" >>"$FAKE/leaked"
 case "$1" in
   --version) echo "2.1.325 (Claude Code)" ;;
   --bg)
@@ -152,6 +153,7 @@ cat >"$work/bin/gh" <<'GH'
 #!/usr/bin/env bash
 printf 'gh %s\n' "$*" >>"$FAKE/gh.log"
 printf '%s gh %s %s\n' "${GH_TOKEN:-none}" "$1" "$2" >>"$FAKE/tokens"
+[ -z "${AGENT_TOKEN:-}" ] || echo "gh $1" >>"$FAKE/leaked"
 n=$3
 f="$FAKE/issue-$n.json"
 jqx=""; body=""; label=""
@@ -229,6 +231,7 @@ GH
 cat >"$work/bin/osti" <<'OSTI'
 #!/usr/bin/env bash
 printf '%s osti %s\n' "${GH_TOKEN:-none}" "$1" >>"$FAKE/tokens"
+[ -z "${AGENT_TOKEN:-}" ] || echo "osti $1" >>"$FAKE/leaked"
 case "$1" in
   --version) echo "osti 0.1.0"; exit 0 ;;
   guard)
@@ -286,15 +289,19 @@ Q
 cat >"$work/bin/pick" <<'P'
 #!/usr/bin/env bash
 printf '%s pick %s\n' "${CREW_AGENT_TOKEN:-none}" "$1" >>"$FAKE/tokens"
+[ -z "${AGENT_TOKEN:-}" ] || echo pick >>"$FAKE/leaked"
 printf '%s\n' "$1" >>"$FAKE/picked"
 [ -f "$FAKE/pick-down-$1" ] && exit 2
 [ ! -f "$FAKE/skip-$1" ]
 P
-# The Keychain: the agent's token, unless the item is missing or empty (#2857).
+# The Keychain: the agent's token, unless the item is missing, empty, locked
+# or held by an access prompt that nobody answers (#2857).
 cat >"$work/bin/security" <<'S'
 #!/usr/bin/env bash
 printf 'security %s\n' "$*" >>"$FAKE/calls"
 [ -f "$FAKE/no-keychain" ] && { echo "security: The specified item could not be found in the keychain." >&2; exit 44; }
+[ -f "$FAKE/locked-keychain" ] && { echo "security: User interaction is not allowed." >&2; exit 51; }
+[ -f "$FAKE/prompt-keychain" ] && exec sleep 30
 [ -f "$FAKE/empty-keychain" ] || echo agent-token
 S
 cat >"$work/bin/mkwt" <<'W'
@@ -316,6 +323,7 @@ A
 cat >"$work/bin/osascript" <<'O'
 #!/usr/bin/env bash
 printf '%s\n' "${*: -1}" >>"$FAKE/osascript"
+[ -z "${AGENT_TOKEN:-}" ] || echo osascript >>"$FAKE/leaked"
 O
 # Harness check 1: writes a result, as crew-qualify.sh does, and keeps its folder.
 # Osti's own block, a cut down copy of what its install writes (#2869).
@@ -372,7 +380,9 @@ setup() {
 # "$BASH", so a run of this file under /bin/bash runs the loop under it too.
 # BG=1 leaves the loop running, its pid in LOOP_PID.
 run_loop() {
-  set -- env -u CI -u CLAUDE_CONFIG_DIR -u GH_TOKEN ${CONFIG:+"CLAUDE_CONFIG_DIR=$CONFIG"} \
+  set -- env -u CI -u CLAUDE_CONFIG_DIR -u GH_TOKEN -u AGENT_TOKEN -u CREW_AGENT_TOKEN \
+    -u OSTINATO_AGENT_KEYCHAIN_SERVICE -u OSTINATO_AGENT_KEYCHAIN_ACCOUNT \
+    ${LEAK:+"AGENT_TOKEN=$LEAK"} ${CONFIG:+"CLAUDE_CONFIG_DIR=$CONFIG"} CREW_KEYCHAIN_LIMIT="${KEYLIMIT:-5}" \
     PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp" \
     CREW_QUEUE="$work/bin/queue" CREW_PICK="$work/bin/pick" OSTINATO_HOME="$work/records" \
     CREW_OSTI="${OSTI:-osti}" CREW_PHONE_PUSH="${PUSH:-}" \
@@ -1153,14 +1163,28 @@ ok "the label, the fallback note and each osti write carry the agent's token, an
 ok "no read carries it, and it is never printed" \
   'grep -q "^none gh api graphql" "$FAKE/tokens" && ! grep -qv "^none " <<<"$(grep -E "gh (api|issue view|issue list)" "$FAKE/tokens")" &&
    ! grep -q agent-token "$work/out" "$work/log" && grep -q "^security find-generic-password -s ostinato-intrada-loop -a ostinato-agent -w$" "$FAKE/calls"'
-for k in no-keychain empty-keychain; do
+for k in "no-keychain:could not read the Keychain item ostinato-intrada-loop (ostinato-agent) (exit 44: security: The specified item could not be found" \
+  "locked-keychain:could not read the Keychain item ostinato-intrada-loop (ostinato-agent) (exit 51: security: User interaction is not allowed.)" \
+  "empty-keychain:the Keychain item ostinato-intrada-loop (ostinato-agent) is empty, so no run starts"; do
   setup 101
-  touch "$FAKE/$k"
+  touch "$FAKE/${k%%:*}"
   run_loop
-  ok "$k: no run starts, and the log names the Keychain item" \
-    '[ -z "$(started)" ] && grep -qx exit=1 "$work/rc" && [ ! -s "$FAKE/osti.log" ] &&
-     grep -q "not in the Keychain item ostinato-intrada-loop (ostinato-agent), so no run starts" "$work/out"'
+  ok "${k%%:*}: no run starts, and the log says why in security's own words" \
+    '[ -z "$(started)" ] && grep -qx exit=1 "$work/rc" && [ ! -s "$FAKE/osti.log" ] && grep -qF "${k#*:}" "$work/out" &&
+     [ "$(grep -c "Keychain item" "$work/out")" = 1 ]'
 done
+setup 101
+touch "$FAKE/prompt-keychain"
+t0=$(date +%s)
+KEYLIMIT=1 run_loop
+ok "an access prompt nobody answers ends the run within the limit, and frees the run lock" \
+  '[ $(($(date +%s) - t0)) -lt 10 ] && [ -z "$(started)" ] && grep -qx exit=1 "$work/rc" && [ ! -e "$work/lock" ] &&
+   grep -q "reading the Keychain item ostinato-intrada-loop (ostinato-agent) took over 1s" "$work/out"'
+setup 101
+echo draft >"$FAKE/scenario-101"
+LEAK=agent-token-from-the-shell NOTIFY="" PUSH=1 run_loop
+ok "a token the launching shell exported reaches no child: not the session, the guard, the push or gh" \
+  '[ ! -e "$FAKE/leaked" ] && [ "$(started)" = 101 ] && grep -q "^guard " "$FAKE/osti.log" && [ -s "$FAKE/pushed" ]'
 
 setup 101 102
 echo wait-permission >"$FAKE/scenario-101"

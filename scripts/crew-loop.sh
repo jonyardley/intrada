@@ -48,6 +48,9 @@ SESSION_ID=""  # the open attempt's Claude Code session, once known
 CURRENT_WT=""  # the open attempt's worktree, once made
 SPEND_SEEN=0   # the spend figure the cap last read, on each picked line
 RECORD_FAILED=0
+# Unset first: an export from the launching shell would survive the assignment
+# and hand the token to every child.
+unset AGENT_TOKEN CREW_AGENT_TOKEN
 AGENT_TOKEN="" # the agent account's token, read once at start (#2857)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -310,9 +313,38 @@ usage_limit() {
 
 # ── GitHub ───────────────────────────────────────────────────────────────────
 
-# The loop's own writes post as the agent account (#2857); its reads stay on
-# the owner's login. The token goes to this one command and is never exported.
-as_agent() { GH_TOKEN=$AGENT_TOKEN "$@"; }
+# The loop's own writes post as the agent account (#2857); its own gh reads stay
+# on the owner's login. The token goes to this one command and is never exported.
+as_agent() {
+  [ -n "$AGENT_TOKEN" ] || log "the agent's token is empty, so $1 is refused rather than posted as the owner"
+  crew_post "$AGENT_TOKEN" "$@"
+}
+
+# The token from the Keychain item the sessions' guard reads, bounded so an
+# access prompt cannot hold the run lock; perl's alarm, since macOS has no
+# timeout. On failure the log names security's exit and last error line.
+read_agent_token() {
+  local errf rc=0 limit=${CREW_KEYCHAIN_LIMIT:-10} item
+  item="$OSTINATO_AGENT_KEYCHAIN_SERVICE ($OSTINATO_AGENT_KEYCHAIN_ACCOUNT)"
+  errf=$(mktemp "${TMPDIR:-/tmp}/crew-keychain.XXXXXX") || errf=/dev/null
+  AGENT_TOKEN=$(perl -e 'alarm shift; exec @ARGV or exit 127' "$limit" \
+    security find-generic-password -s "$OSTINATO_AGENT_KEYCHAIN_SERVICE" \
+    -a "$OSTINATO_AGENT_KEYCHAIN_ACCOUNT" -w 2>"$errf") || rc=$?
+  local err
+  err=$(tail -1 "$errf" 2>/dev/null)
+  [ "$errf" = /dev/null ] || rm -f "$errf"
+  if [ "$rc" -eq 142 ]; then
+    log "reading the Keychain item $item took over ${limit}s, perhaps an access prompt waiting, so no run starts"
+  elif [ "$rc" -ne 0 ]; then
+    log "security could not read the Keychain item $item (exit $rc: ${err:-no message}), so no run starts: the loop posts to GitHub as the agent account"
+  elif [ -z "$AGENT_TOKEN" ]; then
+    log "the Keychain item $item is empty, so no run starts: the loop posts to GitHub as the agent account"
+  else
+    return 0
+  fi
+  AGENT_TOKEN=""
+  return 1
+}
 
 # The newest Crew note from $2 on, so an earlier run's park is not this
 # run's outcome.
@@ -883,11 +915,7 @@ main() {
     log "osti is not installed (just install in the Ostinato repo), so no run starts: the run record and the guard need it"
     exit 1
   fi
-  if ! AGENT_TOKEN=$(security find-generic-password -s "$OSTINATO_AGENT_KEYCHAIN_SERVICE" \
-    -a "$OSTINATO_AGENT_KEYCHAIN_ACCOUNT" -w 2>/dev/null) || [ -z "$AGENT_TOKEN" ]; then
-    log "the agent account's token is not in the Keychain item $OSTINATO_AGENT_KEYCHAIN_SERVICE ($OSTINATO_AGENT_KEYCHAIN_ACCOUNT), so no run starts: the loop posts to GitHub as the agent account"
-    exit 1
-  fi
+  read_agent_token || exit 1
   if ! toolchain_ready; then
     log "the pinned Rust toolchain or its iPhone simulator target is missing, and a sandboxed session cannot install either: run rustup target add aarch64-apple-ios-sim in the main checkout"
     exit 1
