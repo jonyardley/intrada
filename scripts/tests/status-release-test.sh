@@ -182,10 +182,12 @@ check "$out" "keeps the rest of the report" "RECENTLY LANDED"
 out="$(FAIL_ON=tags "$script")"
 check "$out" "survives a tags outage" "- v0.11.0: Finish capture"
 check "$out" "names the tags outage" "Could not read the tags"
+refute "$out" "never prints the raw JSON body of a refused tags read" "documentation_url"
 refute "$out" "claims no distance it cannot measure" "commits on main since"
 
 out="$(FAIL_ON=releases "$script")"
 check "$out" "names the releases outage rather than claiming no drafts" "Could not read the releases"
+refute "$out" "never prints the raw JSON body of a refused releases read" "documentation_url"
 check "$out" "survives a releases outage" "- v0.11.0: Finish capture"
 
 echo '<html>Service unavailable</html>' >"$FIXTURES/releases.json"
