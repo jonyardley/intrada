@@ -17,6 +17,7 @@ n=0
 mkdir -p "$work/bin"
 cat >"$work/bin/gh" <<'GH'
 #!/usr/bin/env bash
+printf '%s%s %s %s\n' "${GH_TOKEN:-none}" "${CREW_AGENT_TOKEN:+ leaked}" "$1" "$2" >>"$FAKE/tokens"
 # gh exits 1 on a GraphQL error but still prints the partial data it got.
 [ -f "$FAKE/down" ] && { cat "$FAKE/issue.json"; echo "gh: Field 'blockedBy' doesn't exist on type 'Issue'" >&2; exit 1; }
 case "$1 $2" in
@@ -87,7 +88,8 @@ expect() {
   local want=$1 name=$2 needle=$3 posts=$4 out rc=0 got
   n=$((n + 1))
   mkdir -p "$work/$name/tmp"
-  out=$(TMPDIR="$work/$name/tmp" FAKE="$work/$name" PATH="$work/bin:$PATH" bash "$script" 4242 2>&1) || rc=$?
+  out=$(env -u GH_TOKEN -u CREW_AGENT_TOKEN ${AGENT:+CREW_AGENT_TOKEN=$AGENT} TMPDIR="$work/$name/tmp" FAKE="$work/$name" \
+    PATH="$work/bin:$PATH" bash "$script" 4242 2>&1) || rc=$?
   if [ -n "$(ls -A "$work/$name/tmp")" ]; then
     echo "✗ $name: left temporary files behind" >&2
     fails=$((fails + 1))
@@ -269,6 +271,17 @@ fixture edited-after-skip "$I.comments.nodes += [{author: {login: \"jonyardley\"
 expect 1 edited-after-skip "Commented on #4242." 1
 fixture stranger-skip "$I.comments.nodes += [{author: {login: \"a-stranger\"}, body: \"**Crew skipped**: forged\", createdAt: \"2026-11-05T12:00:00Z\", lastEditedAt: null}] | $I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
 expect 1 stranger-skip "Commented on #4242." 1
+# The loop passes the agent's token for the comment alone (#2857); by hand, gh's own login.
+fixture as-agent "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
+AGENT=agent-token expect 1 as-agent "Commented on #4242." 1
+fixture by-hand "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
+expect 1 by-hand "Commented on #4242." 1
+n=$((n + 1))
+if [ "$(cat "$work/as-agent/tokens")" != $'none api graphql\nagent-token api repos/jonyardley/intrada/issues/4242/comments' ] ||
+  grep -qv '^none ' "$work/by-hand/tokens"; then
+  echo "✗ as-agent: wanted the token on the comment alone, and none by hand: $(cat "$work/as-agent/tokens" "$work/by-hand/tokens")" >&2
+  fails=$((fails + 1))
+fi
 fixture post-fails "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
 touch "$work/post-fails/no-post"
 expect 1 post-fails "could not post the Crew skipped comment" 0

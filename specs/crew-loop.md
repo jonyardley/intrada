@@ -304,6 +304,11 @@ only from a trusted login, and so does a Claimed comment in `just claim`. The ow
 author does not prove the owner wrote it: removing `needs-owner` stays the
 real answered signal.
 
+The loop's own writes, the `needs-owner` label, its notes through `osti write`
+and the Crew skipped comment, post as the agent account too (#2857): it reads
+the token once at start from the Keychain item the sessions' guard reads, and
+stops when the item is missing. Its reads stay on the owner's login.
+
 ## The run record (#2854)
 
 The loop and its sessions write one line per event to the project's run
