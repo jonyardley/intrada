@@ -82,12 +82,6 @@ claimed=$(gh issue list --repo "$repo" --label in-flight --state open \
 # would read as "no release in flight", which is the silent-wrong this script
 # exists to remove, and swallowing the tags call took the whole script down
 # with it under `set -e`.
-milestones_error=""
-if ! milestones=$(gh api "repos/$repo/milestones?state=open" 2>&1); then
-  milestones_error=$(printf '%s' "$milestones" | head -1)
-  milestones='[]'
-fi
-
 # A failed read joins gh's message onto the JSON body with no newline (#2806),
 # so the reason is what follows the last "gh: "; with none, the first line stands.
 gh_reason() {
@@ -96,6 +90,12 @@ gh_reason() {
   [ -n "$reason" ] || reason=$(printf '%s' "$1" | head -1)
   printf '%s' "$reason"
 }
+
+milestones_error=""
+if ! milestones=$(gh api "repos/$repo/milestones?state=open" 2>&1); then
+  milestones_error=$(gh_reason "$milestones")
+  milestones='[]'
+fi
 
 # The epics are the backlog's containers (#1968): the next slice is picked from
 # one of them, not from the flat list of open issues. GitHub caps an epic at

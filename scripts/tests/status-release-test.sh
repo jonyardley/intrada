@@ -29,7 +29,10 @@ done
 
 endpoint="${2:-}"
 if [ -n "${FAIL_ON:-}" ] && grep -q "$FAIL_ON" <<<"$endpoint"; then
-  echo "gh: HTTP 403: API rate limit exceeded" >&2
+  # As the real one fails (#2806): the JSON body on standard output with no
+  # newline, then gh's reason on standard error.
+  printf '%s' '{"message":"API rate limit exceeded","documentation_url":"https://docs.github.com/rest"}'
+  echo "gh: API rate limit exceeded (HTTP 403)" >&2
   exit 1
 fi
 
@@ -172,6 +175,8 @@ JSON
 
 out="$(FAIL_ON=milestones "$script")"
 check "$out" "names a milestones outage rather than showing an empty section" "GitHub did not answer"
+check "$out" "names GitHub's reason for the milestones outage" "    API rate limit exceeded (HTTP 403)"
+refute "$out" "never prints the raw JSON body of a refused milestones read" "documentation_url"
 check "$out" "keeps the rest of the report" "RECENTLY LANDED"
 
 out="$(FAIL_ON=tags "$script")"
