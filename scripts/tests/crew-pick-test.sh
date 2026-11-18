@@ -75,8 +75,8 @@ fixture() {
       {author: {login: "jonyardley"}, body: "Picking this up.", createdAt: "2026-11-01T09:00:00Z", lastEditedAt: null},
       {author: {login: "jonyardley"}, body: $plan, createdAt: "2026-11-01T10:00:00Z", lastEditedAt: "2026-11-02T10:00:00Z"}]},
     timelineItems: {nodes: [
-      {createdAt: "2026-11-01T08:00:00Z", label: {name: "horizon:now"}},
-      {createdAt: "2026-11-03T10:00:00Z", label: {name: "ready"}}]},
+      {createdAt: "2026-11-01T08:00:00Z", actor: {login: "jonyardley"}, label: {name: "horizon:now"}},
+      {createdAt: "2026-11-03T10:00:00Z", actor: {login: "jonyardley"}, label: {name: "ready"}}]},
     blockedBy: {nodes: [{number: 2700, state: "CLOSED"}]}}}}}' |
     jq "${2:-.}" "${@:3}" >"$d/issue.json"
 }
@@ -165,6 +165,16 @@ fixture ready-before-create "$PLAN.lastEditedAt = null | $PLAN.createdAt = \"202
 expect 1 ready-before-create "older than the plan's last edit (2026-11-05T10:00:00Z)" 1
 fixture no-ready-event "$I.timelineItems.nodes = [$I.timelineItems.nodes[0]]"
 expect 1 no-ready-event "(added never)" 1
+fixture ready-by-agent "$I.timelineItems.nodes[1].actor.login = \"ostinato-agent\""
+expect 1 ready-by-agent "added by ostinato-agent, not the owner" 1
+fixture ready-by-stranger "$I.timelineItems.nodes[1].actor.login = \"a-stranger\""
+expect 1 ready-by-stranger "added by a-stranger, not the owner" 1
+fixture ready-by-deleted "$I.timelineItems.nodes[1].actor = null"
+expect 1 ready-by-deleted "added by a deleted account, not the owner" 1
+fixture ready-again-by-agent "$I.timelineItems.nodes += [{createdAt: \"2026-11-04T10:00:00Z\", actor: {login: \"ostinato-agent\"}, label: {name: \"ready\"}}]"
+expect 1 ready-again-by-agent "added by ostinato-agent, not the owner" 1
+fixture ready-again-by-owner "$I.timelineItems.nodes = [$I.timelineItems.nodes[1] | .actor.login = \"ostinato-agent\" | .createdAt = \"2026-11-02T11:00:00Z\"] + $I.timelineItems.nodes"
+expect 0 ready-again-by-owner "qualifies" 0
 fixture own-evidence-row "$I.body = \$b" --arg b "${BODY/
 ## Where/- Harness check 5 passes.
 
@@ -257,7 +267,7 @@ fixture again "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
 expect 1 again "Commented on #4242." 1
 expect 1 again "Already said on #4242" 1
 echo 2026-11-12T00:00:00Z >"$work/again/clock"
-edit_again "$I.timelineItems.nodes += [{createdAt: \"2026-11-11T00:00:00Z\", label: {name: \"ready\"}}]"
+edit_again "$I.timelineItems.nodes += [{createdAt: \"2026-11-11T00:00:00Z\", actor: {login: \"jonyardley\"}, label: {name: \"ready\"}}]"
 expect 1 again "Commented on #4242." 2
 expect 1 again "Already said on #4242" 2
 echo 2026-11-14T00:00:00Z >"$work/again/clock"
@@ -327,7 +337,7 @@ done
 n=$((n + 1))
 q=$(cat "$work/pass/query")
 for want in 'state body author { login } editor { login }' 'labels(first: 50) { nodes { name } }' 'comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }' \
-  'timelineItems(itemTypes: [LABELED_EVENT]' 'createdAt label { name }' 'blockedBy(first: 50) { nodes { number state } }' \
+  'timelineItems(itemTypes: [LABELED_EVENT]' 'createdAt actor { login } label { name }' 'blockedBy(first: 50) { nodes { number state } }' \
   'repository(owner: $owner, name: $name)' 'issue(number: $n)' 'n=4242' 'owner=jonyardley' 'name=intrada'; do
   if [[ "$q" != *"$want"* ]]; then
     echo "✗ query: no '$want' in what was sent" >&2

@@ -39,7 +39,7 @@ query='query($owner: String!, $name: String!, $n: Int!) {
       state body author { login } editor { login }
       labels(first: 50) { nodes { name } }
       comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }
-      timelineItems(itemTypes: [LABELED_EVENT], last: 100) { nodes { ... on LabeledEvent { createdAt label { name } } } }
+      timelineItems(itemTypes: [LABELED_EVENT], last: 100) { nodes { ... on LabeledEvent { createdAt actor { login } label { name } } } }
       blockedBy(first: 50) { nodes { number state } }
     }
   }
@@ -81,6 +81,11 @@ plan=$(get "$(trusted_jq)"'[.comments.nodes[] | select(trusted) | select((.body 
 plan_body=$(printf '%s' "$plan" | jq -r '.body // empty' 2>/dev/null | tr -d '\r')
 plan_edit=$(printf '%s' "$plan" | jq -r '.lastEditedAt // .createdAt // empty' 2>/dev/null)
 ready_at=$(get '[.timelineItems.nodes[] | select(.label.name == "ready") | .createdAt] | max // empty')
+ready_by=$(get '[.timelineItems.nodes[] | select(.label.name == "ready")] | max_by(.createdAt) | .actor.login // empty')
+# Only the owner approves a plan: the agent account can add labels too (#2811).
+if [ -n "$ready_at" ] && [ "$ready_by" != "${REPO%%/*}" ]; then
+  fail "The ready label was added by ${ready_by:-a deleted account}, not the owner: add it again as the owner."
+fi
 # A heading's text: written **H**: or **H:**, on its own line or not, with any
 # list items under it, since a long Files line becomes a list.
 plan_line() {
