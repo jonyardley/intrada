@@ -12,6 +12,11 @@
 
 set -uo pipefail
 
+# The agent account's token when the loop passes it (#2857), kept from every
+# command but the Crew skipped comment. Run by hand, gh's own login posts.
+agent_token=${CREW_AGENT_TOKEN:-}
+unset CREW_AGENT_TOKEN
+
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO=${CREW_REPO:-jonyardley/intrada}
 # shellcheck source=crew-trusted.sh
@@ -168,7 +173,8 @@ fi
 comment="**Crew skipped**: the crew passes over this issue while any reason below holds, and says so once until the plan is edited or the ready label is added again.
 
 $reasons"
-if gh api "repos/$REPO/issues/$n/comments" -f body="$comment" >/dev/null 2>&1; then
+post() { if [ -n "$agent_token" ]; then GH_TOKEN=$agent_token "$@"; else "$@"; fi; }
+if post gh api "repos/$REPO/issues/$n/comments" -f body="$comment" >/dev/null 2>&1; then
   echo "Commented on #$n."
 else
   echo "crew-pick: could not post the Crew skipped comment on #$n" >&2

@@ -48,6 +48,7 @@ SESSION_ID=""  # the open attempt's Claude Code session, once known
 CURRENT_WT=""  # the open attempt's worktree, once made
 SPEND_SEEN=0   # the spend figure the cap last read, on each picked line
 RECORD_FAILED=0
+AGENT_TOKEN="" # the agent account's token, read once at start (#2857)
 # ──────────────────────────────────────────────────────────────────────────────
 
 POLL=${CREW_POLL:-60}
@@ -309,6 +310,10 @@ usage_limit() {
 
 # ── GitHub ───────────────────────────────────────────────────────────────────
 
+# The loop's own writes post as the agent account (#2857); its reads stay on
+# the owner's login. The token goes to this one command and is never exported.
+as_agent() { GH_TOKEN=$AGENT_TOKEN "$@"; }
+
 # The newest Crew note from $2 on, so an earlier run's park is not this
 # run's outcome.
 last_note() {
@@ -324,7 +329,7 @@ last_note() {
 # heading, since the restart and the outcome read only that.
 park_issue() {
   local n=$1 code=$2 why=$3 question=$4 said=${5:-} labelled=0 file
-  if ! gh issue edit "$n" -R "$REPO" --add-label needs-owner >/dev/null 2>&1; then
+  if ! as_agent gh issue edit "$n" -R "$REPO" --add-label needs-owner >/dev/null 2>&1; then
     log "could not add needs-owner to #$n"
     labelled=1
   fi
@@ -362,7 +367,7 @@ issue_url() { printf 'https://github.com/%s/issues/%s' "$REPO" "$1"; }
 # since a repeat would hold the line twice.
 record() {
   local rc=0 err
-  err=$("$OSTI" write --project "$REPO" --run "$RUN" "$@" 2>&1 >/dev/null) || rc=$?
+  err=$(as_agent "$OSTI" write --project "$REPO" --run "$RUN" "$@" 2>&1 >/dev/null) || rc=$?
   case $rc in
     # A warning, such as a line osti could not price, is logged too.
     0) [ -z "$err" ] || log "osti on $1: $(printf '%s' "$err" | tail -1)" ;;
@@ -379,7 +384,7 @@ record_noted() {
   shift 2
   record "$@" || rc=$?
   if [ "$rc" -ne 0 ]; then
-    gh issue comment "$n" -R "$REPO" --body "$body" >/dev/null 2>&1 ||
+    as_agent gh issue comment "$n" -R "$REPO" --body "$body" >/dev/null 2>&1 ||
       log "could not post the $1 note on #$n"
   fi
   return 0
@@ -878,6 +883,11 @@ main() {
     log "osti is not installed (just install in the Ostinato repo), so no run starts: the run record and the guard need it"
     exit 1
   fi
+  if ! AGENT_TOKEN=$(security find-generic-password -s "$OSTINATO_AGENT_KEYCHAIN_SERVICE" \
+    -a "$OSTINATO_AGENT_KEYCHAIN_ACCOUNT" -w 2>/dev/null) || [ -z "$AGENT_TOKEN" ]; then
+    log "the agent account's token is not in the Keychain item $OSTINATO_AGENT_KEYCHAIN_SERVICE ($OSTINATO_AGENT_KEYCHAIN_ACCOUNT), so no run starts: the loop posts to GitHub as the agent account"
+    exit 1
+  fi
   if ! toolchain_ready; then
     log "the pinned Rust toolchain or its iPhone simulator target is missing, and a sandboxed session cannot install either: run rustup target add aarch64-apple-ios-sim in the main checkout"
     exit 1
@@ -940,7 +950,7 @@ $q"
     for cand in $candidates; do
       case "$tried" in *" $cand "*) continue ;; esac
       tried="$tried$cand "
-      "${CREW_PICK:-$root/scripts/crew-pick.sh}" "$cand" >/dev/null 2>&1
+      CREW_AGENT_TOKEN=$AGENT_TOKEN "${CREW_PICK:-$root/scripts/crew-pick.sh}" "$cand" >/dev/null 2>&1
       prc=$?
       if [ "$prc" -eq 0 ]; then
         n=$cand
