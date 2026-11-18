@@ -658,7 +658,7 @@ mod tests {
                         && !reason.to_lowercase().contains("mark"),
                     "the screen says confidence, not score or mark: {reason}"
                 );
-                if reason.contains(" of 10 ") {
+                if reason.contains(&format!(" of {} ", crate::validation::MAX_SCORE)) {
                     assert!(
                         reason.starts_with("Confidence "),
                         "the number a musician gave is their confidence: {reason}"
