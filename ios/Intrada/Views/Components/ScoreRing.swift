@@ -69,7 +69,8 @@ struct ScoreRing: View {
       withAnimation(.easeOut(duration: IntradaMotion.countUpDuration)) { shown = true }
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(isUnrated ? "No confidence yet" : "Confidence \(clampedScore) of \(range.upperBound)")
+    .accessibilityLabel(
+      isUnrated ? "No confidence yet" : "Confidence \(clampedScore) of \(range.upperBound)")
   }
 }
 

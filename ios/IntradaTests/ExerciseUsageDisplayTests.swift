@@ -72,7 +72,8 @@ struct ExerciseUsageDisplayTests {
   @Test("A practised but unrated row says so")
   func practisedButUnratedRowSaysSo() {
     #expect(
-      usage(sessionCount: 2).spokenRow(topMark: 10) == "Clair de Lune, no confidence yet, 2 sessions")
+      usage(sessionCount: 2).spokenRow(topMark: 10)
+        == "Clair de Lune, no confidence yet, 2 sessions")
   }
 
   @Test("A row with no practice stops at the meta line, saying nothing of the ring")
