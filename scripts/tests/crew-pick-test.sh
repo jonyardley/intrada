@@ -188,6 +188,25 @@ fixture body-edited-before "$I.lastEditedAt = \"2026-11-02T12:00:00Z\""
 expect 0 body-edited-before "qualifies" 0
 fixture body-edited-after "$I.editor = {login: \"ostinato-agent\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
 expect 1 body-edited-after "The issue body changed after the ready label: remove and add ready again as the owner." 1
+# The owner ticking a box or fixing a typo after approving does not eject it.
+fixture owner-edited-after "$I.editor = {login: \"jonyardley\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 0 owner-edited-after "qualifies" 0
+# An unread body carries one reason, never a second about when it changed.
+fixture stranger-edited-after "$I.editor = {login: \"a-stranger\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 1 stranger-edited-after "last edited by someone other than the owner" 1
+n=$((n + 1))
+if grep -q 'changed after the ready label' "$work/stranger-edited-after/posted"; then
+  echo "✗ stranger-edited-after: an unread body also got the body-changed reason" >&2
+  fails=$((fails + 1))
+fi
+# A deleted account's ready label, then an agent edit: both reasons, each field in place.
+fixture deleted-ready-agent-edit "$I.timelineItems.nodes[1].actor = null | $I.editor = {login: \"ostinato-agent\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 1 deleted-ready-agent-edit "added by a deleted account, not the owner" 1
+n=$((n + 1))
+if ! grep -q 'changed after the ready label' "$work/deleted-ready-agent-edit/posted"; then
+  echo "✗ deleted-ready-agent-edit: an empty actor shifted the body's edit time out of place" >&2
+  fails=$((fails + 1))
+fi
 fixture own-evidence-row "$I.body = \$b" --arg b "${BODY/
 ## Where/- Harness check 5 passes.
 
