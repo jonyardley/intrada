@@ -16,6 +16,11 @@ db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 # Unmaintained crates are informational, not vulnerabilities — warn, don't fail.
 unmaintained = "workspace"
+ignore = [
+    # chrono is unmaintained with no fixed version, and Crux pulls it in through
+    # facet-core, so swapping our own use would not remove it (#2901).
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained; Crux still depends on it, tracked in #2901" },
+]
 
 # ── Licenses ─────────────────────────────────────────────────────────────
 # Allowlist of acceptable SPDX license expressions. Anything not listed
