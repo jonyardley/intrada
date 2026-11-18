@@ -3,7 +3,10 @@
 # (ostinato#11). Intrada is public, so anyone else's comment could steer a
 # session. CREW_AGENT_LOGIN names another agent account.
 
-CREW_TRUSTED="${REPO%%/*} ${CREW_AGENT_LOGIN:-ostinato-agent}"
+# The repository's owner, the one login whose ready label approves a plan.
+owner_login() { printf '%s' "${REPO%%/*}"; }
+
+CREW_TRUSTED="$(owner_login) ${CREW_AGENT_LOGIN:-ostinato-agent}"
 
 # jq definitions, for gh's `--jq`, which takes no `--arg`. `trusted` holds for a
 # comment by one of those logins, and fails for one with no author.
