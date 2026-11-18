@@ -35,7 +35,7 @@ struct ScoreSelector: View {
 
   var pillValues: [Int] { Array(range) }
 
-  var spokenValue: String { score == 0 ? "not marked" : "\(score) of \(range.upperBound)" }
+  var spokenValue: String { score == 0 ? "no confidence yet" : "\(score) of \(range.upperBound)" }
 
   /// Unmarked starts at the lowest mark, which need not be 1.
   var markAbove: UInt8? { score < range.upperBound ? UInt8(max(score + 1, range.lowerBound)) : nil }

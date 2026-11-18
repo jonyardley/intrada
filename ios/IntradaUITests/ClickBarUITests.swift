@@ -62,7 +62,7 @@ final class ClickBarUITests: XCTestCase {
     app.swipeDown()
     XCTAssertTrue(app.element("reflection.skip").exists, "a swipe leaves the reflection sheet up")
 
-    app.control("reflection.skip", spoken: "Skip rating").tap()
+    app.control("reflection.skip", spoken: "Skip").tap()
     app.discardSummary()
   }
 }

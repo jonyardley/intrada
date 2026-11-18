@@ -62,17 +62,17 @@ struct ExerciseUsageDisplayTests {
 
   // #1468: the ring is decorative, so the announcement carries the mark itself
   // — and stops at "not practised together yet" when there is no mark.
-  @Test("A practised row speaks its mark, since the ring is decorative")
+  @Test("A practised row speaks its confidence, since the ring is decorative")
   func practisedRowSpeaksItsMark() {
     #expect(
       usage(latestScore: 7, sessionCount: 3).spokenRow(topMark: 10)
-        == "Clair de Lune, mark 7 of 10, 3 sessions")
+        == "Clair de Lune, confidence 7 of 10, 3 sessions")
   }
 
   @Test("A practised but unrated row says so")
   func practisedButUnratedRowSaysSo() {
     #expect(
-      usage(sessionCount: 2).spokenRow(topMark: 10) == "Clair de Lune, not yet rated, 2 sessions")
+      usage(sessionCount: 2).spokenRow(topMark: 10) == "Clair de Lune, no confidence yet, 2 sessions")
   }
 
   @Test("A row with no practice stops at the meta line, saying nothing of the ring")
@@ -84,13 +84,13 @@ struct ExerciseUsageDisplayTests {
   func removedPieceIsAnnouncedAsRemoved() {
     #expect(
       usage(latestScore: 4, sessionCount: 1, pieceRemoved: true).spokenRow(topMark: 10)
-        == "Clair de Lune, removed from the library, mark 4 of 10, 1 session")
+        == "Clair de Lune, removed from the library, confidence 4 of 10, 1 session")
   }
 
-  @Test("The spoken mark is out of the core's top mark, not a fixed ten")
+  @Test("The spoken confidence is out of the core's top mark, not a fixed ten")
   func spokenMarkFollowsTheTopMark() {
     #expect(
       usage(latestScore: 4, sessionCount: 1).spokenRow(topMark: 5)
-        == "Clair de Lune, mark 4 of 5, 1 session")
+        == "Clair de Lune, confidence 4 of 5, 1 session")
   }
 }

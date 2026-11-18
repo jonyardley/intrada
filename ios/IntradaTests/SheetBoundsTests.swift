@@ -42,7 +42,7 @@ struct SheetBoundsTests {
   }
 
   private func scoreSelector(score: Int) -> ScoreSelector {
-    ScoreSelector(score: score, range: limits.scoreRange, accessibilityLabel: "Mark") { _ in }
+    ScoreSelector(score: score, range: limits.scoreRange, accessibilityLabel: "Confidence") { _ in }
   }
 
   @Test func theMarkPillsOfferTheScoresTheCoreAccepts() {
