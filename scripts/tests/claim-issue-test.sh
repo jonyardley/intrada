@@ -308,6 +308,18 @@ else
   fail=$((fail + 1))
   printf '✗ agent claim: expected no board call and no warning\n    output: %s\n' "$out" >&2
 fi
+echo someone-else >"$FIXTURES/login"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+out="$(run 2>&1)"
+if [ "$(head -1 "$CALLS/project.log" 2>/dev/null)" = "project item-add" ] &&
+  ! grep -qF "board left to the crew loop" <<<"$out" &&
+  grep -qF "the token needs project scope: gh auth refresh -s project" <<<"$out" &&
+  grep -qF "claimed #42 on my-branch" <<<"$out"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ another login: expected the board tried and the project scope warning\n    output: %s\n' "$out" >&2
+fi
 rm -f "$FIXTURES/login"
 
 # ── The epic rides on the claim (#1968) ─────────────────────────────────────

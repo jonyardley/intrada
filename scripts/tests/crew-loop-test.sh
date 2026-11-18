@@ -221,6 +221,7 @@ case "$1 $2" in
     ;;
   "project item-add")
     [ -f "$FAKE/board-fails" ] && exit 1
+    [ -f "$FAKE/board-hangs" ] && exec sleep 30
     echo item-1 ;;
   "project item-edit") ;;
   *) echo "stand-in gh: unexpected call: $*" >&2; exit 9 ;;
@@ -387,6 +388,7 @@ run_loop() {
   set -- env -u CI -u CLAUDE_CONFIG_DIR -u GH_TOKEN -u AGENT_TOKEN -u CREW_AGENT_TOKEN \
     -u OSTINATO_AGENT_KEYCHAIN_SERVICE -u OSTINATO_AGENT_KEYCHAIN_ACCOUNT \
     ${LEAK:+"AGENT_TOKEN=$LEAK"} ${CONFIG:+"CLAUDE_CONFIG_DIR=$CONFIG"} CREW_KEYCHAIN_LIMIT="${KEYLIMIT:-5}" \
+    CREW_BOARD_LIMIT="${BOARDLIMIT:-5}" \
     PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp" \
     CREW_QUEUE="$work/bin/queue" CREW_PICK="$work/bin/pick" OSTINATO_HOME="$work/records" \
     CREW_OSTI="${OSTI:-osti}" CREW_PHONE_PUSH="${PUSH:-}" \
@@ -455,8 +457,17 @@ setup 101
 echo draft >"$FAKE/scenario-101"
 touch "$FAKE/board-fails"
 run_loop
-ok "a board that cannot be set is logged, and the session runs on" \
-  '[ "$(started)" = 101 ] && grep -q "#101: the board could not be set to In progress" "$work/out" && grep -q "intrada#101 .*--outcome draft" "$FAKE/osti.log"'
+ok "a board that cannot be set is logged with the scope hint, and the session runs on" \
+  '[ "$(started)" = 101 ] && grep -q "#101: the board could not be set to In progress; the token needs project scope: gh auth refresh -s project" "$work/out" &&
+   grep -q "intrada#101 .*--outcome draft" "$FAKE/osti.log"'
+setup 101
+echo draft >"$FAKE/scenario-101"
+touch "$FAKE/board-hangs"
+t0=$(date +%s)
+BOARDLIMIT=1 run_loop
+ok "a board call that hangs is cut off at the limit, and the session runs on" \
+  '[ $(($(date +%s) - t0)) -lt 15 ] && [ "$(started)" = 101 ] && grep -q "#101: the board took over 1s" "$work/out" &&
+   grep -q "intrada#101 .*--outcome draft" "$FAKE/osti.log"'
 
 setup 101
 touch "$work/stop"
