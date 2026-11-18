@@ -100,7 +100,7 @@ extension ExerciseUsageView {
 
   /// The whole VoiceOver announcement for a "Used in" row; the ring beside it is
   /// decorative (#1468). A row with no practice stops at "not practised
-  /// together yet" — the ring's unrated rest says the same thing, and "no
+  /// together yet": the ring's unrated rest says the same thing, and "no
   /// confidence yet" after it would be the fact twice.
   func spokenRow(topMark: Int) -> String {
     var parts = [rowTitle]
