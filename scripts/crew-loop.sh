@@ -348,6 +348,19 @@ read_agent_token() {
   return 1
 }
 
+# Issue $1 In progress on the owner's board, with gh's own login (#2859);
+# bounded like the Keychain read, since a stalled gh would hold back the watch.
+set_board() {
+  local limit=${CREW_BOARD_LIMIT:-15} rc=0
+  REPO=$REPO perl -e 'alarm shift; exec @ARGV or exit 127' "$limit" \
+    bash -c '. "$1" && board_in_progress "$2"' set_board "$root/scripts/board.sh" "$1" || rc=$?
+  case $rc in
+    0) ;;
+    142) log "#$1: the board took over ${limit}s, so it was left as it was" ;;
+    *) log "#$1: the board could not be set to In progress; the token needs project scope: gh auth refresh -s project" ;;
+  esac
+}
+
 # The newest Crew note from $2 on, so an earlier run's park is not this
 # run's outcome.
 last_note() {
@@ -780,7 +793,7 @@ run_issue() {
   id=$STARTED_ID
   log "#$n: session $id in $wt"
   # The session claims as the agent, which cannot see the owner's board (#2859).
-  crew_post --owner board_in_progress "$n" || log "#$n: the board could not be set to In progress"
+  set_board "$n"
   watch "$id" "$wt" "$n" "$since"
   sid=$(agent_record "$id" | jq -r '.sessionId // empty')
   [ -n "$sid" ] && SESSION_ID=$sid

@@ -122,9 +122,9 @@ gh issue comment "$number" --repo "$repo" --body "$claim_comment"
 gh issue edit "$number" --repo "$repo" --add-label in-flight
 
 # A loop session claims as the agent account, which cannot see the board; the
-# loop sets it with the owner's login (#2859). An unknown login tries as before.
+# loop sets it with the owner's login (#2859). Any other login tries as before.
 login="$(gh api user --jq .login 2>/dev/null || true)"
-if [ -n "$login" ] && [ "$login" != "$BOARD_OWNER" ]; then
+if [ "$login" = "$CREW_AGENT" ]; then
   echo "✓ board left to the crew loop"
 elif board_in_progress "$number"; then
   echo "✓ board: #$number is In progress"

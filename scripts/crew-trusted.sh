@@ -6,7 +6,8 @@
 # The repository's owner, the one login whose ready label approves a plan.
 owner_login() { printf '%s' "${REPO%%/*}"; }
 
-CREW_TRUSTED="$(owner_login) ${CREW_AGENT_LOGIN:-ostinato-agent}"
+CREW_AGENT=${CREW_AGENT_LOGIN:-ostinato-agent}
+CREW_TRUSTED="$(owner_login) $CREW_AGENT"
 
 # jq definitions, for gh's `--jq`, which takes no `--arg`. `trusted` holds for a
 # comment by one of those logins, and fails for one with no author.
