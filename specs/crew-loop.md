@@ -179,6 +179,8 @@ the issue, its labels, comments, label events and blockers.
   qualifies.
 - **Approved after the last edit.** The newest `ready` label event is later
   than the plan comment's last edit, so an edited plan needs the label again.
+- **Labelled by the owner.** The owner added that newest `ready` label; the
+  agent account can label issues too, and must not approve its own plans.
 - **Evidence.** Every item, bulleted or numbered, under the body's "Done looks
   like" heading names a test, self-test, snapshot or screenshot as a whole
   word. A heading with no items skips the issue. With no such heading, the
