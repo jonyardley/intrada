@@ -36,7 +36,7 @@ n=$1
 query='query($owner: String!, $name: String!, $n: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $n) {
-      state body author { login } editor { login }
+      state body author { login } editor { login } lastEditedAt
       labels(first: 50) { nodes { name } }
       comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }
       timelineItems(itemTypes: [LABELED_EVENT], last: 100) { nodes { ... on LabeledEvent { createdAt actor { login } label { name } } } }
@@ -80,11 +80,18 @@ fi
 plan=$(get "$(trusted_jq)"'[.comments.nodes[] | select(trusted) | select((.body | test("\\*\\*Done looks like:?\\*\\*")) and (.body | test("\\*\\*Files:?\\*\\*")))] | last // empty')
 plan_body=$(printf '%s' "$plan" | jq -r '.body // empty' 2>/dev/null | tr -d '\r')
 plan_edit=$(printf '%s' "$plan" | jq -r '.lastEditedAt // .createdAt // empty' 2>/dev/null)
-ready_at=$(get '[.timelineItems.nodes[] | select(.label.name == "ready") | .createdAt] | max // empty')
-ready_by=$(get '[.timelineItems.nodes[] | select(.label.name == "ready")] | max_by(.createdAt) | .actor.login // empty')
+ready_at="" ready_by=""
+IFS=$'\t' read -r ready_at ready_by < <(get '[.timelineItems.nodes[] | select(.label.name == "ready")] | max_by(.createdAt) // empty | "\(.createdAt)\t\(.actor.login // "")"')
 # Only the owner approves a plan: the agent account can add labels too (#2811).
-if [ -n "$ready_at" ] && [ "$ready_by" != "${REPO%%/*}" ]; then
-  fail "The ready label was added by ${ready_by:-a deleted account}, not the owner: add it again as the owner."
+# GitHub names a deleted account's events ghost. Adding a label the issue
+# already carries records no event, so the messages say to remove it first.
+if [ -n "$ready_at" ]; then
+  [ "$ready_by" = ghost ] && ready_by=""
+  [ "$ready_by" = "$(owner_login)" ] ||
+    fail "The ready label was added by ${ready_by:-a deleted account}, not the owner: remove the ready label and add it again as the owner."
+  body_edit=$(get '.lastEditedAt // empty')
+  [[ $body_edit > $ready_at ]] &&
+    fail "The issue body changed after the ready label: remove and add ready again as the owner."
 fi
 # A heading's text: written **H**: or **H:**, on its own line or not, with any
 # list items under it, since a long Files line becomes a list.

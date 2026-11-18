@@ -166,7 +166,7 @@ expect 1 ready-before-create "older than the plan's last edit (2026-11-05T10:00:
 fixture no-ready-event "$I.timelineItems.nodes = [$I.timelineItems.nodes[0]]"
 expect 1 no-ready-event "(added never)" 1
 fixture ready-by-agent "$I.timelineItems.nodes[1].actor.login = \"ostinato-agent\""
-expect 1 ready-by-agent "added by ostinato-agent, not the owner" 1
+expect 1 ready-by-agent "added by ostinato-agent, not the owner: remove the ready label and add it again as the owner." 1
 fixture ready-by-stranger "$I.timelineItems.nodes[1].actor.login = \"a-stranger\""
 expect 1 ready-by-stranger "added by a-stranger, not the owner" 1
 fixture ready-by-deleted "$I.timelineItems.nodes[1].actor = null"
@@ -175,6 +175,19 @@ fixture ready-again-by-agent "$I.timelineItems.nodes += [{createdAt: \"2026-11-0
 expect 1 ready-again-by-agent "added by ostinato-agent, not the owner" 1
 fixture ready-again-by-owner "$I.timelineItems.nodes = [$I.timelineItems.nodes[1] | .actor.login = \"ostinato-agent\" | .createdAt = \"2026-11-02T11:00:00Z\"] + $I.timelineItems.nodes"
 expect 0 ready-again-by-owner "qualifies" 0
+fixture ready-by-ghost "$I.timelineItems.nodes[1].actor.login = \"ghost\""
+expect 1 ready-by-ghost "added by a deleted account, not the owner" 1
+# The agent's label is skipped once; the owner's removal and fresh label, plan
+# unchanged, then qualifies past that earlier Crew skipped comment.
+fixture reapproved "$I.timelineItems.nodes[1].actor.login = \"ostinato-agent\""
+expect 1 reapproved "Commented on #4242." 1
+jq "$I.timelineItems.nodes += [{createdAt: \"2026-11-11T00:00:00Z\", actor: {login: \"jonyardley\"}, label: {name: \"ready\"}}]" \
+  "$work/reapproved/issue.json" >"$work/reapproved/next" && mv "$work/reapproved/next" "$work/reapproved/issue.json"
+expect 0 reapproved "#4242 qualifies" 1
+fixture body-edited-before "$I.lastEditedAt = \"2026-11-02T12:00:00Z\""
+expect 0 body-edited-before "qualifies" 0
+fixture body-edited-after "$I.editor = {login: \"ostinato-agent\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 1 body-edited-after "The issue body changed after the ready label: remove and add ready again as the owner." 1
 fixture own-evidence-row "$I.body = \$b" --arg b "${BODY/
 ## Where/- Harness check 5 passes.
 
@@ -336,7 +349,7 @@ done
 # checked: each field the rules read, braces balanced, the issue number passed.
 n=$((n + 1))
 q=$(cat "$work/pass/query")
-for want in 'state body author { login } editor { login }' 'labels(first: 50) { nodes { name } }' 'comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }' \
+for want in 'state body author { login } editor { login } lastEditedAt' 'labels(first: 50) { nodes { name } }' 'comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }' \
   'timelineItems(itemTypes: [LABELED_EVENT]' 'createdAt actor { login } label { name }' 'blockedBy(first: 50) { nodes { number state } }' \
   'repository(owner: $owner, name: $name)' 'issue(number: $n)' 'n=4242' 'owner=jonyardley' 'name=intrada'; do
   if [[ "$q" != *"$want"* ]]; then

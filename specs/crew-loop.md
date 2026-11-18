@@ -180,7 +180,12 @@ the issue, its labels, comments, label events and blockers.
 - **Approved after the last edit.** The newest `ready` label event is later
   than the plan comment's last edit, so an edited plan needs the label again.
 - **Labelled by the owner.** The owner added that newest `ready` label; the
-  agent account can label issues too, and must not approve its own plans.
+  agent account can label issues too, and must not approve its own plans. A
+  deleted account, which GitHub names `ghost`, never counts as the owner.
+  Adding a label the issue already carries records no event, so approving again
+  means removing `ready` and adding it.
+- **Body unchanged since approval.** The issue body's last edit is no later
+  than that newest `ready` label, whoever made it.
 - **Evidence.** Every item, bulleted or numbered, under the body's "Done looks
   like" heading names a test, self-test, snapshot or screenshot as a whole
   word. A heading with no items skips the issue. With no such heading, the
