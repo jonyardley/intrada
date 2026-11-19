@@ -247,6 +247,26 @@ else
   printf '✗ stranger claim: expected the claim to proceed\n    output: %s\n' "$out" >&2
 fi
 
+# ── Another login's Claimed comment is ignored, newest or not (#2821) ─────
+# Another login claims this branch: without the author filter the script
+# would take the issue as already ours and post no claim of the owner's.
+
+echo '{"labels":[],"comments":[{"author":{"login":"some-agent"},"body":"Claimed: branch `my-branch`."}]}' \
+  >"$FIXTURES/issue.json"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+out="$(run 2>&1)" || true
+if grep -qF "Claimed: branch \`my-branch\`" "$CALLS/issue_comment.log" 2>/dev/null &&
+  grep -qF "claimed #42 on my-branch" <<<"$out"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ another login claim: expected a fresh owner claim posted\n    output: %s\n' "$out" >&2
+fi
+
+echo '{"labels":[{"name":"in-flight"}],"comments":[{"author":{"login":"some-agent"},"body":"Claimed: branch `other-branch`."}]}' \
+  >"$FIXTURES/issue.json"
+expect_fail "label with only another login's claim" "remove the label to claim it"
+
 # ── Free: claims it ──────────────────────────────────────────────────────────
 
 echo '[]' >"$FIXTURES/pr_list.json"

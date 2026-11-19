@@ -94,7 +94,7 @@ if [ -n "$claim_branch" ]; then
 fi
 
 if [ "$has_label" = "true" ]; then
-  echo "✗ #$number already carries in-flight but no claim comment names a branch: check by hand." >&2
+  echo "✗ #$number already carries in-flight but no claim comment by ${repo%%/*} names a branch: check by hand, or remove the label to claim it." >&2
   exit 1
 fi
 
