@@ -34,11 +34,9 @@ lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$lib_dir/lib/claim-branch.sh"
 
 repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
-# Only a trusted login's claim counts: on a public repository anyone can
-# comment "Claimed" and block every `just claim` (#2821).
+# Only the owner's claim counts: on a public repository anyone can comment
+# "Claimed" and block every `just claim` (#2821).
 REPO=$repo
-# shellcheck source=crew-trusted.sh
-source "$lib_dir/crew-trusted.sh"
 # shellcheck source=board.sh
 source "$lib_dir/board.sh"
 branch="$(git rev-parse --abbrev-ref HEAD)"
@@ -71,7 +69,7 @@ fi
 # mistaken for a live claim.
 issue="$(gh issue view "$number" --repo "$repo" --json labels,comments,parent)"
 has_label="$(printf '%s' "$issue" | jq -r '([.labels[].name] | index("in-flight")) != null')"
-claim_body="$(printf '%s' "$issue" | jq -r "$(trusted_jq)"'[.comments[] | select(trusted and (.body | test("^Claimed"; "i")))] | last | .body // empty')"
+claim_body="$(printf '%s' "$issue" | jq -r --arg owner "${repo%%/*}" '[.comments[] | select(.author.login == $owner and (.body | test("^Claimed"; "i")))] | last | .body // empty')"
 claim_branch="$(claim_branch_from_body "$claim_body")"
 epic_number="$(printf '%s' "$issue" | jq -r '.parent.number // empty')"
 epic_title="$(printf '%s' "$issue" | jq -r '.parent.title // empty')"
@@ -121,12 +119,7 @@ claim_comment="Claimed: branch \`$branch\`."
 gh issue comment "$number" --repo "$repo" --body "$claim_comment"
 gh issue edit "$number" --repo "$repo" --add-label in-flight
 
-# A loop session claims as the agent account, which cannot see the board; the
-# loop sets it with the owner's login (#2859). Any other login tries as before.
-login="$(gh api user --jq .login 2>/dev/null || true)"
-if [ "$login" = "$CREW_AGENT" ]; then
-  echo "✓ board left to the crew loop"
-elif board_in_progress "$number"; then
+if board_in_progress "$number"; then
   echo "✓ board: #$number is In progress"
 else
   echo "! board not updated; the token needs project scope: gh auth refresh -s project" >&2

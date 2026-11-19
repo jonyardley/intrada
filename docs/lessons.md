@@ -20,18 +20,12 @@
   month puts any lesson seen again three times to the owner as a rule, and
   archives what is stale or done. A lesson becomes a rule only with the
   owner's yes, and then moves to the archive with "rule:" and the rule's
-  file in front. It also folds in each crew Lessons comment under the
-  `lessons-pending` label (below) and removes the label.
+  file in front.
 - The archive is never printed at session start and nothing is deleted from
   it.
 - A worktree prints its own copy, so one behind main misses newer lessons.
 - Two branches adding lessons at once conflict at the end of the file; keep
   both sides.
-- **A crew session never edits this file** (#2820), since a night's drafts
-  would conflict here. Its retro posts the lessons as one issue comment
-  headed **Lessons** and adds the `lessons-pending` label; every crew brief
-  reads those comments beside this file, whatever the issue's state. The
-  monthly prune folds them in here and removes the label.
 
 ## Lessons
 

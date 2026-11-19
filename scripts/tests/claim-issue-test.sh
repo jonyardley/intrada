@@ -70,9 +70,6 @@ case "$cmd $sub" in
   "issue comment")
     echo "$*" >>"$CALLS/issue_comment.log"
     ;;
-  "api user")
-    cat "$FIXTURES/login" 2>/dev/null || echo jonyardley
-    ;;
   "project item-add" | "project item-edit")
     # Only the board's owner can reach it, as on GitHub.
     echo "$cmd $sub" >>"$CALLS/project.log"
@@ -288,7 +285,7 @@ if [ -f "$CALLS/issue_comment.log" ] && [ -f "$CALLS/issue_edit.log" ]; then
   fi
 fi
 
-# ── The board (#2859): the owner's claim sets it, the agent's leaves it ─────
+# ── The board (#2859): the owner's claim sets it ─────────────────────────────
 
 if [ "$(cat "$CALLS/project.log" 2>/dev/null)" = "project item-add
 project item-edit" ] && grep -qF "board: #42 is In progress" <<<"$out"; then
@@ -298,21 +295,10 @@ else
   printf '✗ owner claim: expected the board set to In progress\n    output: %s\n' "$out" >&2
 fi
 
-echo ostinato-agent >"$FIXTURES/login"
-rm -rf "$CALLS" && mkdir -p "$CALLS"
-out="$(run 2>&1)"
-if [ ! -f "$CALLS/project.log" ] && ! grep -qF "project scope" <<<"$out" &&
-  grep -qF "board left to the crew loop" <<<"$out" && grep -qF "claimed #42 on my-branch" <<<"$out"; then
-  pass=$((pass + 1))
-else
-  fail=$((fail + 1))
-  printf '✗ agent claim: expected no board call and no warning\n    output: %s\n' "$out" >&2
-fi
 echo someone-else >"$FIXTURES/login"
 rm -rf "$CALLS" && mkdir -p "$CALLS"
 out="$(run 2>&1)"
 if [ "$(head -1 "$CALLS/project.log" 2>/dev/null)" = "project item-add" ] &&
-  ! grep -qF "board left to the crew loop" <<<"$out" &&
   grep -qF "the token needs project scope: gh auth refresh -s project" <<<"$out" &&
   grep -qF "claimed #42 on my-branch" <<<"$out"; then
   pass=$((pass + 1))

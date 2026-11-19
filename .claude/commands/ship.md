@@ -1,5 +1,5 @@
 ---
-description: Run the retro, the pre-push gates and the self-review before opening or updating a PR; `/ship loop` is a crew session's mode, which stops at the draft. The mechanics live in the intrada-shipping skill; this fixes the order.
+description: Run the retro, the pre-push gates and the self-review before opening or updating a PR. The mechanics live in the intrada-shipping skill; this fixes the order.
 ---
 
 Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.md` first: it holds the why and the body templates; this file holds the order. Every agent spawn below names its model and effort from the role table in `~/.claude/CLAUDE.md`: definitions carry no pins, and a spawn with no model named stops for a permission prompt.
@@ -11,14 +11,5 @@ Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.
 5. **Open** with `just pr-open ... --draft` and the body template from the skill, and post the review summary naming the agent.
 6. **Watch CI** to a conclusion in the same turn and read the PR's mergeability, not just the jobs. Reproduce a red UI test with `just ios-test-ui-class <Class>`, not the full tier.
 7. **Ready** with `just pr-ready PR ISSUE` only once every check is green on the last commit and each review finding is fixed or answered in the PR. A screen change also waits for the owner's yes on its screenshot.
-
-**Loop mode**, when the arguments say `loop`: a crew session (`.claude/commands/crew.md`), the same steps with six changes.
-- The iPhone tests are CI's (#2880): the sandbox refuses the pseudo terminal Xcode's test runner opens, so steps 2, 3 and 6 never run `just ios-test` or `just ios-test-ui-class`, and each `test-runner` brief names `just pre-review` as its command. The app build and screenshot in `qa` still run. A red iPhone test in CI is read from the job's log and fixed like any red check; the draft note waits for CI green as before.
-
-- Retro: post the lessons as one issue comment headed `**Lessons**` and add the `lessons-pending` label to the issue; never edit `docs/lessons.md`, so one run's drafts never conflict.
-- After step 3, the `qa` agent, briefed with the worktree, the issue and the latest `test-runner` report. A failing criterion is fixed like a blocker, then the gates and `qa` run again.
-- Before step 5, the park step on the diff: `git diff origin/main...HEAD > "$TMPDIR/crew-diff-N"`, then `scripts/crew-park.sh` on that file. Exit 3 (a sensitive path) or 2 (unreadable) parks the issue with the code `sensitive_diff`.
-- Notes, each only on success and each written through osti as `.claude/commands/crew.md` says, so the run record holds it: `osti write stage reviewed` headed `**Crew: reviewed**` once step 3 leaves no blocker, `osti write stage qa` headed `**Crew: QA**` with the `qa` report once every criterion passes, and `osti write draft --pr intrada#P` headed `**Crew: draft**` with the PR link once CI is green on the last commit. Each names the session with `--session "$CLAUDE_CODE_SESSION_ID"` and reads `--body-file`. A failure is fixed and rerun, or parks the issue at its second failed round with the code `failed_rounds`.
-- Stop after step 6. Step 7 is the owner's, and the guards refuse it.
 
 $ARGUMENTS
