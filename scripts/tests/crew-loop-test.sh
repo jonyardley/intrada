@@ -7,6 +7,8 @@
 # record. Every case ends with the guard that the loop never called a ready or
 # merge route.
 set -euo pipefail
+# The loop no longer sets the old crew flag (#2858); a caller's shell must not either.
+unset INTRADA_CREW
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/scripts/crew-loop.sh"
@@ -1134,7 +1136,7 @@ ok "picked takes the attempt, the spend the cap read, and no note" \
   'grep -q "picked --no-note --item intrada#101 --url https://github.com/the-owner/intrada/issues/101 --attempt 1 --field spend_24h_seen_usd=0$" "$FAKE/osti.log"'
 ok "the worktree gets osti's guard with the agent's identity before its session" \
   'grep -q "^guard guard install --worktree $work/wt/crew-101 agent=ostinato-intrada-loop/ostinato-agent/356601309+ostinato-agent@users.noreply.github.com$" "$FAKE/osti.log"'
-ok "the session gets the run in its environment and its first prompt, and keeps the crew flag" \
+ok "the session gets the run in its environment and its first prompt, and no crew flag" \
   'grep -qE "^OSTINATO_RUN=r-[0-9-]+ OSTINATO_PROJECT=the-owner/intrada$" "$FAKE/calls" && grep -qE -- "-n crew-101 /crew 101 r-[0-9]{8}-[0-9]{6} 1$" "$FAKE/calls" && grep -qx INTRADA_CREW=unset "$FAKE/calls"'
 ok "attempt-ended names the outcome, the session and the worktree, with no note" \
   'grep -q "attempt-ended --no-note --item intrada#101 --url https://github.com/the-owner/intrada/issues/101 --attempt 1 --outcome draft --session sess-101 --cwd $work/wt/crew-101$" "$FAKE/osti.log"'

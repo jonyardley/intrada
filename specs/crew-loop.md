@@ -35,7 +35,8 @@ record says the same as data, for the Cockpit card and the weekly report.
     owner's guard alone cannot pass it. The FAIL line quotes the first 120
     characters of the refusal it saw.
 
-  The probe starts as a loop session does, so osti's guard alone refuses it.
+  The probe starts as a loop session does, and check 1 passes only on osti's
+  own wording.
 - A stop file, checked before each issue, ends the run cleanly.
 - One run at a time. The loop takes a `mkdir` lock before it touches any
   worktree or session, and releases it on every exit, Ctrl-C and a closed
@@ -81,7 +82,7 @@ waiting its turn for the simulator is not mistaken for a stalled one.
 3. **Session.** First `osti guard install --worktree` with the agent's
    identity, which writes the guard's hooks and the marker
    `.claude/ostinato-session` (both gitignored); a failed install ends the
-   run. Then one `claude --bg` session on Opus at high
+   run. Then one `claude --bg` session on Opus at medium
    effort, started inside the worktree with `OSTINATO_RUN` and
    `OSTINATO_PROJECT` set and `/crew N RUN ATTEMPT` as its first prompt,
    after stopping any live session already there. No session handles two issues. The loop reads the new

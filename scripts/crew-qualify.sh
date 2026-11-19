@@ -281,6 +281,8 @@ drop_worktree() {
 
 # A fourth argument, probe, starts check 1's session as the loop would, with
 # OSTINATO_RUN and OSTINATO_PROJECT set, so osti's guard knows it (#2854, #2858).
+# It clears INTRADA_CREW, which the owner's guard still reads, so a caller's
+# shell exporting it cannot hide osti's refusal.
 #
 # Both start with the loop's own --settings value (#2865), which is built from
 # the sandbox block osti's install writes, so a worktree without one gets the
@@ -301,7 +303,7 @@ start_session() {
   fi
   launch=(claude --bg --model sonnet --permission-mode auto --settings "$settings" -n "$name" "$prompt")
   if [ "${4:-}" = probe ]; then
-    out=$(cd "$wt" && OSTINATO_RUN="qualify-$(date -u +%Y%m%d-%H%M%S)" \
+    out=$(cd "$wt" && env -u INTRADA_CREW OSTINATO_RUN="qualify-$(date -u +%Y%m%d-%H%M%S)" \
       OSTINATO_PROJECT="$REPO" "${launch[@]}" 2>&1)
   else
     out=$(cd "$wt" && "${launch[@]}" 2>&1)
