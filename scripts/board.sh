@@ -1,6 +1,5 @@
-# Sourced by claim-issue.sh and crew-loop.sh (#2859): the owner's roadmap board.
-# Only the owner's login can set it; the agent account has no access, so a loop
-# session's claim leaves it to the loop, which sets it with the owner's login.
+# Sourced by claim-issue.sh (#2859): the owner's roadmap board, which only the
+# owner's login can set.
 
 BOARD_OWNER="jonyardley"
 board_number="2"

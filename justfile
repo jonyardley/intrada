@@ -98,10 +98,6 @@ hygiene:
         "worktree-status-test:bash scripts/tests/worktree-status-test.sh"
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
-        "crew-qualify-test:bash scripts/tests/crew-qualify-test.sh"
-        "crew-park-test:bash scripts/tests/crew-park-test.sh"
-        "crew-pick-test:bash scripts/tests/crew-pick-test.sh"
-        "crew-loop-test:bash scripts/tests/crew-loop-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
         "issue-open-test:bash scripts/tests/issue-open-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
@@ -202,13 +198,6 @@ pr-visuals:
 # or an open PR already references it (#1702). Two or more merged PRs already
 # referencing the issue refuses a third fix without a named decision:
 # just claim 1650 "the approach is wrong because X" (#1890).
-# The crew loop (#2821, specs/crew-loop.md): ready issues to draft PRs, one at
-# a time, until the queue is empty, a cap is hit or ~/.intrada-crew-stop exists.
-# One run at a time, and the script keeps the Mac awake with caffeinate.
-[doc("Run the crew loop: ready issues to draft PRs, one at a time, until a cap or the stop file")]
-crew:
-    bash scripts/crew-loop.sh
-
 [doc("Claim an issue before building it, refusing if someone already has")]
 claim number decision="":
     bash scripts/claim-issue.sh "{{number}}" "{{decision}}"
@@ -517,15 +506,6 @@ ios-run: _ios-sync
     cd ios && xcodegen generate --use-cache
     bash scripts/ios-run-sim.sh
 
-# Fetches the Swift packages into build/spm. The crew loop runs it before a
-# session starts (#2869): inside Claude's sandbox a package checkout cannot be
-# made, since the sandbox refuses every write to a .git/config.
-[doc("Fetch the iOS app's Swift packages into ios/build/spm")]
-[group('iOS')]
-ios-packages: _ios-sync
-    cd ios && xcodegen generate --use-cache && xcodebuild -resolvePackageDependencies \
-        -project Intrada.xcodeproj -scheme Intrada -clonedSourcePackagesDirPath build/spm -quiet
-
 # Stream the app's logs from the booted simulator, filtered to our subsystem —
 # drops the UIKit/keyboard/gesture noise so first-party signal is visible.
 # `report(_:)` (Core/Logging.swift) logs swallowed FFI errors here (#846 class).
@@ -825,14 +805,9 @@ _ios-build-for-testing:
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
-    # Xcode's own package and macro sandboxes cannot start inside Claude's,
-    # which the crew loop wraps the build in (#2869).
-    sbx=()
-    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES \
-        'OTHER_SWIFT_FLAGS=$(inherited) -disable-sandbox')
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
-        -clonedSourcePackagesDirPath build/spm -quiet ${sbx[@]+"${sbx[@]}"} \
+        -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
     # Swift Testing runs the unit tests in parallel inside one process, still on
     # one simulator (#2741). Set here because XcodeGen writes only on or off for

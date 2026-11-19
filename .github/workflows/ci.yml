@@ -1031,20 +1031,6 @@ jobs:
       # The claim tooling is what stops one issue being built twice (#1702).
       - name: just claim still refuses a claimed issue
         run: bash scripts/tests/claim-issue-test.sh
-      # A judge that stops asserting would qualify the crew's harness on
-      # nothing (#2802).
-      - name: The crew qualification still judges each check
-        run: bash scripts/tests/crew-qualify-test.sh
-      # A park step that lets a sensitive plan through, or a pick that comments
-      # every night, would cost the owner a silent bug or a noisy issue (#2819).
-      - name: The crew still parks a sensitive plan
-        run: bash scripts/tests/crew-park-test.sh
-      - name: The crew still skips an issue that does not qualify, once
-        run: bash scripts/tests/crew-pick-test.sh
-      # A loop that parks a finished turn, or takes a parked issue again,
-      # would cost the owner a wrong question or a duplicate build (#2821).
-      - name: The crew loop still parks only what it cannot finish
-        run: bash scripts/tests/crew-loop-test.sh
       - name: just pr-open still refuses an unclaimed issue
         run: bash scripts/tests/pr-open-test.sh
       - name: just issue-open still refuses an unlabelled issue
