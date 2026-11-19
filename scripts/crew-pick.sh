@@ -12,6 +12,13 @@
 
 set -uo pipefail
 
+# Who posts the Crew skipped comment (#2857): the agent account when the loop
+# passes its token, kept from every other command, and gh's own login, the
+# owner's, when run by hand. Set but empty is refused, never posted as the owner.
+unset poster
+if [ -n "${CREW_AGENT_TOKEN+set}" ]; then poster=$CREW_AGENT_TOKEN; else poster=--owner; fi
+unset CREW_AGENT_TOKEN
+
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO=${CREW_REPO:-jonyardley/intrada}
 # shellcheck source=crew-trusted.sh
@@ -29,17 +36,17 @@ n=$1
 query='query($owner: String!, $name: String!, $n: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $n) {
-      state body author { login } editor { login }
+      state body author { login } editor { login } lastEditedAt
       labels(first: 50) { nodes { name } }
       comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }
-      timelineItems(itemTypes: [LABELED_EVENT], last: 100) { nodes { ... on LabeledEvent { createdAt label { name } } } }
+      timelineItems(itemTypes: [LABELED_EVENT], last: 100) { nodes { ... on LabeledEvent { createdAt actor { login } label { name } } } }
       blockedBy(first: 50) { nodes { number state } }
     }
   }
 }'
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/crew-pick.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
-raw=$(gh api graphql -f query="$query" -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F n="$n" 2>"$tmp/err") || {
+raw=$(gh api graphql -f query="$query" -f owner="$(owner_login)" -f name="${REPO#*/}" -F n="$n" 2>"$tmp/err") || {
   echo "crew-pick: could not read #$n: $(tail -1 "$tmp/err")" >&2
   exit 2
 }
@@ -61,19 +68,33 @@ fail() { reasons="$reasons- $1"$'\n'; }
 # edited it: anyone's issue can carry the ready label, and its author can edit
 # the body afterwards. An untrusted body is never read, so no line of it is
 # quoted in the Crew skipped comment a trusted login posts.
-body=""
+body="" body_read=""
 if ! printf '%s' "$issue" | jq -e "$(trusted_jq)"' trusted' >/dev/null 2>&1; then
   fail "The issue was opened by someone other than the owner or the agent account, so the crew does not read its body: open it again as the owner."
 elif ! printf '%s' "$issue" | jq -e "$(trusted_jq)"' trusted_body' >/dev/null 2>&1; then
   fail "The issue body was last edited by someone other than the owner or the agent account: edit it once as the owner to vouch for it."
 else
-  body=$(get '.body')
+  body=$(get '.body') body_read=1
 fi
 # Only a plan by a trusted login, since anyone can comment on a public issue.
 plan=$(get "$(trusted_jq)"'[.comments.nodes[] | select(trusted) | select((.body | test("\\*\\*Done looks like:?\\*\\*")) and (.body | test("\\*\\*Files:?\\*\\*")))] | last // empty')
 plan_body=$(printf '%s' "$plan" | jq -r '.body // empty' 2>/dev/null | tr -d '\r')
 plan_edit=$(printf '%s' "$plan" | jq -r '.lastEditedAt // .createdAt // empty' 2>/dev/null)
-ready_at=$(get '[.timelineItems.nodes[] | select(.label.name == "ready") | .createdAt] | max // empty')
+ready_at="" ready_by="" body_edit=""
+# A unit separator, not a tab: bash folds empty tab-separated fields together.
+IFS=$'\x1f' read -r ready_at ready_by body_edit < <(get '.lastEditedAt as $e | [.timelineItems.nodes[] | select(.label.name == "ready")] | max_by(.createdAt) // empty | "\(.createdAt)\u001f\(.actor.login // "")\u001f\($e // "")"')
+# Only the owner approves a plan: the agent account can add labels too (#2811).
+# GitHub names a deleted account's events ghost. Adding a label the issue
+# already carries records no event, so the messages say to remove it first.
+if [ -n "$ready_at" ]; then
+  [ "$ready_by" = ghost ] && ready_by=""
+  [ "$ready_by" = "$(owner_login)" ] ||
+    fail "The ready label was added by ${ready_by:-a deleted account}, not the owner: remove the ready label and add it again as the owner."
+  # Only a body that was read, and edited since by the agent, not the owner
+  # ticking a box or fixing a typo after approving it.
+  [ -n "$body_read" ] && [[ $body_edit > $ready_at ]] && [ "$(get '.editor.login // ""')" != "$(owner_login)" ] &&
+    fail "The issue body changed after the ready label: remove and add ready again as the owner."
+fi
 # A heading's text: written **H**: or **H:**, on its own line or not, with any
 # list items under it, since a long Files line becomes a list.
 plan_line() {
@@ -168,7 +189,9 @@ fi
 comment="**Crew skipped**: the crew passes over this issue while any reason below holds, and says so once until the plan is edited or the ready label is added again.
 
 $reasons"
-if gh api "repos/$REPO/issues/$n/comments" -f body="$comment" >/dev/null 2>&1; then
+if [ -z "$poster" ]; then
+  echo "crew-pick: the agent's token is empty, so the Crew skipped comment on #$n is refused rather than posted as the owner" >&2
+elif crew_post "$poster" gh api "repos/$REPO/issues/$n/comments" -f body="$comment" >/dev/null 2>&1; then
   echo "Commented on #$n."
 else
   echo "crew-pick: could not post the Crew skipped comment on #$n" >&2

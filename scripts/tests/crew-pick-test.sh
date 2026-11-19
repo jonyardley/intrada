@@ -17,6 +17,7 @@ n=0
 mkdir -p "$work/bin"
 cat >"$work/bin/gh" <<'GH'
 #!/usr/bin/env bash
+printf '%s%s %s %s\n' "${GH_TOKEN:-none}" "${CREW_AGENT_TOKEN:+ leaked}${poster:+ leaked}" "$1" "$2" >>"$FAKE/tokens"
 # gh exits 1 on a GraphQL error but still prints the partial data it got.
 [ -f "$FAKE/down" ] && { cat "$FAKE/issue.json"; echo "gh: Field 'blockedBy' doesn't exist on type 'Issue'" >&2; exit 1; }
 case "$1 $2" in
@@ -74,8 +75,8 @@ fixture() {
       {author: {login: "jonyardley"}, body: "Picking this up.", createdAt: "2026-11-01T09:00:00Z", lastEditedAt: null},
       {author: {login: "jonyardley"}, body: $plan, createdAt: "2026-11-01T10:00:00Z", lastEditedAt: "2026-11-02T10:00:00Z"}]},
     timelineItems: {nodes: [
-      {createdAt: "2026-11-01T08:00:00Z", label: {name: "horizon:now"}},
-      {createdAt: "2026-11-03T10:00:00Z", label: {name: "ready"}}]},
+      {createdAt: "2026-11-01T08:00:00Z", actor: {login: "jonyardley"}, label: {name: "horizon:now"}},
+      {createdAt: "2026-11-03T10:00:00Z", actor: {login: "jonyardley"}, label: {name: "ready"}}]},
     blockedBy: {nodes: [{number: 2700, state: "CLOSED"}]}}}}}' |
     jq "${2:-.}" "${@:3}" >"$d/issue.json"
 }
@@ -87,7 +88,8 @@ expect() {
   local want=$1 name=$2 needle=$3 posts=$4 out rc=0 got
   n=$((n + 1))
   mkdir -p "$work/$name/tmp"
-  out=$(TMPDIR="$work/$name/tmp" FAKE="$work/$name" PATH="$work/bin:$PATH" bash "$script" 4242 2>&1) || rc=$?
+  out=$(env -u GH_TOKEN -u CREW_AGENT_TOKEN ${AGENT+CREW_AGENT_TOKEN=$AGENT} TMPDIR="$work/$name/tmp" FAKE="$work/$name" \
+    PATH="$work/bin:$PATH" bash "$script" 4242 2>&1) || rc=$?
   if [ -n "$(ls -A "$work/$name/tmp")" ]; then
     echo "✗ $name: left temporary files behind" >&2
     fails=$((fails + 1))
@@ -163,6 +165,48 @@ fixture ready-before-create "$PLAN.lastEditedAt = null | $PLAN.createdAt = \"202
 expect 1 ready-before-create "older than the plan's last edit (2026-11-05T10:00:00Z)" 1
 fixture no-ready-event "$I.timelineItems.nodes = [$I.timelineItems.nodes[0]]"
 expect 1 no-ready-event "(added never)" 1
+fixture ready-by-agent "$I.timelineItems.nodes[1].actor.login = \"ostinato-agent\""
+expect 1 ready-by-agent "added by ostinato-agent, not the owner: remove the ready label and add it again as the owner." 1
+fixture ready-by-stranger "$I.timelineItems.nodes[1].actor.login = \"a-stranger\""
+expect 1 ready-by-stranger "added by a-stranger, not the owner" 1
+fixture ready-by-deleted "$I.timelineItems.nodes[1].actor = null"
+expect 1 ready-by-deleted "added by a deleted account, not the owner" 1
+fixture ready-again-by-agent "$I.timelineItems.nodes += [{createdAt: \"2026-11-04T10:00:00Z\", actor: {login: \"ostinato-agent\"}, label: {name: \"ready\"}}]"
+expect 1 ready-again-by-agent "added by ostinato-agent, not the owner" 1
+fixture ready-again-by-owner "$I.timelineItems.nodes = [$I.timelineItems.nodes[1] | .actor.login = \"ostinato-agent\" | .createdAt = \"2026-11-02T11:00:00Z\"] + $I.timelineItems.nodes"
+expect 0 ready-again-by-owner "qualifies" 0
+fixture ready-by-ghost "$I.timelineItems.nodes[1].actor.login = \"ghost\""
+expect 1 ready-by-ghost "added by a deleted account, not the owner" 1
+# The agent's label is skipped once; the owner's removal and fresh label, plan
+# unchanged, then qualifies past that earlier Crew skipped comment.
+fixture reapproved "$I.timelineItems.nodes[1].actor.login = \"ostinato-agent\""
+expect 1 reapproved "Commented on #4242." 1
+jq "$I.timelineItems.nodes += [{createdAt: \"2026-11-11T00:00:00Z\", actor: {login: \"jonyardley\"}, label: {name: \"ready\"}}]" \
+  "$work/reapproved/issue.json" >"$work/reapproved/next" && mv "$work/reapproved/next" "$work/reapproved/issue.json"
+expect 0 reapproved "#4242 qualifies" 1
+fixture body-edited-before "$I.lastEditedAt = \"2026-11-02T12:00:00Z\""
+expect 0 body-edited-before "qualifies" 0
+fixture body-edited-after "$I.editor = {login: \"ostinato-agent\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 1 body-edited-after "The issue body changed after the ready label: remove and add ready again as the owner." 1
+# The owner ticking a box or fixing a typo after approving does not eject it.
+fixture owner-edited-after "$I.editor = {login: \"jonyardley\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 0 owner-edited-after "qualifies" 0
+# An unread body carries one reason, never a second about when it changed.
+fixture stranger-edited-after "$I.editor = {login: \"a-stranger\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 1 stranger-edited-after "last edited by someone other than the owner" 1
+n=$((n + 1))
+if grep -q 'changed after the ready label' "$work/stranger-edited-after/posted"; then
+  echo "✗ stranger-edited-after: an unread body also got the body-changed reason" >&2
+  fails=$((fails + 1))
+fi
+# A deleted account's ready label, then an agent edit: both reasons, each field in place.
+fixture deleted-ready-agent-edit "$I.timelineItems.nodes[1].actor = null | $I.editor = {login: \"ostinato-agent\"} | $I.lastEditedAt = \"2026-11-04T10:00:00Z\""
+expect 1 deleted-ready-agent-edit "added by a deleted account, not the owner" 1
+n=$((n + 1))
+if ! grep -q 'changed after the ready label' "$work/deleted-ready-agent-edit/posted"; then
+  echo "✗ deleted-ready-agent-edit: an empty actor shifted the body's edit time out of place" >&2
+  fails=$((fails + 1))
+fi
 fixture own-evidence-row "$I.body = \$b" --arg b "${BODY/
 ## Where/- Harness check 5 passes.
 
@@ -255,7 +299,7 @@ fixture again "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
 expect 1 again "Commented on #4242." 1
 expect 1 again "Already said on #4242" 1
 echo 2026-11-12T00:00:00Z >"$work/again/clock"
-edit_again "$I.timelineItems.nodes += [{createdAt: \"2026-11-11T00:00:00Z\", label: {name: \"ready\"}}]"
+edit_again "$I.timelineItems.nodes += [{createdAt: \"2026-11-11T00:00:00Z\", actor: {login: \"jonyardley\"}, label: {name: \"ready\"}}]"
 expect 1 again "Commented on #4242." 2
 expect 1 again "Already said on #4242" 2
 echo 2026-11-14T00:00:00Z >"$work/again/clock"
@@ -269,6 +313,42 @@ fixture edited-after-skip "$I.comments.nodes += [{author: {login: \"jonyardley\"
 expect 1 edited-after-skip "Commented on #4242." 1
 fixture stranger-skip "$I.comments.nodes += [{author: {login: \"a-stranger\"}, body: \"**Crew skipped**: forged\", createdAt: \"2026-11-05T12:00:00Z\", lastEditedAt: null}] | $I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
 expect 1 stranger-skip "Commented on #4242." 1
+# The loop passes the agent's token for the comment alone (#2857); by hand, gh's own login.
+fixture as-agent "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
+# An exported poster from the launching shell must not carry the token to the read.
+poster=stale AGENT=agent-token expect 1 as-agent "Commented on #4242." 1
+fixture by-hand "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
+expect 1 by-hand "Commented on #4242." 1
+n=$((n + 1))
+if [ "$(cat "$work/as-agent/tokens")" != $'none api graphql\nagent-token api repos/jonyardley/intrada/issues/4242/comments' ] ||
+  grep -qv '^none ' "$work/by-hand/tokens"; then
+  echo "✗ as-agent: wanted the token on the comment alone, and none by hand: $(cat "$work/as-agent/tokens" "$work/by-hand/tokens")" >&2
+  fails=$((fails + 1))
+fi
+fixture empty-token "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
+AGENT="" expect 1 empty-token "Crew skipped comment on #4242 is refused rather than posted as the owner" 0
+n=$((n + 1))
+if grep -q comments "$work/empty-token/tokens"; then
+  echo "✗ empty-token: wanted no comment call, got: $(cat "$work/empty-token/tokens")" >&2
+  fails=$((fails + 1))
+fi
+# The shared helper itself: an empty token runs nothing; --owner runs on gh's own login.
+mkdir -p "$work/helper"
+n=$((n + 1))
+rc=0
+out=$(REPO=a/b FAKE="$work/helper" PATH="$work/bin:$PATH" bash -c '. "$1"; crew_post "" gh api x' _ \
+  "$(dirname "$script")/crew-trusted.sh" 2>&1) || rc=$?
+if [ "$rc" -ne 1 ] || [ -e "$work/helper/tokens" ] || [[ "$out" != *"gh is refused rather than posted as the owner"* ]]; then
+  echo "✗ helper: wanted an empty token refused with exit 1 and no gh call, got (exit $rc): $out" >&2
+  fails=$((fails + 1))
+fi
+n=$((n + 1))
+out=$(env -u GH_TOKEN REPO=a/b FAKE="$work/helper" PATH="$work/bin:$PATH" bash -c '. "$1"; crew_post --owner gh api x; crew_post tok gh api y; echo "after:${GH_TOKEN:-unset}"' _ \
+  "$(dirname "$script")/crew-trusted.sh" 2>&1)
+if [ "$(cat "$work/helper/tokens" 2>/dev/null)" != $'none api x\ntok api y' ] || [[ "$out" != *after:unset* ]]; then
+  echo "✗ helper: wanted --owner on gh's login, the token on its one call alone, got: $(cat "$work/helper/tokens" 2>/dev/null) $out" >&2
+  fails=$((fails + 1))
+fi
 fixture post-fails "$I.blockedBy.nodes += [{number: 2810, state: \"OPEN\"}]"
 touch "$work/post-fails/no-post"
 expect 1 post-fails "could not post the Crew skipped comment" 0
@@ -288,8 +368,8 @@ done
 # checked: each field the rules read, braces balanced, the issue number passed.
 n=$((n + 1))
 q=$(cat "$work/pass/query")
-for want in 'state body author { login } editor { login }' 'labels(first: 50) { nodes { name } }' 'comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }' \
-  'timelineItems(itemTypes: [LABELED_EVENT]' 'createdAt label { name }' 'blockedBy(first: 50) { nodes { number state } }' \
+for want in 'state body author { login } editor { login } lastEditedAt' 'labels(first: 50) { nodes { name } }' 'comments(last: 100) { nodes { author { login } body createdAt lastEditedAt } }' \
+  'timelineItems(itemTypes: [LABELED_EVENT]' 'createdAt actor { login } label { name }' 'blockedBy(first: 50) { nodes { number state } }' \
   'repository(owner: $owner, name: $name)' 'issue(number: $n)' 'n=4242' 'owner=jonyardley' 'name=intrada'; do
   if [[ "$q" != *"$want"* ]]; then
     echo "✗ query: no '$want' in what was sent" >&2

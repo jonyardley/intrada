@@ -30,6 +30,7 @@ mkdir -p "$work/bin"
 cat >"$work/bin/claude" <<'CLAUDE'
 #!/usr/bin/env bash
 printf 'claude %s\n' "$*" >>"$FAKE/calls"
+[ -z "${AGENT_TOKEN:-}" ] || echo "claude $1" >>"$FAKE/leaked"
 case "$1" in
   --version) echo "2.1.325 (Claude Code)" ;;
   --bg)
@@ -151,11 +152,15 @@ CLAUDE
 cat >"$work/bin/gh" <<'GH'
 #!/usr/bin/env bash
 printf 'gh %s\n' "$*" >>"$FAKE/gh.log"
+printf '%s gh %s %s\n' "${GH_TOKEN:-none}" "$1" "$2" >>"$FAKE/tokens"
+[ -z "${AGENT_TOKEN:-}" ] || echo "gh $1" >>"$FAKE/leaked"
 n=$3
 f="$FAKE/issue-$n.json"
 jqx=""; body=""; label=""
-# The loop posts as the owner.
-who=$(cat "$FAKE/login" 2>/dev/null || echo the-owner)""
+# A comment's author follows the token it was posted with (#2857).
+who=the-owner
+[ "${GH_TOKEN:-}" = agent-token ] && who=the-agent
+who=$(cat "$FAKE/login" 2>/dev/null || echo "$who")
 args=("$@")
 for i in "${!args[@]}"; do
   case "${args[$i]}" in
@@ -214,6 +219,11 @@ case "$1 $2" in
     printf '%s\n' "$*" >"$FAKE/list-args"
     jq -r "$jqx" "$FAKE/lessons.json"
     ;;
+  "project item-add")
+    [ -f "$FAKE/board-fails" ] && exit 1
+    [ -f "$FAKE/board-hangs" ] && exec sleep 30
+    echo item-1 ;;
+  "project item-edit") ;;
   *) echo "stand-in gh: unexpected call: $*" >&2; exit 9 ;;
 esac
 GH
@@ -222,9 +232,11 @@ GH
 # 1 writes nothing, 3 writes the line but posts no note, as the real one; the
 # exit for an event comes from $FAKE/osti-exit-<event>, and $FAKE/osti-warn-<event>
 # is printed on stderr with exit 0. A note it posts lands on
-# the fake issue as the owner's comment, as gh would post it.
+# the fake issue under the login of the token it was given, as gh would post it.
 cat >"$work/bin/osti" <<'OSTI'
 #!/usr/bin/env bash
+printf '%s osti %s\n' "${GH_TOKEN:-none}" "$1" >>"$FAKE/tokens"
+[ -z "${AGENT_TOKEN:-}" ] || echo "osti $1" >>"$FAKE/leaked"
 case "$1" in
   --version) echo "osti 0.1.0"; exit 0 ;;
   guard)
@@ -264,8 +276,10 @@ fi
 if [ "$nonote" = 0 ] && [ -n "$item" ]; then
   [ -n "$body" ] || body="**Ostinato: $event**"
   f="$FAKE/issue-${item#*#}.json"
-  jq --arg b "$body" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '.comments += [{author: {login: "the-owner"}, body: $b, createdAt: $t}]' "$f" >"$FAKE/next" && mv "$FAKE/next" "$f"
+  who=the-owner
+  [ "${GH_TOKEN:-}" = agent-token ] && who=the-agent
+  jq --arg b "$body" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg w "$who" \
+    '.comments += [{author: {login: $w}, body: $b, createdAt: $t}]' "$f" >"$FAKE/next" && mv "$FAKE/next" "$f"
 fi
 # A warning on exit 0, as the real one gives for a line it could not price.
 [ -f "$FAKE/osti-warn-$event" ] && cat "$FAKE/osti-warn-$event" >&2
@@ -279,10 +293,22 @@ cat "$FAKE/queue.json"
 Q
 cat >"$work/bin/pick" <<'P'
 #!/usr/bin/env bash
+printf '%s pick %s\n' "${CREW_AGENT_TOKEN:-none}" "$1" >>"$FAKE/tokens"
+[ -z "${AGENT_TOKEN:-}" ] || echo pick >>"$FAKE/leaked"
 printf '%s\n' "$1" >>"$FAKE/picked"
 [ -f "$FAKE/pick-down-$1" ] && exit 2
 [ ! -f "$FAKE/skip-$1" ]
 P
+# The Keychain: the agent's token, unless the item is missing, empty, locked
+# or held by an access prompt that nobody answers (#2857).
+cat >"$work/bin/security" <<'S'
+#!/usr/bin/env bash
+printf 'security %s\n' "$*" >>"$FAKE/calls"
+[ -f "$FAKE/no-keychain" ] && { echo "security: The specified item could not be found in the keychain." >&2; exit 44; }
+[ -f "$FAKE/locked-keychain" ] && { echo "security: User interaction is not allowed." >&2; exit 51; }
+[ -f "$FAKE/prompt-keychain" ] && exec sleep 30
+[ -f "$FAKE/empty-keychain" ] || echo agent-token
+S
 cat >"$work/bin/mkwt" <<'W'
 #!/usr/bin/env bash
 [ -f "$FAKE/wt-fails" ] && exit 1
@@ -302,6 +328,7 @@ A
 cat >"$work/bin/osascript" <<'O'
 #!/usr/bin/env bash
 printf '%s\n' "${*: -1}" >>"$FAKE/osascript"
+[ -z "${AGENT_TOKEN:-}" ] || echo osascript >>"$FAKE/leaked"
 O
 # Harness check 1: writes a result, as crew-qualify.sh does, and keeps its folder.
 # Osti's own block, a cut down copy of what its install writes (#2869).
@@ -358,7 +385,10 @@ setup() {
 # "$BASH", so a run of this file under /bin/bash runs the loop under it too.
 # BG=1 leaves the loop running, its pid in LOOP_PID.
 run_loop() {
-  set -- env -u CI -u CLAUDE_CONFIG_DIR ${CONFIG:+"CLAUDE_CONFIG_DIR=$CONFIG"} \
+  set -- env -u CI -u CLAUDE_CONFIG_DIR -u GH_TOKEN -u AGENT_TOKEN -u CREW_AGENT_TOKEN \
+    -u OSTINATO_AGENT_KEYCHAIN_SERVICE -u OSTINATO_AGENT_KEYCHAIN_ACCOUNT \
+    ${LEAK:+"AGENT_TOKEN=$LEAK"} ${CONFIG:+"CLAUDE_CONFIG_DIR=$CONFIG"} CREW_KEYCHAIN_LIMIT="${KEYLIMIT:-5}" \
+    CREW_BOARD_LIMIT="${BOARDLIMIT:-5}" \
     PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp" \
     CREW_QUEUE="$work/bin/queue" CREW_PICK="$work/bin/pick" OSTINATO_HOME="$work/records" \
     CREW_OSTI="${OSTI:-osti}" CREW_PHONE_PUSH="${PUSH:-}" \
@@ -412,6 +442,32 @@ echo draft >"$FAKE/scenario-101"
 run_loop
 ok "a passing harness check 1 lets the run start, and its folder is removed" \
   '[ "$(started)" = 101 ] && [ ! -e "$(cat "$FAKE/check1-dir")" ]'
+
+# #2859: the session claims as the agent, which cannot see the owner's board.
+setup 101 102
+echo draft >"$FAKE/scenario-101"
+echo draft >"$FAKE/scenario-102"
+run_loop
+ok "each session start sets its issue In progress on the board once, with the owner's login" \
+  '[ "$(started)" = "101 102" ] && [ "$(grep -c "gh project item-add" "$FAKE/tokens")" = 2 ] &&
+   [ "$(grep -c "gh project item-edit" "$FAKE/tokens")" = 2 ] && ! grep -qv "^none " <<<"$(grep "gh project" "$FAKE/tokens")" &&
+   grep -q "item-add 2 --owner jonyardley --url https://github.com/the-owner/intrada/issues/101 " "$FAKE/gh.log" &&
+   grep -q "item-add 2 --owner jonyardley --url https://github.com/the-owner/intrada/issues/102 " "$FAKE/gh.log"'
+setup 101
+echo draft >"$FAKE/scenario-101"
+touch "$FAKE/board-fails"
+run_loop
+ok "a board that cannot be set is logged with the scope hint, and the session runs on" \
+  '[ "$(started)" = 101 ] && grep -q "#101: the board could not be set to In progress; the token needs project scope: gh auth refresh -s project" "$work/out" &&
+   grep -q "intrada#101 .*--outcome draft" "$FAKE/osti.log"'
+setup 101
+echo draft >"$FAKE/scenario-101"
+touch "$FAKE/board-hangs"
+t0=$(date +%s)
+BOARDLIMIT=1 run_loop
+ok "a board call that hangs is cut off at the limit, and the session runs on" \
+  '[ $(($(date +%s) - t0)) -lt 15 ] && [ "$(started)" = 101 ] && grep -q "#101: the board took over 1s" "$work/out" &&
+   grep -q "intrada#101 .*--outcome draft" "$FAKE/osti.log"'
 
 setup 101
 touch "$work/stop"
@@ -1130,6 +1186,37 @@ echo 1 >"$FAKE/osti-exit-parked"
 run_loop
 ok "parked exit 1: nothing in the record, so gh posts the park note itself" \
   '[ "$(w "parked --item")" = 0 ] && grep -q "could not write parked" "$work/out" && [ "$(notes 101 | grep -c "^\*\*Crew: parked")" = 1 ] && grep -q "issue comment 101" "$FAKE/gh.log"'
+# #2857: the loop's writes as the agent account, its reads as the owner.
+writes='gh issue edit|gh issue comment|osti write'
+ok "the label, the fallback note and each osti write carry the agent's token, and the pick gets it" \
+  'grep -q "^agent-token gh issue edit" "$FAKE/tokens" && grep -q "^agent-token gh issue comment" "$FAKE/tokens" &&
+   grep -q "^agent-token osti write" "$FAKE/tokens" && grep -qx "agent-token pick 101" "$FAKE/tokens" &&
+   ! grep -qv "^agent-token " <<<"$(grep -E "$writes" "$FAKE/tokens")"'
+ok "no read carries it, and it is never printed" \
+  'grep -q "^none gh api graphql" "$FAKE/tokens" && ! grep -qv "^none " <<<"$(grep -E "gh (api|issue view|issue list)" "$FAKE/tokens")" &&
+   ! grep -q agent-token "$work/out" "$work/log" && grep -q "^security find-generic-password -s ostinato-intrada-loop -a ostinato-agent -w$" "$FAKE/calls"'
+for k in "no-keychain:could not read the Keychain item ostinato-intrada-loop (ostinato-agent) (exit 44: security: The specified item could not be found" \
+  "locked-keychain:could not read the Keychain item ostinato-intrada-loop (ostinato-agent) (exit 51: security: User interaction is not allowed.)" \
+  "empty-keychain:the Keychain item ostinato-intrada-loop (ostinato-agent) is empty, so no run starts"; do
+  setup 101
+  touch "$FAKE/${k%%:*}"
+  run_loop
+  ok "${k%%:*}: no run starts, and the log says why in security's own words" \
+    '[ -z "$(started)" ] && grep -qx exit=1 "$work/rc" && [ ! -s "$FAKE/osti.log" ] && grep -qF "${k#*:}" "$work/out" &&
+     [ "$(grep -c "Keychain item" "$work/out")" = 1 ]'
+done
+setup 101
+touch "$FAKE/prompt-keychain"
+t0=$(date +%s)
+KEYLIMIT=1 run_loop
+ok "an access prompt nobody answers ends the run within the limit, and frees the run lock" \
+  '[ $(($(date +%s) - t0)) -lt 10 ] && [ -z "$(started)" ] && grep -qx exit=1 "$work/rc" && [ ! -e "$work/lock" ] &&
+   grep -q "reading the Keychain item ostinato-intrada-loop (ostinato-agent) took over 1s" "$work/out"'
+setup 101
+echo draft >"$FAKE/scenario-101"
+LEAK=agent-token-from-the-shell NOTIFY="" PUSH=1 run_loop
+ok "a token the launching shell exported reaches no child: not the session, the guard, the push or gh" \
+  '[ ! -e "$FAKE/leaked" ] && [ "$(started)" = 101 ] && grep -q "^guard " "$FAKE/osti.log" && [ -s "$FAKE/pushed" ]'
 
 setup 101 102
 echo wait-permission >"$FAKE/scenario-101"

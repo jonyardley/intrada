@@ -178,7 +178,7 @@ summary verbatim at PR creation, naming the agent.
 | About to open or update a PR | `/ship`: two or three lessons to [`lessons.md`](lessons.md) before the PR first opens, gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
 | A crew session about to open its PR | `/ship loop`: the same gates and review, then `qa`, the park step on the diff, the draft and the CI watch, and stop; ready and merge are the owner's, and the guards refuse them |
 | The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone screenshots |
-| Jon, reviewing | Read the body and the self-review; merge when green |
+| Jon, reviewing | Read the body and the self-review; merge when green, his own PRs through the admin bypass, since main needs a code owner's approval nobody else can give (#2855) |
 | The unit has shipped | `/clear` in the same sitting, after `just worktree-rm` |
 | Leaving for over an hour | Finish or `/clear` first: the cache expires and the first turn back re-sends everything at write price (#1842) |
 

@@ -33,18 +33,14 @@ lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/claim-branch.sh
 source "$lib_dir/lib/claim-branch.sh"
 
-project_number="2"
-project_owner="jonyardley"
-project_id="PVT_kwHOAAr6vs4A1_pq"
-project_status_field="PVTSSF_lAHOAAr6vs4A1_pqzgrX99A"
-project_status_in_progress="47fc9ee4"
-
 repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 # Only a trusted login's claim counts: on a public repository anyone can
 # comment "Claimed" and block every `just claim` (#2821).
 REPO=$repo
 # shellcheck source=crew-trusted.sh
 source "$lib_dir/crew-trusted.sh"
+# shellcheck source=board.sh
+source "$lib_dir/board.sh"
 branch="$(git rev-parse --abbrev-ref HEAD)"
 
 if [ "$branch" = "main" ]; then
@@ -125,11 +121,12 @@ claim_comment="Claimed: branch \`$branch\`."
 gh issue comment "$number" --repo "$repo" --body "$claim_comment"
 gh issue edit "$number" --repo "$repo" --add-label in-flight
 
-item="$(gh project item-add "$project_number" --owner "$project_owner" \
-  --url "https://github.com/$repo/issues/$number" --format json -q .id 2>/dev/null || true)"
-if [ -n "$item" ] && gh project item-edit --id "$item" --project-id "$project_id" \
-  --field-id "$project_status_field" \
-  --single-select-option-id "$project_status_in_progress" >/dev/null 2>&1; then
+# A loop session claims as the agent account, which cannot see the board; the
+# loop sets it with the owner's login (#2859). Any other login tries as before.
+login="$(gh api user --jq .login 2>/dev/null || true)"
+if [ "$login" = "$CREW_AGENT" ]; then
+  echo "✓ board left to the crew loop"
+elif board_in_progress "$number"; then
   echo "✓ board: #$number is In progress"
 else
   echo "! board not updated; the token needs project scope: gh auth refresh -s project" >&2

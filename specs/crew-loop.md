@@ -177,6 +177,13 @@ the issue, its labels, comments, label events and blockers.
   qualifies.
 - **Approved after the last edit.** The newest `ready` label event is later
   than the plan comment's last edit, so an edited plan needs the label again.
+- **Labelled by the owner.** The owner added that newest `ready` label; the
+  agent account can label issues too, and must not approve its own plans. A
+  deleted account, which GitHub names `ghost`, never counts as the owner.
+  Adding a label the issue already carries records no event, so approving again
+  means removing `ready` and adding it.
+- **Body unchanged since approval.** The issue body's last edit is no later
+  than that newest `ready` label, whoever made it.
 - **Evidence.** Every item, bulleted or numbered, under the body's "Done looks
   like" heading names a test, self-test, snapshot or screenshot as a whole
   word. A heading with no items skips the issue. With no such heading, the
@@ -301,6 +308,17 @@ and the lessons through `crew-loop.sh lessons`. A Crew skipped comment counts
 only from a trusted login, and so does a Claimed comment in `just claim`. The owner's own sessions post as the owner, so an
 author does not prove the owner wrote it: removing `needs-owner` stays the
 real answered signal.
+
+The loop's own writes, the `needs-owner` label, its notes through `osti write`
+and the Crew skipped comment, post as the agent account too (#2857): it reads
+the token once at start from the Keychain item the sessions' guard reads, and
+stops when the item is missing, empty or cannot be read, the log giving
+`security`'s exit and error, or when the read waits past ten seconds on an
+access prompt. `osti write` runs wholly as the agent, its own reads included,
+so only the loop's own `gh` reads stay on the owner's login. The roadmap board
+is the one write on it: the agent cannot see the board, so a session's claim
+leaves it, and the loop sets the issue In progress as its session starts
+(#2859). `crew-pick.sh` run by hand posts its Crew skipped comment as the owner, on `gh`'s own login.
 
 ## The run record (#2854)
 

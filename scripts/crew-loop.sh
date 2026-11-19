@@ -25,6 +25,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO=${CREW_REPO:-jonyardley/intrada}
 # shellcheck source=crew-trusted.sh
 . "$root/scripts/crew-trusted.sh"
+# shellcheck source=board.sh
+. "$root/scripts/board.sh"
 TRUSTED=$(trusted_jq)
 
 # ── The four figures, set by the owner on 2026-11-12 ──────────────────────────
@@ -48,6 +50,10 @@ SESSION_ID=""  # the open attempt's Claude Code session, once known
 CURRENT_WT=""  # the open attempt's worktree, once made
 SPEND_SEEN=0   # the spend figure the cap last read, on each picked line
 RECORD_FAILED=0
+# Unset first: an export from the launching shell would survive the assignment
+# and hand the token to every child.
+unset AGENT_TOKEN CREW_AGENT_TOKEN
+AGENT_TOKEN="" # the agent account's token, read once at start (#2857)
 # ──────────────────────────────────────────────────────────────────────────────
 
 POLL=${CREW_POLL:-60}
@@ -309,6 +315,52 @@ usage_limit() {
 
 # ── GitHub ───────────────────────────────────────────────────────────────────
 
+# The loop's own writes post as the agent account (#2857); its own gh reads stay
+# on the owner's login. The token goes to this one command and is never exported.
+as_agent() {
+  [ -n "$AGENT_TOKEN" ] || log "the agent's token is empty, so $1 is refused rather than posted as the owner"
+  crew_post "$AGENT_TOKEN" "$@"
+}
+
+# The token from the Keychain item the sessions' guard reads, bounded so an
+# access prompt cannot hold the run lock; perl's alarm, since macOS has no
+# timeout. On failure the log names security's exit and last error line.
+read_agent_token() {
+  local errf rc=0 limit=${CREW_KEYCHAIN_LIMIT:-10} item
+  item="$OSTINATO_AGENT_KEYCHAIN_SERVICE ($OSTINATO_AGENT_KEYCHAIN_ACCOUNT)"
+  errf=$(mktemp "${TMPDIR:-/tmp}/crew-keychain.XXXXXX") || errf=/dev/null
+  AGENT_TOKEN=$(perl -e 'alarm shift; exec @ARGV or exit 127' "$limit" \
+    security find-generic-password -s "$OSTINATO_AGENT_KEYCHAIN_SERVICE" \
+    -a "$OSTINATO_AGENT_KEYCHAIN_ACCOUNT" -w 2>"$errf") || rc=$?
+  local err
+  err=$(tail -1 "$errf" 2>/dev/null)
+  [ "$errf" = /dev/null ] || rm -f "$errf"
+  if [ "$rc" -eq 142 ]; then
+    log "reading the Keychain item $item took over ${limit}s, perhaps an access prompt waiting, so no run starts"
+  elif [ "$rc" -ne 0 ]; then
+    log "security could not read the Keychain item $item (exit $rc: ${err:-no message}), so no run starts: the loop posts to GitHub as the agent account"
+  elif [ -z "$AGENT_TOKEN" ]; then
+    log "the Keychain item $item is empty, so no run starts: the loop posts to GitHub as the agent account"
+  else
+    return 0
+  fi
+  AGENT_TOKEN=""
+  return 1
+}
+
+# Issue $1 In progress on the owner's board, with gh's own login (#2859);
+# bounded like the Keychain read, since a stalled gh would hold back the watch.
+set_board() {
+  local limit=${CREW_BOARD_LIMIT:-15} rc=0
+  REPO=$REPO perl -e 'alarm shift; exec @ARGV or exit 127' "$limit" \
+    bash -c '. "$1" && board_in_progress "$2"' set_board "$root/scripts/board.sh" "$1" || rc=$?
+  case $rc in
+    0) ;;
+    142) log "#$1: the board took over ${limit}s, so it was left as it was" ;;
+    *) log "#$1: the board could not be set to In progress; the token needs project scope: gh auth refresh -s project" ;;
+  esac
+}
+
 # The newest Crew note from $2 on, so an earlier run's park is not this
 # run's outcome.
 last_note() {
@@ -324,7 +376,7 @@ last_note() {
 # heading, since the restart and the outcome read only that.
 park_issue() {
   local n=$1 code=$2 why=$3 question=$4 said=${5:-} labelled=0 file
-  if ! gh issue edit "$n" -R "$REPO" --add-label needs-owner >/dev/null 2>&1; then
+  if ! as_agent gh issue edit "$n" -R "$REPO" --add-label needs-owner >/dev/null 2>&1; then
     log "could not add needs-owner to #$n"
     labelled=1
   fi
@@ -362,7 +414,7 @@ issue_url() { printf 'https://github.com/%s/issues/%s' "$REPO" "$1"; }
 # since a repeat would hold the line twice.
 record() {
   local rc=0 err
-  err=$("$OSTI" write --project "$REPO" --run "$RUN" "$@" 2>&1 >/dev/null) || rc=$?
+  err=$(as_agent "$OSTI" write --project "$REPO" --run "$RUN" "$@" 2>&1 >/dev/null) || rc=$?
   case $rc in
     # A warning, such as a line osti could not price, is logged too.
     0) [ -z "$err" ] || log "osti on $1: $(printf '%s' "$err" | tail -1)" ;;
@@ -379,7 +431,7 @@ record_noted() {
   shift 2
   record "$@" || rc=$?
   if [ "$rc" -ne 0 ]; then
-    gh issue comment "$n" -R "$REPO" --body "$body" >/dev/null 2>&1 ||
+    as_agent gh issue comment "$n" -R "$REPO" --body "$body" >/dev/null 2>&1 ||
       log "could not post the $1 note on #$n"
   fi
   return 0
@@ -739,6 +791,8 @@ run_issue() {
   fi
   id=$STARTED_ID
   log "#$n: session $id in $wt"
+  # The session claims as the agent, which cannot see the owner's board (#2859).
+  set_board "$n"
   watch "$id" "$wt" "$n" "$since"
   sid=$(agent_record "$id" | jq -r '.sessionId // empty')
   [ -n "$sid" ] && SESSION_ID=$sid
@@ -877,6 +931,7 @@ main() {
     log "osti is not installed (just install in the Ostinato repo), so no run starts: the run record and the guard need it"
     exit 1
   fi
+  read_agent_token || exit 1
   if ! toolchain_ready; then
     log "the pinned Rust toolchain or its iPhone simulator target is missing, and a sandboxed session cannot install either: run rustup target add aarch64-apple-ios-sim in the main checkout"
     exit 1
@@ -939,7 +994,7 @@ $q"
     for cand in $candidates; do
       case "$tried" in *" $cand "*) continue ;; esac
       tried="$tried$cand "
-      "${CREW_PICK:-$root/scripts/crew-pick.sh}" "$cand" >/dev/null 2>&1
+      CREW_AGENT_TOKEN=$AGENT_TOKEN "${CREW_PICK:-$root/scripts/crew-pick.sh}" "$cand" >/dev/null 2>&1
       prc=$?
       if [ "$prc" -eq 0 ]; then
         n=$cand
