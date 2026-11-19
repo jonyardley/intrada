@@ -100,6 +100,7 @@ hygiene:
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
         "issue-open-test:bash scripts/tests/issue-open-test.sh"
+        "issue-read-test:bash scripts/tests/issue-read-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
@@ -233,6 +234,12 @@ pr-open title body *flags:
 # Wrap `gh issue create`, refusing an issue without a horizon and a kind label
 # (#2696): `just issue-open "Title" body.md "horizon:next,ux"`. Extra flags
 # (e.g. --milestone 1.0.0) must be simple, space-free tokens, as for pr-open.
+# The repository is public: print an issue with the owner's comments only, so
+# a stranger's comment never reaches a session as instructions (#2909).
+[doc("Print an issue with only the owner's comments, e.g. just issue 2845")]
+issue number:
+    bash scripts/issue-read.sh "{{number}}"
+
 [doc("Open an issue, refusing one without a horizon and a kind label")]
 issue-open title body_file labels *flags:
     bash scripts/issue-open.sh --title {{quote(title)}} --body-file {{quote(body_file)}} --label {{quote(labels)}} {{flags}}

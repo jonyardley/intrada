@@ -41,6 +41,10 @@
 - 2026-11-13, #2821: a finished `claude --bg` session reads state blocked with no pid, and one still running a background command reads working until it ends; read the turn's end from the state, never from the pid.
 - 2026-11-13, #2821: on Claude Code 2.1.323 a call waiting on permission reaches the transcript only once the session is stopped, so read a stuck session's calls after the stop.
 - 2026-11-13, #2821: a self-test whose default caps run to minutes turns one surviving mutant into a ten minute wait; keep every timing default in a test to seconds.
+- 2026-11-13, #2806: a fake gh that only writes its message to standard error hides how the real one fails; a failed `gh api` read prints the JSON body on standard output with no newline and the "gh:" message joined on, so run one real failing read before writing the fake.
+- 2026-11-13, #2847: a self-test fixture passed with the code it tests removed, because the check refused it for another reason; remove each piece of a new check in turn and watch its own case fail.
+- 2026-11-13, #2847: a session parked on a permission prompt for `rm -r` on a scratch folder; make a fresh `mktemp -d` folder per run and leave it for the job's own cleanup.
+- 2026-11-13, #2847: `sed -E` on macOS rejected a backslash-heavy mutation and wrote an empty script, so the self-test's failure looked like a caught mutant; swap literal text with perl's `\Q...\E` and diff before running.
 - 2026-11-14, #2866: lowering an agent's effort pin makes `guard-spawn.sh` refuse every spawn above it, so a pin that is lifted on some diffs needs an `effort-ceiling:` beside it, or the lift is blocked.
 - 2026-11-14, #2866: a guard mutation that removes a line can stay green because the line it guards is shadowed (the first frontmatter match wins); give each mutation a fixture where only that line decides the result.
 - 2026-11-15, #2869: a `--settings` flag that holds any sandbox list drops every sandbox list in the worktree's local settings (Claude Code 2.1.325), so a loop that passes `strictAllowlist` with its domains must pass osti's lists too; probe a sandbox change live, since the session starts without complaint.
@@ -48,3 +52,9 @@
 - 2026-11-15, #2869: inside Claude's sandbox Xcode cannot start its own for package manifests (`sandbox_apply: Operation not permitted`), even with the packages fetched beforehand; xcodebuild takes the switch as `-Key=YES`, not `-Key YES`.
 - 2026-11-15, #2876: a workflow command property value holding a comma needs `%2C`, or the annotation title stops at the comma; assert the escaped string in the test.
 - 2026-11-15, #2876: a scheduled job on the self-hosted Mac shares the gate's warm workspace, so a default checkout there would wipe `target/`; fetch only what it needs into a subfolder with `clean: false`.
+- 2026-11-15, #2531: zsh does not split an unquoted expansion, so `${VAR:+--flag "$VAR"}` reaches the command as one argument; write the flag and its value as two words, and leave the flag off with a separate command when the value is empty.
+- 2026-11-15, #2531: an agent's `just ios-test` built but ran no test, and it reported "compiles"; a build report is not a test run, so the lead's own gate run decides.
+- 2026-11-15, #2531: GitHub allows at most 100 sub-issues per issue, so `just epic-add` refuses on the Android epic; a deferred issue for it stands alone until the epic is split.
+- 2026-11-18, #2845: the plan said to reuse a helper in the status script, but the script defined it below the line that needed it; check where a shell function is defined before calling it from earlier in a script.
+- 2026-11-18, #2845: for a one-line script fix, reverting the fixed line and rerunning the self-test showed both new assertions fail in one command, cheaper than any mutation tool.
+- 2026-11-18, #2793: deleting whole snapshot classes by guess missed two split view references that also showed the changed words; grep every snapshot test file for each changed view, split views included, before deleting references.
