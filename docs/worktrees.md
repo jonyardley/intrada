@@ -10,7 +10,7 @@ time** (#1741). Reading is never banned.
 origin/main`: it fetches first and refuses a name whose simulator would collide
 with another worktree's. It ends by printing `cd <worktree> && claude`, the
 command that starts the session inside the new worktree (#2918): the
-`.claude/rules/` files load only there, and no command needs a prefix.
+`.claude/rules/` files load only there, and every command runs in place.
 Worktrunk's machine-local config
 (`~/.config/worktrunk/config.toml`) does the rest:
 
@@ -51,8 +51,10 @@ holds is the merge lock on GitHub. Claude Code's own subagent worktrees stay in
 
 Once the repo has a linked worktree, as intrada always does:
 
-- **The main checkout.** Any number of sessions can sit here, but none can edit
-  files or run shell that mutates the source, so main stays the clean base.
+- **The main checkout.** Any number of sessions can sit here, but shell is
+  read-only (the list below) and file tools cannot write, so main stays the
+  clean base. To build, a session starts inside its worktree with
+  `cd <worktree> && claude`; a `cd <worktree> && ` prefix from main is refused.
 - **Your own worktree.** The first write claims it, and everything works.
 - **Someone else's worktree.** Reads pass. Builds are denied with the writes,
   because two builds share one `target/` and one simulator.
@@ -83,8 +85,8 @@ file path for a file tool, the working directory for a shell command.
 | `just worktrees`, `just worktree-status`, `gh pr view` | yes | yes | yes |
 | `just worktree-new`, `wt switch`, `wt list` | yes | yes      | yes            |
 | Any other `wt` subcommand | no         | yes           | no             |
-| Build, test, `just check` | yes        | yes           | no             |
-| Edit, commit, push     | no (unless it self-heals, below) | yes | no    |
+| Build, test, `just check` | no         | yes           | no             |
+| Edit, commit, push     | no            | yes           | no             |
 | `just worktree-done`   | no            | once merged, clean and pushed | no |
 
 A pull in the main checkout is denied with the other mutating git subcommands
@@ -101,33 +103,9 @@ without `-i`, `find` without `-delete` or `-exec`, read-only `git`, `rtk read`,
 
 The guarantee is on the file tools. Shell coverage is best effort, aimed at
 redirection, `sed -i`, `cp`, `mv`, `rm`, `tee`, `patch` and mutating `git`. A
-broken guard fails open.
-
-## Driving a worktree from the main checkout
-
-This is the fallback, not the way to work: a session that edits starts inside
-its worktree, as [`working-with-agents.md`](working-with-agents.md) says. A
-session left in the main checkout prefixes each shell command with
-`cd <worktree> && `. The guard judges the command where it lands, so commits,
-gates and PRs work, and the first write takes the lease. It honours only a
-shape it can read, and denies rather than guesses:
-
-- a literal absolute path, followed by `&&` or `;`. `~`, `$HOME` and `$VAR` are
-  not expanded, and `||` breaks the match.
-- one `cd` only.
-- nothing naming a path inside the session's own checkout, and no `..`.
-  Absolute worktree paths in the command body are fine.
-- `git -C <dir>` is never resolved and stays denied from main.
-
-File tools take absolute paths inside the worktree.
-
-### A forgotten prefix self-heals when unambiguous
-
-When the session holds a lease on exactly one non-main worktree, a Bash command
-with no `cd` gets the prefix added, and a relative file path is re-rooted under
-that worktree (#1840). With zero or several such leases it still denies. So
-does a command with its own `cd`, a `git -C`, or anything reaching into the
-main checkout by absolute path or `..`.
+shell write by absolute path into another session's worktree, from a third
+folder, is not seen; file tools still are, and the merge lock on GitHub holds.
+A broken guard fails open.
 
 ## Escape hatches
 

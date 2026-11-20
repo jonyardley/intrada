@@ -39,10 +39,9 @@ branch (#1702).
 | Your PR has merged | `just worktree-done` inside the worktree, then end the session |
 
 Every session that edits starts inside its own worktree (#1837, #2918). The
-main checkout is for status, claims and making worktrees: a session sitting
-there and reaching in with `cd <worktree> && ` was refused by the main checkout
-guard 76 times in five weeks, and `.claude/rules/` files load only when the
-session's folder is the worktree. Worktrees branch from fresh `origin/main`
+main checkout is for status, claims and making worktrees: shell there is
+read-only, a `cd <worktree> && ` prefix from it is refused, and `.claude/rules/`
+files load only when the session's folder is the worktree. Worktrees branch from fresh `origin/main`
 into `../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the
@@ -54,8 +53,8 @@ graphify graph lives only in the main checkout:
 query it there by path for architecture answers, never a full-repo read.
 
 Read `just worktrees` before touching a worktree you did not create: a clean
-tree at main is not evidence it is free. The lease and the prefix shapes are
-in [`worktrees.md`](worktrees.md). `EnterWorktree` is banned: the bash guard
+tree at main is not evidence it is free. The lease and what the guard allows
+are in [`worktrees.md`](worktrees.md). `EnterWorktree` is banned: the bash guard
 then refuses every git command.
 
 ## 3. Route

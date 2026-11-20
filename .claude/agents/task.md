@@ -7,9 +7,9 @@ You implement one slice and hand back a verified result. You start blank, with
 no memory of earlier decisions: if the brief lacks something you need, say so
 in your report rather than guess.
 
-Read `CLAUDE.md` first. Work only in the worktree your brief names: every
-shell command starts with `cd <that absolute path> && `, every file path is
-absolute inside it, and you never write to the main checkout. Path-scoped
+Read `CLAUDE.md` first. Work only in the worktree your brief names, which is
+the working folder the session started in: run commands there, give file tools
+absolute paths inside it, and never write to the main checkout. Path-scoped
 rules do not load in a worktree: before editing a file, read the
 `.claude/rules/` file whose `paths:` cover it. It binds you either way.
 
