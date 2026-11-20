@@ -1,5 +1,7 @@
 # Android App Shell on the Shared Core
 
+The Android app was removed on 20 November 2026 and can be restored from the tag `android-paused-2026-11-20`; this spec is kept as a record.
+
 > Tier 3: a second native shell on the unchanged Crux core. Spec issue #1774,
 > epic #2220.
 

@@ -4,7 +4,6 @@ status: stable
 ios_symbol: SegmentedProgress
 ios_file: ios/Intrada/Views/Components/SegmentedProgress.swift
 ios_snapshots: ComponentSnapshotTests/testSegmentedProgress.1.png, FocusPlayerSnapshotTests/testOrientationBandLongSession.1.png
-not_on_android: #2636 builds the shared Compose version; until then the player and Progress each draw their own strip by hand (see Behaviour).
 decisions: T24
 ---
 
@@ -37,7 +36,7 @@ No motion and no haptic. The strip is not a control.
 ## Content
 
 - One capsule per item, equal widths, `segmentGap` (5 points) apart.
-- A filled segment is `accent` (`ink`, #2A2725) on both variants. A pastel misses the 3:1 contrast a meaningful mark needs (WCAG 1.4.11, T24 in [the design principles](../../../docs/design-principles.md)); the Android player's pastel fill goes to ink in #2605.
+- A filled segment is `accent` (`ink`, #2A2725) on both variants. A pastel misses the 3:1 contrast a meaningful mark needs (WCAG 1.4.11, T24 in [the design principles](../../../docs/design-principles.md)).
 - An empty segment is `divider` (#DDD7CA). The empty colour and gap the player keeps are decided in #2663.
 - No states of its own. The filled count comes from the core.
 - No words of its own. The core writes the solid counts ("7 of 12 solid", "Solid on 2 of 3 items") and the spoken rows ("Scales, 2 of 3 variations solid"); the iPhone shell writes the player's spoken position.
@@ -45,12 +44,11 @@ No motion and no haptic. The strip is not a control.
 ## Accessibility
 
 - On iPhone the strip is one element. The player strip says "Item 2 of 5", from the shell; a solid count says the label it is given, and `SolidCountRow` replaces that with the core's spoken row.
-- On Android the player strip reports its range as progress to TalkBack, and the Progress row reads the core's spoken row.
 - The segments do not scale with text size.
 
 ## Do and don't
 
-- **Don't** draw a strip of your own from capsules or boxes. Android draws three by hand until the shared Compose strip lands in #2636.
+- **Don't** draw a strip of your own from capsules or boxes.
 
 ## Usage
 

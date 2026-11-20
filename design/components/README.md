@@ -1,16 +1,16 @@
 # Component catalogue
 
 Every component the screens are built from, with one page each: what it is
-for, how it looks and behaves on iPhone and Android, and pictures from the
+for, how it looks and behaves, and pictures from the
 snapshot tests. Agents and people read the same pages; the Claude Design
 system shows a copy, published from here and never edited there (#2620).
 
 **Before building a screen,** reach for a component below. If one almost fits,
 add a parameter to it. Never ship a one-off copy: hand-rolled copies are the
-first source of drift between the apps.
+first source of drift.
 
 **Changing a component** starts with its page: change the words, then the
-SwiftUI version, then the Compose one, then record the snapshots on both
+SwiftUI version, then record the snapshots
 (`docs/design-workflow.md`). A new component starts as a new page from
 [`_template.md`](_template.md) and a row here.
 

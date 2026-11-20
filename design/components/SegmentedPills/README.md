@@ -4,9 +4,6 @@ status: stable
 ios_symbol: SegmentedPills
 ios_file: ios/Intrada/Views/Components/SegmentedPills.swift
 ios_snapshots: ComponentSnapshotTests/testSegmentedPills.1.png
-android_symbol: SegmentedPills
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/PageParts.kt
-android_snapshots: segmented-pills.png
 decisions: T24, T36
 ---
 
@@ -30,7 +27,7 @@ Choosing one of two to five options in place, with the choice showing at once.
 - **Full width track** (`.fullWidthTrack`): use for a form choice. Equal segments; at accessibility sizes the segments stack.
 - **Wrapping track** (`.wrappingTrack`): use when a label can be long, such as a grouping like 2 + 2 + 3. Whole pills move to a new row rather than a label breaking.
 
-Every caller names its track; there is no default. Android has one track with a `wraps` flag that covers both.
+Every caller names its track; there is no default.
 
 ## Behaviour
 
@@ -40,16 +37,15 @@ Every caller names its track; there is no default. Android has one track with a 
 ## Content
 
 - The track is a white card with a `hairline` edge and round ends. The chosen pill is filled in ink with white text; the others are text in `inkSecondary`. Ink on white is the interactive colour (T24 in [the design principles](../../../docs/design-principles.md)), so the chosen option reads as chosen at a glance.
-- Android draws the track sunken with the chosen pill white; moving it to this look is #2606.
 - No pill is ever filled with the highlighter, which is kept for the one call to action (`MarkerButton`).
 - There is no disabled state: if an option cannot be chosen, leave it out.
-- One or two words per label, sentence case. No icons alone; an icon pill needs a text label for VoiceOver and TalkBack.
+- One or two words per label, sentence case. No icons alone; an icon pill needs a text label for VoiceOver.
 
 ## Accessibility
 
-- Each pill is a button with the selected trait on iPhone and a tab with `selected` on Android, so a screen reader says which is chosen.
-- On iPhone, `hint` adds a spoken hint to the label. On Android, `spoken` replaces the label for TalkBack. Use them when the label alone is unclear.
-- Android pills are at least 48dp tall. On iPhone the touch area reaches 44 points without the drawn pill growing; reaching it is #2686.
+- Each pill is a button with the selected trait, so a screen reader says which is chosen.
+- `hint` adds a spoken hint to the label. Use it when the label alone is unclear.
+- The touch area reaches 44 points without the drawn pill growing; reaching it is #2686.
 
 ## Do and don't
 
@@ -62,16 +58,6 @@ Every caller names its track; there is no default. Android has one track with a 
 SegmentedPills(
   options: [.piece, .exercise], selection: $kind, label: \.label,
   font: IntradaFont.segment, layout: .fullWidthTrack)
-```
-
-```kotlin
-SegmentedPills(
-    ItemKind.entries,
-    selection,
-    onSelect,
-    label = { it.label },
-    tag = { "itemForm.kind.${it.name.lowercase()}" },
-)
 ```
 
 ## Related

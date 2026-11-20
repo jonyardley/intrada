@@ -15,9 +15,9 @@ labels: ""
 ## What you would notice
 
 <!-- The observable situation. For a bug: the steps (the tap path, for a
-     screen), what you expected and what happened instead. Then name the app
-     (iPhone, Android or both), the build and the device. For a change, say
-     what is missing or awkward today, and on which app if only one. -->
+     screen), what you expected and what happened instead. Then name the
+     build and the device. For a change, say what is missing or awkward
+     today. -->
 
 ## Why it matters
 

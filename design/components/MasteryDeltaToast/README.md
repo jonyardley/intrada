@@ -4,9 +4,6 @@ status: stable
 ios_symbol: MasteryDeltaToast
 ios_file: ios/Intrada/Views/Components/MasteryDelta.swift
 ios_snapshots: ComponentSnapshotTests/testMasteryDeltaToast.1.png
-android_symbol: MasteryDeltaToast
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt
-android_snapshots: mastery-delta-toast.png
 decisions: T24
 ---
 
@@ -35,19 +32,18 @@ The celebration banner: the one item whose mark rose most, shown as the mark it 
 - A dark card in `celebrationBg` (ink) with the 3 point corner.
 - On the left, a sparkle on a disc in the musician's highlighter, then the title.
 - On the right, the earlier mark, an arrow in the highlighter and the new mark, at title size.
-- The core picks the item (`top_mover`: the largest rise). The shells write the titles.
-- On Android the highlighter is always butter today; #2605 (A6). Android's summary draws its own line instead of this banner; #2672.
+- The core picks the item (`top_mover`: the largest rise). The shell writes the titles.
 - The earlier mark is faded rather than a step of colour; #2607 (I30).
 
 ## Behaviour
 
-On iPhone it fades in and drops 10 points into place, half a second after the headline. It stays still when Reduce Motion is on. Android shows it without the reveal; #2673.
+It fades in and drops 10 points into place, half a second after the headline. It stays still when Reduce Motion is on.
 
 ## Accessibility
 
 - One element, read as the title, then "mastery up from 3 to 4".
 - The label leaves out the subtitle, so on Progress it never names the item: "Mastery up, mastery up from 5 to 7"; #2680.
-- Scales with Dynamic Type and font scale. At the largest sizes on iPhone, "Mastery up" breaks inside a word; #2413.
+- Scales with Dynamic Type. At the largest sizes on iPhone, "Mastery up" breaks inside a word; #2413.
 
 ## Do and don't
 
@@ -62,15 +58,6 @@ MasteryDeltaToast(
   subtitle: nil,
   was: Int(toast.previousScore ?? 0),
   now: Int(toast.currentScore)
-)
-```
-
-```kotlin
-MasteryDeltaToast(
-    "Mastery up",
-    mover.itemTitle,
-    was = mover.previousScore?.toInt() ?: 0,
-    now = mover.currentScore.toInt(),
 )
 ```
 

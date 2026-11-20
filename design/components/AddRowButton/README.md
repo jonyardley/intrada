@@ -4,9 +4,6 @@ status: stable
 ios_symbol: AddRowButton
 ios_file: ios/Intrada/Views/Components/AddRowButton.swift
 ios_snapshots: ComponentSnapshotTests/testAddRowButtonVariants.1.png
-android_symbol: AddRow
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/PageParts.kt
-android_snapshots: builder.png
 ---
 
 # AddRowButton
@@ -33,7 +30,6 @@ A full-width "Add" row that invites the musician to put something into a list or
 ## Behaviour
 
 - One tap runs the action. There is no haptic of its own; the screen it opens gives the feedback.
-- Android draws every add row plain, and a caller puts it on a card where iPhone shows a dashed slot; dashed slots with a plus glyph are A18 in #2606.
 
 ## Content
 
@@ -44,8 +40,8 @@ A full-width "Add" row that invites the musician to put something into a list or
 
 ## Accessibility
 
-- One button, read by its label. Android takes a separate spoken label so it can say more than fits, such as "Add a piece or exercise".
-- Android rows are at least 48dp tall. The label and hint scale with Dynamic Type and font scale.
+- One button, read by its label.
+- The label and hint scale with Dynamic Type.
 
 ## Do and don't
 
@@ -59,16 +55,6 @@ AddRowButton(title: "Choose variations", hint: "Hands separately, dotted rhythms
 AddRowButton(title: "Add a variation", style: .plain, action: addRow)
 ```
 
-```kotlin
-AddRow(
-    "Add piece or exercise",
-    "Add a piece or exercise",
-    "builder.addItems",
-    onAddItems,
-    Modifier.cardSurface(),
-)
-```
-
 ## Related
 
-`MarkerButton`, the one call to action. `SectionHeader`, a section's title with its action. `Card`, the surface an Android add row sits on.
+`MarkerButton`, the one call to action. `SectionHeader`, a section's title with its action.

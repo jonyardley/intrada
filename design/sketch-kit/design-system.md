@@ -1,4 +1,4 @@
-Intrada is a practice notebook for musicians, with an iPhone app and an Android app that look the same. This is a published copy of the component catalogue in the repo (`design/components/` in jonyardley/intrada); the commit it was taken from is at the end of this page. The repo is the source: change a page there, never here (T37 in [the design principles](../../docs/design-principles.md)).
+Intrada is a practice notebook for musicians, with an iPhone app. This is a published copy of the component catalogue in the repo (`design/components/` in jonyardley/intrada); the commit it was taken from is at the end of this page. The repo is the source: change a page there, never here (T37 in [the design principles](../../docs/design-principles.md)).
 
 ## Paper, ink and one highlighter
 
@@ -36,7 +36,7 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 
 ## Components
 
-**Before drawing a screen,** build it from the components below. If one almost fits, the change starts on its page in the repo; never draw a one-off copy. Each component's page gives its purpose, when to use it and when not, its variants, the tokens it is drawn with, its accessibility rules and its code on both apps, with pictures from both apps' snapshot tests. These are native SwiftUI and Compose components: the pictures are the real thing. Five of them, ScreenScaffold, Card, LibraryItemCard, MarkerButton and TabBar, also have a web copy for sketching new screens (the sketch kit, below).
+**Before drawing a screen,** build it from the components below. If one almost fits, the change starts on its page in the repo; never draw a one-off copy. Each component's page gives its purpose, when to use it and when not, its variants, the tokens it is drawn with, its accessibility rules and its code, with pictures from the app's snapshot tests. These are native SwiftUI components: the pictures are the real thing. Five of them, ScreenScaffold, Card, LibraryItemCard, MarkerButton and TabBar, also have a web copy for sketching new screens (the sketch kit, below).
 
 | Group | Component | What it is for |
 |---|---|---|
@@ -73,29 +73,27 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 
 The Library screen card shows how they sit together on a real screen.
 
-Where the two apps still differ, a page says so in one line naming the GitHub issue that settles it.
+Where a component still falls short of its page, the page says so in one line naming the GitHub issue that settles it.
 
 ## Sketching a screen
 
-The sketch kit is a web copy of five components, `ScreenScaffold`, `Card`, `LibraryItemCard`, `MarkerButton` and `TabBar`, drawn from the tokens so a Claude Design canvas shows the real look of the apps. It is a copy of the code, never the source (T38). A sketch that needs anything else draws it from the tokens and names the catalogue component it stands for, so the build knows what to reach for.
+The sketch kit is a web copy of five components, `ScreenScaffold`, `Card`, `LibraryItemCard`, `MarkerButton` and `TabBar`, drawn from the tokens so a Claude Design canvas shows the real look of the app. It is a copy of the code, never the source (T38). A sketch that needs anything else draws it from the tokens and names the catalogue component it stands for, so the build knows what to reach for.
 
 Where the kit follows a decision rather than the code (Jon, 15 October 2026):
 
-- **Cards have the lift**, as T24 decided. The kit draws it by default (`lift={false}` turns it off); neither app draws it until #2638 lands.
+- **Cards have the lift**, as T24 decided. The kit draws it by default (`lift={false}` turns it off); the app does not draw it until #2638 lands.
 - **The tab bar is drawn as it looks on a real iPhone**, an opaque bar in `tabBarFill`. The white bar in the iPhone snapshot is a test artefact (#2607). Its labels use `smallMedium`, the smallest type style, though the phone draws them a little smaller in the system font: the kit keeps to the theme's type.
-- **The library row** draws the whole iPhone row on both platforms. Android shows less until #2606 and #2679 land.
-- **The title's highlighter swipe** is drawn on iPhone only, as in the apps: Android's `ScreenScaffold` has none until #2605.
 
 ### Phone frames
 
-`ScreenScaffold` takes `device: "ios"` or `"android"` and then draws the whole phone: the status bar, the screen, and the tab bar when `tab` names one. The sizes are the devices the snapshot tests use.
+`ScreenScaffold` takes `device: "ios"` and then draws the whole phone: the status bar, the screen, and the tab bar when `tab` names one. The sizes are the device the snapshot tests use.
 
-| | iPhone 13 | Pixel 7 |
-|---|---|---|
-| Screen | 390 by 844 points | 411 by 914 dp |
-| Status bar | 47 | 24 |
-| Navigation bar | 44 on a pushed screen, none at a tab's root | none |
-| Tab bar | 49, then 34 for the home indicator | 56 per tab plus a 1 dp rule, then 24 for gesture navigation |
+| | iPhone 13 |
+|---|---|
+| Screen | 390 by 844 points |
+| Status bar | 47 |
+| Navigation bar | 44 on a pushed screen, none at a tab's root |
+| Tab bar | 49, then 34 for the home indicator |
 
 ```js
 const { ScreenScaffold, LibraryItemCard, MarkerButton } = window.Intrada;
@@ -107,14 +105,10 @@ const { ScreenScaffold, LibraryItemCard, MarkerButton } = window.Intrada;
 
 ### Pushed screens
 
-A screen opened from another one sits in its parent's tab.
-
-- **iPhone:** pass `pushed` and the parent's `tab`. The tab bar stays, with the parent tab selected, and a back chevron sits above the title.
-- **Android:** leave `tab` off. The app draws no tab bar on a pushed screen, and the kit draws no back arrow, because the app has none until #2619.
+A screen opened from another one sits in its parent's tab. Pass `pushed` and the parent's `tab`: the tab bar stays, with the parent tab selected, and a back chevron sits above the title.
 
 ```js
 <ScreenScaffold device="ios" tab="practice" pushed title="Session" />
-<ScreenScaffold device="android" title="Session" />
 ```
 
 ### Consuming
@@ -129,7 +123,7 @@ Text styles are CSS classes: `tokens.css` defines a class per type style, with g
 
 | Component | Props (`index.d.ts`) | Children |
 |---|---|---|
-| `ScreenScaffold` | `title`; optional `subtitle`, `device` (`"ios"` or `"android"`), `tab` (`"library"`, `"practice"`, `"routines"`, `"progress"`), `pushed`, `addLabel`, `actions`, `marker`, `noSwipe`, `reserveSubtitle` | The screen's content, under the header rule |
+| `ScreenScaffold` | `title`; optional `subtitle`, `device` (`"ios"`), `tab` (`"library"`, `"practice"`, `"routines"`, `"progress"`), `pushed`, `addLabel`, `actions`, `marker`, `noSwipe`, `reserveSubtitle` | The screen's content, under the header rule |
 | `Card` | Optional `lift` (on unless `false`), `compact`, `style` | What the card holds |
 | `LibraryItemCard` | `title`, `kind` (`"piece"` or `"exercise"`); optional `subtitle`, `keyName`, `tempo`, `priority`, `linkedExercises`, `keys`, `variations`, `tags`, `score` (0 to 10, or `null`), `showsMastery` | None |
 | `MarkerButton` | `label`; optional `marker` | None |
@@ -158,4 +152,4 @@ Text styles are CSS classes: `tokens.css` defines a class per type style, with g
 
 ### Icons
 
-The kit's icons are Android's drawables, which draw the same job as each SF Symbol, and `bundle.js` carries them. A symbol with no Android drawable is named in words on a sketch; SF Symbols themselves cannot be shipped as files. Inside the components the icons take the text colour.
+The kit's icons come from vector drawables kept in the repo (`design/sketch-kit/drawables/`, moved there from the old Android app); each draws the same job as an SF Symbol, and `bundle.js` carries them. A symbol with no drawable is named in words on a sketch; SF Symbols themselves cannot be shipped as files. Inside the components the icons take the text colour.

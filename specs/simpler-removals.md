@@ -1,7 +1,7 @@
 # Simpler practice: removing focus, repetitions and the Add detail choices
 
 > Tier 3 (store migration, crash recovery blob, practice defaults blob,
-> bridge reshape). Rides as the first commit of the PR for #2791. Both apps.
+> bridge reshape). Rides as the first commit of the PR for #2791.
 > Decisions taken by the owner on 10 November 2026, in the plan on #2791.
 
 ## Problem
@@ -15,7 +15,7 @@ stay, as plain free text.
 
 ## What goes
 
-From the core, both apps and saved data:
+From the core, the app and saved data:
 
 - **Focus**: `IntentionFocus`, `FocusKind`, `SetFocus`, the focus choices and
   the focus read from a typed aim ("at 84").
@@ -101,9 +101,8 @@ the reader ignores them and the next save drops them.
 ## Bridge
 
 Removing event variants and fields reorders the positional wire, which is
-safe because both apps regenerate from the same core in this PR. The
-reshaped types get `assert_round_trips` in Rust, `SessionBridgeTests` on iOS
-and `BridgeRoundTripTest` on Android.
+safe because the app regenerates from the same core in this PR. The
+reshaped types get `assert_round_trips` in Rust and `SessionBridgeTests` on iOS.
 
 ## Screens
 

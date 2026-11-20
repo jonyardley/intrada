@@ -4,7 +4,6 @@ status: stable
 ios_symbol: SectionTitle
 ios_file: ios/Intrada/Views/Components/SectionHeader.swift
 ios_snapshots: ComponentSnapshotTests/testSectionTitle.1.png
-not_on_android: #2636 builds it; until then Android titles a section with SectionHeader or FieldLabel (see Behaviour).
 decisions: T35
 ---
 
@@ -33,19 +32,17 @@ Names a section, in sentence case, above what it names.
 
 No motion and no haptic.
 
-Android has no `SectionTitle` yet; building it is #2636. Until then a section with only a name uses `SectionHeader` with nothing else, or `FieldLabel`, and the dark cards draw their titles in `IntradaFont.label` with the same light tint. Each looks the same as on iPhone, because `SectionHeader`'s title is `FieldLabel`.
-
 ## Content
 
 - One line of text: `IntradaFont.label` in `inkSecondary`. It draws `FieldLabel`, so a section title and a field label look the same (T35).
 - A name, or name · fact: the name in sentence case, then one middle dot with single spaces and the fact, no full stop.
-- Most names are one to three words; "From the chord chart" is the longest that ships. The shells write the titles.
+- Most names are one to three words; "From the chord chart" is the longest that ships. The shell writes the titles.
 - No states.
 
 ## Accessibility
 
 - Read as plain text. On iPhone it does not carry the header trait.
-- Scales with Dynamic Type and font scale.
+- Scales with Dynamic Type.
 
 ## Do and don't
 

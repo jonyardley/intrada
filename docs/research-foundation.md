@@ -170,7 +170,7 @@ Overlearning, 50 to 100% extra correct trials beyond the first success, improves
 |-----|-----------|------------|----------------------|
 | **Modacity** | Deliberate practice guidance, recording, mastery rating, good design | No spacing, no per-key tracking, expensive subscription, basic statistics | Tracking by key, a record that only shows what was measured |
 | **Tonic** | Social and community features, gamification, practice streaks | Social first rather than practice first, no deep progress metrics, no planning help | Practice quality over social metrics, progress per item and key, everything stays on the device |
-| **Piano Practice Assistant** | True spaced repetition, section-level tracking, interleaved practice, grounded in research | Android only, piano only, little design polish | Any instrument, iPhone and Android, an encouraging tone |
+| **Piano Practice Assistant** | True spaced repetition, section-level tracking, interleaved practice, grounded in research | Android only, piano only, little design polish | Any instrument, an encouraging tone |
 | **Instrumentive** | Practice habit tracking, recording, metronome, similar to Modacity | Habit building over practice quality, limited analytics | Quality as well as habit, a richer record of each item |
 
 **Intrada's position:** quick capture, tracking by key, an honest record and design for every kind of mind, in one app for any instrument. A plan the musician stays in charge of is next (#57). Spacing and mixing items within a session (sections 1 and 2) are ideas, not built yet.

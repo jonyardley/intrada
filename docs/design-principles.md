@@ -39,7 +39,7 @@ the two moments where stopping to think *is* what they came to do.
 - **Defaults beat configuration.** Every flow completes with zero setup.
 - **Direct manipulation where the platform allows.** Prefer acting on the thing
   itself (swipe, drag, tap-to-toggle) over opening a form, always with a
-  visible path beside it on both apps (T4).
+  visible path beside it (T4).
 
 ### B. Simplicity — defer complexity, don't remove capability
 
@@ -88,13 +88,13 @@ The default live-session screen stays bare. Config is reachable, not resident.
 sole carrier of meaning.** Every type signal also carries a shape or text cue
 (dot, badge text, icon); `TypeBadge` meets this (T29).
 
-### T4: Direct manipulation on both apps
+### T4: Direct manipulation
 
 **DECIDED 2026-05-31.** The principle is **"the most direct affordance the
 platform offers"**, with one hard floor: **no action may be reachable *only*
 through a hidden gesture.** Gestures (swipe-to-delete, long-press menu) are
-accelerators on top of a visible, non-gesture path on both apps, such as the
-action in the detail screen or a sheet, and offered to VoiceOver and TalkBack.
+accelerators on top of a visible, non-gesture path, such as the
+action in the detail screen or a sheet, and offered to VoiceOver.
 Audit: #761.
 
 ### T5: Content over chrome vs the visual identity
@@ -331,7 +331,7 @@ is `ink`.
 are system toolbar items with system type and tint, which gives them the glass
 pill. The round "+" that adds to a page and the Practice profile badge stay
 beside the large title as our own drawing. The bar is an opaque `paperTop`
-fill with no seam. An iPhone ruling; Android follows T36.
+fill with no seam.
 
 ### T29: Section, field and tag each have one look; the type badge is a tag
 
@@ -422,34 +422,21 @@ session.
 
 ### T36: Android behaves like Android, and looks like intrada
 
-**DECIDED 2026-10-13 (#2599).** Review page: https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
+**Withdrawn 2026-11-20 (#2924)** with the Android app; the ruling is on the
+tag `android-paused-2026-11-20`.
 
-On Android, intrada keeps its look and adopts the platform's behaviour. The
-look is paper, ink, one highlighter, Hanken Grotesk and DM Mono, the five
-sizes and the 3dp card; no Material colour, shape or type stands in for it,
-and wallpaper colour never replaces the highlighter. Behaviour and structure
-follow Android: back always does something, and predictive back shows where it
-goes; a pushed screen has a back arrow and a modal form has a close cross,
-with its one action on the right; a press ripples in ink; quick choices rise
-as bottom sheets; a reversible removal offers Undo rather than asking first;
-the keyboard's Next and Done move you on. When an iOS ruling such as T28 is
-about where something sits or how it moves, it binds iOS only, and Android
-takes the platform's answer drawn in intrada's look.
-
-### T37: One catalogue says how every component looks on both apps
+### T37: One catalogue says how every component looks
 
 **DECIDED 2026-10-13 (#2620).**
 
 Every component the screens are built from has one page in
 `design/components/`: what it is for, when to use it and when not, its parts,
 variants, states, behaviour, content and accessibility, with pictures from the
-snapshot tests on iPhone and Android. The page comes first: a change to a
-component changes its page, then the SwiftUI version, then the Compose one,
-then both sets of pictures, in one PR. Where the apps differ, the page names
-the one look both move to; where the audit found several looks for one job,
+snapshot tests. The page comes first: a change to a
+component changes its page, then the SwiftUI version, then its pictures, in
+one PR. Where the audit found several looks for one job,
 the page picks one. `just check` fails when a page and the code disagree on a
-file, a symbol or a picture, and an Android gap passes only with a written
-reason. The Claude Design system shows the same pages, published from the
+file, a symbol or a picture. The Claude Design system shows the same pages, published from the
 repo and never edited there. Rejected: the Claude Design system as the source
 (two places that each look like the truth) and a hosted docs platform (no
 check against native code, and a cost).
@@ -460,8 +447,8 @@ check against native code, and a cost).
 
 The code stays the kit the apps are built from, and the Claude Design system
 carries a small sketch kit so a new screen can be explored on the real look.
-The kit is the tokens and icons, made from `Theme.swift` and the Android
-drawables by `just sketch-kit`, phone frames at the snapshot devices' sizes,
+The kit is the tokens and icons, made from `Theme.swift` and the kit's own
+vector drawables by `just sketch-kit`, phone frames at the snapshot devices' sizes,
 and web copies of five components: `ScreenScaffold`, `Card`,
 `LibraryItemCard`, `MarkerButton` and `TabBar`. Each copy names the files it
 copies, takes every colour and type style from the tokens, and changes in the

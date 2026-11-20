@@ -36,8 +36,7 @@ runs before the push, because a review left until after it gets skipped
 
 ## Verifying a change on the simulator
 
-Android is paused (#2860): a feature ships on iPhone only, and nothing in
-`android/` changes. Every feature ships in one PR, core commits first, because a
+Every feature ships in one PR, core commits first, because a
 merged core with no caller is shell-dead (#1374). On the sensitive surfaces
 `reviewer` reads the core commits alone before the screens are added.
 
@@ -125,8 +124,8 @@ failed. Checklist lines that do not apply are deleted.
 
 Issues: what you would notice, why it matters, what to do, done looks like,
 where it lives. A bug gives the steps (the tap path, for a screen), what was
-expected and what happened. It names the app (iPhone, Android or both), the
-build and the device. Logs and measurements go last.
+expected and what happened. It names the build and the
+device. Logs and measurements go last.
 
 ## Plan comments
 
@@ -141,7 +140,7 @@ choice he has not made. The build and the reviewer read it.
 **Time budget**: one session, or two; past it, stop and re-plan.
 **Decisions taken**: each choice, with the option rejected and why.
 **Files**: the files and lines it touches, core and `ios/`.
-**Tests**: what proves it on each shell, and the line a deletion should break.
+**Tests**: what proves it, and the line a deletion should break.
 **Sketch**: for a new screen, the SwiftUI sketch page and Jon's word on it, or why none is needed.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.

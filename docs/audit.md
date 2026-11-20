@@ -44,7 +44,7 @@ keys in the metrics file.
 **Principles.** Does the core own every domain decision, and is the shell still
 a dumb pipe?
 
-1. Does any Swift or Kotlin decide, validate, or hold domain state beyond UI
+1. Does any Swift decide, validate, or hold domain state beyond UI
    interaction state?
 2. Does every wire variant and view field have a reader on the other side?
 3. Does a shell cache anything the core already works out?
@@ -95,7 +95,7 @@ Sweep: `tests.*`.
 ### Group: screens
 
 **Design.** Does each screen meet the quality bar
-(`.claude/rules/ios-quality.md`, `.claude/rules/android-quality.md`)?
+(`.claude/rules/ios-quality.md`)?
 
 1. Does each screen have empty, loading and error states that say what to do
    next?
@@ -151,9 +151,9 @@ Sweep: `security.*`.
 
 1. Which crates and packages are behind, unmaintained or under advisory?
    Report only; never bump inside an audit.
-2. How much depends on beta Xcode, iOS or Android tooling, and what breaks
+2. How much depends on beta Xcode or iOS tooling, and what breaks
    when that moves?
-3. Licences: anything incompatible with the app stores?
+3. Licences: anything incompatible with the App Store?
 
 Sweep: `dependencies.*`.
 

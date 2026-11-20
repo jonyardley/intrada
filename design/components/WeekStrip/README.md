@@ -4,9 +4,6 @@ status: stable
 ios_symbol: WeekStrip
 ios_file: ios/Intrada/Views/Components/WeekStrip.swift
 ios_snapshots: ComponentSnapshotTests/testWeekStripDimsDaysStillToCome.1.png
-android_symbol: WeekStrip
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt
-android_snapshots: week-strip.png
 decisions: T35
 ---
 
@@ -46,18 +43,13 @@ None. Each day shows one or more of four states, below.
 ## Accessibility
 
 - Each day is one element, read as "Today," when it is, then the full date, then "practised" or "no practice".
-- The selected day carries the selected trait on iPhone and the selected state on Android, where each day is a tab.
-- The number's disc is 32 points and grows with Dynamic Type and font scale, capped at 36 so seven days still fit (#1730). On iPhone the number shrinks to fit the disc.
-- Each day is at least 48 dp tall on Android.
+- The selected day carries the selected trait.
+- The number's disc is 32 points and grows with Dynamic Type, capped at 36 so seven days still fit (#1730). On iPhone the number shrinks to fit the disc.
 
 ## Usage
 
 ```swift
 WeekStrip(days: week.days, selected: $selectedDay)
-```
-
-```kotlin
-WeekStrip(week.days, day?.date) { selectedDay = it }
 ```
 
 ## Related

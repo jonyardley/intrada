@@ -16,17 +16,16 @@ overruled** ([`VISION.md`](../VISION.md), 2026-09-30).
 Capturing material is done, and v0.16.0 to v0.18.0 put pieces in sections and
 variations and showed their marks back (#50); sections were removed in v0.19.0
 (#2767). **The goal from 2026-10-13 is
-1.0: intrada public on the App Store and Google Play, used daily by musicians
+1.0: intrada public on the App Store, used daily by musicians
 who have never met its maker.** The order: make the data model sound, simplify
-practice, give both apps one look, build Progress, Plan and reflection, get
+practice, give the app one look, build Progress, Plan and reflection, get
 every tab to where it is used daily in anger, then sync and release. Sync comes after everything that
 adds to the record, because every change to the record after it ships has to be
 migrated on every device.
 
 ## The ranking
 
-There is one sequence of milestones and no parallel streams. From 2026-11-14
-every milestone ships on iPhone only, while Android is paused (#2860). Where this list and an
+There is one sequence of milestones and no parallel streams. Where this list and an
 issue's [horizon label](how-the-work-runs.md#horizons) disagree, this list
 wins.
 
@@ -53,11 +52,10 @@ on.
 
 ### Next, in order
 
-1. **v0.21.0 One look on both apps**: the design audit already running
-   (#2599), with one component catalogue for both apps (#2620), its fixes
-   (#2607, #2608, #2610, #2611, #2201, #2237), the design tool (#2603), and
-   the Android polish that makes the second app feel native (#2605, #2606,
-   #2613 to #2619, #2547). Its one database change is the time zone a session
+1. **v0.21.0 One look**: the design audit already running
+   (#2599), with one component catalogue (#2620), its fixes
+   (#2607, #2608, #2610, #2611, #2201, #2237) and the design tool (#2603).
+   Its one database change is the time zone a session
    was played in (#1379).
 2. **v0.22.0 Progress, redesigned**: the four-week look back decided on
    2026-10-04 (#1787), core first (#2375), then the screen (#2376), with
@@ -76,11 +74,11 @@ on.
    (#2296) and example content (#2115), with the player basics (#1000, #1002)
    and Library housekeeping (#45, #1811).
 6. **v0.26.0 Sync and safe keeping**: iCloud sync between iPhone and iPad
-   (#2353) on the settled record, and export and restore on both apps (#2624).
-7. **v0.27.0 Release candidate**: a build a tester can trust on both stores
-   (#1982, #2499, #2566, #2517), a way to reach Jon (#2369, #2625), and the
+   (#2353) on the settled record, and export and restore (#2624).
+7. **v0.27.0 Release candidate**: a build a tester can trust on the App Store
+   (#1982, #2566), a way to reach Jon (#2369, #2625), and the
    privacy policy and store listings (#2626, #2627).
-8. **1.0.0 Public on both stores** (#2628).
+8. **1.0.0 Public on the App Store** (#2628).
 
 ### Off the milestones
 
@@ -88,10 +86,10 @@ on.
   harness (#1983), its usage costs (#1849) and a core that is easy to change
   (#1995). An item joins the current milestone only when it stops that
   milestone shipping.
-- **Android is paused** (#2860): from 2026-11-14 every new feature lands on
-  iPhone only, the Android checks are off, and Android issues carry the
-  `paused` label. A restart begins by catching Android up to the core. The
-  Android items in the milestones above wait with it.
+- **Android was removed** on 2026-11-20 (#2924), after a pause from
+  2026-11-14 (#2860). Its last state is on the tag
+  `android-paused-2026-11-20`; a restart begins there, by catching it up to
+  the core.
 - **Postponed until after 1.0**: every screen at the largest text sizes
   (#2134), set aside again on 2026-10-13 with its children kept open.
 - **After 1.0, roughly in this order**: know what to practise next (#1978),
@@ -109,12 +107,10 @@ Specs and designs divide a musician's practice into three parts:
 
 ## Platform
 
-intrada is two native apps on a shared Rust core: SwiftUI on iPhone and
-Compose on Android ([`specs/android-shell.md`](../specs/android-shell.md)).
-Each keeps everything on the phone. Android is paused (#2860), so every new
-feature ships on iPhone only until it restarts. There is no web app and no
+intrada is a native SwiftUI app for iPhone on a Rust core, and keeps
+everything on the phone. There is no web app and no
 sync yet: the server that once carried sync was removed (#1746), and iCloud
-sync between iPhone and iPad (#2353) with export and restore for both apps
+sync between iPhone and iPad (#2353) with export and restore
 (#2624) is planned for v0.26.0.
 
 ## Open questions

@@ -4,9 +4,6 @@ status: stable
 ios_symbol: LibraryItemCard, SelectableLibraryRow
 ios_file: ios/Intrada/Views/Components/LibraryItemCard.swift, ios/Intrada/Views/Components/SelectableLibraryRow.swift
 ios_snapshots: ComponentSnapshotTests/testLibraryItemCard.1.png
-android_symbol: LibraryItemCard
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/LibraryScreen.kt
-android_snapshots: library.png
 decisions: T24, T35
 ---
 
@@ -35,16 +32,14 @@ One piece or exercise in a list, with what it is and how it is going at a glance
 - The title, then the composer, then key and tempo joined by a middle dot. The core writes the subtitle, key and tempo lines.
 - Then, when there are any: a star for a priority, a count chip for linked exercises, and the tags.
 - A count chip for keys, and one for variations, shows only when there is more than one.
-- With no composer, key or tempo, the iPhone shell writes "Add composer, key and tempo" for a piece, or "Add key and tempo" for an exercise.
+- With no composer, key or tempo, the shell writes "Add composer, key and tempo" for a piece, or "Add key and tempo" for an exercise.
 - The mark ring on the right shows the latest mark, or the rest when it has none.
-- Android shows only the title and composer today. Key, tempo, linked exercises and the ring are A20 in #2606; the rest is #2679.
 
 ## Accessibility
 
 - One element, read as the type, the title, then what the row shows: priority, linked exercises, keys, variations, composer, key and tempo.
 - The iPhone label leaves out the mark and the tags; #2677 checks whether VoiceOver reads them.
-- Android reads only the type, title and composer, on purpose until the card draws the rest (the comment above `spokenLabel`). TalkBack does not yet call it a button; A30 in #2606.
-- Text wraps and scales with Dynamic Type and font scale. The card grows with it.
+- Text wraps and scales with Dynamic Type. The card grows with it.
 
 ## Do and don't
 
@@ -60,15 +55,6 @@ NavigationLink(value: item.id) {
 .buttonStyle(.plain)
 ```
 
-```kotlin
-LibraryItemCard(
-    item,
-    Modifier.clickable(onClickLabel = if (item.itemType == ItemKind.PIECE) "open" else "edit") {
-        onOpen(item)
-    },
-)
-```
-
 ## Related
 
-`ScoreRing`, the mark. `TagChip`, the tags. `Card`, the surface it draws on Android. `TypeBadge`, which rows do not use.
+`ScoreRing`, the mark. `TagChip`, the tags. `TypeBadge`, which rows do not use.
