@@ -15,7 +15,6 @@
   [`lessons-archive.md`](lessons-archive.md). A lesson already there is not
   added again: its line ends "(seen again N)", counting up, and an archived
   one is copied back here with its count raised above the archive's.
-  one is copied back here.
 - **Acting on a lesson** (#2934), at the same retro, each lesson gets one
   outcome:
   - **Fixed here**: a prose change of about 30 lines or fewer to the doc,
@@ -51,7 +50,6 @@
 
 - 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives (seen again 1).
 - 2026-11-12, #2801: in auto mode, the rtk hook (this machine only) rewrites some commands after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it (seen again 1).
-- 2026-11-13, #2791: `just ios-snapshots-record` wants the bare class name; `IntradaTests/Class` is read as a method, records nothing and still prints "0 passed, 0 failed".
 - 2026-11-13, #2821: a finished `claude --bg` session reads state blocked with no pid, and one still running a background command reads working until it ends; read the turn's end from the state, never from the pid.
 - 2026-11-13, #2821: on Claude Code 2.1.323 a call waiting on permission reaches the transcript only once the session is stopped, so read a stuck session's calls after the stop.
 - 2026-11-13, #2821: a self-test whose default caps run to minutes turns one surviving mutant into a ten minute wait; keep every timing default in a test to seconds.
@@ -70,12 +68,13 @@
 - 2026-11-15, #2531: an agent's `just ios-test` built but ran no test, and it reported "compiles"; a build report is not a test run, so the lead's own gate run decides.
 - 2026-11-15, #2531: GitHub allows at most 100 sub-issues per issue, so `just epic-add` refuses on the Android epic; a deferred issue for it stands alone until the epic is split.
 - 2026-11-18, #2845: the plan said to reuse a helper in the status script, but the script defined it below the line that needed it; check where a shell function is defined before calling it from earlier in a script.
-- 2026-11-18, #2845: for a one-line script fix, reverting the fixed line and rerunning the self-test showed both new assertions fail in one command, cheaper than any mutation tool.
+- 2026-11-18, #2845: for a one-line script fix, reverting the fixed line and rerunning the self-test showed both new assertions fail in one command, cheaper than any mutation tool (seen again 1).
 - 2026-11-18, #2793: deleting whole snapshot classes by guess missed two split view references that also showed the changed words; grep every snapshot test file for each changed view, split views included, before deleting references.
 - 2026-11-20, no issue: a claude.ai link from an earlier session can be a Claude Doc; the Artifact read returns only the type's instructions, so read the doc's tab through the Claude Docs connector with a search view.
 - 2026-11-20, no issue: `wt switch -c name origin/main` prints usage and makes nothing; `just worktree-new name` makes the worktree from fresh origin/main.
 - 2026-11-20, #2931: a session without the Xcode tools cannot render a SwiftUI preview; a sketch gets its picture from one snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold and 20 warm.
 - 2026-11-20, #2934: a request to research a process step found it had shipped a week earlier (#2801); search issues and merged PRs for the topic before researching it.
 - 2026-11-20, #2934: the harness log's first read for the lessons file was due 2026-11-16 and is still blank, and nothing prompts it; check a harness change's read date before building on that change.
-- 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged.
+- 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (seen again 1).
 - 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch.
+- 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).
