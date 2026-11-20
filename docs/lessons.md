@@ -1,8 +1,9 @@
 # Lessons
 
 > What sessions learned, so the next one does not relearn it (#2801). Every
-> session start prints the lessons below. Each pull request adds two or three lessons
-> under Lessons, newest last, from the `/ship` retro step.
+> session start prints the lessons below. Each pull request's `/ship` retro
+> records two or three lessons: a fixed one goes straight to the archive, the
+> rest go under Lessons, newest last.
 
 - A lesson is one line: the date, the issue, then what to do
   differently and why.
@@ -13,27 +14,43 @@
 - **Before adding**, search this file and
   [`lessons-archive.md`](lessons-archive.md). A lesson already there is not
   added again: its line ends "(seen again N)", counting up, and an archived
+  one is copied back here with its count raised above the archive's.
   one is copied back here.
+- **Acting on a lesson** (#2934), at the same retro, each lesson gets one
+  outcome:
+  - **Fixed here**: a prose change of about 30 lines or fewer to the doc,
+    rule, skill, agent brief or command that would have prevented it, in its
+    own commit in the same PR, named on the PR body's "Process fixes" line.
+    Merging that PR is the owner's yes. The lesson goes straight to the
+    archive with "fix:" and the changed file in front, never under Lessons.
+  - **Issue**: anything bigger, and any change to a script, recipe, hook,
+    settings file, CI workflow, `CLAUDE.md`, app code, a file's frontmatter
+    (guards and loaders read it), `.claude/rules/sensitive-surfaces.md` or a
+    path it lists, gets an issue. The lesson stays here ending "(issue #N)"
+    while the issue is open.
+  - **Kept**: no clear fix, so it stays here for the monthly prune.
+  A fixed lesson that comes back is copied back here with "(seen again N)":
+  the fix did not hold.
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
-  the limit moves the oldest lessons with no "seen again" to the archive.
+  the limit first archives any "(issue #N)" lesson whose issue has closed,
+  with "issue:" in front, then the oldest with no "seen again" and no open
+  issue.
 - **Monthly prune**: the session doing the first Monday usage read of each
   month puts any lesson seen again three times to the owner as a rule, and
-  archives what is stale or done. A lesson becomes a rule only with the
+  archives what is stale or done, closed-issue lessons included. A kept lesson becomes a rule only with the
   owner's yes, and then moves to the archive with "rule:" and the rule's
   file in front.
 - The archive is never printed at session start and nothing is deleted from
   it.
 - A worktree prints its own copy, so one behind main misses newer lessons.
-- Two branches adding lessons at once conflict at the end of the file; keep
-  both sides.
+- A local merge of main keeps both sides' lessons on its own (#2937), and the
+  lessons check refuses a line kept twice, bumped on two branches, or brought
+  back from the archive.
 
 ## Lessons
 
 - 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives (seen again 1).
 - 2026-11-12, #2801: in auto mode, the rtk hook (this machine only) rewrites some commands after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it (seen again 1).
-- 2026-11-13, #2799: the crew spec called the loop overnight, and a comparison page repeated it as if the owner had chosen it; a framing word in a spec is not a decision, so check it with the owner before building on it.
-- 2026-11-13, #2791: a file removed with `git rm` stays staged, so a later `git add <dir>` commit for another layer sweeps it in; twice a store commit took core deletions. Commit a layer with `git commit -- <paths>`, or `git reset` first.
-- 2026-11-13, #2791: one session removing a field from the core and both apps reached about 500k context before the shells were done; hand one shell's test repair to an agent as soon as the core is reviewed.
 - 2026-11-13, #2791: `just ios-snapshots-record` wants the bare class name; `IntradaTests/Class` is read as a method, records nothing and still prints "0 passed, 0 failed".
 - 2026-11-13, #2821: a finished `claude --bg` session reads state blocked with no pid, and one still running a background command reads working until it ends; read the turn's end from the state, never from the pid.
 - 2026-11-13, #2821: on Claude Code 2.1.323 a call waiting on permission reaches the transcript only once the session is stopped, so read a stuck session's calls after the stop.
@@ -55,7 +72,10 @@
 - 2026-11-18, #2845: the plan said to reuse a helper in the status script, but the script defined it below the line that needed it; check where a shell function is defined before calling it from earlier in a script.
 - 2026-11-18, #2845: for a one-line script fix, reverting the fixed line and rerunning the self-test showed both new assertions fail in one command, cheaper than any mutation tool.
 - 2026-11-18, #2793: deleting whole snapshot classes by guess missed two split view references that also showed the changed words; grep every snapshot test file for each changed view, split views included, before deleting references.
-- 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged.
 - 2026-11-20, no issue: a claude.ai link from an earlier session can be a Claude Doc; the Artifact read returns only the type's instructions, so read the doc's tab through the Claude Docs connector with a search view.
 - 2026-11-20, no issue: `wt switch -c name origin/main` prints usage and makes nothing; `just worktree-new name` makes the worktree from fresh origin/main.
 - 2026-11-20, #2931: a session without the Xcode tools cannot render a SwiftUI preview; a sketch gets its picture from one snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold and 20 warm.
+- 2026-11-20, #2934: a request to research a process step found it had shipped a week earlier (#2801); search issues and merged PRs for the topic before researching it.
+- 2026-11-20, #2934: the harness log's first read for the lessons file was due 2026-11-16 and is still blank, and nothing prompts it; check a harness change's read date before building on that change.
+- 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged.
+- 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch.
