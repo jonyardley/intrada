@@ -11,7 +11,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-mkdir -p "$work/bin" "$work/fixtures" "$work/repo/.claude" "$work/repo/scripts/lib"
+mkdir -p "$work/bin" "$work/fixtures" "$work/repo/scripts/lib"
 
 cat >"$work/bin/gh" <<'FAKE'
 #!/usr/bin/env bash
@@ -60,10 +60,6 @@ chmod +x "$work/bin/gh"
 cp "$root/scripts/handover.sh" "$work/repo/scripts/handover.sh"
 cp "$root/scripts/lib/claim-branch.sh" "$work/repo/scripts/lib/claim-branch.sh"
 script="$work/repo/scripts/handover.sh"
-
-cat >"$work/repo/.claude/settings.json" <<'JSON'
-{ "model": "sonnet[1m]", "effortLevel": "medium" }
-JSON
 
 cat >"$work/fixtures/issue_1986.json" <<'JSON'
 {
@@ -130,9 +126,8 @@ refute() {
 
 out="$(bash "$script" 1986)"
 check "names the issue and title" "$out" "Pick up #1986 in intrada: Cut the cold context bill"
-check "carries the model from settings, without the window suffix" "$out" "/model sonnet"
-check "carries the effort from settings" "$out" "/effort medium"
-refute "strips the context window off the model" "$out" "sonnet[1m]"
+refute "asks for no model change" "$out" "/model"
+refute "asks for no effort change" "$out" "/effort"
 check "names the epic the issue sits under" "$out" "epic #1967: Spend less on the harness"
 check "names the claimed branch" "$out" "claimed on branch cold-context"
 check "counts commits ahead of main" "$out" "branch cold-context, 1 commit(s) ahead of origin/main"
@@ -172,14 +167,6 @@ out="$(bash "$script" 1986)"
 check "says pushed when the remote has them all" "$out" "ahead of origin/main, pushed"
 refute "does not still say not pushed" "$out" "not pushed"
 git update-ref -d refs/remotes/origin/cold-context
-
-# ── unreadable settings ask for the rung by hand, rather than guessing ───────
-
-mv "$work/repo/.claude/settings.json" "$work/settings.json"
-out="$(bash "$script" 1986)"
-check "says the settings could not be read" "$out" "Set /model and /effort by hand"
-refute "guesses no rung" "$out" "/model sonnet"
-mv "$work/settings.json" "$work/repo/.claude/settings.json"
 
 # ── the number defaults to an open PR's title ────────────────────────────────
 
