@@ -92,8 +92,6 @@
       "Bash(just testflight:*)",
       "Bash(just ios-test-sim-clean)",
       "Bash(just ios-test-sim-clean:*)",
-      "Bash(git push origin main)",
-      "Bash(git push origin main:*)",
       "Bash(fly:*)",
       "Bash(flyctl:*)",
       "Bash(gh pr merge:*)",

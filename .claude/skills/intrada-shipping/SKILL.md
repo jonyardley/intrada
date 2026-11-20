@@ -26,8 +26,8 @@ runs before the push, because a review left until after it gets skipped
   (`.claude/agents/reviewer.md`); the lead posts its summary verbatim at PR
   creation, naming the agent, and writes the body and deferred issues while
   it runs.
-- **Open through `just pr-open "Title (#N)" "Body" --draft`**, never a bare
-  `gh pr create`: it refuses an issue number with no claim naming this branch
+- **Open through `just pr-open "Title (#N)" "Body"`**, never a bare
+  `gh pr create`: it always opens a draft, and refuses an issue number with no claim naming this branch
   (#1702). Once the review is posted, its blockers fixed, the deferred
   issues open and every check green on the last commit, `just pr-ready PR
   ISSUE` marks it ready and moves the board (#1659). `Closes #N` in the body closes the issue on merge.
