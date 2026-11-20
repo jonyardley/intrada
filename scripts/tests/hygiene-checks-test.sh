@@ -1229,6 +1229,24 @@ printf 'const B: u32 = 1; // BLOB_VERSION\n' >>crates/core/src/view.rs
 printf '// two\n' >>crates/intrada-store/src/migrations.rs
 expect 0 "a blob pin is a bridge change" route_says "a blob pin in crates/core/src/view.rs"
 expect 0 "a store migration is a bridge change" route_says "a store migration"
+git checkout -q -- crates
+git clean -fdq
+mkdir -p tools/.claude
+printf '# Agent\n' >tools/.claude/agent.md
+expect 1 "a .claude/ folder anywhere is reviewed" route_says "none"
+rm -r tools
+printf '# Loose\n' >notes.md
+expect 1 "markdown outside the documentation roots is reviewed" route_says "none"
+rm notes.md
+cp crates/core/src/view.rs "crates/core/src/new view.rs"
+expect 0 "a new untracked file with a space is scanned as all added" route_says "Shown in crates/core/src/new view.rs"
+rm "crates/core/src/new view.rs"
+cp crates/core/src/view.rs 'crates/core/src/$(touch pwned).rs'
+git add -A
+git commit -qm "odd name"
+sed -i.bak 's/pub a: u8/pub a: u16/' 'crates/core/src/$(touch pwned).rs'
+expect 0 "a file name holding shell syntax is read as a name" route_says 'Shown in crates/core/src/$(touch pwned).rs'
+expect 1 "a file name holding shell syntax runs nothing" test -e pwned
 cd "$repo_root"
 
 # ── Result ──────────────────────────────────────────────────────────────────

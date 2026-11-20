@@ -174,7 +174,7 @@ which the recipe writes (#2630); restart Claude Code after. Installs:
 | Holding a diff that changes code or tests | `just pre-review` first, then `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
 | Holding a diff that `just review-route` calls sensitive, or one touching auth | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff |
 | Holding a diff that changes only `.claude/` or a `CLAUDE.md` | `/code-review` inline; these steer agents, so they are not documentation; say "comment-policy violations are Blockers" |
-| Holding a documentation-only diff (`docs/`, `specs/`, other markdown) | No code review: it found nothing on these (approved 2026-11-20, this repo only); `just pre-review` still runs |
+| Holding a documentation-only diff (`docs/`, `specs/`, markdown under `design/`, the README) | No code review: it found nothing on these (approved 2026-11-20, this repo only); `just pre-review` still runs |
 
 `reviewer` checks the diff against the plan comment first, reports and
 yields: no GitHub writes, no waiting for a PR number. The lead posts its
