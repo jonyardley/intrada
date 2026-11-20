@@ -60,8 +60,8 @@ struct ExerciseUsageDisplayTests {
     #expect(line == "Debussy · 1 session · 24 Jun")
   }
 
-  // #1468: the ring is decorative, so the announcement carries the mark itself
-  // — and stops at "not practised together yet" when there is no mark.
+  // #1468: the ring is decorative, so the announcement carries the confidence
+  // itself, and stops at "not practised together yet" when there is none.
   @Test("A practised row speaks its confidence, since the ring is decorative")
   func practisedRowSpeaksItsMark() {
     #expect(

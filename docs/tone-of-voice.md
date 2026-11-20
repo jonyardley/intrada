@@ -210,7 +210,7 @@ everywhere, spoken labels included. `Score` means the printed music to a
 musician; `Mark` did not say what the number means. The core keeps `score` in
 its types, events and columns, so **this is a copy change with no FFI, no
 migration and no bridge surface**; code names may follow later. `Mastery` stays
-the average's own word. Android keeps `Mark` until it restarts (#2860).
+the average's own word. Android needs the same change when it restarts (#2860).
 Rejected: `Mark`, `Score`, `Grade` (ABRSM levels) and `Rating` (the data
 model's word).
 
