@@ -84,7 +84,7 @@ posture fights the tiers; four of its skills stay as globals
 **The sensitive surfaces** are where wrong is silent: what crosses the FFI
 bridge (positional bincode, #846), store migrations, the wire-pinned blobs and
 auth. They are judged by type, not folder: a changed item deriving Facet (view
-types, `Event` and its sub-events, effect operations), a `BLOB_VERSION` line or
+types, `Event` and its sub-events, effect operations), a `BLOB_VERSION` line,
 the store or the FFI source, as `just review-route` names them (#2922); auth
 is judged by hand. That work, including
 any bridge change that is not additive (`.claude/rules/sensitive-surfaces.md`),
