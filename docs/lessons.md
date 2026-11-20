@@ -17,25 +17,26 @@
   one is copied back here.
 - **Acting on a lesson** (#2934), at the same retro, each lesson gets one
   outcome:
-  - **Fixed here**: a text change of about 30 lines or fewer to the doc,
+  - **Fixed here**: a prose change of about 30 lines or fewer to the doc,
     rule, skill, agent brief or command that would have prevented it, in its
     own commit in the same PR, named on the PR body's "Process fixes" line.
     Merging that PR is the owner's yes. The lesson goes straight to the
     archive with "fix:" and the changed file in front, never under Lessons.
   - **Issue**: anything bigger, and any change to a script, recipe, hook,
-    settings file, CI workflow, `CLAUDE.md`, app code or a path in
-    `.claude/rules/sensitive-surfaces.md`, gets an issue. The lesson stays
-    here ending "(issue #N)"; the session that closes the issue moves it to
-    the archive with "issue:" in front.
+    settings file, CI workflow, `CLAUDE.md`, app code, a file's frontmatter
+    (guards and loaders read it), `.claude/rules/sensitive-surfaces.md` or a
+    path it lists, gets an issue. The lesson stays here ending "(issue #N)"
+    while the issue is open.
   - **Kept**: no clear fix, so it stays here for the monthly prune.
   A fixed lesson that comes back is copied back here with "(seen again N)":
   the fix did not hold.
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
-  the limit moves the oldest lessons with no "seen again" and no open issue
-  to the archive.
+  the limit first archives any "(issue #N)" lesson whose issue has closed,
+  with "issue:" in front, then the oldest with no "seen again" and no open
+  issue.
 - **Monthly prune**: the session doing the first Monday usage read of each
   month puts any lesson seen again three times to the owner as a rule, and
-  archives what is stale or done. A kept lesson becomes a rule only with the
+  archives what is stale or done, closed-issue lessons included. A kept lesson becomes a rule only with the
   owner's yes, and then moves to the archive with "rule:" and the rule's
   file in front.
 - The archive is never printed at session start and nothing is deleted from

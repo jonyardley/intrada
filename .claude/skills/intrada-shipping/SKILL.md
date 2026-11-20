@@ -81,9 +81,10 @@ so the file keeps what recurs; a kept lesson seen again three times becomes a
 rule only with the owner's yes.
 
 The same retro acts on each lesson while the session still remembers it
-(#2934): a small text fix lands in this PR in its own commit, so it can be
-reverted alone, and merging the PR is the owner's yes; anything bigger, or any
-script, hook, settings or CI change, becomes an issue. Waiting
+(#2934): a small prose fix lands in this PR in its own commit, so it can be
+reverted alone, and merging the PR is the owner's yes; anything else becomes
+an issue. Which files count is in the header of `docs/lessons.md`, the one
+place it is written. Waiting
 for three repeats let the same mistake cost several sessions first.
 
 ## PR bodies and issues
