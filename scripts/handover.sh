@@ -122,13 +122,13 @@ if [ -n "$files" ]; then
 fi
 echo
 if [ "$claimed_branch" != "$branch" ] && [ "$ahead" = "0" ]; then
-  echo "Make your own worktree before editing anything, and prefix every command"
-  echo "with cd <worktree> && ."
+  echo "Make your own worktree with just worktree-new <name> from the main"
+  echo "checkout, then start the session inside it with the command it prints:"
+  echo "  cd <worktree> && claude"
 else
   echo "The work is in this worktree, so carry on there rather than making a new"
   echo "one, which would branch fresh from origin/main and leave it behind:"
-  echo "  cd $root"
-  echo "Its lease releases when this session ends, so start once it has, and"
-  echo "prefix every command with cd $root && ."
+  echo "  cd $root && claude"
+  echo "Its lease releases when this session ends, so start once it has."
 fi
 echo '```'

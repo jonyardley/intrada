@@ -32,15 +32,25 @@ branch (#1702).
 
 | You are | Do |
 |---|---|
-| About to edit anything | `just worktree-new <name>` from the main checkout, `cd <worktree> && ` before every shell command, and read the `.claude/rules/` files for the surfaces you touch by hand |
-| Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one, and paste it into a new chat in the main checkout. Never a worktree command for Jon |
+| About to edit anything | `just worktree-new <name>` from the main checkout, then the session that does the work starts inside the worktree with the command it prints, `cd <worktree> && claude` |
+| Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. Make the worktree first and paste the opener into a session started inside it, not in the main checkout |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
-| Spawning a subagent | Name the worktree by absolute path in the brief, or its edits land in main and `reviewer` diffs the wrong tree (#1861) |
+| Spawning a subagent | Name the worktree by absolute path as its working folder in the brief, or its edits land in main and `reviewer` diffs the wrong tree (#1861) |
+| Your PR has merged | `just worktree-done` inside the worktree, then end the session |
 
-Every session that edits works in its own worktree, made by that session from
-the main checkout Jon started it in (#1837). Worktrees branch from fresh
-`origin/main` into `../intrada-worktrees`; `just worktree-rm <name>` removes
-one and its simulator. The graphify graph lives only in the main checkout:
+Every session that edits starts inside its own worktree (#1837, #2918). The
+main checkout is for status, claims and making worktrees: a session sitting
+there and reaching in with `cd <worktree> && ` was refused by the main checkout
+guard 76 times in five weeks, and `.claude/rules/` files load only when the
+session's folder is the worktree. Worktrees branch from fresh `origin/main`
+into `../intrada-worktrees`, and the worktree lease still holds each one to one
+session. After its PR merges, the session removes its own worktree and
+simulator with `just worktree-done`, which refuses unless the PR is merged, the
+tree is clean and nothing is unpushed; the worktree guard checks the same and
+refuses the usual removal commands on another session's worktree, with some
+unusual command shapes as known limits. `just worktree-rm <name>` is the manual
+removal; it and forced removals skip the merged, clean and pushed check. The
+graphify graph lives only in the main checkout:
 query it there by path for architecture answers, never a full-repo read.
 
 Read `just worktrees` before touching a worktree you did not create: a clean
@@ -172,7 +182,7 @@ summary verbatim at PR creation, naming the agent.
 | About to open or update a PR | `/ship`: two or three lessons recorded in [`lessons.md`](lessons.md) or its archive before the PR first opens, each fixed in the PR, made an issue or kept, then gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
 | The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone screenshots |
 | Jon, reviewing | Read the body and the self-review; merge when green, his own PRs through the admin bypass, since main needs a code owner's approval nobody else can give (#2855) |
-| The unit has shipped | `/clear` in the same sitting, after `just worktree-rm` |
+| The unit has shipped | `just worktree-done` inside the worktree, then end the session |
 | Leaving for over an hour | Finish or `/clear` first: the cache expires and the first turn back re-sends everything at write price (#1842) |
 
 Gates, Codecov, deferred issues and body templates are in
@@ -217,7 +227,7 @@ lists each removed line in the PR with its new home, or says it is dropped.
 
 | Symptom | Cause, and what to do |
 |---|---|
-| A rule did not load | `paths:` rules fire on Read only, and not in a worktree driven from main; `/context` shows what loaded |
+| A rule did not load | `paths:` rules fire on Read only, and only when the session started inside the worktree; `/context` shows what loaded |
 | A skill will not resolve | Skills load at session start; restart |
 | A hook change did nothing | `CLAUDE_CONFIG_DIR` points elsewhere (#1857) |
 | `just check` says already green | The stamp matches HEAD; delete it |
@@ -225,7 +235,8 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | PR hangs on a check that never reports | A renamed job left its old required context (#1542) |
 | The spawn guard refused a subagent | It lifted the pin or asked for Fable; drop the override |
 | Read denied as "already in context" after `/clear` | The guard reads the transcript (#1866); range-read |
-| Edit denied in the main checkout | No worktree, or the prefix is missing with more than one lease held; see `worktrees.md` |
+| Edit denied in the main checkout | The session is not in its worktree; start one there with `cd <worktree> && claude`; see `worktrees.md` |
+| `just worktree-done` refused | The PR is not merged, the tree has changes, or a commit is not in the merged PR; the message names which |
 | `gh pr merge` or a push to main refused | Merging is Jon's, on GitHub |
 | Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it (#2812) |
 | `xcodebuild` refused | Use the `just` recipe |

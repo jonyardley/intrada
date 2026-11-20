@@ -42,9 +42,13 @@ streams colliding in the same files.
   independent.
 - **One worktree per session, made by that session** with
   `just worktree-new <name>`, which branches from fresh `origin/main` and
-  seeds `ios/generated` and the Swift packages (#2191). The session stays in
-  the main checkout and prefixes every shell command with `cd <worktree> && `
-  (#1720, #1837; `docs/working-with-agents.md`). Close it when its task ships.
+  seeds `ios/generated` and the Swift packages (#2191). The session that does
+  the work starts inside the worktree with the command the recipe prints,
+  `cd <worktree> && claude`, so path rules load and no prefix is needed
+  (#2918; `docs/working-with-agents.md`). A subagent's brief names the
+  worktree's absolute path as its working folder. After the PR merges, the
+  session runs `just worktree-done` there, which removes the worktree only
+  when the PR is merged, the tree is clean and nothing is unpushed.
 - **Once you have a worktree, edit only inside it.** A green run proves
   nothing about whose work is in the tree: read the diff before `git add`,
   and never `git add -A` on a shared checkout.
