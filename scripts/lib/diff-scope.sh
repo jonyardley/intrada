@@ -72,7 +72,9 @@ diff_scope_review_route() {
   [ -n "$paths" ] || kind=code
   while IFS= read -r p; do
     case "$p" in
-      .claude/* | */.claude/* | CLAUDE.md | */CLAUDE.md | AGENTS.md | */AGENTS.md) [ "$kind" = code ] || kind=agents ;;
+      .claude/*.md | */.claude/*.md | CLAUDE.md | */CLAUDE.md | AGENTS.md | */AGENTS.md | \
+        docs/working-with-agents.md | docs/how-the-work-runs.md) [ "$kind" = code ] || kind=agents ;;
+      .claude/* | */.claude/*) kind=code ;;
       docs/* | specs/* | design/*.md | README.md) ;;
       *) kind=code ;;
     esac

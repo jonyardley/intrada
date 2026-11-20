@@ -321,9 +321,10 @@ pre-review:
     fi
     echo "✓ pre-review"
 
-# Who reviews this branch (#2922): no one for documentation only, else
-# `reviewer`, naming each bridge change that pairs it (docs/working-with-agents.md).
-[doc("Say how this branch is reviewed: none for documentation only, else reviewer, naming any bridge change")]
+# Who reviews this branch (#2922): no one for documentation only, inline
+# /code-review for agent instructions, else `reviewer`, naming each bridge
+# change that pairs it (docs/working-with-agents.md).
+[doc("Say how this branch is reviewed: none for documentation, inline /code-review for agent instructions, else reviewer, naming any bridge change")]
 review-route:
     #!/usr/bin/env bash
     source scripts/lib/diff-scope.sh

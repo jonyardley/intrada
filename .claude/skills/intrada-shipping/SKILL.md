@@ -12,7 +12,8 @@ runs before the push, because a review left until after it gets skipped
 - **Who reviews.** `just review-route` says, by the table in
   `docs/working-with-agents.md` section 6: `reviewer` on code or tests, Tier 1
   included (#1665), briefed with the worktree and the issue; `/code-review`
-  inline on `.claude/` or `CLAUDE.md`; none on documentation only. Spawn it at the model and
+  inline on agent instructions (markdown under `.claude/`, `CLAUDE.md`, the
+  two agent docs); none on documentation only. Spawn it at the model and
   effort the role table in `~/.claude/CLAUDE.md` gives (Subagents, review and
   lane size); `guard-spawn.sh` brings a spawn with no model named, on Fable,
   or above medium effort to Jon as a permission prompt.

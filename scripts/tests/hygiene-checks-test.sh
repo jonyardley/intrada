@@ -1267,6 +1267,12 @@ expect 0 "a documentation-only diff skips review" route_says "none: documentatio
 printf 'more\n' >>.claude/rules/rule.md
 expect 0 "a rule under .claude/ takes /code-review inline" route_says "/code-review inline"
 git checkout -q -- .claude
+printf '{}\n' >.claude/rules/settings.json
+expect 0 "a settings file under .claude/ takes reviewer" route_says "reviewer"
+rm .claude/rules/settings.json
+printf '# Rows\n' >docs/working-with-agents.md
+expect 0 "the routing table is agent instructions" route_says "/code-review inline"
+rm docs/working-with-agents.md
 printf 'more\n' >>CLAUDE.md
 expect 1 "CLAUDE.md is not documentation" route_says "none"
 git checkout -q -- CLAUDE.md

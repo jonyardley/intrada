@@ -174,7 +174,7 @@ which the recipe writes (#2630); restart Claude Code after. Installs:
 | Any diff | `just review-route` says which row applies; this table is the one place that decides it |
 | Holding a diff that changes code or tests | `just pre-review` first, then `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
 | Holding a diff that `just review-route` calls sensitive, or one touching auth | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff |
-| Holding a diff that changes only `.claude/`, a `CLAUDE.md` or `AGENTS.md`, with or without documentation | `/code-review` inline; these steer agents, so they are not documentation; say "comment-policy violations are Blockers" |
+| Holding a diff that changes only markdown under `.claude/`, a `CLAUDE.md`, `AGENTS.md`, this file or `docs/how-the-work-runs.md`, with or without documentation | `/code-review` inline; these steer agents, so they are not documentation; say "comment-policy violations are Blockers". Anything else under `.claude/`, such as settings or scripts, is code |
 | Holding a documentation-only diff (`docs/`, `specs/`, markdown under `design/`, the README) | No code review: code review found nothing on these (approved 2026-11-20, this repo only); `just pre-review` still runs |
 
 `reviewer` checks the diff against the plan comment first, reports and
