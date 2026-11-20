@@ -136,14 +136,15 @@ jobs:
             exit 1
           fi
           echo "SENTRY_DSN is baked into the generated project."
-      # Keyed on project.yml, which holds the pins: no Package.resolved is checked in (#2917).
-      # Not "release-testflight-", the rust-cache family cache-prune.yml trims to two.
-      - name: Cache Swift packages
+      # Only the clone store, on an exact key with no fallback: checkouts are made
+      # fresh each run and resolved against project.yml's pins, so a stale or
+      # tampered checkout cannot reach a signed build (#2917). Not
+      # "release-testflight-", the rust-cache family cache-prune.yml trims to two.
+      - name: Cache Swift package clones
         uses: actions/cache@v6
         with:
-          path: build/spm
+          path: build/spm/repositories
           key: testflight-spm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/project.yml') }}
-          restore-keys: testflight-spm-${{ runner.os }}-${{ runner.arch }}-
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
