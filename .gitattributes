@@ -9,7 +9,7 @@ design/** linguist-documentation
 specs/*/design/** linguist-documentation
 
 # Every branch adds lessons to the end of these logs, so two open at once
-# always conflict there. Union keeps both sides' lines; the lessons check in
-# pre-review still catches a merge that goes over the cap (#2937).
+# always conflict there. Union keeps both sides' lines; the lessons check
+# catches a merge that goes over the cap or keeps a lesson twice (#2937).
 docs/lessons.md merge=union
 docs/lessons-archive.md merge=union

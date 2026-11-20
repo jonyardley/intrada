@@ -24,8 +24,9 @@
 - The archive is never printed at session start and nothing is deleted from
   it.
 - A worktree prints its own copy, so one behind main misses newer lessons.
-- Two branches adding lessons at once conflict at the end of the file; keep
-  both sides.
+- A local merge of main keeps both sides' lessons on its own (#2937), and the
+  lessons check refuses a line kept twice, bumped on two branches, or brought
+  back from the archive.
 
 ## Lessons
 
