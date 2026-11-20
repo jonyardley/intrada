@@ -6,7 +6,7 @@
 ## Commands
 
 `just --list` prints every recipe with one line on what it does, grouped by
-iOS, Android and worktrees; the justfile is the one copy. Test tiers and
+iOS and worktrees; the justfile is the one copy. Test tiers and
 worktree simulator isolation are in [`ios-testing.md`](ios-testing.md); the
 stamp is in the glossary below.
 
@@ -141,7 +141,7 @@ belong here: they follow the plain-language rule (`docs/style-guide.md`).
 - **slice**: the smallest independently shippable piece of a feature; each one
   ships and is used before the next is built.
 - **stream**: one line of work in one worktree and session; *vertical* means
-  core and shells together.
+  core and shell together.
 - **tier**: ceremony level per `working-with-agents.md` step 4: 1 just do it, 2
   plan comment, 3 spec first.
 - **fast tier / full tier**, the two iOS test gates: `just ios-test` (unit and
@@ -156,7 +156,7 @@ belong here: they follow the plain-language rule (`docs/style-guide.md`).
   suggestion where one exists, the plain hero otherwise.
 - **worktree**: a separate git checkout so parallel streams do not collide.
 - **bridge**: the generated FFI boundary (Event, Effect, ViewModel) between the
-  Rust core and the shells. The library rows, session history and week strip
+  Rust core and the shell. The library rows, session history and week strip
   cross inside `AppEffect`s sent only when they change, not the `ViewModel`
   (#1801).
 - **local-first**: works offline against the on-device store; no HTTP on the

@@ -114,8 +114,8 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   PR's first commit, never its own PR. The spec is deleted once the screens
   ship, unless an open issue cites it (`specs/README.md`).
 
-A feature ships as one PR across the stack, core commits first, then iOS
-(Android is paused, #2860): a merged core with no caller is shell-dead (#1374). On the sensitive
+A feature ships as one PR across the stack, core commits first, then iOS:
+a merged core with no caller is shell-dead (#1374). On the sensitive
 surfaces, `reviewer` reviews the core commits before the screens commits
 start, and lead-only work goes up a tier.
 
@@ -163,8 +163,7 @@ The justfile and `ci.yml` change together. More in
 
 **Code intelligence.** Run `just lsp-setup` once per machine and per worktree
 that wants Swift; without it neither LSP answers. Swift's `references` returns
-nothing, so callers stay a grep job. Kotlin needs `android/local.properties`,
-which the recipe writes (#2630); restart Claude Code after. Installs:
+nothing, so callers stay a grep job. Restart Claude Code after. Installs:
 [README](../README.md#prerequisites).
 
 ## 6. Review
@@ -197,7 +196,7 @@ Gates, Codecov, deferred issues and body templates are in
 closes the issue on merge; close one by hand only when no PR closed it. Update
 `docs/roadmap.md` if a phase changed and `CLAUDE.md` if architecture did.
 
-**Verification.** For UI, drive the simulator and emulator and show proof, or
+**Verification.** For UI, drive the simulator and show proof, or
 say what a human must check by hand. "All green" never means only
 `cargo test`. Report failures with the output, and never call a gate broken
 without making it fail. Delete any scratch simulator you made when done. If

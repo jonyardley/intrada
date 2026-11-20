@@ -3,7 +3,7 @@
 > Tier 3, sensitive surfaces (the store and a bridge change that retypes a
 > field). Issue #2581, decision 1 of the data model review (#2577, ruled
 > 2026-10-13). One PR across the stack: core and store commits first,
-> reviewed alone, then the iPhone and Android screens. No
+> reviewed alone, then the iPhone screens. No
 > migration: the `session` table has carried `updated_at` and `deleted_at`
 > since v3.
 
@@ -98,14 +98,14 @@ the same session from another device does not bring the banner back.
 - Core: delete takes the session out of the list and the summaries and sends
   `DeleteSession` with `now`; undo puts it back and sends `RestoreSession`; a
   refused delete reloads the list.
-- Bridge: the new operations and events round trip through the real bridge on
-  iOS (`LiveBridge`) and Android (`BridgeRoundTripTest`).
+- Bridge: the new operations and events round trip through the real bridge
+  (`LiveBridge`).
 
 ## Phases
 
 1. This spec, then the store and core, test first, paired with `reviewer` on
    the core commits alone.
-2. The screens on iPhone and Android at parity, with an undo, on the layout
+2. The screens on iPhone, with an undo, on the layout
    Jon picks from the mock-up. Same branch and PR.
 
 A save always uploads a live record stamped `completed_at`, so a re-save of a

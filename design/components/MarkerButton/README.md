@@ -4,9 +4,6 @@ status: proposed
 ios_symbol: MarkerButton, BrandBarButton
 ios_file: ios/Intrada/DesignSystem/MarkerButton.swift, ios/Intrada/Views/Components/BrandBarButton.swift
 ios_snapshots: ComponentSnapshotTests/testPrimaryButtons.1.png
-android_symbol: MarkerButton
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/FirstRunScreen.kt
-android_snapshots: first-run-welcome.png
 decisions: T24
 ---
 
@@ -27,28 +24,28 @@ The one call to action on a screen, filled with the musician's chosen highlighte
 
 ## Variants
 
-One: full width, with a text label only. Neither app's `MarkerButton` takes a glyph.
+One: full width, with a text label only. `MarkerButton` takes no glyph.
 
 iPhone's `BrandBarButton` is the version with a glyph: a leading play, timer or plus, or a trailing arrow to move on. It also draws a drop shadow and has no press spring.
 
-One button on both apps, named `MarkerButton`. iPhone folds `BrandBarButton` into it in #2684. Android shares its first run version and replaces the black `InkButton` with it in #2605. Whether it has a lift and a bounce is settled in the refinement pass, #2638.
+One button, named `MarkerButton`. `BrandBarButton` folds into it in #2684. Whether it has a lift and a bounce is settled in the refinement pass, #2638.
 
 ## Behaviour
 
 - Tapping it sends one event to the core. Any success haptic fires only after the core confirms.
-- Pressed, it changes no colour. iPhone's `MarkerButton` also shrinks slightly and springs back (`PressRebound`); whether both apps do is #2638.
+- Pressed, it changes no colour. `MarkerButton` also shrinks slightly and springs back (`PressRebound`); whether it keeps that is #2638.
 
 ## Content
 
 - A verb first, two or three words: "Start session", "Save session". A count or time can follow after a middle dot: "Start session · 10 min".
-- The fill is the musician's highlighter, from `\.marker` on iPhone or passed in on Android; butter by default.
+- The fill is the musician's highlighter, from `\.marker`; butter by default.
 - The label is `IntradaFont.button` in `onMarker` ink. The corner is `IntradaRadius.card`, 3 points; `BrandBarButton` takes `IntradaRadius.control`. On `BrandBarButton` a glyph is the same ink.
 - No disabled state: leave the button out, or say on the screen what is missing.
 
 ## Accessibility
 
 - The label is the spoken name; a `BrandBarButton` glyph adds nothing to it.
-- At least 44 points (iPhone) or 48dp (Android) tall: the padding gives this on iPhone, `heightIn(min = 48.dp)` on Android.
+- At least 44 points tall: the padding gives this.
 - Ink on butter is 11.3:1 (T24 in [the design principles](../../../docs/design-principles.md)). No test yet checks ink on the other seven highlighters; one should land before this page moves to stable.
 
 ## Do and don't
@@ -63,11 +60,6 @@ MarkerButton("Save session") {
   store.send(.session(.saveSession(now: SessionClock.nowRFC3339())))
 }
 .accessibilityIdentifier("summary.save")
-```
-
-```kotlin
-// Private to FirstRunScreen.kt until #2605 shares it.
-MarkerButton("Set up profile", "firstRun.setUpProfile", IntradaColor.marker, onSetUpProfile)
 ```
 
 ## Related

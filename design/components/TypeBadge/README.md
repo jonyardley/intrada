@@ -4,7 +4,6 @@ status: stable
 ios_symbol: TypeBadge
 ios_file: ios/Intrada/Views/Components/TypeBadge.swift
 ios_snapshots: LibrarySnapshotTests/testTypeBadges.1.png
-not_on_android: Android draws a plain pill on the piece page and plain text on the player instead (A10, A11); the shared version is built in #2636
 decisions: T3, T24, T29, T35
 ---
 
@@ -31,8 +30,6 @@ Two, one per kind. There is no size or style option. It is a pill wherever it ap
 
 None. The badge shows a fact and does nothing when tapped, with no motion and no haptic.
 
-Android draws a plain pill and plain text instead; the shared badge is #2636, and the piece page and the player move onto it in #2606.
-
 ## Content
 
 - The fill is `pieceBadgeBg` (#CBD6E0, blue grey) or `exerciseBadgeBg` (#DCD3C0, sand).
@@ -44,7 +41,7 @@ Android draws a plain pill and plain text instead; the shared badge is #2636, an
 ## Accessibility
 
 - One element, read as "Piece" or "Exercise". The glyph adds nothing to it.
-- Colour is never the only signal (T3 in [the design principles](../../../docs/design-principles.md)): the word always shows, and the glyph wherever the app has it (Android's is #2636).
+- Colour is never the only signal (T3 in [the design principles](../../../docs/design-principles.md)): the word always shows, and the glyph wherever the app has it.
 - With the Powder highlighter chosen, the piece tint is close to the highlighter, so a piece badge can look pressable; #2638.
 
 ## Do and don't
@@ -56,10 +53,6 @@ Android draws a plain pill and plain text instead; the shared badge is #2636, an
 
 ```swift
 TypeBadge(kind: item.itemType)
-```
-
-```kotlin
-// No shared badge yet; #2636 builds it.
 ```
 
 ## Related

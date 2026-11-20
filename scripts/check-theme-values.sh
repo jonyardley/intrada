@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # The code is the design kit (#2698), so a screen built from a sketch must take
 # its colours and spacing from the theme: a typed value keeps every other check
-# green while the app drifts apart (#2699). Each shell's theme file is the one
-# place a raw colour or spacing number may appear; zero, clear, transparent and
-# Compose's Color.Unspecified are not values.
+# green while the app drifts apart (#2699). The theme file is the one place a
+# raw colour or spacing number may appear; zero and clear are not values.
 #
 # A size (a frame, a stroke, a height on anything but a Spacer) is not spacing
 # and stays out of scope. A value wrapped over lines, or after a `//` in a
@@ -22,10 +21,9 @@ export LC_ALL=C
 cd "$(git rev-parse --show-toplevel)"
 
 root="${THEME_VALUES_ROOT:-ios/Intrada}"
-android_root="${THEME_VALUES_ANDROID_ROOT:-android/app/src/main/kotlin}"
 allowlist="${THEME_VALUES_ALLOWLIST:-scripts/theme-values-allowlist.txt}"
 
-for path in "$root" "$android_root" "$allowlist"; do
+for path in "$root" "$allowlist"; do
   if [ ! -e "$path" ]; then
     echo "✗ check-theme-values: no $path to read" >&2
     exit 2
@@ -43,31 +41,20 @@ fi
 # One line per raw value: path, the matched text, line number and the line.
 hits=$(find "$root" -name '*.swift' \
   ! -path "$root/DesignSystem/Theme.swift" -print0 |
-  cat - <(find "$android_root" -name '*.kt' ! -path '*/ui/Theme.kt' -print0) |
   xargs -0 perl -ne '
     s{//.*}{};
     my $line = $_; chomp $line; $line =~ s/^\s+//;
     my @found;
     my $num = qr/(\d+(?:\.\d+)?)/;
-    my $args = qr/\((?:[^()]|\([^()]*\))*\)/;
     my $hue = qr/(?:red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|primary|secondary|tertiary|quaternary|accentColor)\b/;
-    if ($ARGV =~ /\.swift$/) {
-      push @found, $1 while /(\b(?:UI)?Color\(\s*(?:\.sRGB|\.displayP3|red:|hex:|white:|hue:)|\.init\(\s*(?:red|hex|white|hue):)/g;
-      push @found, $1 while /(\bColor\.$hue|\b(?:foregroundStyle|foregroundColor|tint|fill|stroke|background)\(\s*\.$hue)/g;
-      push @found, $1 while /(\.shadow\(\s*color:\s*\.$hue|\bcolors:\s*\[(?:[^\]]*[,\s])?\.$hue)/g;
-      while (/(\.padding\((?:\s*(?:\.\w+|\[[^\]]*\])\s*,)?\s*$num\s*\))/g) { push @found, $1 if $2 != 0 }
-      while (/(\b(?:spacing|minLength):\s*$num)/g) { push @found, $1 if $2 != 0 }
-      while (/((?:\bEdgeInsets|\.padding\(\s*\.init)\([^()]*\))/g) {
-        my $call = $1;
-        push @found, $call if grep { $_ != 0 } $call =~ /\b(?:top|leading|bottom|trailing):\s*$num/g;
-      }
-    } else {
-      push @found, $1 while /(\bColor\(\s*(?:\d|red\s*=)|\bColor\.(?!Transparent\b|TRANSPARENT\b|Unspecified\b)[A-Z]\w*|\bColor\.hs[lv]\()/g;
-      while (/(\b(?:padding|PaddingValues|spacedBy)$args)/g) {
-        my $call = $1;
-        push @found, $call if grep { $_ != 0 } $call =~ /$num\.dp/g;
-      }
-      while (/(\bSpacer\(\s*(?:modifier\s*=\s*)?Modifier\.(?:height|width)\(\s*$num\.dp\s*\))/g) { push @found, $1 if $2 != 0 }
+    push @found, $1 while /(\b(?:UI)?Color\(\s*(?:\.sRGB|\.displayP3|red:|hex:|white:|hue:)|\.init\(\s*(?:red|hex|white|hue):)/g;
+    push @found, $1 while /(\bColor\.$hue|\b(?:foregroundStyle|foregroundColor|tint|fill|stroke|background)\(\s*\.$hue)/g;
+    push @found, $1 while /(\.shadow\(\s*color:\s*\.$hue|\bcolors:\s*\[(?:[^\]]*[,\s])?\.$hue)/g;
+    while (/(\.padding\((?:\s*(?:\.\w+|\[[^\]]*\])\s*,)?\s*$num\s*\))/g) { push @found, $1 if $2 != 0 }
+    while (/(\b(?:spacing|minLength):\s*$num)/g) { push @found, $1 if $2 != 0 }
+    while (/((?:\bEdgeInsets|\.padding\(\s*\.init)\([^()]*\))/g) {
+      my $call = $1;
+      push @found, $call if grep { $_ != 0 } $call =~ /\b(?:top|leading|bottom|trailing):\s*$num/g;
     }
     for (@found) { (my $s = $_) =~ s/\s+/ /g; print "$ARGV\t$s\t$.\t$line\n" }
     close ARGV if eof
@@ -96,7 +83,7 @@ status=0
 if [ -n "$over" ]; then
   echo "✗ a raw colour or spacing number outside the theme (#2699):" >&2
   printf '%s\n' "$over" >&2
-  echo "  Use an IntradaColor or IntradaSpacing token; a value the theme lacks becomes a token in both theme files." >&2
+  echo "  Use an IntradaColor or IntradaSpacing token; a value the theme lacks becomes a token in the theme file." >&2
   status=1
 fi
 if [ -n "$under" ]; then

@@ -105,7 +105,7 @@ cat >"$tmp/drawable/ic_plus.xml" <<'EOF'
         android:strokeColor="#FF000000" android:strokeWidth="2" android:strokeLineCap="round" />
 </vector>
 EOF
-cp "$root/android/app/src/main/res/drawable/ic_star.xml" "$tmp/drawable/"
+cp "$root/design/sketch-kit/drawables/ic_star.xml" "$tmp/drawable/"
 echo '<vector xmlns:android="http://schemas.android.com/apk/res/android"><group/></vector>' \
   >"$tmp/drawable/ic_launcher_foreground.xml"
 

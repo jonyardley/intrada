@@ -4,7 +4,6 @@ status: stable
 ios_symbol: BottomSheet
 ios_file: ios/Intrada/Views/Components/BottomSheet.swift
 ios_snapshots: ComponentSnapshotTests/testBottomSheet.1.png, ComponentSnapshotTests/testBottomSheetAtAccessibilitySize.1.png
-not_on_android: Android opens these tasks as full-screen pages and centred dialogs; T36 says quick choices rise as bottom sheets, built in #2636
 decisions: T36
 ---
 
@@ -37,7 +36,6 @@ A short task that rises over the current screen, with its title, a way out and o
 - Tapping the confirming action runs `onDone`, then closes the sheet unless the caller keeps it open.
 - No haptic of its own; the action inside fires any haptic the store confirms.
 - iPhone sheets that build their own top bar move onto `BottomSheet` in #2608. Sheets that sit mostly empty at full height are #2683.
-- T36 in [the design principles](../../../docs/design-principles.md) rules that on Android quick choices rise as bottom sheets in intrada's look; #2636 builds the component and #2606 moves the quick choices onto it.
 
 ## Content
 
@@ -67,10 +65,6 @@ BottomSheet(
 ) {
   content
 }
-```
-
-```kotlin
-// No bottom sheet yet; #2636 builds it.
 ```
 
 ## Related

@@ -5,8 +5,6 @@ paths:
   - "crates/intrada-core/src/**"
   - "crates/intrada-store/**"
   - "ios/Intrada/Core/SharedItemStore.swift"
-  - "android/generated/**"
-  - "android/app/src/main/kotlin/com/intrada/android/core/CoreBridge.kt"
 ---
 
 # You are on a silent-failure surface
@@ -51,12 +49,6 @@ The hazards, by file:
 - **`ios/generated/`.** Never hand-edit; fix the Rust type and regenerate.
   UniFFI output fails under Swift 6.2 `MainActor`-default isolation
   (uniffi-rs#2818); the build recipe keeps the package non-MainActor-defaulted.
-- **`android/generated/` and `CoreBridge.kt`.** Paused with Android (#2860):
-  leave them alone until it restarts. Then: the same wire, read by a second
-  decoder: extend `BridgeRoundTripTest` as well as the Swift `LiveBridge`
-  tests. Generate only through `just android-gen`, which runs the
-  `uniffi-bindgen` pinned inside `intrada-ffi`, never a global one, or the
-  bridge skews silently.
 - **`domain/session/`.** A new field anywhere in the `ActiveSession` graph
   invalidates every crash-recovery blob on every device (#1345).
   `active_session_blob_wire_is_pinned` fails on purpose: bump

@@ -124,17 +124,11 @@ other device.
 (#2356). At launch the shell sends parked records back as `RecordsArrived`
 first.
 
-## Android
-
-Android gets no sync for now. Its bindings gain the new shapes and the Kotlin
-shell ignores `Effect::Sync`; the store operations already run there because
-they live in `intrada-store`.
-
 ## Tests
 
 - Two-device cases against `decide`, merged in both orders.
 - Each kind's body pinned; an older body still decodes.
-- `LiveBridge` for the new shapes (#846), and Android's `BridgeRoundTripTest`.
+- `LiveBridge` for the new shapes (#846).
 
 ## Out of scope
 

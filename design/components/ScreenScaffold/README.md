@@ -4,9 +4,6 @@ status: stable
 ios_symbol: ScreenScaffold, ScreenScaffoldIconButton
 ios_file: ios/Intrada/DesignSystem/ScreenScaffold.swift
 ios_snapshots: ComponentSnapshotTests/testScreenScaffold.1.png, LibrarySnapshotTests/testLibraryScreenPopulated.1.png
-android_symbol: ScreenScaffold
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/ScreenScaffold.kt
-android_snapshots: screen-scaffold.png, library.png
 decisions: T24, T28, T35, T36
 ---
 
@@ -17,7 +14,6 @@ The frame of every top-level screen: paper behind it, the page title and its lin
 ## When to use
 
 - Every top-level screen and every screen pushed from one: the tabs, the piece page, session detail, the summary and the session builder.
-- On Android, also the forms that iPhone shows as sheets, until Android has a bottom sheet; #2636 builds one or records why not (see `BottomSheet`).
 
 ## When not to use
 
@@ -31,19 +27,16 @@ The frame of every top-level screen: paper behind it, the page title and its lin
 - **Header content** (`trailingPlacement: .header`): use for a view beside the title, such as the profile badge.
 - **Leading action** (`leadingContent`): use only to replace the back chevron when leaving must catch unsaved work, such as the builder's Cancel.
 
-`reservingSubtitleLine` keeps the rule level across an iPad split when only one column has a subtitle. Android has one slot, `actions`, a row at the trailing edge of the title row.
+`reservingSubtitleLine` keeps the rule level across an iPad split when only one column has a subtitle.
 
 ## Behaviour
 
 - On iPhone the native navigation bar stays, with a blank inline title, so a pushed screen keeps the system back chevron and its edge swipe. A tab's first screen can hide the empty bar (`navigationBarHiddenAtRoot`).
-- On Android it pads for the system bars and cutouts (`safeDrawing`).
 - While the Library is empty its round add button is hidden: the empty state's own button is the one action, and the disc returns with the first item (Jon, 15 October 2026; the Library follows in #2694).
 - No motion and no haptic.
 
-The look both apps keep is intrada's: the highlighter swipe, the round add disc and the rule. The structure follows each platform (T36 in [the design principles](../../../docs/design-principles.md)).
+The look is intrada's: the highlighter swipe, the round add disc and the rule.
 
-- Android's back arrow on pushed screens, close cross on forms and headers without Cancel are #2619.
-- The swipe on Android is #2605; the round add disc and how quick settings open on Android are #2606.
 - The iPhone snapshot tests cannot see toolbar items, so their pictures leave them out (#1880).
 
 ## Content
@@ -77,16 +70,6 @@ ScreenScaffold(
   trailing: .init(label: "Add item", identifier: "library.add", action: { add() })
 ) {
   content
-}
-```
-
-```kotlin
-ScreenScaffold(
-    item.title,
-    modifier,
-    actions = { TextAction("Edit", "piece.edit", actions.navigation.onEdit) },
-) {
-    content()
 }
 ```
 

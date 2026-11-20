@@ -4,9 +4,6 @@ status: stable
 ios_symbol: TagChip
 ios_file: ios/Intrada/DesignSystem/TagChip.swift
 ios_snapshots: ComponentSnapshotTests/testTagChip.1.png
-android_symbol: TagChip, TagChipStyle
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/TagChip.kt, android/app/src/main/kotlin/com/intrada/android/ui/components/TagChipStyle.kt
-android_snapshots: tag-chip.png
 decisions: T29, T35
 ---
 
@@ -32,25 +29,25 @@ A short label in a small rounded pill: a tag on an item, or a word that marks a 
 - **Outlined** (`style: .outlined`, `TagChipStyle.Outlined`): use for a chip on bare paper, where it needs its own edge.
 - **Removable** (`onRemove`): use where the musician edits the tags.
 
-A library card shows at most three chips and a sunken "+N" chip for the rest (`TagPills` on iPhone); tags on Android library cards are #2679.
+A library card shows at most three chips and a sunken "+N" chip for the rest (`TagPills`).
 
 ## Behaviour
 
-A removable chip has no pressed look; tapping it removes the tag at once. Its touch area is at least 44 points or 48dp each way, without the drawn chip growing. Android has it; the iPhone chip reaching 44 points is #2662.
+A removable chip has no pressed look; tapping it removes the tag at once. Its touch area is at least 44 points each way, without the drawn chip growing; reaching 44 points is #2662.
 
 ## Content
 
 - The fill is `surfaceSunken` (#F3EFE8) inside a card, `cardFill` on paper. The outlined chip adds a one point `hairline` (#ECE6DA) edge.
 - The label is `IntradaFont.smallMedium`, 13 point medium, in `inkSecondary`, on one line. A long tag truncates with an ellipsis; a chip never wraps.
 - The cross is the close glyph at `IntradaIconSize.badge` (9 points) in `inkFaintIcon`, 5 points after the label.
-- The shape is a capsule. Padding is 3 by 8, 4 by 9 when removable, 5 by 10 when outlined. Both apps set it with literals; moving them onto spacing tokens is #2237 on iPhone and #2606 on Android.
+- The shape is a capsule. Padding is 3 by 8, 4 by 9 when removable, 5 by 10 when outlined. It is set with literals; moving them onto spacing tokens is #2237.
 - One or two words, as the musician typed them, so no case is forced.
 
 ## Accessibility
 
 - A plain chip is read as its text. On iPhone, `TagPills` groups a card's chips and reads "Tags: " and the full list, including any hidden behind "+N".
-- A removable chip is one button labelled with the tag, and both apps say "Double tap to remove": iPhone as a hint, Android through the click label "remove".
-- The label is 13 points and scales with Dynamic Type and font scale.
+- A removable chip is one button labelled with the tag, with the hint "Double tap to remove".
+- The label is 13 points and scales with Dynamic Type.
 
 ## Do and don't
 
@@ -63,12 +60,6 @@ A removable chip has no pressed look; tapping it removes the tag at once. Its to
 TagChip("Baroque")
 TagChip(tag, style: .outlined)
 TagChip(tag, onRemove: { remove(tag) })
-```
-
-```kotlin
-TagChip("Baroque")
-TagChip(tag, style = TagChipStyle.Outlined)
-TagChip(chip, Modifier.testTag("$tag.chip"), onRemove = { onRemove(index) })
 ```
 
 ## Related
