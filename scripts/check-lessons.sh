@@ -39,7 +39,8 @@ fi
 # Two branches bumping the same "(seen again N)" each keep their line under a
 # union merge, and a lesson archived on one branch comes back from the other
 # (#2937). Compare with the count and the final full stop set aside, and an
-# archive line by its end, since a rule's file may stand in front of it.
+# archive line by its end, since a rule's file may stand in front of it. A
+# deliberate copy back raises the count; a merge brings the line back as it was.
 awk -v lessons="$file" -v archive="$archive" '
   function norm(s) {
     sub(/^- /, "", s)
@@ -49,8 +50,13 @@ awk -v lessons="$file" -v archive="$archive" '
     sub(/\.$/, "", s)
     return s
   }
+  function seen(s) {
+    if (!match(s, /\(seen again [0-9]+\)\.?[ \t]*$/)) return 0
+    s = substr(s, RSTART + 12)
+    return s + 0
+  }
   FNR == 1 { in_list = 0 }
-  FILENAME == archive && /^- / { arch[++na] = norm($0); arch_line[na] = FNR; next }
+  FILENAME == archive && /^- / { arch[++na] = norm($0); arch_seen[na] = seen($0); arch_line[na] = FNR; next }
   FILENAME == lessons && /^## Lessons$/ { in_list = 1; next }
   FILENAME == lessons && in_list && /^- / {
     t = norm($0)
@@ -62,8 +68,8 @@ awk -v lessons="$file" -v archive="$archive" '
     }
     for (i = 1; i <= na; i++) {
       a = arch[i]
-      if (a == t || (length(a) > length(t) && substr(a, length(a) - length(t)) == " " t)) {
-        printf "✗ %s line %d is archived at %s line %d: a merge brought it back, so delete it here (#2937)\n", lessons, FNR, archive, arch_line[i] > "/dev/stderr"
+      if (seen($0) <= arch_seen[i] && (a == t || (length(a) > length(t) && substr(a, length(a) - length(t)) == " " t))) {
+        printf "✗ %s line %d is archived at %s line %d with no higher \"(seen again N)\": a merge brought it back, so delete it here, or raise its count if it was seen again (#2937)\n", lessons, FNR, archive, arch_line[i] > "/dev/stderr"
         bad = 1
         break
       }

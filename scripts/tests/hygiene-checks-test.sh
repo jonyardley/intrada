@@ -1152,12 +1152,19 @@ lessons_dup_message() {
 expect 0 "a repeated lesson, its lines and the fix in the message" lessons_dup_message
 write_lessons_with "a rule." "2026-11-01, #1: an archived lesson."
 expect 1 "a lesson that is also archived" lessons_check
-write_lessons_with "a rule." "2026-11-01, #1: an archived lesson (seen again 2)."
-expect 1 "an archived lesson brought back bumped" lessons_check
 lessons_archived_message() {
-  grep -q "lessons.md line 8 is archived at .*lessons-archive.md line 5: .*delete it here" <<<"$(lessons_check 2>&1 || true)"
+  grep -q "lessons.md line 8 is archived at .*lessons-archive.md line 5 with no higher .*delete it here" <<<"$(lessons_check 2>&1 || true)"
 }
 expect 0 "an archived lesson, both lines and the fix in the message" lessons_archived_message
+write_lessons_with "a rule." "2026-11-01, #1: an archived lesson (seen again 1)."
+expect 0 "an archived lesson copied back with its count raised" lessons_check
+printf -- '- 2026-11-03, #5: a lesson seen before (seen again 2).\n' >>"$lessons_archive"
+write_lessons_with "a rule." "2026-11-03, #5: a lesson seen before (seen again 2)."
+expect 1 "an archived lesson brought back with the archive's count" lessons_check
+write_lessons_with "a rule." "2026-11-03, #5: a lesson seen before (seen again 1)."
+expect 1 "an archived lesson brought back with a lower count" lessons_check
+write_lessons_with "a rule." "2026-11-03, #5: a lesson seen before (seen again 3)."
+expect 0 "an archived lesson copied back above the archive's count" lessons_check
 printf -- '- rule: .claude/rules/ios-ui.md 2026-11-02, #4: a lesson that became a rule.\n' >>"$lessons_archive"
 write_lessons_with "a rule." "2026-11-02, #4: a lesson that became a rule."
 expect 1 "a lesson archived as a rule" lessons_check

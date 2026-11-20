@@ -13,7 +13,7 @@
 - **Before adding**, search this file and
   [`lessons-archive.md`](lessons-archive.md). A lesson already there is not
   added again: its line ends "(seen again N)", counting up, and an archived
-  one is copied back here.
+  one is copied back here with its count raised above the archive's.
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
   the limit moves the oldest lessons with no "seen again" to the archive.
 - **Monthly prune**: the session doing the first Monday usage read of each
