@@ -126,6 +126,25 @@ else
   printf '✗ draft: expected gh pr create to get --draft\n' >&2
 fi
 
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+( cd "$work/repo" && "$script" --title "Fix the thing (#42)" --body "Ran git branch -d old." ) >/dev/null
+if grep -qF -- "--draft" "$CALLS/pr_create.log" 2>/dev/null; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ draft: a body quoting -d still gets --draft\n' >&2
+fi
+
+# A body that is only the flag, then a later flag: the real flag must still come last.
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+( cd "$work/repo" && "$script" --title "Fix the thing (#42)" --body "--draft" --base main ) >/dev/null
+if [[ "$(tail -n 1 "$CALLS/pr_create.log" 2>/dev/null)" == *" --base main --draft" ]]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ draft: a body of only the flag still gets --draft last\n' >&2
+fi
+
 # ── Claimed on this branch, current backtick format: opens the PR ──────────
 
 cat >"$work/fixtures/comments_42.json" <<'JSON'
