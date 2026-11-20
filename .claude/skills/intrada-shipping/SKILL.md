@@ -80,6 +80,11 @@ them at its start (#2801). A repeat marks the old line rather than adding one,
 so the file keeps what recurs; a lesson seen again three times becomes a rule
 only with the owner's yes.
 
+The same retro acts on each lesson while the session still remembers it
+(#2934): a small fix off the sensitive surfaces lands in this PR in its own
+commit, so it can be reverted alone, and a bigger one becomes an issue. Waiting
+for three repeats let the same mistake cost several sessions first.
+
 ## PR bodies and issues
 
 Both are read cold, months later. The headings in
@@ -87,7 +92,8 @@ Both are read cold, months later. The headings in
 fixed.
 
 0. **Look at**: one line above the headings naming the decision or risk Jon
-   should judge.
+   should judge. Under it, **Process fixes**: each retro fix, with the
+   lesson it answers, or "none".
 1. **What this fixes**: what the affected person notices, in the first
    sentence (the musician, or Jon or an agent for tooling, saying what they
    hit rather than that no musician is affected), then one sentence

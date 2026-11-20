@@ -14,6 +14,19 @@
   [`lessons-archive.md`](lessons-archive.md). A lesson already there is not
   added again: its line ends "(seen again N)", counting up, and an archived
   one is copied back here.
+- **Acting on a lesson** (#2934), at the same retro, each lesson gets one
+  outcome:
+  - **Fixed here**: a change of about 30 lines or fewer to the rule, doc,
+    skill, script or recipe that would have prevented it, off the paths in
+    `.claude/rules/sensitive-surfaces.md` and never app code, in its own
+    commit in the same PR. The lesson goes straight to the archive with
+    "fix:" and the changed file in front, so this file keeps only what is
+    still open.
+  - **Issue**: a bigger fix, or one on a sensitive surface, gets an issue,
+    and the lesson stays here ending "(issue #N)" until that issue closes.
+  - **Kept**: no clear fix, so it stays here for the monthly prune.
+  A fixed lesson that comes back is copied back here with "(seen again N)":
+  the fix did not hold.
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
   the limit moves the oldest lessons with no "seen again" to the archive.
 - **Monthly prune**: the session doing the first Monday usage read of each
