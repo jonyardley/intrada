@@ -49,11 +49,13 @@ done
 
 # ── A path in place of the text (#2939) ──
 # `just pr-open` takes the body as text, so a draft's path passed there became
-# #2935's whole description. One word holding a slash, or ending in .md or
-# .txt, is a path, never a description.
-trimmed="$(printf '%s' "$body" | tr -d '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+# #2935's whole description. One word starting with /, ~ or ./, or ending in
+# .md or .txt, is a path, never a description; N/A and a URL are left alone.
+trimmed="$(printf '%s' "$body" | tr '\n' ' ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+lower="$(printf '%s' "$trimmed" | tr '[:upper:]' '[:lower:]')"
 if [ -n "$trimmed" ] && ! [[ "$trimmed" =~ [[:space:]] ]] &&
-  [[ "$trimmed" == */* || "$trimmed" == *.md || "$trimmed" == *.txt ]]; then
+  [[ "$trimmed" == /* || "$trimmed" == "~/"* || "$trimmed" == ./* ||
+    "$lower" == *.md || "$lower" == *.txt ]]; then
   echo "✗ the body is only a file path ($trimmed): pass the file's text as the body, not its path." >&2
   exit 1
 fi
