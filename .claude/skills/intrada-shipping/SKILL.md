@@ -74,15 +74,16 @@ its epic with `just epic-add EPIC N`; a genuine one-off stays single
 
 ## Retro
 
-Before the gates, the session adds two or three lessons to
-`docs/lessons.md`, so they ride in the first push and the next session reads
+Before the gates, the session records two or three lessons in
+`docs/lessons.md` or its archive, so they ride in the first push and the next session reads
 them at its start (#2801). A repeat marks the old line rather than adding one,
-so the file keeps what recurs; a lesson seen again three times becomes a rule
-only with the owner's yes.
+so the file keeps what recurs; a kept lesson seen again three times becomes a
+rule only with the owner's yes.
 
 The same retro acts on each lesson while the session still remembers it
-(#2934): a small fix off the sensitive surfaces lands in this PR in its own
-commit, so it can be reverted alone, and a bigger one becomes an issue. Waiting
+(#2934): a small text fix lands in this PR in its own commit, so it can be
+reverted alone, and merging the PR is the owner's yes; anything bigger, or any
+script, hook, settings or CI change, becomes an issue. Waiting
 for three repeats let the same mistake cost several sessions first.
 
 ## PR bodies and issues

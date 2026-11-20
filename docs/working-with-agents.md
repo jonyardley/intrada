@@ -191,7 +191,7 @@ CI is green, local pty errors were host-only.
 
 | You are | Do |
 |---|---|
-| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, change, the number it should move, first read |
+| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, change, the number it should move, first read; a `/ship` retro fix is recorded in the lessons archive instead |
 | It is Monday | Read `just usage 7 --quality` against the log; a lever unmoved after two reads is reverted, not patched. The first Monday of the month also prunes `docs/lessons.md` as its header says |
 | It is the first Monday of the month | The session doing the usage read puts lessons seen again three times to the owner as rules and moves stale ones from [`lessons.md`](lessons.md) to [`lessons-archive.md`](lessons-archive.md) |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |
