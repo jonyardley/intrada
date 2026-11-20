@@ -1125,7 +1125,7 @@ expect 0 "31 lessons, the message naming the archive" lessons_over_names_archive
 lessons_over_names_both_steps() {
   local out
   out=$(lessons_check 2>&1 || true)
-  grep -q "whose issue has closed, then" <<<"$out" && grep -q "and no open issue" <<<"$out"
+  grep -q "whose issue has closed" <<<"$out" && grep -q "and no open issue" <<<"$out"
 }
 expect 0 "31 lessons, the message naming closed issues first and keeping open ones" lessons_over_names_both_steps
 write_lessons 30

@@ -36,9 +36,9 @@
   issue.
 - **Monthly prune**: the session doing the first Monday usage read of each
   month puts any lesson seen again three times to the owner as a rule, and
-  archives what is stale or done, closed-issue lessons included. A kept lesson becomes a rule only with the
-  owner's yes, and then moves to the archive with "rule:" and the rule's
-  file in front.
+  archives what is stale or done, closed-issue lessons included. A kept
+  lesson becomes a rule only with the owner's yes, and then moves to the
+  archive with "rule:" and the rule's file in front.
 - The archive is never printed at session start and nothing is deleted from
   it.
 - A worktree prints its own copy, so one behind main misses newer lessons.
