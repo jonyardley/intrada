@@ -51,10 +51,12 @@ holds is the merge lock on GitHub. Claude Code's own subagent worktrees stay in
 
 Once the repo has a linked worktree, as intrada always does:
 
-- **The main checkout.** Any number of sessions can sit here, but shell is
-  read-only (the list below) and file tools cannot write, so main stays the
-  clean base. To build, a session starts inside its worktree with
-  `cd <worktree> && claude`; a `cd <worktree> && ` prefix from main is refused.
+- **The main checkout.** Any number of sessions can sit here, but its working
+  tree is read-only: the shell may only look (the list below) and file tools
+  cannot write, so main stays the clean base. Writes outside every checkout,
+  such as the scratchpad, still pass. To build, a session starts inside its
+  worktree with `cd <worktree> && claude`; a `cd <worktree> && ` prefix from
+  main is refused for writes, and reads pass.
 - **Your own worktree.** The first write claims it, and everything works.
 - **Someone else's worktree.** Reads pass. Builds are denied with the writes,
   because two builds share one `target/` and one simulator.
@@ -76,36 +78,68 @@ process's start time, so a recycled process id never reads as a live holder.
 ## What the guard allows
 
 `~/.claude/hooks/guard-worktree.sh` runs before `Edit`, `Write`, `MultiEdit`,
-`NotebookEdit` and `Bash`, and judges a write by the worktree it lands in: the
-file path for a file tool, the working directory for a shell command.
+`NotebookEdit` and `Bash`. A file tool is judged by the checkout its path lands
+in. A shell command is split into parts, and each part is judged in the folder
+it runs in; a write to a named path (a redirection, `cp`, `mv`, `rm`, `tee`,
+`sed -i`, `perl -i` and the like) is judged by where that path lands.
 
 |                        | main checkout | your worktree | someone else's |
 | ---------------------- | ------------- | ------------- | -------------- |
 | Read a file            | yes           | yes           | yes            |
-| `just worktrees`, `just worktree-status`, `gh pr view` | yes | yes | yes |
+| The `just` reads listed below | yes | yes  | yes            |
 | `just worktree-new`, `wt switch`, `wt list` | yes | yes      | yes            |
 | Any other `wt` subcommand | no         | yes           | no             |
+| `gh`                   | see below     | yes           | reads only     |
 | Build, test, `just check` | no         | yes           | no             |
 | Edit, commit, push     | no            | yes           | no             |
+| Write outside every checkout | yes     | yes           | yes            |
+| `git worktree remove`, `just worktree-rm` | unless another session holds it | the same | no |
 | `just worktree-done`   | no            | once merged, clean and pushed | no |
 
 A pull in the main checkout is denied with the other mutating git subcommands
 (#1740); agents fetch instead, and Jon refreshes main's working copy.
 
-Read-only is judged on the whole command: every segment of a compound command
-must be read-only, and any redirection makes it a write. Quoted text and
-heredoc bodies are data. The read-only list is a list, so expect a tool that
-reads and is denied anyway. It allows the usual file and text commands, `sed`
-without `-i`, `find` without `-delete` or `-exec`, read-only `git`, `rtk read`,
-`just` limited to `worktrees`, `worktree-status`, `status`, `worktree-new` and
-`--list`, `wt` limited to `switch` and `list`, and `gh` limited to `view`,
-`list`, `checks` and `status`.
+Read-only is judged on every part of a compound command. Quoted text, heredoc
+bodies and here-strings are data. The read-only list is a list, so expect a
+tool that reads and is denied anyway. It allows:
 
-The guarantee is on the file tools. Shell coverage is best effort, aimed at
-redirection, `sed -i`, `cp`, `mv`, `rm`, `tee`, `patch` and mutating `git`. A
-shell write by absolute path into another session's worktree, from a third
-folder, is not seen; file tools still are, and the merge lock on GitHub holds.
-A broken guard fails open.
+- the usual file and text commands, `sed` without an in-place flag, `sort`
+  without `-o`, `find` without `-delete` or `-exec`, and `mktemp` into the
+  temp folder;
+- read-only `git`, including `git branch` with no name or only listing flags,
+  and no `--output` to a file in the checkout; `rtk read`;
+- `just` limited to `worktrees`, `worktree-status`, `status`, `worktree-new`,
+  `handover`, `issue`, `claim`, `ready-queue`, `--list` and a bare `just`,
+  never with `--fmt`;
+- `wt` limited to `switch`, `list`, `help`, `config show`, `hook show`,
+  `step diff` and `step eval`, plus `--help` and `--version`;
+- in main, every `gh` call but `pr checkout`, `repo clone` and `repo sync`;
+  in someone else's worktree, `gh` limited to `view`, `list`, `checks`,
+  `status` and `diff`.
+
+A redirection is a write unless it goes to `/dev/null`, to a path main's
+`.gitignore` excludes (runtime state such as a ledger, spelled plainly), or to
+a path outside every checkout, such as the scratchpad or `/tmp`. A script in a
+temp folder outside every checkout, run by absolute path with `python3`,
+`perl` or `ruby`, is not a build where it runs; inline code (`-c`, `-e`) is
+still judged.
+
+The guard follows a literal `cd` or `pushd`, and a literal `git -C <path>` for
+that one part; a subshell's `cd` ends with the subshell. A `cd` it cannot
+follow (a variable, a substitution, `-`, a folder that does not exist yet)
+makes the rest of the command read-only. From main, a prefix such as
+`cd <worktree> && ` is refused for writes; reads pass.
+
+The guarantee is on the file tools. Shell coverage is best effort. Known
+losses, where the merge lock on GitHub still holds:
+
+- a shell write by absolute path from a command the guard does not know
+  writes, run from a third folder, into another session's worktree;
+- `make -C <path>` or `bash -c '...'` into another session's worktree, since
+  only `cd`, `pushd` and `git -C` move a part;
+- `awk` printing to a file.
+
+A broken guard fails open, except for a worktree removal.
 
 ## Escape hatches
 

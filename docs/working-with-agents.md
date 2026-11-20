@@ -35,14 +35,15 @@ branch (#1702).
 | About to edit anything | `just worktree-new <name>` from the main checkout, then the session that does the work starts inside the worktree with the command it prints, `cd <worktree> && claude` |
 | Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. Make the worktree first and paste the opener into a session started inside it, not in the main checkout |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
-| Spawning a subagent | Name the worktree by absolute path as its working folder in the brief, or its edits land in main and `reviewer` diffs the wrong tree (#1861) |
+| Spawning a subagent | It starts in your folder, so it can build or edit only when your session started inside the worktree; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861) |
 | Your PR has merged | `just worktree-done` inside the worktree, then end the session |
 
 Every session that edits starts inside its own worktree (#1837, #2918). The
-main checkout is for status, claims and making worktrees: shell there is
-read-only, a `cd <worktree> && ` prefix from it is refused, and `.claude/rules/`
-files load only when the session's folder is the worktree. Worktrees branch
-from fresh `origin/main` into `../intrada-worktrees`, and the worktree lease still holds each one to one
+main checkout is for status, claims and making worktrees: its working tree is
+read-only, a `cd <worktree> && ` prefix from it is refused for writes while
+reads pass, and `.claude/rules/` files load only when the session's folder is
+the worktree. Worktrees branch from fresh `origin/main` into
+`../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the
 tree is clean and nothing is unpushed; the worktree guard checks the same and
