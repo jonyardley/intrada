@@ -374,7 +374,11 @@ worktree-new name:
         echo "✗ wt reported success but no worktree has branch {{name}}" >&2
         exit 1
     fi
-    echo "  cd $target && just check"
+    # Sessions start inside their worktree (#2918): path-scoped rules load
+    # only there, and nothing needs the `cd <worktree> && ` prefix.
+    echo "✓ worktree $target"
+    echo "  Start its session there:"
+    echo "  cd $target && claude"
 
 # Companion to worktree-new: cleans the worktree's throwaway sim (if any),
 # then removes the worktree via git. Run from any checkout; leaves the
@@ -392,6 +396,15 @@ worktree-rm name:
     fi
     git worktree remove "$target"
     echo "✓ removed worktree $target"
+
+# The session's own way out once its PR merges (#2918): removes the worktree it
+# runs in, and its simulator, only when the PR is merged, the tree is clean and
+# nothing is unpushed. The worktree guard checks the same and refuses another
+# session's worktree.
+[doc("Remove this worktree once its PR is merged, it is clean and nothing is unpushed")]
+[group('Worktrees')]
+worktree-done:
+    ./scripts/worktree-done.sh
 
 # Every worktree of this repo with its branch, uncommitted file count and the
 # Claude Code session holding its lease. A worktree sitting at main with no
