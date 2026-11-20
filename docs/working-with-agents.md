@@ -91,7 +91,7 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   refactors, docs.
 - **Tier 2, plan comment** (the default for feature work): a component or
   screen on existing patterns, an endpoint on established conventions, a field
-  on a model. A new screen gets a mockup and Jon's word on it first
+  on a model. A new screen gets a SwiftUI sketch and Jon's word on it first
   (`docs/design-workflow.md`), and starts by reading an existing screen, which
   loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features,
