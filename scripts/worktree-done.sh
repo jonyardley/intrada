@@ -24,7 +24,8 @@ refuse() {
 [ "$here" != "$main_root" ] || refuse "this is the main checkout; run it inside the worktree to remove"
 command -v gh >/dev/null 2>&1 || refuse "gh is needed to see the merged PR"
 
-[ -z "$(git status --porcelain)" ] || refuse "it has uncommitted or untracked files"
+status="$(git status --porcelain)" || refuse "git status failed"
+[ -z "$status" ] || refuse "it has uncommitted or untracked files"
 
 branch="$(git symbolic-ref --quiet --short HEAD)" || refuse "it is not on a branch"
 head="$(git rev-parse HEAD)"
@@ -33,7 +34,7 @@ heads="$(gh pr list --head "$branch" --state merged --json number,headRefOid \
   --jq '.[] | "\(.number) \(.headRefOid)"')" || refuse "GitHub could not be read"
 [ -n "$heads" ] || refuse "no merged PR for $branch"
 pr="$(printf '%s\n' "$heads" | awk -v h="$head" '$2 == h {print $1; exit}')"
-[ -n "$pr" ] || refuse "it has commits that are not in the merged PR for $branch; push them to a new PR first"
+[ -n "$pr" ] || refuse "this HEAD is not the last commit of the merged PR for $branch; push anything new to a new PR first"
 
 (just ios-test-sim-clean) || true
 
