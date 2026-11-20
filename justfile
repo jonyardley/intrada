@@ -575,7 +575,8 @@ ios-gen slices="all":
     echo "✓ bindings regenerated"
 
 # Build a signed Release .ipa and upload it to TestFlight (internal testing).
-# Mirrors the release-testflight.yml CI lane for local debugging. Needs Ruby >=3
+# Mirrors the release-testflight.yml CI lane for local debugging, bar CI's
+# phone-only core (all slices here). Needs Ruby >=3
 # (system Ruby 2.6 is too old — use rbenv) + the ASC_*/MATCH_* env set, and a
 # one-time `fastlane match appstore` bootstrap. See SETUP.md's TestFlight section (#784, #984).
 [doc("Build a signed Release app and upload it to TestFlight")]
@@ -1131,11 +1132,13 @@ ios-package profile="debug" slices="all":
     cd crates/intrada-ffi
     if [ "{{profile}}" = "release" ]; then rel="--release"; else rel=""; fi
     # About 3 s against 5 s for all three slices (#2181). `all` stays for
-    # anything that can build for a device or an Intel simulator: Xcode, Release, CI.
+    # anything that can build for a device or an Intel simulator: Xcode, Release, CI tests.
+    # `device` is the phone slice alone, for the tester build's archive (#2917).
     case "{{slices}}" in
         sim) where="--target aarch64-apple-ios-sim" ;;
+        device) where="--target aarch64-apple-ios" ;;
         all) where="--platforms ios" ;;
-        *) echo "✗ slices must be sim or all, not '{{slices}}'" >&2; exit 1 ;;
+        *) echo "✗ slices must be sim, device or all, not '{{slices}}'" >&2; exit 1 ;;
     esac
     # cargo-swift's output is the staging folder; only changed files reach ios/generated (#2732).
     rm -rf IntradaCoreFFI

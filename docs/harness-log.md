@@ -9,7 +9,8 @@
 
 1. A harness change, in the repo or on Jon's machine, adds its row here in the
    same PR. A machine-local change with no PR of its own gets its row in the
-   next harness PR.
+   next harness PR. A `/ship` retro fix, which is prose only, is recorded by its
+   "fix:" line in `lessons-archive.md` instead (#2934).
 2. Every Monday, `just usage 7 --quality`, and GitHub for speed and fix PRs,
    are read against the table below, and each row whose first read has come
    gets what its number did in its Reads cell.
@@ -127,6 +128,7 @@ documented it, or by the file's own date where no PR did.
 | 2026-11-14 | machine-local (#2866) | `guard-spawn.sh` reads an optional `effort-ceiling:` from an agent's frontmatter and allows an effort lift up to it and no higher, a ceiling below the pin changing nothing; the Agent tool's relative `higher` is judged as one rung above the pin, which it had let past every pin; the three frontmatter reads share one helper; the model pin is unchanged. 14 cases added to `guard-spawn.test.sh`, each new line mutation-tested | None: a guard, so the lead can lift `reviewer` to high and nothing past it | 2026-11-23 | |
 | 2026-11-15 | #2877 | `just pre-review` runs `just check` plus the iOS format gate and, unless ci.yml pauses Android, the Android gates on CI's own `android` filter, and `/ship`, the crew brief and `working-with-agents.md` name it as what passes before review; the crew brief gains the one approved plan per change rule and points to the global "Speed and reliability"; crew sessions start at medium effort, and lane size is a planning rule in the global file only | Rework: CI failures catchable locally (14 of 30) and review findings that were repo rules (26 of 56) | 2026-11-23 | |
 | 2026-11-19 | #2910 (#2909) | The crew loop and Ostinato are removed: the crew scripts and their self-tests, the loop sandbox, `just crew`, the crew CI steps, the `/crew` command, the loop spec, `/ship loop` and the `qa` agent. `just claim` counts only the owner's claim comments. `just issue N` prints an issue with only the owner's comments, and the reviewer reads issues through it. Crew lessons from five issues folded into `docs/lessons.md` | None: a removal, so sessions run as the owner steers them again (not in the report) | 2026-11-23 | |
+| 2026-11-20 | #2935 (#2934) | The `/ship` retro acts on each lesson at once: a prose fix of about 30 lines or fewer to a doc, rule, skill, agent brief or command, never frontmatter lands in the same PR in its own commit and archives the lesson with "fix:"; a bigger one, or any script, recipe, hook, settings, CI or `CLAUDE.md` change, becomes an issue; the PR body gains a "Process fixes" line. A retro fix records itself in the archive, not as a row here | Rework: lessons marked "seen again" in `docs/lessons.md` plus "fix:" lessons copied back from the archive, counted by hand (not in the report) | 2026-12-07 | |
 
 ## Later levers
 
