@@ -38,9 +38,14 @@ those safe to remove. It reads GitHub once and removes nothing.
 Once its PR merges, the session removes its own worktree and simulator with
 `just worktree-done` from inside it, then ends. It refuses unless the PR is
 merged, the merged PR's last commit is this HEAD and the tree is clean; the
-guard checks the same, and never lets a session remove another live session's
-worktree. By hand, `just worktree-rm <name>` removes one and cleans its
-simulator. Claude Code's own subagent worktrees stay in `.claude/worktrees`.
+guard checks the same. Only `just worktree-done` runs that merged, clean and
+pushed check. A manual removal, `just worktree-rm <name>` or `git worktree
+remove`, and a forced removal do not: they remove what they are given, and
+`just worktree-rm` also cleans the simulator. The guard refuses the usual
+removal commands when they name another live session's worktree; some unusual
+command shapes are known limits it does not catch, and the protection that
+holds is the merge lock on GitHub. Claude Code's own subagent worktrees stay in
+`.claude/worktrees`.
 
 ## Three places, one rule each
 

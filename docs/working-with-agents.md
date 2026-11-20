@@ -47,8 +47,10 @@ into `../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the
 tree is clean and nothing is unpushed; the worktree guard checks the same and
-refuses another session's worktree. `just worktree-rm <name>` is the manual
-removal. The graphify graph lives only in the main checkout:
+refuses the usual removal commands on another session's worktree, with some
+unusual command shapes as known limits. `just worktree-rm <name>` is the manual
+removal; it and forced removals skip the merged, clean and pushed check. The
+graphify graph lives only in the main checkout:
 query it there by path for architecture answers, never a full-repo read.
 
 Read `just worktrees` before touching a worktree you did not create: a clean

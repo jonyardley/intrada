@@ -400,8 +400,9 @@ worktree-rm name:
 
 # The session's own way out once its PR merges (#2918): removes the worktree it
 # runs in, and its simulator, only when the PR is merged, the tree is clean and
-# nothing is unpushed. The worktree guard checks the same and refuses another
-# session's worktree.
+# nothing is unpushed. The worktree guard checks the same and refuses the usual
+# removal commands on another session's worktree; some unusual command shapes
+# are known limits. worktree-rm and forced removals skip this check.
 [doc("Remove this worktree once its PR is merged, it is clean and nothing is unpushed")]
 [group('Worktrees')]
 worktree-done:
