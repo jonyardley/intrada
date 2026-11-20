@@ -1,7 +1,8 @@
 name: Release — TestFlight
 
 # Signed device build → TestFlight. Manual or on a v* tag ONLY — never per-PR
-# (macOS runners are 10×-billed; #784, #984).
+# (macOS runners are 10×-billed; #784, #984). A tag restores only main's caches,
+# so after a project.yml or Cargo.lock change, dispatch on main with upload off (#2917).
 on:
   workflow_dispatch:
     inputs:
@@ -114,8 +115,7 @@ jobs:
           unzip -q /tmp/xcodegen.zip -d /tmp
           /tmp/xcodegen/install.sh
       # RELEASE core (debug cores are 10-100× slower in hot paths), built for
-      # the phone slice alone: the two simulator slices were most of this
-      # step's time and the archive never ships them (#2917).
+      # the phone slice alone: the archive never ships the two simulator slices (#2917).
       - name: Regenerate Swift bindings (release core)
         run: |
           just ios-typegen
@@ -136,11 +136,8 @@ jobs:
             exit 1
           fi
           echo "SENTRY_DSN is baked into the generated project."
-      # The Swift packages fastlane clones into build/spm. The pins live in
-      # project.yml (no Package.resolved is checked in), so the key follows it.
-      # Not "release-testflight-": cache-prune.yml keeps two of that family,
-      # which is rust-cache's. A tag run's save is visible to that tag alone,
-      # so a later tag restores what a main run saved.
+      # Keyed on project.yml, which holds the pins: no Package.resolved is checked in (#2917).
+      # Not "release-testflight-", the rust-cache family cache-prune.yml trims to two.
       - name: Cache Swift packages
         uses: actions/cache@v6
         with:
@@ -174,7 +171,7 @@ jobs:
       # a build that has already reached testers; the ERR trap is what keeps
       # that from also hiding a fault of our own.
       - name: Create the Sentry release for this build
-        if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != ''
+        if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != '' && (github.event_name != 'workflow_dispatch' || inputs.upload)
         continue-on-error: true
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -220,7 +217,7 @@ jobs:
       # Same job as the build: a rebuild mints new debug ids and its symbols
       # would match none of the uploaded build's crashes (#1610).
       - name: Upload the debug symbols for this build to Sentry
-        if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != ''
+        if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != '' && (github.event_name != 'workflow_dispatch' || inputs.upload)
         continue-on-error: true
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
