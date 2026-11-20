@@ -47,6 +47,17 @@ for i in "${!args[@]}"; do
   esac
 done
 
+# ── A path in place of the text (#2939) ──
+# `just pr-open` takes the body as text, so a draft's path passed there became
+# #2935's whole description. One word holding a slash, or ending in .md or
+# .txt, is a path, never a description.
+trimmed="$(printf '%s' "$body" | tr -d '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+if [ -n "$trimmed" ] && ! [[ "$trimmed" =~ [[:space:]] ]] &&
+  [[ "$trimmed" == */* || "$trimmed" == *.md || "$trimmed" == *.txt ]]; then
+  echo "✗ the body is only a file path ($trimmed): pass the file's text as the body, not its path." >&2
+  exit 1
+fi
+
 prose="$(printf '%s\n' "$body" | perl -0pe 's/<!--.*?-->//gs; s/^## Checklist.*//ms')"
 body_words="$(printf '%s' "$prose" | wc -w | tr -d ' ')"
 if [ "$body_words" -gt 350 ] && [ -z "${SKIP_BODY_CHECK:-}" ] &&
