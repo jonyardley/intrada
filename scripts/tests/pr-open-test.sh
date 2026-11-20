@@ -294,5 +294,62 @@ body_run "## What this fixes
 - $(words 15 bullet)"
 expect_no_warning "each bullet is its own unit"
 
+# ── A path in place of the body (#2939) ─────────────────────────────────────
+
+path_run() {
+  rm -rf "$CALLS" && mkdir -p "$CALLS"
+  set +e
+  out="$(cd "$work/repo" && "$script" --title "Tidy the docs" --body "$1" 2>&1)"
+  run_status=$?
+  set -e
+}
+expect_path_refused() {
+  if [ "$run_status" -ne 0 ] && grep -qF "only a file path" <<<"$out" && [ ! -f "$CALLS/pr_create.log" ]; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf '✗ %s: expected a path refusal\n    status=%s output=%s\n' "$1" "$run_status" "$out" >&2
+  fi
+}
+expect_path_opened() {
+  if [ "$run_status" -eq 0 ] && [ -f "$CALLS/pr_create.log" ]; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf '✗ %s: expected the PR to open\n    status=%s output=%s\n' "$1" "$run_status" "$out" >&2
+  fi
+}
+
+path_run "/private/tmp/claude-501/x/scratchpad/pr.md"
+expect_path_refused "an absolute path"
+path_run "  scratchpad/pr.md
+"
+expect_path_refused "a relative path with spaces and a newline round it"
+path_run "~/drafts/pr-body"
+expect_path_refused "a home path with no extension"
+path_run "./pr-body"
+expect_path_refused "a relative path with no extension"
+path_run "PR.MD"
+expect_path_refused "an upper case .md name"
+path_run "N/A"
+expect_path_opened "N/A"
+path_run "https://github.com/x/y/pull/1"
+expect_path_opened "a URL"
+path_run "See
+notes.md"
+expect_path_opened "two one word lines"
+path_run "See docs/lessons.md"
+expect_path_opened "a sentence ending in a file name"
+path_run "/tmp/pr-body"
+expect_path_refused "an absolute path with no extension"
+path_run "body.md"
+expect_path_refused "a bare .md file name"
+path_run "notes.txt"
+expect_path_refused "a bare .txt file name"
+path_run "Fixes the docs/lessons.md cap."
+expect_path_opened "a sentence that mentions a path"
+path_run "Done."
+expect_path_opened "a one word description"
+
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
