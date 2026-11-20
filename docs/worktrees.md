@@ -79,7 +79,7 @@ process's start time, so a recycled process id never reads as a live holder.
 
 `~/.claude/hooks/guard-worktree.sh` runs before `Edit`, `Write`, `MultiEdit`,
 `NotebookEdit` and `Bash`. A file tool is judged by the checkout its path lands
-in. A shell command is split into parts, and each part is judged in the folder
+in, and a session in main may not write into any checkout with one. A shell command is split into parts, and each part is judged in the folder
 it runs in; a write to a named path (a redirection, `cp`, `mv`, `rm`, `tee`,
 `sed -i`, `perl -i` and the like) is judged by where that path lands.
 
@@ -130,14 +130,25 @@ follow (a variable, a substitution, `-`, a folder that does not exist yet)
 makes the rest of the command read-only. From main, a prefix such as
 `cd <worktree> && ` is refused for writes; reads pass.
 
-The guarantee is on the file tools. Shell coverage is best effort. Known
-losses, where the merge lock on GitHub still holds:
+The guarantee is on the file tools. Shell coverage is best effort, and the
+guard is a convenience: the merge lock on GitHub is what holds. Known limits,
+recorded rather than fixed:
 
+- a write from main must spell its path literally: a variable such as `$D` or
+  `$TMPDIR` is not resolved, so the write is refused even when it lands
+  outside every checkout;
 - a shell write by absolute path from a command the guard does not know
   writes, run from a third folder, into another session's worktree;
 - `make -C <path>` or `bash -c '...'` into another session's worktree, since
   only `cd`, `pushd` and `git -C` move a part;
-- `awk` printing to a file.
+- `awk` printing to a file;
+- a quoted or commented `<<`, or `$((1<<n))`, can hide the lines after it, as
+  can a heredoc tag with a dash or backslash;
+- `sort -uo <path>` and `sort --output <path>`, perl in-place clusters such as
+  `-lpi`, `-0pi` and `-ni`, and `ruby -pi`;
+- a named path is judged where its part runs, not where it lands, for
+  `find <path> -delete`, `xargs ... cp`, `cp --target-directory <dir>`,
+  process substitution and `env -C`.
 
 A broken guard fails open, except for a worktree removal.
 
