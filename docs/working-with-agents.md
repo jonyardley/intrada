@@ -63,7 +63,7 @@ call; this repo keeps no levels of its own. Review
 rounds, lane size and the one approved plan per change are in the same file's
 "Speed and reliability"; here only the local detail.
 
-Fast mode costs twice the standard
+`/effort` saves to settings, so a session never runs it. Fast mode costs twice the standard
 rate: use it only when latency matters, never to save money.
 
 Superpowers is disabled on purpose, because its "invoke a skill for anything"
