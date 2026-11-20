@@ -41,7 +41,8 @@ changed colour is changed by hand there too, or `just check` fails.
    components in one debug only file, `ios/Intrada/Sketches/<Name>Sketch.swift`,
    wrapped in `#if DEBUG` because the app target takes in the whole folder,
    with fixture data and no core changes, plus one snapshot test that renders
-   it (`just ios-snapshots-record <Class>`, about 20 seconds a revision once
+   it, at the top level as `ios/IntradaTests/<Name>SketchSnapshotTests.swift`
+   where the snapshot check looks (`just ios-snapshots-record <Class>`, about 20 seconds a revision once
    built). The pictures go on a claude.ai Artifact page made with the Artifact
    tool and linked from the issue, every state the screen has (empty,
    error, the longest content). A canvas drawing hides real sizes: in the
@@ -49,9 +50,9 @@ changed colour is changed by hand there too, or `just check` fails.
    and broke the layout the canvas promised.
 4. **Jon's word on the sketch.** The page link goes on the issue with the line
    "Waiting for Jon's word on the sketch". A yes becomes "Jon approved the
-   sketch on YYYY-MM-DD"; a no is a revision of the same sketch. The sketch
-   branch never merges: the build starts from it, rebased onto fresh
-   `origin/main`, and the build PR deletes the sketch file, its snapshot test
+   sketch on YYYY-MM-DD"; a no is a revision of the same sketch. The build
+   PR is the sketch branch itself, rebased onto fresh `origin/main`; the
+   sketch is never merged as it stands, and the build PR deletes the sketch file, its snapshot test
    and its recorded images under `ios/IntradaTests/__Snapshots__/` together
    once the real screen and its snapshots exist, or
    `scripts/check-snapshots.sh` fails on an orphan image.
@@ -61,8 +62,7 @@ changed colour is changed by hand there too, or `just check` fails.
    Compose, with snapshots on both.
 6. **Jon's word on the screenshot.** "Eyes before ready" in
    `.claude/rules/ios-ui.md`.
-7. **After merge.** Refresh the design system (below). Delete the sketch
-   branch, so a stale picture never outlives the code.
+7. **After merge.** Refresh the design system (below).
 
 ## Refreshing the design system
 
