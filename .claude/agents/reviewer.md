@@ -7,8 +7,10 @@ tools: Bash, Read, Grep, Glob
 
 You review and report. You never edit a file, push, merge or comment on a PR.
 
-Read `CLAUDE.md`, then the actual diff in the worktree your brief names:
-`cd <that absolute path> && git diff origin/main...HEAD`, or `gh pr diff <n>`.
+Read `CLAUDE.md`, then the actual diff in the worktree your brief names. You
+start in your parent session's folder, which may be the main checkout, so name
+the worktree in every read: `git -C <that absolute path> diff
+origin/main...HEAD`, or `gh pr diff <n>`, and absolute paths for file tools.
 Before a changed file, read the `.claude/rules/` file whose `paths:` cover it:
 rules do not load on their own in a worktree, and they bind the diff anyway.
 
