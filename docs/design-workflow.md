@@ -39,17 +39,22 @@ changed colour is changed by hand there too, or `just check` fails.
    this step.
 3. **Sketch it in SwiftUI.** The chosen option is drawn from the real catalogue
    components in one debug only file, `ios/Intrada/Sketches/<Name>Sketch.swift`,
+   wrapped in `#if DEBUG` because the app target takes in the whole folder,
    with fixture data and no core changes, plus one snapshot test that renders
    it (`just ios-snapshots-record <Class>`, about 20 seconds a revision once
-   built). The pictures go on a page, every state the screen has (empty,
+   built). The pictures go on a claude.ai Artifact page made with the Artifact
+   tool and linked from the issue, every state the screen has (empty,
    error, the longest content). A canvas drawing hides real sizes: in the
    #2794 trial the real number buttons were 32 points tall, not the 20 drawn,
    and broke the layout the canvas promised.
 4. **Jon's word on the sketch.** The page link goes on the issue with the line
    "Waiting for Jon's word on the sketch". A yes becomes "Jon approved the
    sketch on YYYY-MM-DD"; a no is a revision of the same sketch. The sketch
-   branch never merges: the build PR starts from it and deletes the sketch
-   file and its test once the real screen and its snapshots exist.
+   branch never merges: the build starts from it, rebased onto fresh
+   `origin/main`, and the build PR deletes the sketch file, its snapshot test
+   and its recorded images under `ios/IntradaTests/__Snapshots__/` together
+   once the real screen and its snapshots exist, or
+   `scripts/check-snapshots.sh` fails on an orphan image.
 5. **Build.** From the catalogue components and theme values only;
    `scripts/check-theme-values.sh` fails a typed colour or spacing number. A
    new or changed component starts with its page (below), then SwiftUI, then
