@@ -41,8 +41,8 @@ branch (#1702).
 Every session that edits starts inside its own worktree (#1837, #2918). The
 main checkout is for status, claims and making worktrees: shell there is
 read-only, a `cd <worktree> && ` prefix from it is refused, and `.claude/rules/`
-files load only when the session's folder is the worktree. Worktrees branch from fresh `origin/main`
-into `../intrada-worktrees`, and the worktree lease still holds each one to one
+files load only when the session's folder is the worktree. Worktrees branch
+from fresh `origin/main` into `../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the
 tree is clean and nothing is unpushed; the worktree guard checks the same and
