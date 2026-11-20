@@ -1200,7 +1200,6 @@ git commit -qm "base"
 git update-ref refs/remotes/origin/main main
 git checkout -qb branch
 
-# Exit 0 when the route's output holds the text.
 route_says() {
   local out
   out=$(bash -c 'source "$1"; diff_scope_review_route' _ "$repo_root/scripts/lib/diff-scope.sh" 2>&1)
@@ -1211,7 +1210,7 @@ printf 'more\n' >>docs/notes.md
 printf '# New\n' >docs/new.md
 expect 0 "a documentation-only diff skips review" route_says "none: documentation only"
 printf 'more\n' >>.claude/rules/rule.md
-expect 0 "a rule under .claude/ is reviewed" route_says "reviewer"
+expect 0 "a rule under .claude/ takes /code-review inline" route_says "/code-review inline"
 git checkout -q -- .claude
 printf 'more\n' >>CLAUDE.md
 expect 1 "CLAUDE.md is not documentation" route_says "none"
@@ -1228,7 +1227,25 @@ git checkout -q -- crates
 printf 'const B: u32 = 1; // BLOB_VERSION\n' >>crates/core/src/view.rs
 printf '// two\n' >>crates/intrada-store/src/migrations.rs
 expect 0 "a blob pin is a bridge change" route_says "a blob pin in crates/core/src/view.rs"
-expect 0 "a store migration is a bridge change" route_says "a store migration"
+expect 0 "a store change is a bridge change" route_says "the store in crates/intrada-store/src/migrations.rs"
+git checkout -q -- crates
+git clean -fdq
+mkdir -p crates/intrada-ffi/src
+printf 'fn f() {}\n' >crates/intrada-ffi/src/ffi.rs
+printf '%s\n' '#[cfg_attr(' '    feature = "facet_typegen",' '    derive(facet::Facet)' ')]' \
+  'pub struct Wrapped {' '    pub c: u8,' '} // trailing note' 'fn after() {}' >crates/core/src/wrapped.rs
+cp crates/core/src/wrapped.rs crates/core/src/tests.rs
+expect 0 "an FFI source file is a bridge change" route_says "the FFI bridge in crates/intrada-ffi/src/ffi.rs"
+expect 0 "a Facet derive on a wrapped attribute is a bridge change" route_says "Wrapped in crates/core/src/wrapped.rs"
+expect 1 "a test file is not a bridge change" route_says "crates/core/src/tests.rs"
+git add -A
+git commit -qm "wrapped"
+rm -r crates/intrada-ffi crates/core/src/tests.rs
+git commit -qam "drop"
+git update-ref refs/remotes/origin/main HEAD
+sed -i.bak 's/fn after() {}/fn after() { }/' crates/core/src/wrapped.rs
+expect 1 "code after an item closed with a comment is not inside it" route_says "sensitive"
+rm crates/core/src/wrapped.rs.bak
 git checkout -q -- crates
 git clean -fdq
 mkdir -p tools/.claude

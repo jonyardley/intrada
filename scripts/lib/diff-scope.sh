@@ -64,55 +64,56 @@ ci_android_changed() {
   return 1
 }
 
-# How the branch's diff is reviewed (#2922): "none" when every path is
-# documentation, else "reviewer", plus each bridge change the reviewer pairs on.
-# Fails closed: an unreadable or empty diff, or markdown outside the roots
-# below, is reviewed. Files that steer agents are not documentation.
+# The review route for this branch, by docs/working-with-agents.md section 6
+# (#2922); an empty, unreadable or unknown diff is reviewed.
 diff_scope_review_route() {
-  local paths p docs=1 bridge
+  local paths p kind=none bridge
   paths=$(diff_scope_paths | grep -v '^$') || paths=""
-  [ -n "$paths" ] || docs=0
+  [ -n "$paths" ] || kind=code
   while IFS= read -r p; do
     case "$p" in
-      .claude/* | */.claude/* | CLAUDE.md | */CLAUDE.md | AGENTS.md | */AGENTS.md) docs=0 ;;
+      .claude/* | */.claude/* | CLAUDE.md | */CLAUDE.md | AGENTS.md | */AGENTS.md) [ "$kind" = code ] || kind=agents ;;
       docs/* | specs/* | design/*.md | README.md) ;;
-      *) docs=0 ;;
+      *) kind=code ;;
     esac
   done <<<"$paths"
-  if [ "$docs" = 1 ]; then
-    echo "none: documentation only"
-    return 0
-  fi
+  case "$kind" in
+    none) echo "none: documentation only"; return 0 ;;
+    agents) echo "/code-review inline: agent instructions and documentation only"; return 0 ;;
+  esac
   bridge=$(diff_scope_bridge_changes | paste -sd, - | sed 's/,/, /g')
   echo "reviewer${bridge:+, sensitive: $bridge}"
 }
 
-# Each bridge change in the branch's diff, one per line: a changed line inside
-# an item deriving Facet (what crosses the bridge, as check-bridge-tests.sh
-# finds it), a BLOB_VERSION line, a store migration or the FFI crate's source.
-# Reads the same files as diff_scope_paths; an untracked file is all added.
+# Each bridge change, one per line (#2922): an item deriving Facet, a
+# BLOB_VERSION line, the store or the FFI source; untracked files count as added.
 diff_scope_bridge_changes() {
   local base f
   base=$(git merge-base origin/main HEAD 2>/dev/null) || { echo "an unreadable diff"; return 0; }
   while IFS= read -r -d '' f; do
     case "$f" in crates/*.rs) ;; *) continue ;; esac
     if git ls-files --error-unmatch -- "$f" >/dev/null 2>&1 || git cat-file -e "$base:$f" 2>/dev/null; then
-      git diff -U0 --no-renames "$base" -- "$f"
+      git diff -U0 --no-renames --no-color --no-ext-diff "$base" -- "$f"
     else
-      git diff -U0 --no-index -- /dev/null "$f"
+      git diff -U0 --no-color --no-ext-diff --no-index -- /dev/null "$f"
     fi | BASE="$base" perl -e '
       sub spans {
-        my (@out, $start, $want, $name, $depth);
+        my (@out, $start, $want, $name, $depth, $attr);
         for my $i (0 .. $#_) {
           local $_ = $_[$i];
-          if (!defined $name && /^\s*#\[/) { $start //= $i + 1; $want = 1 if /facet::Facet\b|effect\(facet_typegen\)/; next }
+          s{\s*//.*}{};
+          if (!defined $name && (defined $attr || /^\s*#\[/)) {
+            $start //= $i + 1; $attr .= $_;
+            if (($attr =~ tr/[//) <= ($attr =~ tr/]//)) { $want = 1 if $attr =~ /facet::Facet\b|effect\(facet_typegen\)/; undef $attr }
+            next;
+          }
           if (!defined $name && $want && /^\s*pub\s+(?:struct|enum)\s+(\w+)/) { $name = $1; $depth = 0 }
           if (defined $name) {
             $depth += () = /\{/g; $depth -= () = /\}/g;
             if ($depth <= 0 && /[;}]\s*$/) { push @out, [$start, $i + 1, $name]; undef $name; undef $want; undef $start }
             next;
           }
-          undef $start unless /^\s*(\/\/|$)/; undef $want unless defined $start;
+          undef $start unless /^\s*$/; undef $want unless defined $start;
         }
         return \@out;
       }
@@ -120,18 +121,19 @@ diff_scope_bridge_changes() {
       my $file = shift;
       exit 0 if $file =~ m{(^|/)tests?(/|\.rs$)|_tests\.rs$};
       my (@old, @new);
+      open STDERR, ">", "/dev/null";
       if (open my $g, "-|", "git", "show", "$ENV{BASE}:$file") { @old = <$g>; close $g }
       if (open my $f, "<", $file) { @new = <$f> }
       my ($old, $new) = (spans(@old), spans(@new));
       my ($o, $n, %seen);
       while (<STDIN>) {
         if (/^@@ -(\d+)(?:,\d+)? \+(\d+)/) { ($o, $n) = ($1, $2); next }
-        next unless defined $n && /^[-+](?![-+]{2} )/;
+        next unless defined $n && /^[-+]/;
         my $at = /^-/ ? $o++ : $n++;
         my $type = hit(/^-/ ? $old : $new, $at);
         if ($type) { $seen{"t$type"}++ or print "$type in $file\n" }
         elsif (/BLOB_VERSION/) { $seen{b}++ or print "a blob pin in $file\n" }
-        elsif ($file eq "crates/intrada-store/src/migrations.rs") { $seen{m}++ or print "a store migration\n" }
+        elsif ($file =~ m{^crates/intrada-store/src/}) { $seen{s}++ or print "the store in $file\n" }
         elsif ($file =~ m{^crates/intrada-ffi/src/}) { $seen{f}++ or print "the FFI bridge in $file\n" }
       }
     ' "$f"
