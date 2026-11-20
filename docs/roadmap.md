@@ -54,7 +54,8 @@ on.
 
 1. **v0.21.0 One look**: the design audit already running
    (#2599), with one component catalogue (#2620), its fixes
-   (#2607, #2608, #2610, #2611, #2201, #2237) and the design tool (#2603).
+   (#2607, #2608, #2610, #2611, #2201, #2237), Undo instead of a confirm when
+   removing a variation or photo (#2615) and the design tool (#2603).
    Its one database change is the time zone a session
    was played in (#1379).
 2. **v0.22.0 Progress, redesigned**: the four-week look back decided on
