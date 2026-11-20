@@ -8,7 +8,10 @@ time** (#1741). Reading is never banned.
 
 `just worktree-new <name>` wraps worktrunk's `wt switch --create <name> --base
 origin/main`: it fetches first and refuses a name whose simulator would collide
-with another worktree's. Worktrunk's machine-local config
+with another worktree's. It ends by printing `cd <worktree> && claude`, the
+command that starts the session inside the new worktree (#2918): the
+`.claude/rules/` files load only there, and no command needs a prefix.
+Worktrunk's machine-local config
 (`~/.config/worktrunk/config.toml`) does the rest:
 
 - **Where.** `../intrada-worktrees/<name>`, beside the main checkout.
@@ -32,9 +35,12 @@ change, and the folder takes about 0.9 GB of disk.
 PR, CI, review, local changes and whose move it is, ending with a count of
 those safe to remove. It reads GitHub once and removes nothing.
 
-Remove one with `wt remove` from inside it, or `just worktree-rm <name>`, which
-also cleans its simulator. Claude Code's own subagent worktrees stay in
-`.claude/worktrees`.
+Once its PR merges, the session removes its own worktree and simulator with
+`just worktree-done` from inside it, then ends. It refuses unless the PR is
+merged, the merged PR's last commit is this HEAD and the tree is clean; the
+guard checks the same, and never lets a session remove another live session's
+worktree. By hand, `just worktree-rm <name>` removes one and cleans its
+simulator. Claude Code's own subagent worktrees stay in `.claude/worktrees`.
 
 ## Three places, one rule each
 
@@ -74,6 +80,7 @@ file path for a file tool, the working directory for a shell command.
 | Any other `wt` subcommand | no         | yes           | no             |
 | Build, test, `just check` | yes        | yes           | no             |
 | Edit, commit, push     | no (unless it self-heals, below) | yes | no    |
+| `just worktree-done`   | no            | once merged, clean and pushed | no |
 
 A pull in the main checkout is denied with the other mutating git subcommands
 (#1740); agents fetch instead, and Jon refreshes main's working copy.
@@ -93,7 +100,9 @@ broken guard fails open.
 
 ## Driving a worktree from the main checkout
 
-A session in the main checkout prefixes each shell command with
+This is the fallback, not the way to work: a session that edits starts inside
+its worktree, as [`working-with-agents.md`](working-with-agents.md) says. A
+session left in the main checkout prefixes each shell command with
 `cd <worktree> && `. The guard judges the command where it lands, so commits,
 gates and PRs work, and the first write takes the lease. It honours only a
 shape it can read, and denies rather than guesses:

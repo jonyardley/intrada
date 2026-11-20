@@ -6,3 +6,5 @@
 > line as it stood, with "rule:" and the rule's file in front when it became one.
 
 ## Archived
+
+- 2026-11-12, #2801: rebasing a branch of several commits onto a main that changed the same lines conflicts once per commit; squash it to one commit first and resolve once.

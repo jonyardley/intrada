@@ -96,6 +96,7 @@ hygiene:
         "status-epics-test:bash scripts/tests/status-epics-test.sh"
         "status-ready-test:bash scripts/tests/status-ready-test.sh"
         "worktree-status-test:bash scripts/tests/worktree-status-test.sh"
+        "worktree-done-test:bash scripts/tests/worktree-done-test.sh"
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
