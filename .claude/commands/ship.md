@@ -11,5 +11,6 @@ Prepare the current branch to ship. Read `.claude/skills/intrada-shipping/SKILL.
 5. **Open** with `just pr-open ... --draft` and the body template from the skill, and post the review summary naming the agent.
 6. **Watch CI** to a conclusion in the same turn and read the PR's mergeability, not just the jobs. Reproduce a red UI test with `just ios-test-ui-class <Class>`, not the full tier.
 7. **Ready** with `just pr-ready PR ISSUE` only once every check is green on the last commit and each review finding is fixed or answered in the PR. A screen change also waits for the owner's yes on its screenshot.
+8. **After ready**, watch the PR with Monitor (`gh pr view PR --json state`, every few minutes) until it is merged or closed. On merge, write the handover unasked; never end a turn asking the owner to say merged. Removing the worktree waits for #2918.
 
 $ARGUMENTS
