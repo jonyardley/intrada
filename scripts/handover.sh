@@ -5,7 +5,8 @@
 # price for $199: the rule to finish a unit and clear has been in CLAUDE.md
 # throughout, and friction is why it has not held.
 #
-# Everything printed is read from git, GitHub and .claude/settings.json.
+# Everything printed is read from git and GitHub. The opener names no model
+# or effort: the new session opens on .claude/settings.json.
 # Nothing is invented: a fact that cannot be read is named as unreadable
 # rather than guessed at, since an opener that lies costs more than one that
 # is short.
@@ -66,15 +67,6 @@ claim_body="$(gh issue view "$number" --repo "$repo" --json comments -q \
   '[.comments[] | select(.body | test("^Claimed"; "i"))] | last | .body // empty')"
 claimed_branch="$(claim_branch_from_body "$claim_body")"
 
-settings="$root/.claude/settings.json"
-model=""
-effort=""
-if jq -e . "$settings" >/dev/null 2>&1; then
-  model="$(jq -r '.model // empty' "$settings")"
-  effort="$(jq -r '.effortLevel // empty' "$settings")"
-  model="${model%%\[*}"
-fi
-
 ahead="$(git rev-list --count "origin/main..$branch" 2>/dev/null || true)"
 if [ -n "$ahead" ]; then
   position="$ahead commit(s) ahead of origin/main"
@@ -101,13 +93,6 @@ pr="$(gh pr list --repo "$repo" --head "$branch" --state all --json number,state
 echo "Paste this into a new session in the main checkout:"
 echo
 echo '```'
-if [ -n "$model" ] && [ -n "$effort" ]; then
-  echo "/model $model"
-  echo "/effort $effort"
-else
-  echo "Set /model and /effort by hand: neither could be read from .claude/settings.json."
-fi
-echo
 echo "Pick up #$number in intrada: $title"
 echo
 echo "Read first, the plan comment is the brief:"
