@@ -179,7 +179,7 @@ summary verbatim at PR creation, naming the agent.
 
 | You are | Do |
 |---|---|
-| About to open or update a PR | `/ship`: two or three lessons to [`lessons.md`](lessons.md) before the PR first opens, gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
+| About to open or update a PR | `/ship`: two or three lessons recorded in [`lessons.md`](lessons.md) or its archive before the PR first opens, each fixed in the PR, made an issue or kept, then gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
 | The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone screenshots |
 | Jon, reviewing | Read the body and the self-review; merge when green, his own PRs through the admin bypass, since main needs a code owner's approval nobody else can give (#2855) |
 | The unit has shipped | `just worktree-done` inside the worktree, then end the session |
@@ -201,7 +201,7 @@ CI is green, local pty errors were host-only.
 
 | You are | Do |
 |---|---|
-| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, change, the number it should move, first read |
+| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, change, the number it should move, first read; a `/ship` retro fix is recorded in the lessons archive instead |
 | It is Monday | Read `just usage 7 --quality` against the log; a lever unmoved after two reads is reverted, not patched. The first Monday of the month also prunes `docs/lessons.md` as its header says |
 | It is the first Monday of the month | The session doing the usage read puts lessons seen again three times to the owner as rules and moves stale ones from [`lessons.md`](lessons.md) to [`lessons-archive.md`](lessons-archive.md) |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |

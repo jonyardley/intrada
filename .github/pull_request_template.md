@@ -4,6 +4,8 @@
 
 Look at: <!-- One line: the decision or risk Jon should judge before merging. -->
 
+Process fixes: <!-- Each fix the /ship retro made in this PR, with the lesson it answers; "none" otherwise. -->
+
 ## What this fixes
 
 <!-- What the affected person would notice, in the first sentence; then one
