@@ -56,13 +56,23 @@ jobs:
     needs: check
     if: always() && (needs.check.result == 'success' || needs.check.outputs.broken == 'true')
     permissions:
+      actions: read
+      contents: read
       issues: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       RESULT: ${{ needs.check.result }}
+      RUN_ID: ${{ github.run_id }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      # GitHub's runner, not the Mac, so a default checkout is safe; only the
+      # script that decides whether to raise is fetched.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: scripts/runner-alarm.sh
       - name: Update the issue
         run: |
           set -euo pipefail
@@ -76,34 +86,50 @@ jobs:
           The run's annotations say what is wrong. Fix: prune the runner (the Runner housekeeping workflow, or free space by hand), or set the repository variable IOS_RUNNER to hosted to move the gate to GitHub's Mac. This issue closes itself on the first passing hourly run."
           if [ -n "$open" ]; then
             gh issue edit "$open" --body "$body"
-          else
-            gh issue create --title "Mac runner broken, not your code" --label runner-broken --body "$body"
+            exit 0
           fi
+          # One failed check is often a blip; raise only when the run before
+          # this one did not pass either (#2916).
+          verdict="$(gh run list --workflow runner-health.yml --limit 30 --json databaseId,status,conclusion,createdAt | bash scripts/runner-alarm.sh failed "$RUN_ID")"
+          echo "$verdict"
+          [ "${verdict%%:*}" = raise ] || exit 0
+          gh issue create --title "Mac runner broken, not your code" --label runner-broken --body "$body"
 
   # A Mac that is offline, or too full to check out, never reaches the script,
   # so its checks sit queued or fail silently. Without needing the check, this
-  # opens the issue once no run has passed for three hours. It never closes
-  # it: the report job does, on the first passing check.
+  # opens the issue once no run has passed for three hours and the run before
+  # this one did not pass either. GitHub often delivers the hourly schedule
+  # only every few hours, so the age of the last pass alone is no evidence
+  # (#2916). It never closes the issue: the report job does, on the first
+  # passing check.
   stale:
     name: Open the issue when no check has passed for three hours
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     permissions:
       actions: read
+      contents: read
       issues: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.run_id }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: scripts/runner-alarm.sh
       - name: Check the last passing run
         run: |
           set -euo pipefail
-          last="$(gh run list --workflow runner-health.yml --status success --limit 1 --json createdAt --jq '.[0].createdAt // empty')"
-          # No passing run yet means the workflow is new; nothing to compare.
-          [ -n "$last" ] || exit 0
-          [ $(( $(date -u +%s) - $(date -u -d "$last" +%s) )) -gt 10800 ] || exit 0
           [ -z "$(gh issue list --label runner-broken --state open --json number --jq '.[0].number // empty')" ] || exit 0
+          runs="$(gh run list --workflow runner-health.yml --limit 30 --json databaseId,status,conclusion,createdAt)"
+          verdict="$(bash scripts/runner-alarm.sh stale "$RUN_ID" <<<"$runs")"
+          echo "$verdict"
+          [ "${verdict%%:*}" = raise ] || exit 0
+          last="$(jq -r --argjson id "$RUN_ID" '[.[] | select(.databaseId < $id and .conclusion == "success")] | max_by(.databaseId) | .createdAt // "before the last 30 runs"' <<<"$runs")"
           gh issue create --title "Mac runner broken, not your code" --label runner-broken --body "The self-hosted Mac has not passed its hourly health check since $last: $RUN_URL
 
           It is offline, busy for hours, or too full to check out. Fix: start or prune the runner (the Runner housekeeping workflow, or free space by hand), or set the repository variable IOS_RUNNER to hosted to move the gate to GitHub's Mac. This issue closes itself on the first passing hourly run."
