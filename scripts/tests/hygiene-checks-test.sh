@@ -1122,6 +1122,15 @@ write_lessons 31
 expect 1 "31 lessons" lessons_check
 lessons_over_names_archive() { grep -q "lessons-archive.md" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "31 lessons, the message naming the archive" lessons_over_names_archive
+write_lessons 30
+printf -- '- 2026-11-12, #1: lesson 30\n' >>"$lessons"
+lessons_over_and_repeated() {
+  local out
+  out=$(lessons_check 2>&1 || true)
+  grep -q "over the cap" <<<"$out" && grep -q "line 38 repeats line 37" <<<"$out"
+}
+expect 1 "31 lessons with one repeated" lessons_check
+expect 0 "31 lessons with one repeated, both messages printed" lessons_over_and_repeated
 { printf '## Lessons\n\n'; for i in $(seq 1 25); do printf -- '- a: %s\n' "$i"; done
   printf '\n## Older\n\n'; for i in $(seq 1 25); do printf -- '- b: %s\n' "$i"; done; } >"$lessons"
 expect 1 "50 lessons under two headings, all of which the hook prints" lessons_check

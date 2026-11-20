@@ -31,9 +31,10 @@ if [ "$count" -lt 0 ]; then
   exit 1
 fi
 
+status=0
 if [ "$count" -gt "$cap" ]; then
   echo "✗ $file holds $count lessons, over the cap of $cap: move the oldest with no \"seen again\" to docs/lessons-archive.md (#2801)" >&2
-  exit 1
+  status=1
 fi
 
 # Two branches bumping the same "(seen again N)" each keep their line under a
@@ -76,4 +77,6 @@ awk -v lessons="$file" -v archive="$archive" '
     }
   }
   END { exit bad }
-' "$archive" "$file"
+' "$archive" "$file" || status=1
+
+exit "$status"
