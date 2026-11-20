@@ -3,7 +3,14 @@ paths:
   - "crates/intrada-core/src/domain/session/**"
   - "crates/intrada-ffi/**"
   - "ios/generated/**"
-  - "crates/intrada-store/**"
+  - "crates/intrada-core/src/view/**"
+  - "crates/intrada-core/src/app.rs"
+  - "crates/intrada-core/src/model.rs"
+  - "crates/intrada-core/src/persistence.rs"
+  - "crates/intrada-core/src/recognition.rs"
+  - "crates/intrada-core/src/analytics.rs"
+  - "crates/intrada-core/src/sync/**"
+  - "crates/intrada-store/src/migrations.rs"
   - "ios/Intrada/Core/SharedItemStore.swift"
   - "android/generated/**"
   - "android/app/src/main/kotlin/com/intrada/android/core/CoreBridge.kt"
@@ -14,7 +21,10 @@ paths:
 A wrong change here does not crash. It decodes into a plausible wrong value,
 drops a write, or destroys the only copy of a user's data. Never spell out an
 exploitable gap in a public PR body: say a gap exists and route the detail to
-Jon. Before editing:
+Jon. A diff is on this surface when it changes a type that crosses the bridge
+(an item deriving Facet: view types, `Event` and its sub-events, effect
+operations), a `BLOB_VERSION` line, a store migration or auth, wherever the file
+sits; `just review-route` names them (#2922). Before editing:
 
 **Additive or not.** An additive bridge change adds a field, an event variant
 or a view type and renames, removes, reorders or retypes nothing. It keeps its

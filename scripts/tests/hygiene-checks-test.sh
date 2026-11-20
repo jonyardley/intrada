@@ -1179,6 +1179,58 @@ expect 0 "an empty needle is named in the message" contains_names_needle
 expect 1 "no self-test helper matches its needle with a bare grep (a text check)" \
   grep -rqE 'grep -qF (-- )?"\$(needle|want_text)" <<<' "$repo_root/scripts/tests"
 
+# ── The review route (#2922) ────────────────────────────────────────────────
+
+route="$work/route"
+mkdir -p "$route/docs" "$route/.claude/rules" "$route/crates/core/src" "$route/crates/intrada-store/src"
+cd "$route"
+git init -q -b main .
+git config user.email "test@example.com"
+git config user.name "Hygiene self-test"
+git config commit.gpgsign false
+printf '# Notes\n' >docs/notes.md
+printf '# Rule\n' >.claude/rules/rule.md
+printf '# Guide\n' >CLAUDE.md
+printf '%s\n' '#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]' \
+  'pub struct Shown {' '    pub a: u8,' '}' '' 'impl Shown {' '    fn twice(&self) -> u8 { self.a }' '}' \
+  '' 'pub struct Kept {' '    pub b: u8,' '}' >crates/core/src/view.rs
+printf 'const M: &[&str] = &["one"];\n' >crates/intrada-store/src/migrations.rs
+git add -A
+git commit -qm "base"
+git update-ref refs/remotes/origin/main main
+git checkout -qb branch
+
+# Exit 0 when the route's output holds the text.
+route_says() {
+  local out
+  out=$(bash -c 'source "$1"; diff_scope_review_route' _ "$repo_root/scripts/lib/diff-scope.sh" 2>&1)
+  [[ $out == *"$1"* ]]
+}
+
+printf 'more\n' >>docs/notes.md
+printf '# New\n' >docs/new.md
+expect 0 "a documentation-only diff skips review" route_says "none: documentation only"
+printf 'more\n' >>.claude/rules/rule.md
+expect 0 "a rule under .claude/ is reviewed" route_says "reviewer"
+git checkout -q -- .claude
+printf 'more\n' >>CLAUDE.md
+expect 1 "CLAUDE.md is not documentation" route_says "none"
+git checkout -q -- CLAUDE.md
+sed -i.bak 's/self.a }/self.a * 2 }/; s/pub b: u8/pub b: u16/' crates/core/src/view.rs
+expect 0 "a body or a plain type is not a bridge change" route_says "reviewer"
+expect 1 "a body or a plain type names nothing sensitive" route_says "sensitive"
+sed -i.bak 's/pub a: u8/pub a: u16/' crates/core/src/view.rs
+expect 0 "a field of a Facet type is a bridge change" route_says "sensitive: Shown in crates/core/src/view.rs"
+git checkout -q -- crates
+sed -i.bak '1d' crates/core/src/view.rs
+expect 0 "dropping the Facet derive is a bridge change" route_says "Shown in"
+git checkout -q -- crates
+printf 'const B: u32 = 1; // BLOB_VERSION\n' >>crates/core/src/view.rs
+printf '// two\n' >>crates/intrada-store/src/migrations.rs
+expect 0 "a blob pin is a bridge change" route_says "a blob pin in crates/core/src/view.rs"
+expect 0 "a store migration is a bridge change" route_says "a store migration"
+cd "$repo_root"
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then

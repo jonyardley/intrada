@@ -81,11 +81,14 @@ posture fights the tiers; four of its skills stay as globals
 (`test-driven-development`, `requesting-code-review`, `receiving-code-review`,
 `using-git-worktrees`), and `/speckit-*` is deprecated.
 
-**The sensitive surfaces** are where wrong is silent: the FFI bridge
-(positional bincode, #846), store migrations, the `ActiveSession`
-crash-recovery blob and auth. That work, including any bridge change that is
-not additive (`.claude/rules/sensitive-surfaces.md`), runs at the role
-table's level for sensitive surfaces with `reviewer` paired from the core diff. A plan comment, direction
+**The sensitive surfaces** are where wrong is silent: what crosses the FFI
+bridge (positional bincode, #846), store migrations, the wire-pinned blobs and
+auth. They are judged by type, not folder: a changed item deriving Facet (view
+types, `Event` and its sub-events, effect operations), a `BLOB_VERSION` line or
+a migration, as `just review-route` names them (#2922). That work, including
+any bridge change that is not additive (`.claude/rules/sensitive-surfaces.md`),
+runs at the role table's level for sensitive surfaces with `reviewer` paired
+from the core diff. A plan comment, direction
 call or unexplained bug counts only when its work is on that list (#1985).
 
 ## 4. Plan
@@ -167,9 +170,11 @@ which the recipe writes (#2630); restart Claude Code after. Installs:
 
 | You are | Do |
 |---|---|
+| Any diff | `just review-route` says which row applies; this table is the one place that decides it |
 | Holding a diff that changes code or tests | `just pre-review` first, then `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
-| Holding a diff on a sensitive surface | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
-| Holding a docs-only diff | `/code-review` inline stands in; say "comment-policy violations are Blockers" |
+| Holding a diff that `just review-route` calls sensitive, or one touching auth | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff |
+| Holding a diff that changes only `.claude/` or a `CLAUDE.md` | `/code-review` inline; these steer agents, so they are not documentation; say "comment-policy violations are Blockers" |
+| Holding a documentation-only diff (`docs/`, `specs/`, other markdown) | No code review: it found nothing on these (approved 2026-11-20, this repo only); `just pre-review` still runs |
 
 `reviewer` checks the diff against the plan comment first, reports and
 yields: no GitHub writes, no waiting for a PR number. The lead posts its
