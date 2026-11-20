@@ -14,6 +14,7 @@
 - **Before adding**, search this file and
   [`lessons-archive.md`](lessons-archive.md). A lesson already there is not
   added again: its line ends "(seen again N)", counting up, and an archived
+  one is copied back here with its count raised above the archive's.
   one is copied back here.
 - **Acting on a lesson** (#2934), at the same retro, each lesson gets one
   outcome:
@@ -42,8 +43,9 @@
 - The archive is never printed at session start and nothing is deleted from
   it.
 - A worktree prints its own copy, so one behind main misses newer lessons.
-- Two branches adding lessons at once conflict at the end of the file; keep
-  both sides.
+- A local merge of main keeps both sides' lessons on its own (#2937), and the
+  lessons check refuses a line kept twice, bumped on two branches, or brought
+  back from the archive.
 
 ## Lessons
 

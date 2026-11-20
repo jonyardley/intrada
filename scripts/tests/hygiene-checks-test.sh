@@ -1107,8 +1107,10 @@ expect 0 "the hygiene recipe text names the scope helper on its checks (a text c
 # ── The lessons cap ────────────────────────────────────────────────────────
 
 lessons="$work/lessons.md"
+lessons_archive="$work/lessons-archive.md"
+printf '# Lessons archive\n\n## Archived\n\n- 2026-11-01, #1: an archived lesson.\n' >"$lessons_archive"
 lessons_check() {
-  LESSONS_FILE="$lessons" bash "$repo_root/scripts/check-lessons.sh"
+  LESSONS_FILE="$lessons" LESSONS_ARCHIVE="$lessons_archive" bash "$repo_root/scripts/check-lessons.sh"
 }
 write_lessons() {
   { printf '# Lessons\n\n- a rule above the heading\n- another rule\n\n## Lessons\n\n'
@@ -1120,6 +1122,15 @@ write_lessons 31
 expect 1 "31 lessons" lessons_check
 lessons_over_names_archive() { grep -q "lessons-archive.md" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "31 lessons, the message naming the archive" lessons_over_names_archive
+write_lessons 30
+printf -- '- 2026-11-12, #1: lesson 30\n' >>"$lessons"
+lessons_over_and_repeated() {
+  local out
+  out=$(lessons_check 2>&1 || true)
+  grep -q "over the cap" <<<"$out" && grep -q "line 38 repeats line 37" <<<"$out"
+}
+expect 1 "31 lessons with one repeated" lessons_check
+expect 0 "31 lessons with one repeated, both messages printed" lessons_over_and_repeated
 { printf '## Lessons\n\n'; for i in $(seq 1 25); do printf -- '- a: %s\n' "$i"; done
   printf '\n## Older\n\n'; for i in $(seq 1 25); do printf -- '- b: %s\n' "$i"; done; } >"$lessons"
 expect 1 "50 lessons under two headings, all of which the hook prints" lessons_check
@@ -1128,6 +1139,50 @@ expect 1 "no exact Lessons heading" lessons_check
 rm "$lessons"
 lessons_missing() { grep -q "no $lessons to read" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "no lessons file, named in the message" lessons_missing
+
+# A union merge keeps both sides' lines (#2937), so a lesson can arrive twice.
+write_lessons_with() {
+  { printf '# Lessons\n\n- %s\n\n## Lessons\n\n' "$1"; shift
+    printf -- '- 2026-11-12, #1: a distinct lesson.\n'
+    for line in "$@"; do printf -- '- %s\n' "$line"; done; } >"$lessons"
+}
+dup='2026-11-12, #2: use `just claim` from the worktree, not $HOME [sic] (a.b)'
+write_lessons_with "$dup." "$dup." "2026-11-12, #3: another lesson."
+expect 0 "a rule above the heading repeating a lesson, and regex characters" lessons_check
+write_lessons_with "a rule." "$dup." "$dup."
+expect 1 "the same lesson twice" lessons_check
+write_lessons_with "a rule." "$dup." "$dup (seen again 1)."
+expect 1 "a lesson beside its bumped copy" lessons_check
+write_lessons_with "a rule." "$dup (seen again 1)." "$dup (seen again 2)."
+expect 1 "two branches bumping the same lesson" lessons_check
+lessons_dup_message() {
+  grep -q "lessons.md line 9 repeats line 8 .*keep one line" <<<"$(lessons_check 2>&1 || true)"
+}
+expect 0 "a repeated lesson, its lines and the fix in the message" lessons_dup_message
+write_lessons_with "a rule." "2026-11-01, #1: an archived lesson."
+expect 1 "a lesson that is also archived" lessons_check
+lessons_archived_message() {
+  grep -q "lessons.md line 8 is archived at .*lessons-archive.md line 5 with no higher .*delete it here" <<<"$(lessons_check 2>&1 || true)"
+}
+expect 0 "an archived lesson, both lines and the fix in the message" lessons_archived_message
+write_lessons_with "a rule." "2026-11-01, #1: an archived lesson (seen again 1)."
+expect 0 "an archived lesson copied back with its count raised" lessons_check
+printf -- '- 2026-11-03, #5: a lesson seen before (seen again 2).\n' >>"$lessons_archive"
+write_lessons_with "a rule." "2026-11-03, #5: a lesson seen before (seen again 2)."
+expect 1 "an archived lesson brought back with the archive's count" lessons_check
+write_lessons_with "a rule." "2026-11-03, #5: a lesson seen before (seen again 1)."
+expect 1 "an archived lesson brought back with a lower count" lessons_check
+write_lessons_with "a rule." "2026-11-03, #5: a lesson seen before (seen again 3)."
+expect 0 "an archived lesson copied back above the archive's count" lessons_check
+printf -- '- rule: .claude/rules/ios-ui.md 2026-11-02, #4: a lesson that became a rule.\n' >>"$lessons_archive"
+write_lessons_with "a rule." "2026-11-02, #4: a lesson that became a rule."
+expect 1 "a lesson archived as a rule" lessons_check
+write_lessons_with "a rule." "2026-11-02, #4: a rule." "2026-11-01, #1: an archived lesson, said again."
+expect 0 "lessons that only share an archived line's start or end" lessons_check
+mv "$lessons_archive" "$work/archive-away.md"
+lessons_no_archive() { grep -q "no $lessons_archive to read" <<<"$(lessons_check 2>&1 || true)"; }
+expect 0 "no archive, named in the message" lessons_no_archive
+mv "$work/archive-away.md" "$lessons_archive"
 
 # ── The grep pipe check ────────────────────────────────────────────────────
 # Each fixture's pipe arrives through %s, so this file's own text never holds
