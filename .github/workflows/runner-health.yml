@@ -66,8 +66,7 @@ jobs:
       RUN_ID: ${{ github.run_id }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      # GitHub's runner, not the Mac, so a default checkout is safe; only the
-      # script that decides whether to raise is fetched.
+      # GitHub's runner, not the Mac; only the deciding script is fetched.
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -97,11 +96,9 @@ jobs:
 
   # A Mac that is offline, or too full to check out, never reaches the script,
   # so its checks sit queued or fail silently. Without needing the check, this
-  # opens the issue once no run has passed for three hours and the run before
-  # this one did not pass either. GitHub often delivers the hourly schedule
-  # only every few hours, so the age of the last pass alone is no evidence
-  # (#2916). It never closes the issue: the report job does, on the first
-  # passing check.
+  # opens the issue once no run has passed for three hours and the two runs
+  # before this one did not pass either (#2916). It never closes it: the
+  # report job does, on the first passing check.
   stale:
     name: Open the issue when no check has passed for three hours
     runs-on: ubuntu-latest
