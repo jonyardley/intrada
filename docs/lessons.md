@@ -15,7 +15,6 @@
   [`lessons-archive.md`](lessons-archive.md). A lesson already there is not
   added again: its line ends "(seen again N)", counting up, and an archived
   one is copied back here with its count raised above the archive's.
-  one is copied back here.
 - **Acting on a lesson** (#2934), at the same retro, each lesson gets one
   outcome:
   - **Fixed here**: a prose change of about 30 lines or fewer to the doc,
@@ -37,9 +36,9 @@
   issue.
 - **Monthly prune**: the session doing the first Monday usage read of each
   month puts any lesson seen again three times to the owner as a rule, and
-  archives what is stale or done, closed-issue lessons included. A kept lesson becomes a rule only with the
-  owner's yes, and then moves to the archive with "rule:" and the rule's
-  file in front.
+  archives what is stale or done, closed-issue lessons included. A kept
+  lesson becomes a rule only with the owner's yes, and then moves to the
+  archive with "rule:" and the rule's file in front.
 - The archive is never printed at session start and nothing is deleted from
   it.
 - A worktree prints its own copy, so one behind main misses newer lessons.
@@ -69,7 +68,7 @@
 - 2026-11-15, #2531: an agent's `just ios-test` built but ran no test, and it reported "compiles"; a build report is not a test run, so the lead's own gate run decides.
 - 2026-11-15, #2531: GitHub allows at most 100 sub-issues per issue, so `just epic-add` refuses on the Android epic; a deferred issue for it stands alone until the epic is split.
 - 2026-11-18, #2845: the plan said to reuse a helper in the status script, but the script defined it below the line that needed it; check where a shell function is defined before calling it from earlier in a script.
-- 2026-11-18, #2845: for a one-line script fix, reverting the fixed line and rerunning the self-test showed both new assertions fail in one command, cheaper than any mutation tool.
+- 2026-11-18, #2845: for a one-line script fix, reverting the fixed line and rerunning the self-test showed both new assertions fail in one command, cheaper than any mutation tool (seen again 1).
 - 2026-11-18, #2793: deleting whole snapshot classes by guess missed two split view references that also showed the changed words; grep every snapshot test file for each changed view, split views included, before deleting references.
 - 2026-11-20, no issue: a claude.ai link from an earlier session can be a Claude Doc; the Artifact read returns only the type's instructions, so read the doc's tab through the Claude Docs connector with a search view.
 - 2026-11-20, no issue: `wt switch -c name origin/main` prints usage and makes nothing; `just worktree-new name` makes the worktree from fresh origin/main.
@@ -77,5 +76,6 @@
 - 2026-11-20, #2922: the sensitive surface rule named `ios/generated/`, which is gitignored and so never appears in a diff; judge a bridge change by the Facet derive the type generator follows, not by folder.
 - 2026-11-20, #2934: a request to research a process step found it had shipped a week earlier (#2801); search issues and merged PRs for the topic before researching it.
 - 2026-11-20, #2934: the harness log's first read for the lessons file was due 2026-11-16 and is still blank, and nothing prompts it; check a harness change's read date before building on that change.
-- 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged.
+- 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (seen again 1).
 - 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch.
+- 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).
