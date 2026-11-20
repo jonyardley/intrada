@@ -59,3 +59,4 @@
 - 2026-11-18, #2793: deleting whole snapshot classes by guess missed two split view references that also showed the changed words; grep every snapshot test file for each changed view, split views included, before deleting references.
 - 2026-11-20, no issue: a claude.ai link from an earlier session can be a Claude Doc; the Artifact read returns only the type's instructions, so read the doc's tab through the Claude Docs connector with a search view.
 - 2026-11-20, no issue: `wt switch -c name origin/main` prints usage and makes nothing; `just worktree-new name` makes the worktree from fresh origin/main.
+- 2026-11-20, #2931: a session without the Xcode tools cannot render a SwiftUI preview; a sketch gets its picture from one snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold and 20 warm.
