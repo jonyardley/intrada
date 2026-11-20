@@ -33,18 +33,12 @@ lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/claim-branch.sh
 source "$lib_dir/lib/claim-branch.sh"
 
-project_number="2"
-project_owner="jonyardley"
-project_id="PVT_kwHOAAr6vs4A1_pq"
-project_status_field="PVTSSF_lAHOAAr6vs4A1_pqzgrX99A"
-project_status_in_progress="47fc9ee4"
-
 repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
-# Only a trusted login's claim counts: on a public repository anyone can
-# comment "Claimed" and block every `just claim` (#2821).
+# Only the owner's claim counts: on a public repository anyone can comment
+# "Claimed" and block every `just claim` (#2821).
 REPO=$repo
-# shellcheck source=crew-trusted.sh
-source "$lib_dir/crew-trusted.sh"
+# shellcheck source=board.sh
+source "$lib_dir/board.sh"
 branch="$(git rev-parse --abbrev-ref HEAD)"
 
 if [ "$branch" = "main" ]; then
@@ -75,7 +69,7 @@ fi
 # mistaken for a live claim.
 issue="$(gh issue view "$number" --repo "$repo" --json labels,comments,parent)"
 has_label="$(printf '%s' "$issue" | jq -r '([.labels[].name] | index("in-flight")) != null')"
-claim_body="$(printf '%s' "$issue" | jq -r "$(trusted_jq)"'[.comments[] | select(trusted and (.body | test("^Claimed"; "i")))] | last | .body // empty')"
+claim_body="$(printf '%s' "$issue" | jq -r --arg owner "${repo%%/*}" '[.comments[] | select(.author.login == $owner and (.body | test("^Claimed"; "i")))] | last | .body // empty')"
 claim_branch="$(claim_branch_from_body "$claim_body")"
 epic_number="$(printf '%s' "$issue" | jq -r '.parent.number // empty')"
 epic_title="$(printf '%s' "$issue" | jq -r '.parent.title // empty')"
@@ -100,7 +94,7 @@ if [ -n "$claim_branch" ]; then
 fi
 
 if [ "$has_label" = "true" ]; then
-  echo "✗ #$number already carries in-flight but no claim comment names a branch: check by hand." >&2
+  echo "✗ #$number already carries in-flight but no claim comment by ${repo%%/*} names a branch: check by hand, or remove the label to claim it." >&2
   exit 1
 fi
 
@@ -125,11 +119,7 @@ claim_comment="Claimed: branch \`$branch\`."
 gh issue comment "$number" --repo "$repo" --body "$claim_comment"
 gh issue edit "$number" --repo "$repo" --add-label in-flight
 
-item="$(gh project item-add "$project_number" --owner "$project_owner" \
-  --url "https://github.com/$repo/issues/$number" --format json -q .id 2>/dev/null || true)"
-if [ -n "$item" ] && gh project item-edit --id "$item" --project-id "$project_id" \
-  --field-id "$project_status_field" \
-  --single-select-option-id "$project_status_in_progress" >/dev/null 2>&1; then
+if board_in_progress "$number"; then
   echo "✓ board: #$number is In progress"
 else
   echo "! board not updated; the token needs project scope: gh auth refresh -s project" >&2

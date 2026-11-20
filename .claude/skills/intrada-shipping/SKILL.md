@@ -9,9 +9,11 @@ description: How a PR or issue ships in intrada: the pre-push gate and self-revi
 runs before the push, because a review left until after it gets skipped
 (#1550).
 
-- **Who reviews.** `reviewer`, on every diff that changes code or tests, Tier
-  1 included (#1665), briefed with the worktree and the issue. A docs, roadmap
-  or harness-text diff takes `/code-review` inline. Spawn it at the model and
+- **Who reviews.** `just review-route` says, by the table in
+  `docs/working-with-agents.md` section 6: `reviewer` on code or tests, Tier 1
+  included (#1665), briefed with the worktree and the issue; `/code-review`
+  inline on agent instructions (markdown under `.claude/`, `CLAUDE.md`, the
+  two agent docs); none on documentation only. Spawn it at the model and
   effort the role table in `~/.claude/CLAUDE.md` gives (Subagents, review and
   lane size); `guard-spawn.sh` brings a spawn with no model named, on Fable,
   or above medium effort to Jon as a permission prompt.
@@ -26,16 +28,15 @@ runs before the push, because a review left until after it gets skipped
   (`.claude/agents/reviewer.md`); the lead posts its summary verbatim at PR
   creation, naming the agent, and writes the body and deferred issues while
   it runs.
-- **Open through `just pr-open "Title (#N)" "Body" --draft`**, never a bare
-  `gh pr create`: it refuses an issue number with no claim naming this branch
-  (#1702). Once the review is posted, its blockers fixed, the deferred
+- **Open through `just pr-open "Title (#N)" "Body"`**, never a bare
+  `gh pr create`: it always opens a draft, and refuses an issue number with
+  no claim naming this branch (#1702). Once the review is posted, its blockers fixed, the deferred
   issues open and every check green on the last commit, `just pr-ready PR
   ISSUE` marks it ready and moves the board (#1659). `Closes #N` in the body closes the issue on merge.
 
 ## Verifying a change on the simulator
 
-Android is paused (#2860): a feature ships on iPhone only, and nothing in
-`android/` changes. Every feature ships in one PR, core commits first, because a
+Every feature ships in one PR, core commits first, because a
 merged core with no caller is shell-dead (#1374). On the sensitive surfaces
 `reviewer` reads the core commits alone before the screens are added.
 
@@ -74,11 +75,18 @@ its epic with `just epic-add EPIC N`; a genuine one-off stays single
 
 ## Retro
 
-Before the gates, the session adds two or three lessons to
-`docs/lessons.md`, so they ride in the first push and the next session reads
+Before the gates, the session records two or three lessons in
+`docs/lessons.md` or its archive, so they ride in the first push and the next session reads
 them at its start (#2801). A repeat marks the old line rather than adding one,
-so the file keeps what recurs; a lesson seen again three times becomes a rule
-only with the owner's yes.
+so the file keeps what recurs; a kept lesson seen again three times becomes a
+rule only with the owner's yes.
+
+The same retro acts on each lesson while the session still remembers it
+(#2934): a small prose fix lands in this PR in its own commit, so it can be
+reverted alone, and merging the PR is the owner's yes; anything else becomes
+an issue. Which files count is in the header of `docs/lessons.md`, the one
+place it is written. Waiting
+for three repeats let the same mistake cost several sessions first.
 
 ## PR bodies and issues
 
@@ -87,7 +95,8 @@ Both are read cold, months later. The headings in
 fixed.
 
 0. **Look at**: one line above the headings naming the decision or risk Jon
-   should judge.
+   should judge. Under it, **Process fixes**: each retro fix, with the
+   lesson it answers, or "none".
 1. **What this fixes**: what the affected person notices, in the first
    sentence (the musician, or Jon or an agent for tooling, saying what they
    hit rather than that no musician is affected), then one sentence
@@ -115,8 +124,8 @@ failed. Checklist lines that do not apply are deleted.
 
 Issues: what you would notice, why it matters, what to do, done looks like,
 where it lives. A bug gives the steps (the tap path, for a screen), what was
-expected and what happened. It names the app (iPhone, Android or both), the
-build and the device. Logs and measurements go last.
+expected and what happened. It names the build and the
+device. Logs and measurements go last.
 
 ## Plan comments
 
@@ -131,8 +140,8 @@ choice he has not made. The build and the reviewer read it.
 **Time budget**: one session, or two; past it, stop and re-plan.
 **Decisions taken**: each choice, with the option rejected and why.
 **Files**: the files and lines it touches, core and `ios/`.
-**Tests**: what proves it on each shell, and the line a deletion should break.
-**Mockup**: for a new screen, the Design canvas link and Jon's word on it, or why none is needed.
+**Tests**: what proves it, and the line a deletion should break.
+**Sketch**: for a new screen, the SwiftUI sketch page and Jon's word on it, or why none is needed.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.
 **Routing**: the epic from `just claim`, sensitive surfaces or not, and any

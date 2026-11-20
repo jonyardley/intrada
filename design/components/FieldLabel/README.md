@@ -4,9 +4,6 @@ status: stable
 ios_symbol: FieldLabel
 ios_file: ios/Intrada/Views/Components/FieldCard.swift
 ios_snapshots: ComponentSnapshotTests/testFieldLabel.1.png
-android_symbol: FieldLabel
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/FieldCard.kt
-android_snapshots: field-card.png
 decisions: T35
 ---
 
@@ -21,13 +18,13 @@ A field's name, in secondary ink, inside its card above the value.
 ## When not to use
 
 - A label with a control under it in its own card: use `FieldCard`, which draws this for you.
-- A section's name: use `SectionTitle` on iPhone, so the code says which it is. Android has no `SectionTitle` yet and names sections with `FieldLabel`; #2636 builds it.
+- A section's name: use `SectionTitle`, so the code says which it is.
 - A value the musician reads or sets: values are 17 point in full ink (T35 in [the design principles](../../../docs/design-principles.md)).
 
 ## Variants
 
 - **Default:** use for every label.
-- **Error** (`tint: IntradaColor.danger` on iPhone, `colour = IntradaColor.danger` on Android): use while the field is at fault.
+- **Error** (`tint: IntradaColor.danger`): use while the field is at fault.
 
 ## Behaviour
 
@@ -38,12 +35,12 @@ No motion and no haptic. The error colour comes and goes with the field's fault.
 - One line of text: `IntradaFont.label`, 15 point medium, in `inkSecondary`; `danger` in the error state.
 - A name in sentence case, no colon. A fact can follow after a middle dot, "Reflection · optional".
 - Most labels are one to three words; the longest that ships is "What got in the way".
-- The shells write the labels.
+- The shell writes the labels.
 
 ## Accessibility
 
 - Read as plain text, apart from the control it names; the control carries its own spoken label.
-- Scales with Dynamic Type and font scale.
+- Scales with Dynamic Type.
 
 ## Do and don't
 
@@ -55,11 +52,6 @@ No motion and no haptic. The error colour comes and goes with the field's fault.
 ```swift
 FieldLabel("Key")
 FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
-```
-
-```kotlin
-FieldLabel("Variations", Modifier.padding(horizontal = IntradaSpacing.card))
-FieldLabel(label, colour = if (faulted) IntradaColor.danger else IntradaColor.inkSecondary)
 ```
 
 ## Related

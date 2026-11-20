@@ -4,9 +4,6 @@ status: stable
 ios_symbol: UpNextHero
 ios_file: ios/Intrada/Views/Components/UpNextHero.swift
 ios_snapshots: PracticeSnapshotTests/testUpNextHeroCoral.1.png
-android_symbol: UpNextCard
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt
-android_snapshots: practice-up-next.png, practice-up-next-filled.png
 decisions: T15, T22
 ---
 
@@ -34,7 +31,6 @@ The suggested session at the top of Practice: what to play next, why, and one bu
 - **Start** opens the player with the plan. The button shows the plan's minutes and presses with `PressRebound`.
 - **Change it first** opens the builder with the plan in it; **Build my own instead** opens an empty builder, a decision rather than a dismissal (#1617).
 - The heading and totals share a line when they fit and stack when they do not; so do the two secondary actions, so no label is cut off.
-- The Android version is named `UpNextCard`; settling on one name is G6 in #2762.
 
 ## Content
 
@@ -50,7 +46,7 @@ The suggested session at the top of Practice: what to play next, why, and one bu
 - The heading, totals, title, composer and reason read as one sentence, so the totals are never read apart from the piece they describe.
 - Each item row is one element: title, type, reason and weakest section. The middle dot is read as a comma.
 - Start reads "Start practising", with the item count and minutes as its value. The secondary actions carry hints saying where they go.
-- Text wraps and scales with Dynamic Type and font scale. The title shrinks to three quarters before it truncates.
+- Text wraps and scales with Dynamic Type. The title shrinks to three quarters before it truncates.
 
 ## Usage
 
@@ -60,10 +56,6 @@ if let plan = viewModel.upNext,
 {
   hero
 }
-```
-
-```kotlin
-UpNextCard(plan, colour, UpNextActions(onStart = start, onChange = change, onBuildOwn = buildOwn))
 ```
 
 ## Related

@@ -8,14 +8,17 @@ time** (#1741). Reading is never banned.
 
 `just worktree-new <name>` wraps worktrunk's `wt switch --create <name> --base
 origin/main`: it fetches first and refuses a name whose simulator would collide
-with another worktree's. Worktrunk's machine-local config
+with another worktree's. It ends by printing `cd <worktree> && claude`, the
+command that starts the session inside the new worktree (#2918): the
+`.claude/rules/` files load only there, and no command needs a prefix.
+Worktrunk's machine-local config
 (`~/.config/worktrunk/config.toml`) does the rest:
 
 - **Where.** `../intrada-worktrees/<name>`, beside the main checkout.
 - **Warm caches.** A `pre-start` hook runs `wt step copy-ignored`, which
   reflinks the gitignored files the main checkout's `.worktreeinclude` names
-  (`ios/generated/`, `ios/build/spm/`, `.env`, `.claude/settings.local.json`,
-  `android/local.properties`, #2630) before anything builds. `target/` and the
+  (`ios/generated/`, `ios/build/spm/`, `.env`, `.claude/settings.local.json`)
+  before anything builds. `target/` and the
   Xcode build folders stay out (#2191). The file is read from the main
   checkout's working tree, so a change to it takes effect once that checkout
   is updated. A stale `ios/generated/` is harmless:
@@ -32,8 +35,16 @@ change, and the folder takes about 0.9 GB of disk.
 PR, CI, review, local changes and whose move it is, ending with a count of
 those safe to remove. It reads GitHub once and removes nothing.
 
-Remove one with `wt remove` from inside it, or `just worktree-rm <name>`, which
-also cleans its simulator. Claude Code's own subagent worktrees stay in
+Once its PR merges, the session removes its own worktree and simulator with
+`just worktree-done` from inside it, then ends. It refuses unless the PR is
+merged, the merged PR's last commit is this HEAD and the tree is clean; the
+guard checks the same. Only `just worktree-done` runs that merged, clean and
+pushed check. A manual removal, `just worktree-rm <name>` or `git worktree
+remove`, and a forced removal do not: they remove what they are given, and
+`just worktree-rm` also cleans the simulator. The guard refuses the usual
+removal commands when they name another live session's worktree; some unusual
+command shapes are known limits it does not catch, and the protection that
+holds is the merge lock on GitHub. Claude Code's own subagent worktrees stay in
 `.claude/worktrees`.
 
 ## Three places, one rule each
@@ -74,6 +85,7 @@ file path for a file tool, the working directory for a shell command.
 | Any other `wt` subcommand | no         | yes           | no             |
 | Build, test, `just check` | yes        | yes           | no             |
 | Edit, commit, push     | no (unless it self-heals, below) | yes | no    |
+| `just worktree-done`   | no            | once merged, clean and pushed | no |
 
 A pull in the main checkout is denied with the other mutating git subcommands
 (#1740); agents fetch instead, and Jon refreshes main's working copy.
@@ -93,7 +105,9 @@ broken guard fails open.
 
 ## Driving a worktree from the main checkout
 
-A session in the main checkout prefixes each shell command with
+This is the fallback, not the way to work: a session that edits starts inside
+its worktree, as [`working-with-agents.md`](working-with-agents.md) says. A
+session left in the main checkout prefixes each shell command with
 `cd <worktree> && `. The guard judges the command where it lands, so commits,
 gates and PRs work, and the first write takes the lease. It honours only a
 shape it can read, and denies rather than guesses:

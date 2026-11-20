@@ -8,6 +8,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - The Leptos web shell and Tauri iOS host were removed in July 2026, leaving the two native shells (PR #1133).
 - Coach pivot reversed on 2026-08-13 (#1344): session builder restored, coach machinery removed; it went too far, too fast, in an unwanted direction.
 - API, account, sync service and MCP removed on 2026-09-12 (#1746): nothing on the roadmap needed a server; any return starts from scratch.
+- The paused Android app (#2860) was removed on 2026-11-20 (#2924): every feature ships on iPhone only; its last state is on the tag `android-paused-2026-11-20`.
 - July 2026: the ten-step notebook journey stopped being the yardstick; the roadmap now ranks the work (#1146, #1344).
 - August 2026: quick wins first (metronome, tempo, Up next, getting cold), then capture through one pass create (#1390).
 - No lesson entity: adding a piece with its chart and exercises in one save is the lesson capture answer (#1390, #1080).
@@ -68,6 +69,8 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - The agent crew builds on this repo's own harness: claim, leased worktrees, task, reviewer and test agents, guards (#2799).
 - Claude models only. The crew loop is a script that starts one Claude Code background session per issue, once it passes seven checks; the one-evening bake-off was dropped on 2026-11-12, since one run per candidate could not separate them (#2799, #2802).
 - The crew loop is started by hand with `just crew` and runs one issue at a time, capped at 3 hours a session, 45 minutes of silence, 3 issues a run and $150 of spend over 24 hours (#2803, #2821).
-- The crew shares the owner's GitHub login, held by local guards (#2812); its own login is #2811. Agents merge nothing, whatever the risk (#2799).
+- The crew acts as its own agent account (ostinato#11), which GitHub refuses a merge into main, and the crew only works on an issue whose `ready` label the owner added (#2811). Agents merge nothing, whatever the risk (#2799).
 - From 2026-11-14, model and effort for every spawn, and the lead's raise for sensitive surfaces, come from the role table in the owner's global `~/.claude/CLAUDE.md`; agent definitions lost their `model:`, `effort:` and `effort-ceiling:` pins, and `guard-spawn.sh` now prompts rather than refuses a spawn with no model named, on Fable or above medium effort; the table's Sonnet rows supersede #1893's Opus floor for judgement (#1893, #2044, #2866).
+- From 2026-11-20, a session stays on the level it opens on, sensitive surfaces included, and never asks the owner to type `/effort`; this supersedes the lead's raise for sensitive surfaces in the 2026-11-14 line (#2929).
 - Agent knowledge stays in the repo and on GitHub: hand-offs as issue comments, one pruned lessons file, no wiki or memory database (#2799).
+- On 2026-11-19 the crew loop and Ostinato were removed from intrada, so the owner can try them on a new project; sessions are owner-driven again (#2909).

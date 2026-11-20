@@ -4,9 +4,6 @@ status: stable
 ios_symbol: ProfileBadge
 ios_file: ios/Intrada/DesignSystem/ProfileBadge.swift
 ios_snapshots: ComponentSnapshotTests/testProfileBadge.1.png
-android_symbol: ProfileBadge
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/ProfileBadge.kt
-android_snapshots: profile-badge.png
 decisions: T24, T25, T28
 ---
 
@@ -39,23 +36,19 @@ None of its own. Where it opens the profile, the button around it carries the pr
 
 - The disc is the musician's marker colour; the instrument glyph is `onMarker`, at 62% of the disc.
 - Before the profile has loaded, callers pass the `other` glyph.
-- iPhone reads the marker from the environment; Android takes it as a parameter. The look is the same.
+- It reads the marker from the environment.
 
 ## Accessibility
 
-- The glyph is read by the instrument's name on both apps.
+- The glyph is read by the instrument's name.
 - Where the badge is a button, the button carries the label ("Profile" in the Practice header) and a touch area of at least 44 points.
-- Beside a title that already says what it is, as on the first run, hide the badge from VoiceOver and TalkBack.
-- The badge is a fixed size and does not scale with Dynamic Type or font scale.
+- Beside a title that already says what it is, as on the first run, hide the badge from VoiceOver.
+- The badge is a fixed size and does not scale with Dynamic Type.
 
 ## Usage
 
 ```swift
 ProfileBadge(icon: profile.icon, size: IntradaGlyph.hero)
-```
-
-```kotlin
-ProfileBadge(profile.icon, IntradaColor.marker(colour), size = IntradaGlyph.hero)
 ```
 
 ## Related

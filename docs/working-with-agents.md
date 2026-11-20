@@ -16,8 +16,6 @@ enforce loses its prose in the same change.
 | Starting a unit of work | `just claim N`. It refuses, naming the other branch, when the issue is claimed or an open PR references it; otherwise it labels the issue and moves the board to In progress |
 | Asked "what's next" or "what can run in parallel" | Answer from `just status` and the session-start claims list, with no further reads (#1836) |
 | Jon, losing track of the worktrees | `just worktree-status`: whose move each one is, and how many are safe to remove (#2783) |
-| The owner, handing the ready queue to the crew | `just crew`: one issue at a time to a draft or a parked question, until the queue is empty, a cap is hit or `~/.intrada-crew-stop` exists (`specs/crew-loop.md`) |
-| A crew session, started by the crew loop (#2803) | `/crew N` (`.claude/commands/crew.md`): the `ready` label is the go, `just claim N` runs inside the worktree the loop made, and a note on the issue ends every step |
 | About to start a third fix on one issue | Stop: two corrections on one point mean asking whether the approach is wrong, and `just claim` refuses a third claim at two merged PRs titled with the issue (#1890, #2593) |
 
 A claim is the check that the work is not already in flight:
@@ -34,16 +32,25 @@ branch (#1702).
 
 | You are | Do |
 |---|---|
-| About to edit anything | `just worktree-new <name>` from the main checkout, `cd <worktree> && ` before every shell command, and read the `.claude/rules/` files for the surfaces you touch by hand |
-| A crew session | Work only in the worktree the loop started you in; make no other |
-| Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one, and paste it into a new chat in the main checkout. Never a worktree command for Jon |
+| About to edit anything | `just worktree-new <name>` from the main checkout, then the session that does the work starts inside the worktree with the command it prints, `cd <worktree> && claude` |
+| Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. Make the worktree first and paste the opener into a session started inside it, not in the main checkout |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
-| Spawning a subagent | Name the worktree by absolute path in the brief, or its edits land in main and `reviewer` diffs the wrong tree (#1861) |
+| Spawning a subagent | Name the worktree by absolute path as its working folder in the brief, or its edits land in main and `reviewer` diffs the wrong tree (#1861) |
+| Your PR has merged | `just worktree-done` inside the worktree, then end the session |
 
-Every session that edits works in its own worktree, made by that session from
-the main checkout Jon started it in (#1837). Worktrees branch from fresh
-`origin/main` into `../intrada-worktrees`; `just worktree-rm <name>` removes
-one and its simulator. The graphify graph lives only in the main checkout:
+Every session that edits starts inside its own worktree (#1837, #2918). The
+main checkout is for status, claims and making worktrees: a session sitting
+there and reaching in with `cd <worktree> && ` was refused by the main checkout
+guard 76 times in five weeks, and `.claude/rules/` files load only when the
+session's folder is the worktree. Worktrees branch from fresh `origin/main`
+into `../intrada-worktrees`, and the worktree lease still holds each one to one
+session. After its PR merges, the session removes its own worktree and
+simulator with `just worktree-done`, which refuses unless the PR is merged, the
+tree is clean and nothing is unpushed; the worktree guard checks the same and
+refuses the usual removal commands on another session's worktree, with some
+unusual command shapes as known limits. `just worktree-rm <name>` is the manual
+removal; it and forced removals skip the merged, clean and pushed check. The
+graphify graph lives only in the main checkout:
 query it there by path for architecture answers, never a full-repo read.
 
 Read `just worktrees` before touching a worktree you did not create: a clean
@@ -56,18 +63,17 @@ then refuses every git command.
 | You are | Do |
 |---|---|
 | Opening a session | The model and effort `.claude/settings.json` opens it on |
-| Reaching work on the sensitive surfaces | The level the role table gives sensitive surfaces, set with `/effort` before it starts, saying so, and back after; never a new chat |
+| Reaching work on the sensitive surfaces | Stay on the opening level, which is the role table's; never ask Jon to type `/effort`, and never a new chat |
 | Handing work down | Settled work goes to a subagent (step 5); a new chat only frees the session (#1836) |
 
-A session opens on `.claude/settings.json`. Every spawn's model and effort,
-and the lead's raise for sensitive surfaces, come from the role table in
+A session opens on `.claude/settings.json`. Every spawn's model and effort
+come from the role table in
 `~/.claude/CLAUDE.md` (Subagents, review and lane size), named on each Agent
-call, a crew session's included; this repo keeps no levels of its own. Review
+call; this repo keeps no levels of its own. Review
 rounds, lane size and the one approved plan per change are in the same file's
 "Speed and reliability"; here only the local detail.
 
-`/effort` saves to settings unless you choose session-only, which is why a
-raised stretch ends by setting it back. Fast mode costs twice the standard
+`/effort` saves to settings, so a session never runs it. Fast mode costs twice the standard
 rate: use it only when latency matters, never to save money.
 
 Superpowers is disabled on purpose, because its "invoke a skill for anything"
@@ -75,11 +81,15 @@ posture fights the tiers; four of its skills stay as globals
 (`test-driven-development`, `requesting-code-review`, `receiving-code-review`,
 `using-git-worktrees`), and `/speckit-*` is deprecated.
 
-**The sensitive surfaces** are where wrong is silent: the FFI bridge
-(positional bincode, #846), store migrations, the `ActiveSession`
-crash-recovery blob and auth. That work, including any bridge change that is
-not additive (`.claude/rules/sensitive-surfaces.md`), runs at the role
-table's level for sensitive surfaces with `reviewer` paired from the core diff. A plan comment, direction
+**The sensitive surfaces** are where wrong is silent: what crosses the FFI
+bridge (positional bincode, #846), store migrations, the wire-pinned blobs and
+auth. They are judged by type, not folder: a changed item deriving Facet (view
+types, `Event` and its sub-events, effect operations), a `BLOB_VERSION` line,
+the store or the FFI source, as `just review-route` names them (#2922); auth
+is judged by hand. That work, including
+any bridge change that is not additive (`.claude/rules/sensitive-surfaces.md`),
+runs at the role table's level for sensitive surfaces with `reviewer` paired
+from the core diff. A plan comment, direction
 call or unexplained bug counts only when its work is on that list (#1985).
 
 ## 4. Plan
@@ -95,7 +105,7 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   refactors, docs.
 - **Tier 2, plan comment** (the default for feature work): a component or
   screen on existing patterns, an endpoint on established conventions, a field
-  on a model. A new screen gets a mockup and Jon's word on it first
+  on a model. A new screen gets a SwiftUI sketch and Jon's word on it first
   (`docs/design-workflow.md`), and starts by reading an existing screen, which
   loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features,
@@ -104,8 +114,8 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   PR's first commit, never its own PR. The spec is deleted once the screens
   ship, unless an open issue cites it (`specs/README.md`).
 
-A feature ships as one PR across the stack, core commits first, then iOS
-(Android is paused, #2860): a merged core with no caller is shell-dead (#1374). On the sensitive
+A feature ships as one PR across the stack, core commits first, then iOS:
+a merged core with no caller is shell-dead (#1374). On the sensitive
 surfaces, `reviewer` reviews the core commits before the screens commits
 start, and lead-only work goes up a tier.
 
@@ -115,9 +125,7 @@ skeleton; one that runs long means Tier 3. It names the issue's epic, and new
 issues go under it the same turn with `just epic-add`; three or more ordered
 issues with no epic are a new one ([Epics](how-the-work-runs.md#epics)).
 
-Every plan names, per task, whether it is on the sensitive surfaces (a
-hand-written opener then starts with `/effort` at the role table's level for
-sensitive surfaces), where it runs, and its streams and serialisation points per `intrada-parallel-streams`. Worked tier
+Every plan names, per task, whether it is on the sensitive surfaces, where it runs, and its streams and serialisation points per `intrada-parallel-streams`. Worked tier
 examples: [`reference.md`](reference.md).
 
 ## 5. Build
@@ -155,17 +163,18 @@ The justfile and `ci.yml` change together. More in
 
 **Code intelligence.** Run `just lsp-setup` once per machine and per worktree
 that wants Swift; without it neither LSP answers. Swift's `references` returns
-nothing, so callers stay a grep job. Kotlin needs `android/local.properties`,
-which the recipe writes (#2630); restart Claude Code after. Installs:
+nothing, so callers stay a grep job. Restart Claude Code after. Installs:
 [README](../README.md#prerequisites).
 
 ## 6. Review
 
 | You are | Do |
 |---|---|
+| Any diff | `just review-route` says which row applies; this table is the one place that decides it |
 | Holding a diff that changes code or tests | `just pre-review` first, then `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
-| Holding a diff on a sensitive surface | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
-| Holding a docs-only diff | `/code-review` inline stands in; say "comment-policy violations are Blockers" |
+| Holding a diff that `just review-route` calls sensitive, or one touching auth | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff |
+| Holding a diff that changes only markdown under `.claude/`, a `CLAUDE.md`, `AGENTS.md`, this file or `docs/how-the-work-runs.md`, with or without documentation | `/code-review` inline; these steer agents, so they are not documentation; say "comment-policy violations are Blockers". Anything else under `.claude/`, such as settings or scripts, is code |
+| Holding a documentation-only diff (`docs/`, `specs/`, markdown under `design/`, the README) | No code review: code review found nothing on these (approved 2026-11-20, this repo only); `just pre-review` still runs |
 
 `reviewer` checks the diff against the plan comment first, reports and
 yields: no GitHub writes, no waiting for a PR number. The lead posts its
@@ -175,11 +184,10 @@ summary verbatim at PR creation, naming the agent.
 
 | You are | Do |
 |---|---|
-| About to open or update a PR | `/ship`: two or three lessons to [`lessons.md`](lessons.md) before the PR first opens, gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
-| A crew session about to open its PR | `/ship loop`: the same gates and review, then `qa`, the park step on the diff, the draft and the CI watch, and stop; ready and merge are the owner's, and the guards refuse them |
+| About to open or update a PR | `/ship`: two or three lessons recorded in [`lessons.md`](lessons.md) or its archive before the PR first opens, each fixed in the PR, made an issue or kept, then gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
 | The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone screenshots |
-| Jon, reviewing | Read the body and the self-review; merge when green |
-| The unit has shipped | `/clear` in the same sitting, after `just worktree-rm` |
+| Jon, reviewing | Read the body and the self-review; merge when green, his own PRs through the admin bypass, since main needs a code owner's approval nobody else can give (#2855) |
+| The unit has shipped | `just worktree-done` inside the worktree, then end the session |
 | Leaving for over an hour | Finish or `/clear` first: the cache expires and the first turn back re-sends everything at write price (#1842) |
 
 Gates, Codecov, deferred issues and body templates are in
@@ -188,7 +196,7 @@ Gates, Codecov, deferred issues and body templates are in
 closes the issue on merge; close one by hand only when no PR closed it. Update
 `docs/roadmap.md` if a phase changed and `CLAUDE.md` if architecture did.
 
-**Verification.** For UI, drive the simulator and emulator and show proof, or
+**Verification.** For UI, drive the simulator and show proof, or
 say what a human must check by hand. "All green" never means only
 `cargo test`. Report failures with the output, and never call a gate broken
 without making it fail. Delete any scratch simulator you made when done. If
@@ -198,8 +206,8 @@ CI is green, local pty errors were host-only.
 
 | You are | Do |
 |---|---|
-| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, change, the number it should move, first read |
-| It is Monday | Read `just usage 7 --quality` against the log; a lever unmoved after two reads is reverted, not patched. The first Monday of the month also prunes `docs/lessons.md` as its header says, folding in the crew's Lessons comments |
+| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, change, the number it should move, first read; a `/ship` retro fix is recorded in the lessons archive instead |
+| It is Monday | Read `just usage 7 --quality` against the log; a lever unmoved after two reads is reverted, not patched. The first Monday of the month also prunes `docs/lessons.md` as its header says |
 | It is the first Monday of the month | The session doing the usage read puts lessons seen again three times to the owner as rules and moves stale ones from [`lessons.md`](lessons.md) to [`lessons-archive.md`](lessons-archive.md) |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |
 | Wanting session costs | `just usage`, or `just usage 14` for a fortnight |
@@ -224,7 +232,7 @@ lists each removed line in the PR with its new home, or says it is dropped.
 
 | Symptom | Cause, and what to do |
 |---|---|
-| A rule did not load | `paths:` rules fire on Read only, and not in a worktree driven from main; `/context` shows what loaded |
+| A rule did not load | `paths:` rules fire on Read only, and only when the session started inside the worktree; `/context` shows what loaded |
 | A skill will not resolve | Skills load at session start; restart |
 | A hook change did nothing | `CLAUDE_CONFIG_DIR` points elsewhere (#1857) |
 | `just check` says already green | The stamp matches HEAD; delete it |
@@ -232,10 +240,10 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | PR hangs on a check that never reports | A renamed job left its old required context (#1542) |
 | The spawn guard refused a subagent | It lifted the pin or asked for Fable; drop the override |
 | Read denied as "already in context" after `/clear` | The guard reads the transcript (#1866); range-read |
-| Edit denied in the main checkout | No worktree, or the prefix is missing with more than one lease held; see `worktrees.md` |
+| Edit denied in the main checkout | The session is not in its worktree; start one there with `cd <worktree> && claude`; see `worktrees.md` |
+| `just worktree-done` refused | The PR is not merged, the tree has changes, or a commit is not in the merged PR; the message names which |
 | `gh pr merge` or a push to main refused | Merging is Jon's, on GitHub |
-| Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it, and a crew session never does (#2812) |
-| A crew session refused `gh pr ready`, `just pr-ready` or a `gh api` merge | Leave the PR as a draft and notify; ready and merge are Jon's (#2812) |
+| Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it (#2812) |
 | `xcodebuild` refused | Use the `just` recipe |
 | Waiting on the simulator lock | Another run holds it; it queues |
 | A dash on a changed line | Fix the line |

@@ -47,6 +47,19 @@ for i in "${!args[@]}"; do
   esac
 done
 
+# ── A path in place of the text (#2939) ──
+# `just pr-open` takes the body as text, so a draft's path passed there became
+# #2935's whole description. One word starting with /, ~ or ./, or ending in
+# .md or .txt, is a path, never a description; N/A and a URL are left alone.
+trimmed="$(printf '%s' "$body" | tr '\n' ' ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+lower="$(printf '%s' "$trimmed" | tr '[:upper:]' '[:lower:]')"
+if [ -n "$trimmed" ] && ! [[ "$trimmed" =~ [[:space:]] ]] &&
+  [[ "$trimmed" == /* || "$trimmed" == "~/"* || "$trimmed" == ./* ||
+    "$lower" == *.md || "$lower" == *.txt ]]; then
+  echo "✗ the body is only a file path ($trimmed): pass the file's text as the body, not its path." >&2
+  exit 1
+fi
+
 prose="$(printf '%s\n' "$body" | perl -0pe 's/<!--.*?-->//gs; s/^## Checklist.*//ms')"
 body_words="$(printf '%s' "$prose" | wc -w | tr -d ' ')"
 if [ "$body_words" -gt 350 ] && [ -z "${SKIP_BODY_CHECK:-}" ] &&
@@ -86,8 +99,6 @@ for n in $numbers; do
 done
 
 # Drafts until reviewed and green (Jon's rule); `gh pr ready` lifts it.
-case " ${args[*]} " in
-  *" --draft "* | *" -d "*) ;;
-  *) args+=(--draft) ;;
-esac
+# Always appended last, so no title, body or earlier flag can turn it off.
+args+=(--draft)
 gh pr create "${args[@]}"

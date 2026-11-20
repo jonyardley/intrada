@@ -4,11 +4,10 @@ A **practice notebook** for musicians: build a session from your library, play
 it through with a timer and rep counting, and score how it went (**Plan**,
 **Practice**, **Track**).
 
-Two native apps on one Rust core ([Crux](https://redbadger.github.io/crux/)),
-kept at parity: SwiftUI for iPhone in `ios/` and Compose for Android in
-`android/`. Both are offline-first: on-device SQLite is the source of truth, and
-neither needs a network or an account. The core owns all logic; each app
-renders its view model and fulfils effects.
+A native iPhone app in SwiftUI (`ios/`) on a Rust core
+([Crux](https://redbadger.github.io/crux/)). It is offline-first: on-device
+SQLite is the source of truth, and it needs no network or account. The core
+owns all logic; the app renders its view model and fulfils effects.
 
 Read next: [`CLAUDE.md`](CLAUDE.md) for the rules,
 [`docs/roadmap.md`](docs/roadmap.md) for direction, `just status` for what is in
@@ -34,23 +33,11 @@ the commands.
 - Xcode 26+ with the iOS Simulator runtime
 - `rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios`
 
-**Android**
-
-- [Android Studio](https://developer.android.com/studio); the recipes use its
-  JDK and `~/Library/Android/sdk` when `JAVA_HOME` and `ANDROID_HOME` are unset
-- From the SDK Manager: Command-line Tools, the Emulator, Platform Tools, the
-  SDK Platform and Build Tools the `android` job in `.github/workflows/ci.yml`
-  installs, the NDK pinned as `intrada.ndkVersion` in
-  `android/gradle.properties`, and the Android 36 Google APIs arm64 image
-- `cargo install cargo-ndk --version 4.1.2` and
-  `rustup target add aarch64-linux-android x86_64-linux-android`
-- `just android-gen` once, to build the bindings
-
 **Agent tooling (optional)**
 
-- The Claude Code plugins `rust-analyzer-lsp`, `swift-lsp` and `kotlin-lsp`,
-  plus `brew install xcode-build-server` and `brew install --cask kotlin-lsp`,
-  then `just lsp-setup`; see code intelligence in
+- The Claude Code plugins `rust-analyzer-lsp` and `swift-lsp`, plus
+  `brew install xcode-build-server`, then `just lsp-setup`; see code
+  intelligence in
   [`docs/working-with-agents.md`](docs/working-with-agents.md)
 - [graphify](https://github.com/Graphify-Labs/graphify)
   (`uv tool install graphifyy`); see
@@ -66,7 +53,6 @@ Git hooks install in Claude Code sessions; elsewhere run
 
 ```bash
 just ios          # regenerates the Swift bindings if the core changed, then opens Xcode
-just android-run  # regenerates the Android bindings, boots the emulator, installs and screenshots
 ```
 
 All rights reserved. See [`LICENSE`](LICENSE).

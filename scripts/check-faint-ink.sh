@@ -8,8 +8,6 @@
 # A `//` inside a string literal is read as a comment, so a use after one on
 # the same line slips through: deliberate, not tracked.
 #
-# Kotlin too (#2309): each shell's theme is the one place the name may appear.
-#
 # The root is overridable so the self-test can point it at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 
@@ -18,18 +16,14 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 root="${FAINT_INK_ROOT:-ios/Intrada}"
-android_root="${FAINT_INK_ANDROID_ROOT:-android/app/src/main/kotlin}"
 
-for dir in "$root" "$android_root"; do
-  if [ ! -d "$dir" ]; then
-    echo "✗ check-faint-ink: no $dir to read" >&2
-    exit 2
-  fi
-done
+if [ ! -d "$root" ]; then
+  echo "✗ check-faint-ink: no $root to read" >&2
+  exit 2
+fi
 
 hits=$(find "$root" -name '*.swift' \
   ! -path "$root/DesignSystem/Theme.swift" -print0 |
-  cat - <(find "$android_root" -name '*.kt' ! -path '*/ui/Theme.kt' -print0) |
   xargs -0 perl -ne 's{//.*}{}; print "$ARGV:$.: $_" if /\binkFaint(?![A-Za-z])/; close ARGV if eof')
 
 if [ -n "$hits" ]; then

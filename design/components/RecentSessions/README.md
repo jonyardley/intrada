@@ -4,7 +4,6 @@ status: stable
 ios_symbol: RecentSessions, RecentSession
 ios_file: ios/Intrada/Views/Components/RecentSessions.swift
 ios_snapshots: LibraryDetailSnapshotTests/testRecentSessions.1.png, LibraryDetailSnapshotTests/testRecentSessionsDeclining.1.png
-not_on_android: Android's piece and exercise pages show no practice history yet, G7 in #2762.
 decisions: T24, T35
 ---
 

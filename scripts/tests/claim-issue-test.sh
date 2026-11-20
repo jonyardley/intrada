@@ -70,10 +70,11 @@ case "$cmd $sub" in
   "issue comment")
     echo "$*" >>"$CALLS/issue_comment.log"
     ;;
-  "project item-add")
-    echo "item123"
-    ;;
-  "project item-edit")
+  "project item-add" | "project item-edit")
+    # Only the board's owner can reach it, as on GitHub.
+    echo "$cmd $sub" >>"$CALLS/project.log"
+    [ "$(cat "$FIXTURES/login" 2>/dev/null || echo jonyardley)" = jonyardley ] || exit 1
+    [ "$sub" = item-add ] && echo "item123"
     exit 0
     ;;
   *)
@@ -246,6 +247,26 @@ else
   printf '✗ stranger claim: expected the claim to proceed\n    output: %s\n' "$out" >&2
 fi
 
+# ── Another login's Claimed comment is ignored, newest or not (#2821) ─────
+# Another login claims this branch: without the author filter the script
+# would take the issue as already ours and post no claim of the owner's.
+
+echo '{"labels":[],"comments":[{"author":{"login":"some-agent"},"body":"Claimed: branch `my-branch`."}]}' \
+  >"$FIXTURES/issue.json"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+out="$(run 2>&1)" || true
+if grep -qF "Claimed: branch \`my-branch\`" "$CALLS/issue_comment.log" 2>/dev/null &&
+  grep -qF "claimed #42 on my-branch" <<<"$out"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ another login claim: expected a fresh owner claim posted\n    output: %s\n' "$out" >&2
+fi
+
+echo '{"labels":[{"name":"in-flight"}],"comments":[{"author":{"login":"some-agent"},"body":"Claimed: branch `other-branch`."}]}' \
+  >"$FIXTURES/issue.json"
+expect_fail "label with only another login's claim" "remove the label to claim it"
+
 # ── Free: claims it ──────────────────────────────────────────────────────────
 
 echo '[]' >"$FIXTURES/pr_list.json"
@@ -283,6 +304,29 @@ if [ -f "$CALLS/issue_comment.log" ] && [ -f "$CALLS/issue_edit.log" ]; then
     printf '✗ free issue: expected the comment to be posted no later than the label\n' >&2
   fi
 fi
+
+# ── The board (#2859): the owner's claim sets it ─────────────────────────────
+
+if [ "$(cat "$CALLS/project.log" 2>/dev/null)" = "project item-add
+project item-edit" ] && grep -qF "board: #42 is In progress" <<<"$out"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ owner claim: expected the board set to In progress\n    output: %s\n' "$out" >&2
+fi
+
+echo someone-else >"$FIXTURES/login"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+out="$(run 2>&1)"
+if [ "$(head -1 "$CALLS/project.log" 2>/dev/null)" = "project item-add" ] &&
+  grep -qF "the token needs project scope: gh auth refresh -s project" <<<"$out" &&
+  grep -qF "claimed #42 on my-branch" <<<"$out"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ another login: expected the board tried and the project scope warning\n    output: %s\n' "$out" >&2
+fi
+rm -f "$FIXTURES/login"
 
 # ── The epic rides on the claim (#1968) ─────────────────────────────────────
 

@@ -1,8 +1,8 @@
 # Design in the Intrada workflow
 
-Every new screen is sketched once in Claude Design, signed off by Jon once,
-and built on both apps from the catalogue components against that one mockup.
-After merge, the design system is refreshed from the repo. Mockups and the
+Every new screen is explored on a Claude Design canvas, sketched in SwiftUI
+from the real components, signed off by Jon on that sketch, and built from it.
+After merge, the design system is refreshed from the repo. Canvases and the
 design system live in Claude artifacts; the repo stays the source of truth.
 
 Until #2637 lands (due before 14 December 2026, when standalone
@@ -15,47 +15,59 @@ changed colour is changed by hand there too, or `just check` fails.
 
 | Thing | Lives in | Why there |
 |-------|----------|-----------|
-| **Tokens** | `ios/Intrada/DesignSystem/Theme.swift`, with Android's `Theme.kt` checked against it | One source both apps and the design system read (#2603). |
-| **Components** | `design/components/<Name>/README.md`, with snapshots from both apps | `just check` fails when a page and the code disagree (T37, #2620). |
+| **Tokens** | `ios/Intrada/DesignSystem/Theme.swift` | One source the app and the design system read (#2603). |
+| **Components** | `design/components/<Name>/README.md`, with snapshots from the app | `just check` fails when a page and the code disagree (T37, #2620). |
 | **The sketch kit** | `design/sketch-kit/`: tokens, icons, phone frames and web copies of five components | Mockups draw on the real look; the tokens and icons are made from the code by `just sketch-kit` (T38). |
-| **A screen being designed** | Its Design canvas, copied into `specs/<feature>/design/` | A build session finds it from the issue without asking. |
-| **A screen that has shipped** | The apps and their snapshot tests | A mockup goes stale the day the build merges. |
+| **A screen being designed** | Its Design canvas for the options, then its SwiftUI sketch on a branch, both linked from the issue | A build session finds it from the issue without asking. |
+| **A screen that has shipped** | The app and its snapshot tests | A mockup goes stale the day the build merges. |
 | **The design system** | The [Design System artifact](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs) | A view to draw from, republished after merge and never edited there, so it cannot drift from the repo. |
 
 ## The route
 
 1. **Plan comment.** A UI issue's plan comment names the screens that need a
-   mockup. A screen made only of catalogue components on an existing pattern
+   sketch. A screen made only of catalogue components on an existing pattern
    can go straight to the build; the plan says so.
-2. **Mockup.** A Design canvas drawn from the Intrada design system, with an
-   iPhone frame and an Android frame for each screen. Jon starts one in
-   claude.ai; a session starts one with the Artifact tool's Design type.
-   `DesignSync` only moves files and cannot make a mockup. Draw it from the
-   sketch kit: `ScreenScaffold` with `device` set gives each phone frame and
-   its tab bar, and the tokens give every other colour, size and gap. A part
-   the kit lacks is drawn from tokens and named after the catalogue component
-   it stands for, so the build knows what to reach for.
-3. **Jon's word on the mockup.** The canvas link goes on the issue with the
-   line "Waiting for Jon's word on the mockup". A yes becomes "Jon approved the
-   mockup on YYYY-MM-DD"; a no is a revision of the same canvas, never a new
-   one.
-4. **Save it.** The build PR's first commit copies the canvas's `project/`
-   files into `specs/<feature>/design/`, so the build and the review read the
-   same picture.
+2. **Explore on canvas.** Rough options side by side on a Design canvas, an
+   iPhone frame for each.
+   Jon starts one in claude.ai; a session starts one with the Artifact tool's
+   Design type. `DesignSync` only moves files and cannot make a mockup. Draw
+   it from the sketch kit: `ScreenScaffold` with `device` set gives each phone
+   frame and its tab bar, and the tokens give every other colour, size and
+   gap. A part the kit lacks is drawn from tokens and named after the
+   catalogue component it stands for. Jon picks an option; the canvas is for
+   choosing, not for sign off. A screen whose shape is already settled skips
+   this step.
+3. **Sketch it in SwiftUI.** The chosen option is drawn from the real catalogue
+   components in one debug only file, `ios/Intrada/Sketches/<Name>Sketch.swift`,
+   wrapped in `#if DEBUG` because the app target takes in the whole folder,
+   with fixture data and no core changes, plus one snapshot test that renders
+   it, at the top level as `ios/IntradaTests/<Name>SketchSnapshotTests.swift`
+   where the snapshot check looks (`just ios-snapshots-record <Class>`, about 20 seconds a revision once
+   built). The pictures go on a claude.ai Artifact page made with the Artifact
+   tool and linked from the issue, every state the screen has (empty,
+   error, the longest content). A canvas drawing hides real sizes: in the
+   #2794 trial the real number buttons were 32 points tall, not the 20 drawn,
+   and broke the layout the canvas promised.
+4. **Jon's word on the sketch.** The page link goes on the issue with the line
+   "Waiting for Jon's word on the sketch". A yes becomes "Jon approved the
+   sketch on YYYY-MM-DD"; a no is a revision of the same sketch. The build
+   PR is the sketch branch itself, rebased onto fresh `origin/main`; the
+   sketch is never merged as it stands, and the build PR deletes the sketch file, its snapshot test
+   and its recorded images under `ios/IntradaTests/__Snapshots__/` together
+   once the real screen and its snapshots exist, or
+   `scripts/check-snapshots.sh` fails on an orphan image.
 5. **Build.** From the catalogue components and theme values only;
    `scripts/check-theme-values.sh` fails a typed colour or spacing number. A
-   new or changed component starts with its page (below), then SwiftUI, then
-   Compose, with snapshots on both.
+   new or changed component starts with its page (below), then SwiftUI, with
+   its snapshots.
 6. **Jon's word on the screenshot.** "Eyes before ready" in
    `.claude/rules/ios-ui.md`.
-7. **After merge.** Refresh the design system (below). Delete the feature's
-   mockup once the snapshots cover its screens, so a stale picture never
-   outlives the code.
+7. **After merge.** Refresh the design system (below).
 
 ## Refreshing the design system
 
 Run this after any merge that changes a component page, `Theme.swift`, the
-Android icons or the sketch kit. The design system is published from `main`
+kit's icon drawables or the sketch kit. The design system is published from `main`
 and never edited by hand in Claude Design outside a refresh. A rehearsal
 before merge reads the branch in place of `main`: use `HEAD` where step 3 says
 `origin/main`, and stop before step 5.
@@ -69,7 +81,7 @@ before merge reads the branch in place of `main`: use `HEAD` where step 3 says
    has not read is refused.
 3. **Find what changed.** Run `git fetch origin`, then `git diff --stat
    <commit>..origin/main -- design/ ios/Intrada/Resources/Fonts/
-   ios/IntradaTests/__Snapshots__/ android/app/src/test/snapshots/`, where
+   ios/IntradaTests/__Snapshots__/`, where
    `<commit>` is the hash written after `main@` in `lastChange.via` in
    `project/design-system.json`. With no hash there, refresh every file
    below. `design/intrada-design-system.dc.html`, `design/explorations/` and
@@ -131,27 +143,26 @@ before merge reads the branch in place of `main`: use `HEAD` where step 3 says
 ## Changing a component
 
 The component catalogue in `design/components/` is the source for how each
-component looks and behaves on both apps (#2620, T37). A change runs in this
+component looks and behaves (#2620, T37). A change runs in this
 order, in one PR:
 
 1. **The page.** Change `design/components/<Name>/README.md`: an agent drafts,
    Jon approves the words. A new component starts from `_template.md`, a
    row in the index and a row in the component table in
    `design/sketch-kit/design-system.md`, the design system's readme.
-2. **SwiftUI, then Compose.** Change the iPhone component, then the Android one.
-3. **Snapshots on both.** Record the pictures the page names, and look at them.
+2. **SwiftUI.** Change the iPhone component.
+3. **Snapshots.** Record the pictures the page names, and look at them.
 4. **`just check`.** `scripts/check-components.sh` fails when a page and the
    code disagree on a file, a symbol or a snapshot.
 
-While Android is paused (#2860), `Theme.kt`, `just android-test` and the
-Android snapshots below are skipped, and a new kit icon needs an Android
-`ic_*.xml` drawable, since the kit reads its icons from there.
+A new kit icon needs an `ic_*.xml` vector drawable in
+`design/sketch-kit/drawables/`, since the kit reads its icons from there.
 
-A new token goes into `Theme.swift` and `Theme.kt` in the same PR, before any
+A new token goes into `Theme.swift` in the same PR, before any
 screen uses it, with its usage note in `design/sketch-kit/token-notes.json`
 and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
 
-1. **Both themes.** Change the value in `Theme.swift` and `Theme.kt`, and its
+1. **The theme.** Change the value in `Theme.swift`, and its
    note in `token-notes.json` if the note is no longer true.
 2. **The kit.** Run `just sketch-kit`, which rewrites `tokens.json` and
    `tokens.css`.
@@ -160,11 +171,10 @@ and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
    `rgba()` made from it. The standalone `design/intrada-design-system.html`
    is left alone; nothing reads it.
 4. **Snapshots.** Even a small shift fails every snapshot that shows the
-   colour: a slightly deeper `danger` failed 6 on iPhone and 17 on Android
+   colour: a slightly deeper `danger` failed 6 on iPhone
    (#2772).
-   Run `just ios-test` and `just android-test`, re-record each failing iPhone
-   class with `just ios-snapshots-record <Class>` and Android's with
-   `source android/env.sh && android/gradlew -q -p android :app:recordRoborazziDebug`,
+   Run `just ios-test`, re-record each failing
+   class with `just ios-snapshots-record <Class>`,
    then look at each new picture.
 5. **`just check`**, then the refresh after merge.
 

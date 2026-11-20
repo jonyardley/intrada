@@ -1,6 +1,6 @@
 ---
 name: intrada-parallel-streams
-description: Running more than one Claude Code session or subagent against this repo at once: two streams by default and a third only when it is shell-only, up to four Android lanes beside them, the decoupled file set a second stream may use, the serialisation points never edited in parallel, one agent per vertical slice, worktree mechanics, and the definition of done. Read before starting a second stream or fanning out.
+description: Running more than one Claude Code session or subagent against this repo at once: two streams by default and a third only when it is shell-only, the decoupled file set a second stream may use, the serialisation points never edited in parallel, one agent per vertical slice, worktree mechanics, and the definition of done. Read before starting a second stream or fanning out.
 ---
 
 ## Stream rules
@@ -15,17 +15,6 @@ streams colliding in the same files.
   it owns before it starts. Editing runs concurrently, testing does not: test
   runs serialise on app launch whatever device they name (#1621;
   `docs/ios-testing.md`, "Running alongside another checkout (worktrees)").
-- **Android is paused** (#2860): no Android lanes run. When it restarts,
-  Android runs up to four lanes of its own beside the iOS streams (#2220),
-  because its JVM tests need no device. The lanes and their order are in
-  #2220. An Android lane needing a core change takes the one core slot shared
-  with every iOS stream; it never runs a core change of its own alongside one.
-- **Android serialisation points**, shared by every live Android lane:
-  `android/app/src/test/kotlin/com/intrada/android/BridgeRoundTripTest.kt`
-  and `Fixtures.kt` beside it, `android/app/src/main/kotlin/com/intrada/android/ui/Theme.kt`,
-  the navigation files (`AppFrame.kt`, `AppTab.kt`, `MainActivity.kt`), and
-  the Gradle build and version catalog files (a new library is a dependency
-  change). A new screen keeps its wiring there to one line.
 - A **stream touching neither the core crates nor `ios/`** keeps to the
   decoupled set: `docs/`, `specs/`, `design/`, or CI and tooling (`justfile`,
   `.github/workflows/`).
@@ -42,9 +31,13 @@ streams colliding in the same files.
   independent.
 - **One worktree per session, made by that session** with
   `just worktree-new <name>`, which branches from fresh `origin/main` and
-  seeds `ios/generated` and the Swift packages (#2191). The session stays in
-  the main checkout and prefixes every shell command with `cd <worktree> && `
-  (#1720, #1837; `docs/working-with-agents.md`). Close it when its task ships.
+  seeds `ios/generated` and the Swift packages (#2191). The session that does
+  the work starts inside the worktree with the command the recipe prints,
+  `cd <worktree> && claude`, so path rules load and no prefix is needed
+  (#2918; `docs/working-with-agents.md`). A subagent's brief names the
+  worktree's absolute path as its working folder. After the PR merges, the
+  session runs `just worktree-done` there, which removes the worktree only
+  when the PR is merged, the tree is clean and nothing is unpushed.
 - **Once you have a worktree, edit only inside it.** A green run proves
   nothing about whose work is in the tree: read the diff before `git add`,
   and never `git add -A` on a shared checkout.

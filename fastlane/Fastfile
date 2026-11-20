@@ -60,8 +60,7 @@ platform :ios do
 
     xcargs = [
       "CURRENT_PROJECT_VERSION=#{build_number}",
-      ("MARKETING_VERSION=#{marketing_version}" unless marketing_version.empty?),
-      "-clonedSourcePackagesDirPath build/spm"
+      ("MARKETING_VERSION=#{marketing_version}" unless marketing_version.empty?)
     ].compact.join(" ")
 
     build_app(
@@ -76,35 +75,21 @@ platform :ios do
       export_options: {
         provisioningProfiles: { APP_IDENTIFIER => PROFILE_NAME }
       },
-      xcargs: xcargs
+      xcargs: xcargs,
+      # An option, not an xcarg, so gym's settings read resolves into the cached folder too (#2917).
+      cloned_source_packages_path: "build/spm"
     )
+
+    # A dispatch with upload off times the build and stops here (#2917).
+    if ENV.fetch("TESTFLIGHT_UPLOAD", "true") == "false"
+      UI.important("TESTFLIGHT_UPLOAD is false: built and archived, not uploaded.")
+      next
+    end
 
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true,
       skip_submission: true
-    )
-  end
-end
-
-platform :android do
-  desc "Upload the signed release bundle to Play's internal testing track (#2499)."
-  lane :internal do
-    # The track is the TestFlight equivalent: no review and no closed test
-    # rule, which gates production only (specs/android-shell.md).
-    upload_to_play_store(
-      package_name: "com.intrada.android",
-      track: "internal",
-      # Play refuses a completed release while the app has never been rolled
-      # out; the bootstrap run sets "draft" and the release is rolled out by hand.
-      release_status: ENV.fetch("PLAY_RELEASE_STATUS", "completed"),
-      aab: ENV.fetch("ANDROID_AAB"),
-      json_key_data: ENV.fetch("PLAY_SERVICE_ACCOUNT_JSON"),
-      skip_upload_apk: true,
-      skip_upload_metadata: true,
-      skip_upload_changelogs: true,
-      skip_upload_images: true,
-      skip_upload_screenshots: true
     )
   end
 end

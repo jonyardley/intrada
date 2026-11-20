@@ -3,7 +3,7 @@
 > Tier 3, sensitive surfaces (the crash-recovery blob and a bridge change that
 > retypes fields). Issue #2582, decision 5 of the data model review (#2577,
 > ruled 2026-10-13). One PR across the stack: core commits first, reviewed
-> alone, then the iPhone and Android commits. Nothing changes on screen, and
+> alone, then the iPhone commits. Nothing changes on screen, and
 > no store migration.
 
 ## Problem
@@ -88,13 +88,12 @@ its list.
 
 1. **Crash recovery (positional bincode).** The shape changes, so
    `ActiveSession::BLOB_VERSION` goes from 8 to 9 in the core change and the
-   pinned hex is re-recorded. The shells build their storage key from
-   `session_blob_version()`, so they follow without an edit. A practice in
+   pinned hex is re-recorded. The shell builds its storage key from
+   `session_blob_version()`, so it follows without an edit. A practice in
    progress at the moment of updating is lost once, as with every bump.
-2. **The bridge (typed bindings).** Both `ios/generated/` and
-   `android/generated/` are regenerated, and every shell read of a moved
-   field becomes `entry.plan.<field>`. A LiveBridge round trip on each app
-   carries an entry with every plan field set.
+2. **The bridge (typed bindings).** `ios/generated/` is regenerated, and
+   every shell read of a moved field becomes `entry.plan.<field>`. A
+   LiveBridge round trip carries an entry with every plan field set.
 3. **The saved session (JSON through `StoredEntry`).** Unchanged. The stored
    entry stays flat and maps to and from the nested type in
    `stored_session.rs`, so every session saved by an older build reads as
@@ -110,8 +109,8 @@ Sync is not live on any device, so `SCHEMA_VERSION` stays at 1.
 - The crash-recovery pin fails until re-pinned at version 9.
 - `from_plan` gives an entry whose plan equals the input and whose played
   fields are empty: the "loading a routine is a copy" claim.
-- LiveBridge round trip of a fully set plan on iOS and Android.
-- The existing core, iOS and Android suites pass with no behaviour change.
+- LiveBridge round trip of a fully set plan.
+- The existing core and iOS suites pass with no behaviour change.
 
 ## Out of scope
 

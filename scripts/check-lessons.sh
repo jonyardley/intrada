@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # The lessons file holds at most 30 lessons (#2801). Every session start prints
 # it, so an unpruned file costs every session; the cap makes the monthly prune
-# happen rather than be remembered.
+# happen rather than be remembered. Both lessons files merge by union (#2937),
+# so it also refuses a lesson kept twice or brought back from the archive.
 #
-# The file is overridable so the self-test can point it at fixtures
+# The files are overridable so the self-test can point them at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 
 set -euo pipefail
@@ -11,12 +12,15 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 file="${LESSONS_FILE:-docs/lessons.md}"
+archive="${LESSONS_ARCHIVE:-docs/lessons-archive.md}"
 cap=30
 
-if [ ! -f "$file" ]; then
-  echo "✗ check-lessons: no $file to read" >&2
-  exit 2
-fi
+for f in "$file" "$archive"; do
+  if [ ! -f "$f" ]; then
+    echo "✗ check-lessons: no $f to read" >&2
+    exit 2
+  fi
+done
 
 # Count list items from "## Lessons" to the end, the span the session start
 # hook prints; no heading means it prints nothing (#2801).
@@ -27,7 +31,52 @@ if [ "$count" -lt 0 ]; then
   exit 1
 fi
 
+status=0
 if [ "$count" -gt "$cap" ]; then
-  echo "✗ $file holds $count lessons, over the cap of $cap: move the oldest with no \"seen again\" to docs/lessons-archive.md (#2801)" >&2
-  exit 1
+  echo "✗ $file holds $count lessons, over the cap of $cap: archive to docs/lessons-archive.md each \"(issue #N)\" lesson whose issue has closed, with \"issue:\" in front, then the oldest with no \"seen again\" and no open issue (#2801, #2936)" >&2
+  status=1
 fi
+
+# Two branches bumping the same "(seen again N)" each keep their line under a
+# union merge, and a lesson archived on one branch comes back from the other
+# (#2937). Compare with the count and the final full stop set aside, and an
+# archive line by its end, since a rule's file may stand in front of it. A
+# deliberate copy back raises the count; a merge brings the line back as it was.
+awk -v lessons="$file" -v archive="$archive" '
+  function norm(s) {
+    sub(/^- /, "", s)
+    sub(/[ \t]+$/, "", s)
+    sub(/\.$/, "", s)
+    sub(/ \(seen again [0-9]+\)$/, "", s)
+    sub(/\.$/, "", s)
+    return s
+  }
+  function seen(s) {
+    if (!match(s, /\(seen again [0-9]+\)\.?[ \t]*$/)) return 0
+    s = substr(s, RSTART + 12)
+    return s + 0
+  }
+  FNR == 1 { in_list = 0 }
+  FILENAME == archive && /^- / { arch[++na] = norm($0); arch_seen[na] = seen($0); arch_line[na] = FNR; next }
+  FILENAME == lessons && /^## Lessons$/ { in_list = 1; next }
+  FILENAME == lessons && in_list && /^- / {
+    t = norm($0)
+    if (t in first) {
+      printf "✗ %s line %d repeats line %d once \"(seen again N)\" is set aside: keep one line, with the higher count (#2937)\n", lessons, FNR, first[t] > "/dev/stderr"
+      bad = 1
+    } else {
+      first[t] = FNR
+    }
+    for (i = 1; i <= na; i++) {
+      a = arch[i]
+      if (seen($0) <= arch_seen[i] && (a == t || (length(a) > length(t) && substr(a, length(a) - length(t)) == " " t))) {
+        printf "✗ %s line %d is archived at %s line %d with no higher \"(seen again N)\": a merge brought it back, so delete it here, or raise its count if it was seen again (#2937)\n", lessons, FNR, archive, arch_line[i] > "/dev/stderr"
+        bad = 1
+        break
+      }
+    }
+  }
+  END { exit bad }
+' "$archive" "$file" || status=1
+
+exit "$status"

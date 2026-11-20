@@ -3,8 +3,8 @@
 # Assumes the Xcode project + generated packages already exist (the `ios-run`
 # just recipe runs `_ios-sync` + xcodegen first). Reused by CI in A5.
 #
-# Usage: scripts/ios-run-sim.sh [screenshot-path], or SCREENSHOT=<path> as
-# android-run takes it, so the QA agent keeps each worktree's shot apart (#2820).
+# Usage: scripts/ios-run-sim.sh [screenshot-path], or SCREENSHOT=<path>, so the
+# QA agent keeps each worktree's shot apart (#2820).
 set -euo pipefail
 
 cd "$(dirname "$0")/../ios"
@@ -48,14 +48,9 @@ if [ -z "${REUSE_BUILD:-}" ]; then
     # Same package folder and index setting as `_ios-build-for-testing` in the
     # justfile, so a run after a test build reuses its Swift instead of
     # recompiling it (#2733).
-    # Xcode's own package and macro sandboxes cannot start inside Claude's,
-    # which the crew loop wraps the build in (#2869).
-    sbx=()
-    [ "${INTRADA_SANDBOXED:-}" = 1 ] && sbx=(-IDEPackageSupportDisableManifestSandbox=YES -IDEPackageSupportDisablePluginExecutionSandbox=YES \
-        'OTHER_SWIFT_FLAGS=$(inherited) -disable-sandbox')
     xcodebuild -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$UDID" -derivedDataPath "$DD" -configuration Debug \
-        -clonedSourcePackagesDirPath build/spm ${sbx[@]+"${sbx[@]}"} \
+        -clonedSourcePackagesDirPath build/spm \
         build COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO >/tmp/ios-build.log 2>&1 || {
         echo "✗ build failed:" >&2
         grep -E "error:" /tmp/ios-build.log | tail -20 >&2

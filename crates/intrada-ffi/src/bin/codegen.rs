@@ -1,26 +1,18 @@
-//! Generates the shells' shared types from the core via facet typegen.
+//! Generates the iOS shell's shared Swift types from the core via facet typegen.
 
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use crux_core::type_generation::facet::{Config, TypeRegistry};
 
 use intrada_ffi::{Intrada, ListQuery};
-
-#[derive(Clone, Copy, ValueEnum)]
-enum Lang {
-    Swift,
-    Kotlin,
-}
 
 #[derive(Parser)]
 #[command(version, about)]
 struct Args {
     #[arg(short, long)]
     output_dir: PathBuf,
-    #[arg(short, long, value_enum, default_value_t = Lang::Swift)]
-    lang: Lang,
 }
 
 fn main() -> Result<()> {
@@ -34,12 +26,7 @@ fn main() -> Result<()> {
         .register_app::<Intrada>()?
         .register_type::<ListQuery>()?
         .build()?;
-    match args.lang {
-        Lang::Swift => typegen.swift(&Config::builder("SharedTypes", &args.output_dir).build())?,
-        Lang::Kotlin => {
-            typegen.kotlin(&Config::builder("com.intrada.shared", &args.output_dir).build())?
-        }
-    }
+    typegen.swift(&Config::builder("SharedTypes", &args.output_dir).build())?;
 
     Ok(())
 }

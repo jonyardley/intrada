@@ -51,7 +51,7 @@ check "a kind without a horizon is refused" 1 "no horizon label" --label ux
 check "a horizon without a kind is refused" 1 "no kind label" --label horizon:next
 check "an unknown label is not a kind" 1 "no kind label" --label "horizon:now,in-flight"
 check "comma separated labels open" 0 "issues/1" --label "horizon:next,ux"
-check "repeated label flags open" 0 "issues/1" --label horizon:later --label android
+check "repeated label flags open" 0 "issues/1" --label horizon:later --label ios
 check "an unknown horizon is refused" 1 "no horizon label" --label "horizon:soon,bug"
 # A file named like a label must not let a wildcard match it.
 touch "$work/horizon:now"

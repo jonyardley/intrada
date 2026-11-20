@@ -1,11 +1,10 @@
 # Raw spacing numbers the screens used on 18 October 2026, when the theme check
 # began (#2699). No raw colours were found. Nothing is added here: a value the
-# theme lacks becomes a token in both theme files. #2706 removes these entries,
+# theme lacks becomes a token in the theme file. #2706 removes these entries,
 # and scripts/check-theme-values.sh fails when a count rises, and when it falls
 # until the entry is lowered or removed.
 # Each line: path, the text matched, how many times, the issue; tab separated.
 
-# iPhone
 ios/Intrada/DesignSystem/FieldMark.swift	spacing: 5	1	#2706
 ios/Intrada/DesignSystem/GlobalBanner.swift	.padding(.vertical, 10)	1	#2706
 ios/Intrada/DesignSystem/PlaceholderContent.swift	.padding(32)	1	#2706
@@ -142,61 +141,3 @@ ios/Intrada/Views/Screens/SessionSummaryScreen.swift	spacing: 10	1	#2706
 ios/Intrada/Views/Screens/SessionSummaryScreen.swift	spacing: 11	1	#2706
 ios/Intrada/Views/Screens/SessionSummaryScreen.swift	spacing: 2	1	#2706
 ios/Intrada/Views/Screens/SessionSummaryScreen.swift	spacing: 4	1	#2706
-
-# Android
-android/app/src/main/kotlin/com/intrada/android/ui/AppFrame.kt	padding(vertical = 6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/AppFrame.kt	spacedBy(2.dp, Alignment.CenterVertically)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	padding(top = 4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	spacedBy(2.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/BuilderRowParts.kt	spacedBy(6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/FirstRunScreen.kt	spacedBy(2.dp)	2	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/GlobalBanner.kt	padding(vertical = 10.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ItemFormExercises.kt	spacedBy(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ItemFormParts.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/KeyWheel.kt	padding(top = IntradaSpacing.cardCompact, bottom = 20.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/KeyWheel.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/LibraryScreen.kt	Spacer(Modifier.height(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PageParts.kt	spacedBy(3.dp)	2	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PieceKeys.kt	spacedBy(6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PieceLinks.kt	spacedBy(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PieceScreen.kt	padding(horizontal = 10.dp, vertical = 5.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PieceVariations.kt	spacedBy(2.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt	padding(18.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt	spacedBy(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PlayerParts.kt	spacedBy(6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PlayerRecordParts.kt	spacedBy(6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt	padding(top = 2.dp)	2	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt	spacedBy(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/PracticeParts.kt	spacedBy(5.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProfileParts.kt	padding(horizontal = 4.dp, vertical = IntradaSpacing.controlGap)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProfileParts.kt	spacedBy(6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProfileParts.kt	spacedBy(6.dp, Alignment.CenterVertically)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProfileScreen.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	padding(horizontal = 14.dp, vertical = 11.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	padding(horizontal = 16.dp, vertical = 14.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(11.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(13.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(2.dp)	3	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(5.dp)	3	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(6.dp)	2	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt	spacedBy(9.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ProgressScreen.kt	padding(32.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt	spacedBy(10.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt	spacedBy(2.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ScanPageEntry.kt	spacedBy(5.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/ScreenScaffold.kt	spacedBy(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/SessionDetailScreen.kt	padding(top = 2.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/SessionDetailScreen.kt	spacedBy(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/SessionDetailScreen.kt	spacedBy(4.dp)	2	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/SettingControls.kt	padding(3.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/SummaryScreen.kt	spacedBy(4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt	padding(top = 4.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt	padding(top = 7.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt	spacedBy(2.dp)	3	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/UpNextCard.kt	spacedBy(6.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/components/FieldCard.kt	padding(horizontal = IntradaSpacing.card, vertical = 10.dp)	1	#2706
-android/app/src/main/kotlin/com/intrada/android/ui/components/TagChip.kt	spacedBy(5.dp)	1	#2706

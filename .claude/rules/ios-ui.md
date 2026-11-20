@@ -23,8 +23,7 @@ A change to what a musician sees opens as a draft with the `just ios-run`
 screenshot under **What it looks like** and the line "Waiting for Jon's word on
 the screenshot". It goes ready only after Jon says yes, and the ready step
 replaces that line with "Jon approved the screenshot on YYYY-MM-DD"; a no is a
-push to the open PR (#1891). Android is paused (#2860): there is no Android
-half.
+push to the open PR (#1891).
 
 ## Tokens, then modifiers, then components, then screens
 
@@ -49,8 +48,8 @@ half.
 
 New screens are built from the catalogue components (`design/components/README.md`)
 and theme values only; `scripts/check-theme-values.sh` fails a raw colour or
-spacing number (#2699). A value the theme lacks becomes a token in `Theme.swift`
-(Android is paused, #2860); the allowlist holds only what existed on 18 October 2026 and shrinks
+spacing number (#2699). A value the theme lacks becomes a token in `Theme.swift`;
+the allowlist holds only what existed on 18 October 2026 and shrinks
 under #2706.
 
 Deviation is allowed only in an explicit redesign, a flagged conversation
@@ -71,6 +70,6 @@ emerges from behind is also opaque and sits on top (`.zIndex(1)`).
   `scripts/check-haptics.sh` enforces it (#2013).
 - iPad list-to-detail screens use `ListDetailSplit`, built with the view.
 
-A new screen follows the route in `docs/design-workflow.md`: a mockup on a
-Design canvas, Jon's word on it, then the build against the copy saved in its
-spec folder. A new token goes into `Theme.swift` first.
+A new screen follows the route in `docs/design-workflow.md`: options on a
+Design canvas, then a SwiftUI sketch from the real components, Jon's word on
+it, then the build from the sketch branch. A new token goes into `Theme.swift` first.

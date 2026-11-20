@@ -4,7 +4,6 @@ status: stable
 ios_symbol: PlaceholderContent, PlaceholderAction
 ios_file: ios/Intrada/DesignSystem/PlaceholderContent.swift
 ios_snapshots: ComponentSnapshotTests/testPlaceholderContent.1.png, ProgressSnapshotTests/testRoutinesScreen.1.png, LibrarySnapshotTests/testLibraryScreenSearchMatchesNothing.1.png
-not_on_android: Android draws each empty screen by hand: one line of text on the Library (A21), a copy of this layout on Progress, and nothing on Routines; #2636 builds a shared version or records why not
 decisions: T24, T35
 ---
 
@@ -36,8 +35,6 @@ Fills an empty screen or list with what belongs there and the one thing to do ne
 - The layout scrolls only when it cannot fit, so at large text sizes the buttons never squeeze the message.
 - No motion and no haptic of its own; each action fires what its store event confirms.
 
-Android has no shared version: #2636 builds one or records why not. The empty Library moves onto it in #2606, and Progress, Routines and the pickers in #2656.
-
 ## Content
 
 - Three parts and nothing else: what belongs here, what to do, and the button ([tone of voice](../../../docs/tone-of-voice.md), rule 7). One sentence, no apology. The shell writes these messages.
@@ -68,10 +65,6 @@ PlaceholderContent(
     .init(title: "Add piece or exercise", identifier: "library.empty.add") { add() },
     .init(title: "Scan a page", identifier: "library.empty.scan") { add(opensCamera: true) },
   ])
-```
-
-```kotlin
-// No shared placeholder; #2636 builds one or records why not.
 ```
 
 ## Related

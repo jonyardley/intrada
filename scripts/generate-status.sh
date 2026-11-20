@@ -19,8 +19,7 @@ for tool in gh jq; do
   }
 done
 
-# The ready queue (#2800), in one place because the crew loop takes its issues
-# from it too (#2821). A claimed issue is left out: CLAIMED or IN FLIGHT
+# The ready queue (#2800). A claimed issue is left out: CLAIMED or IN FLIGHT
 # already shows it. An epic is left out too: it is approved through its
 # issues, not built (#2808). Order: horizon, the board's Priority, then oldest.
 ready_limit=50
@@ -52,18 +51,6 @@ ready_order='
         | select(. != null)] | first) as $p
     | . + {h: $h, p: $p, hr: ($horizons[$h // ""] // 3), pr: ($priorities[$p // ""] // 3)})
   | sort_by(.hr, .pr, .number)'
-
-# `--ready-json`: the queue alone, one JSON array in order, for the crew loop.
-# Exits 2 when GitHub cannot be read, so an outage never reads as empty.
-if [ "${1:-}" = --ready-json ]; then
-  repo=${CREW_REPO:-$repo}
-  claimed=$(gh issue list --repo "$repo" --label in-flight --state open \
-    --limit "$claimed_limit" --json number,title,updatedAt) || exit 2
-  ready=$(gh api graphql -f query="$ready_query" -f owner="${repo%%/*}" \
-    -f name="${repo#*/}" -F limit="$ready_limit" --jq '.data.repository.issues.nodes') || exit 2
-  printf '%s\n%s' "$ready" "$claimed" | jq -cs "$ready_order"
-  exit
-fi
 
 open_prs=$(gh pr list --repo "$repo" --state open --limit "$open_limit" \
   --json number,title,isDraft,updatedAt,headRefName,closingIssuesReferences)
@@ -297,7 +284,7 @@ if [ -n "$ready_error" ]; then
   echo "    $ready_error"
 fi
 capped "$ready" "$ready_limit"
-echo "    Only the owner adds the ready label: the plan, and any mockup, are approved."
+echo "    Only the owner adds the ready label: the plan, and any sketch, are approved."
 echo "    Order: horizon, then the board's Priority, then oldest first. Build from"
 echo "    here first; an epic's next child waits until the owner marks it ready."
 
