@@ -321,6 +321,15 @@ pre-review:
     fi
     echo "✓ pre-review"
 
+# Who reviews this branch (#2922): no one for documentation only, inline
+# /code-review for agent instructions, else `reviewer`, naming each bridge
+# change that pairs it (docs/working-with-agents.md).
+[doc("Say how this branch is reviewed: none for documentation, inline /code-review for agent instructions, else reviewer, naming any bridge change")]
+review-route:
+    #!/usr/bin/env bash
+    source scripts/lib/diff-scope.sh
+    diff_scope_review_route
+
 # Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
 # Slower — builds the iOS app — so run it before pushing changes under `ios/`.
 # Plain `just check` stays Rust-only for fast Rust-only iterations. Runs the
