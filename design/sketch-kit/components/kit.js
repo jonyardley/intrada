@@ -26,13 +26,13 @@ function Icon(props) {
   });
 }
 
-// Card: ios/Intrada/DesignSystem/CardSurface.swift, CardShadow.swift; android ui/components/CardSurface.kt, CardShadow.kt
+// Card: ios/Intrada/DesignSystem/CardSurface.swift, CardShadow.swift
 function Card(props) {
   var cls = "ik-card" + (props.lift === false ? "" : " ik-card--lift") + (props.compact ? " ik-card--compact" : "");
   return h("div", { className: cls, style: props.style }, props.children);
 }
 
-// MarkerButton: ios/Intrada/DesignSystem/MarkerButton.swift; android ui/FirstRunScreen.kt
+// MarkerButton: ios/Intrada/DesignSystem/MarkerButton.swift
 function MarkerButton(props) {
   return h(
     "button",
@@ -61,7 +61,7 @@ function Chip(props) {
   return h("span", { className: type("secondary", "ik-chip") }, props.lead || null, props.children);
 }
 
-// LibraryItemCard: ios/Intrada/Views/Components/LibraryItemCard.swift; android ui/LibraryScreen.kt
+// LibraryItemCard: ios/Intrada/Views/Components/LibraryItemCard.swift
 function LibraryItemCard(props) {
   var kind = props.kind === "exercise" ? "exercise" : "piece";
   var meta = [props.keyName, props.tempo].filter(Boolean).join(" · ");
@@ -98,7 +98,7 @@ function LibraryItemCard(props) {
   );
 }
 
-// TabBar: ios/Intrada/Views/RootView.swift; android ui/AppFrame.kt, ui/AppTab.kt
+// TabBar: ios/Intrada/Views/RootView.swift
 function TabBar(props) {
   var device = props.device === "android" ? "android" : "ios";
   var selected = props.selected || "library";
@@ -131,7 +131,7 @@ function StatusBar(props) {
   );
 }
 
-// ScreenScaffold: ios/Intrada/DesignSystem/ScreenScaffold.swift; android ui/ScreenScaffold.kt
+// ScreenScaffold: ios/Intrada/DesignSystem/ScreenScaffold.swift
 function ScreenScaffold(props) {
   var device = props.device === "android" ? "android" : props.device === "ios" ? "ios" : null;
   var add = props.addLabel

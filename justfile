@@ -177,7 +177,7 @@ audit-sweep *args:
 
 # The Claude Design sketch kit's tokens, icons and bundle come from the code,
 # never typed by hand (#2700); docs/design-workflow.md says when to run it.
-[doc("Regenerate the sketch kit in design/sketch-kit from Theme.swift and the Android icons")]
+[doc("Regenerate the sketch kit in design/sketch-kit from Theme.swift and its own icon drawables")]
 sketch-kit:
     python3 scripts/sketch-kit.py
 
@@ -302,23 +302,16 @@ check:
 pre-push: check
 
 # The one command before review (#2877): `just check` holds fmt, lint, test
-# and the hygiene rule checks; the platform gates run only for what changed,
-# and everything runs when the diff cannot be read, as diff-scope.sh does.
-# The Android gates follow CI's own `android` filter and pause flag in ci.yml.
-[doc("Run the checks before review: check, plus iOS format and, unless paused, the Android gates for what changed")]
+# and the hygiene rule checks; the iOS format gate runs only when ios/ changed,
+# and runs when the diff cannot be read, as diff-scope.sh does.
+[doc("Run the checks before review: check, plus iOS format when ios/ changed")]
 pre-review:
     #!/usr/bin/env bash
     set -euo pipefail
     just check
     source scripts/lib/diff-scope.sh
-    paths=$(diff_scope_paths) || paths=$'ios/\nandroid/'
+    paths=$(diff_scope_paths) || paths='ios/'
     if grep -q '^ios/' <<<"$paths"; then just ios-fmt-check; fi
-    if ci_android_paused; then
-      echo "skipped: Android is paused in ci.yml (#2860), so not running the Android gates"
-    elif ci_android_changed <<<"$paths"; then
-      just android-gen
-      just android-check
-    fi
     echo "✓ pre-review"
 
 # Who reviews this branch (#2922): no one for documentation only, inline
@@ -489,15 +482,12 @@ usage *args:
 #
 # `references` still finds nothing: a sourcekit-lsp limitation here, not a
 # missing path, so finding callers of a Swift symbol stays a grep job.
-# kotlin-lsp sees no project without `android/local.properties`, so it finds a
-# declaration and no references (#2630); new worktrees copy the file in.
 # One-time per machine and per worktree that wants Swift.
-[doc("Set up the Rust, Swift and Kotlin language servers, once per machine and worktree")]
+[doc("Set up the Rust and Swift language servers, once per machine and worktree")]
 lsp-setup: _ios-sync
     #!/usr/bin/env bash
     set -euo pipefail
     rustup component add rust-analyzer
-    [ -f android/local.properties ] || echo "sdk.dir=${ANDROID_HOME:-$HOME/Library/Android/sdk}" > android/local.properties
     cd ios
     xcodegen generate
     name="$(just _ios-test-sim-name)"
@@ -512,7 +502,7 @@ lsp-setup: _ios-sync
         -clonedSourcePackagesDirPath build/spm \
         COMPILER_INDEX_STORE_ENABLE=YES CODE_SIGNING_ALLOWED=NO \
         | (cd .. && xcode-build-server parse)
-    echo "✓ rust-analyzer installed; Swift diagnostics, hover and cross-file definition wired; Android SDK path set for kotlin-lsp"
+    echo "✓ rust-analyzer installed; Swift diagnostics, hover and cross-file definition wired"
 
 # ─────────────────────────────────────────────
 # iOS — native SwiftUI app (on the Crux core)
@@ -1182,158 +1172,3 @@ _ios-sync slices="sim":
 [private]
 _ios-src-hash:
     @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-store/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml crates/intrada-store/Cargo.toml Cargo.lock -type f -exec shasum {} + | shasum | cut -d' ' -f1
-
-# ── Android ──
-
-[doc("Generate the Kotlin types into android/generated/kotlin with facet")]
-[group('Android')]
-android-typegen:
-    # crux's Kotlin typegen clears its own package but not the bincode runtime
-    # beside it, so pre-clean the runtime.
-    rm -rf android/generated/kotlin/com/novi
-    RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir android/generated/kotlin --lang kotlin
-
-[doc("Build the core for Android and the host, then generate the Kotlin bridge")]
-[group('Android')]
-android-package profile="debug":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    case "{{profile}}" in
-        release) rel="--release"; dir=release ;;
-        debug) rel=""; dir=debug ;;
-        *) echo "✗ profile must be debug or release, not '{{profile}}'" >&2; exit 1 ;;
-    esac
-    sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
-    ndk="$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)"
-    [ -n "$ndk" ] || { echo "✗ no intrada.ndkVersion in android/gradle.properties" >&2; exit 1; }
-    # The pin wins over a preset ANDROID_NDK_HOME: CI's runner image sets one to its own NDK.
-    export ANDROID_NDK_HOME="$sdk/ndk/$ndk" ANDROID_NDK_ROOT="$sdk/ndk/$ndk"
-    grep -qx "Pkg.Revision *= *$ndk" "$ANDROID_NDK_HOME/source.properties" 2>/dev/null \
-        || { echo "✗ NDK $ndk is not installed; run: sdkmanager \"ndk;$ndk\"" >&2; exit 1; }
-    rm -rf android/generated/jniLibs android/generated/host android/generated/kotlin/com/intrada/ffi
-    # x86_64 serves emulators on x86_64 hosts, CI included; devices and Apple silicon use arm64-v8a.
-    # `store` is the shared database, Android only until the iPhone switch (#2432).
-    cargo ndk -t arm64-v8a -t x86_64 -o android/generated/jniLibs build -p intrada-ffi --lib --features uniffi,store $rel
-    # The host build serves JVM unit tests, which load the bridge without an emulator.
-    cargo build -p intrada-ffi --lib --features uniffi,store $rel
-    mkdir -p android/generated/host
-    case "$(uname -s)" in Darwin) ext=dylib ;; *) ext=so ;; esac
-    cp "target/$dir/libintrada_ffi.$ext" android/generated/host/
-    # Library mode reads the bridge from the built library, through the bindgen
-    # pinned in intrada-ffi, so it cannot skew from the uniffi runtime.
-    cargo run -p intrada-ffi --bin uniffi-bindgen --features bindgen -- generate \
-        --library "android/generated/host/libintrada_ffi.$ext" --language kotlin \
-        --config crates/intrada-ffi/uniffi.toml --out-dir android/generated/kotlin --no-format
-
-[doc("Regenerate the Kotlin types, the Kotlin bridge and the native libraries")]
-[group('Android')]
-android-gen profile="debug": android-typegen (android-package profile)
-    @echo "✓ Android bindings regenerated"
-
-[doc("Build, launch on the intrada-api36 emulator and screenshot (SEED=0 for an empty library)")]
-[group('Android')]
-android-run: android-gen
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source android/env.sh
-    source scripts/android-emu-lock.sh
-    android_emu_lock_acquire
-    trap android_emu_lock_release EXIT
-    android_emu_boot
-    android/gradlew -q -p android :app:installDebug
-    seed=true; [ "${SEED:-1}" = 0 ] && seed=false
-    adb shell am force-stop com.intrada.android
-    adb shell am start -W -n com.intrada.android/.MainActivity --ez seed "$seed" >/dev/null
-    sleep 2
-    adb shell pidof com.intrada.android >/dev/null \
-        || { echo "✗ intrada is not running two seconds after launch, so it crashed or never opened" >&2; exit 1; }
-    shot="${SCREENSHOT:-android/build/screenshots/library.png}"
-    mkdir -p "$(dirname "$shot")"
-    adb exec-out screencap -p > "$shot"
-    echo "✓ running on $ANDROID_EMU_AVD; screenshot at $shot"
-
-[doc("Run the Android JVM unit and snapshot tests and print the counts")]
-[group('Android')]
-android-test:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source android/env.sh
-    results=android/app/build/test-results/testDebugUnitTest
-    rm -rf "$results"
-    status=0
-    android/gradlew -q -p android :app:verifyRoborazziDebug || status=$?
-    t=0; f=0; s=0
-    for xml in "$results"/*.xml; do
-        [ -e "$xml" ] || continue
-        head=$(grep -m1 -o '<testsuite [^>]*>' "$xml")
-        n() { printf '%s' "$head" | sed -E "s/.* $1=\"([0-9]+)\".*/\1/"; }
-        t=$((t + $(n tests))); f=$((f + $(n failures) + $(n errors))); s=$((s + $(n skipped)))
-    done
-    echo "Android tests: $t run, $((t - f - s)) passed, $f failed, $s skipped"
-    exit $status
-
-[doc("Run the Android UI tests on the intrada-api36 emulator and print the counts (class= runs one)")]
-[group('Android')]
-android-test-ui class="": android-gen
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source android/env.sh
-    source scripts/android-emu-lock.sh
-    android_emu_lock_acquire
-    trap android_emu_lock_release EXIT
-    android_emu_boot
-    for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
-        adb shell settings put global "$scale" 0
-    done
-    results=android/app/build/outputs/androidTest-results/connected
-    rm -rf "$results"
-    status=0
-    killed=KilledSessionRecoveryTest
-    if [ "{{class}}" != "$killed" ]; then
-        only=(-Pandroid.testInstrumentationRunnerArguments.notClass="com.intrada.android.$killed")
-        [ -n "{{class}}" ] && only+=(-Pandroid.testInstrumentationRunnerArguments.class="com.intrada.android.{{class}}")
-        android/gradlew -q -p android :app:connectedDebugAndroidTest "${only[@]}" || status=$?
-    fi
-    kt=0; kf=0
-    if [ -z "{{class}}" ] || [ "{{class}}" = "$killed" ]; then
-        kt=1
-        bash scripts/android-kill-recovery.sh || { kf=1; status=1; }
-    fi
-    for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
-        adb shell settings put global "$scale" 1
-    done
-    t=0; f=0; s=0
-    while IFS= read -r head; do
-        n() { printf '%s' "$head" | sed -E "s/.* $1=\"([0-9]+)\".*/\1/"; }
-        t=$((t + $(n tests))); f=$((f + $(n failures) + $(n errors))); s=$((s + $(n skipped)))
-    done < <(find "$results" -name '*.xml' -exec grep -ho '<testsuite [^>]*>' {} + 2>/dev/null)
-    t=$((t + kt)); f=$((f + kf))
-    echo "Android UI tests: $t run, $((t - f - s)) passed, $f failed, $s skipped"
-    [ "$t" -gt 0 ] || { echo "✗ no UI test results, so nothing ran" >&2; status=1; }
-    exit $status
-
-[doc("Run CI's Android gates: ktfmt, the build with warnings as errors, Android lint and detekt")]
-[group('Android')]
-android-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source android/env.sh
-    android/gradlew -q -p android ktfmtCheck :app:assembleDebug :app:compileDebugUnitTestKotlin :app:compileDebugAndroidTestKotlin :app:lintDebug :app:detektDebug :app:detektDebugUnitTest :app:detektDebugAndroidTest
-    echo "✓ Android gates pass"
-
-[doc("Rewrite the Gradle lockfiles after an Android dependency change")]
-[group('Android')]
-android-lock:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source android/env.sh
-    android/gradlew -q -p android --write-locks :app:dependencies :bridge:dependencies >/dev/null
-    echo "✓ Android lockfiles rewritten"
-
-[doc("Format the Android Kotlin sources and build scripts with ktfmt")]
-[group('Android')]
-android-fmt:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source android/env.sh
-    android/gradlew -q -p android ktfmtFormat

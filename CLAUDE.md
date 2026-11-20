@@ -4,17 +4,16 @@
 else lives in the path-scoped rules, the skills and the docs below. -->
 
 intrada is a **practice notebook** for musicians: plan a session, play it, score it
-(Plan, Practice, Track). Two native shells on one Rust core: SwiftUI in `ios/`, Compose
-in `android/`. **Android is paused (#2860): every feature ships on iPhone only, and
-nothing in `android/` changes until the owner restarts it.** The web and Tauri shells were deleted
-(`docs/decisions.md`): **a request implying web work? Confirm the platform first.**
+(Plan, Practice, Track). One native shell, SwiftUI in `ios/`, on a Rust core. The Android
+app was removed on 20 November 2026 (#2924); restore it from the tag `android-paused-2026-11-20`.
+The web and Tauri shells were deleted (`docs/decisions.md`): **a request implying web work? Confirm the platform first.**
 Direction: `docs/roadmap.md`; in flight: `just status`.
 
 ## Commands
 
 ```bash
 just check            # CI's Rust and hygiene jobs, bar MSRV and coverage; run before pushing
-just pre-review       # check, plus ios-fmt-check (and Android gates, unpaused) for what changed
+just pre-review       # check, plus ios-fmt-check when ios/ changed
 just ios-run          # build + launch on simulator + screenshot (seeded; SEED=0 to persist)
 just ios-test         # unit + snapshot; just ios-fmt-check for ios/
 ```
@@ -32,12 +31,12 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Reco
 ```
 
 1. **Core owns all logic.** No business rules, validation, domain decisions or domain state
-   in Swift or Kotlin, only UI interaction state; if tempted, it is an `Event` or `Command`
+   in Swift, only UI interaction state; if tempted, it is an `Event` or `Command`
    in `intrada-core`.
 2. **The shell is a dumb pipe.** It renders the `ViewModel` and fulfils effects: local data
    through the shared `intrada-store`, crash recovery through an `AppEffect`.
-3. **Typed bindings, no hand-written FFI.** Never hand-edit `ios/generated/` or
-   `android/generated/`; fix the Rust type and regenerate the iOS bindings.
+3. **Typed bindings, no hand-written FFI.** Never hand-edit `ios/generated/`; fix the
+   Rust type and regenerate the bindings.
 
 ## Gotchas
 
@@ -48,8 +47,8 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Reco
 
 ## Where the rest lives
 
-- Code, comments and tests: `.claude/rules/code-and-tests.md`, loaded on `crates/`, `ios/`
-  and `android/` files; offline-first, UI, quality bars and silent-failure surfaces: the
+- Code, comments and tests: `.claude/rules/code-and-tests.md`, loaded on `crates/` and `ios/`
+  files; offline-first, UI, quality bars and silent-failure surfaces: the
   other `.claude/rules/`. They do not load in a worktree: read them by hand before
   editing. Every rule binds either way.
 - Review, model, effort and lane size: `~/.claude/CLAUDE.md`, "Subagents, review and lane

@@ -8,11 +8,6 @@
       "icon": "play"
     },
     {
-      "name": "Run Android",
-      "command": "just android-run",
-      "icon": "play"
-    },
-    {
       "name": "Rust gate",
       "command": "just check",
       "icon": "test"

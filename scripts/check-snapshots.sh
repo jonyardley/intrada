@@ -10,19 +10,13 @@
 #     `just ios-snapshots-optimize` strips it losslessly, ~75% smaller). Fail so
 #     it's optimized before it lands, keeping per-record history growth low.
 #
-# Android references under android/app/src/test/snapshots take the same two
-# rules (#2241). Roborazzi writes each to the path its test names, so a
-# reference is live when a test still names that path, and the ceiling is the
-# default one with no larger buckets until an Android reference earns one.
-#
-# The roots are overridable so the self-test can point them at fixtures
+# The root is overridable so the self-test can point them at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
 ROOT="${SNAPSHOT_IOS_ROOT:-ios/IntradaTests}"
-ANDROID_ROOT="${SNAPSHOT_ANDROID_ROOT:-android/app/src/test}"
 SNAP_DIR="$ROOT/__Snapshots__"
 MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # References that stay large as lossless PNG even after `oxipng -o max -Z`:
@@ -89,30 +83,6 @@ if [ -d "$SNAP_DIR" ]; then
   done < <(find "$SNAP_DIR" -name '*.png')
 else
   echo "no $SNAP_DIR; no iOS references to check"
-fi
-
-if [ ! -d "$ANDROID_ROOT" ]; then
-  echo "✗ check-snapshots: no $ANDROID_ROOT to read" >&2
-  exit 2
-fi
-ANDROID_SNAP_DIR="$ANDROID_ROOT/snapshots"
-if [ -d "$ANDROID_SNAP_DIR" ]; then
-  named=$(find "$ANDROID_ROOT" -name '*.kt' -print0 |
-    xargs -0 perl -0777 -ne 's{/\*.*?\*/}{}gs; s{//[^\n]*}{}g; print "$1\n" while m{"(?:[^"\n]*/)?(snapshots/[^"\n]+\.png)"}g' | sort -u)
-  while IFS= read -r png; do
-    ref="${png#"$ANDROID_ROOT"/}"
-    if ! grep -qxF "$ref" <<<"$named"; then
-      echo "::error file=$png::orphan snapshot: no test under $ANDROID_ROOT names $ref (delete the PNG or restore the test)"
-      fail=1
-    fi
-    size=$(wc -c < "$png" | tr -d ' ')
-    if [ "$size" -gt "$MAX_BYTES" ]; then
-      echo "::error file=$png::$size bytes > $MAX_BYTES ceiling: run 'oxipng -o max' on it (or raise SNAPSHOT_MAX_BYTES if genuinely large)"
-      fail=1
-    fi
-  done < <(find "$ANDROID_SNAP_DIR" -name '*.png')
-else
-  echo "no $ANDROID_SNAP_DIR; no Android references to check"
 fi
 
 if [ "$fail" -eq 0 ]; then

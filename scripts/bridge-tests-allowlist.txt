@@ -59,8 +59,8 @@ ViewModel.availableTags
 ViewModel.lastPractised
 ViewModel.profile
 
-# Named only by Android round trip tests, which stop running while Android is
-# paused (#2860). A Swift LiveBridge test takes each off this list.
+# Once named only by the Android round trip tests, which left with the Android
+# app (#2924). A Swift LiveBridge test takes each off this list.
 Accidental
 ClickPreset
 ClickStart

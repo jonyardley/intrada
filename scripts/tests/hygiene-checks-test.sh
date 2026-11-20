@@ -298,119 +298,13 @@ expect 0 "the lane mentioning the release again further down" \
 
 expect 0 "the files this repo actually ships" bash "$repo_root/scripts/check-release-name.sh"
 
-kotlin_fixture() {
-  cat >"$1" <<EOF
-fun releaseName(packageName: String?, versionName: String?, versionCode: Long?): String? {
-    if (packageName.isNullOrEmpty() || versionName.isNullOrEmpty() || versionCode == null) {
-        return null
-    }
-    return "\$packageName$2\$versionName$3\$versionCode"
-}
-
-fun start(context: Context) {
-    val info = context.packageManager.getPackageInfo(context.packageName, 0)
-    releaseName(context.packageName, info?.versionName, info?.$4)?.let { options.release = it }
-    Log.w("intrada", "no package info for the Sentry release: \$it")
-}
-EOF
-}
-
-play_fixture() {
-  cat >"$1" <<EOF
-      - name: Build the signed release bundle
-        env:
-          ANDROID_VERSION_CODE: \${{ github.run_number }}
-          ANDROID_VERSION_NAME: \${{ github.ref_type == 'tag' && github.ref_name || '' }}
-        run: |
-          ANDROID_VERSION_NAME="\${ANDROID_VERSION_NAME#v}"
-      - name: Create the Sentry release for this build
-        env:
-          VERSION_CODE: \${{ ${6:-github.run_number} }}
-        run: |
-          package=\$(sed -n 's/^ *${7:-applicationId} = "\\(.*\\)"\$/\\1/p' android/app/build.gradle.kts)
-          release="\$package$2$4$3$5"
-          echo "Sentry release: \$release"
-EOF
-}
-
-android_check() {
-  RELEASE_NAME_KOTLIN="$1" RELEASE_NAME_PLAY_WORKFLOW="$2" \
-    bash "$repo_root/scripts/check-release-name.sh"
-}
-
-good_kt="$work/Good.kt"
-good_play="$work/good-play.yml"
-kotlin_fixture "$good_kt" "@" "+" longVersionCode
-play_fixture "$good_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}'
-expect 0 "an Android app and Play lane that agree" android_check "$good_kt" "$good_play"
-
-swapped_kt="$work/Swapped.kt"
-kotlin_fixture "$swapped_kt" "+" "@" longVersionCode
-expect 1 "the Android app swapping its separators" android_check "$swapped_kt" "$good_play"
-
-wrong_field_kt="$work/WrongField.kt"
-kotlin_fixture "$wrong_field_kt" "@" "+" firstInstallTime
-expect 1 "the Android app reading no version code" android_check "$wrong_field_kt" "$good_play"
-
-swapped_play="$work/swapped-play.yml"
-play_fixture "$swapped_play" "+" "@" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}'
-expect 1 "the Play lane swapping its separators" android_check "$good_kt" "$swapped_play"
-
-reordered_play="$work/reordered-play.yml"
-play_fixture "$reordered_play" "@" "+" '${VERSION_CODE}' '${GITHUB_REF_NAME#v}'
-expect 1 "the Play lane putting the version code before the version name" \
-  android_check "$good_kt" "$reordered_play"
-
-unstripped_play="$work/unstripped-play.yml"
-play_fixture "$unstripped_play" "@" "+" '${GITHUB_REF_NAME}' '${VERSION_CODE}'
-expect 1 "the Play lane keeping the tag's v that Gradle strips" android_check "$good_kt" "$unstripped_play"
-
-run_id_play="$work/run-id-play.yml"
-play_fixture "$run_id_play" "@" "+" '${GITHUB_REF_NAME#v}' '${GITHUB_RUN_ID}'
-expect 1 "the Play lane using a build number Gradle does not build with" \
-  android_check "$good_kt" "$run_id_play"
-
-unbraced_play="$work/unbraced-play.yml"
-play_fixture "$unbraced_play" "@" "+" '${GITHUB_REF_NAME#v}' '$VERSION_CODE'
-expect 0 "the Play lane dropping the braces round a plain variable" android_check "$good_kt" "$unbraced_play"
-
-attempt_play="$work/attempt-play.yml"
-play_fixture "$attempt_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}' github.run_attempt
-expect 1 "the Play lane's version code set from a run number Gradle does not take" \
-  android_check "$good_kt" "$attempt_play"
-
-namespace_play="$work/namespace-play.yml"
-play_fixture "$namespace_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}' github.run_number namespace
-expect 1 "the Play lane reading the namespace, not the applicationId" \
-  android_check "$good_kt" "$namespace_play"
-
-two_templates_kt="$work/TwoTemplates.kt"
-kotlin_fixture "$two_templates_kt" "@" "+" longVersionCode
-printf 'fun legacyName(a: String, b: String, c: Long) = "$a-$b-$c"\n' >>"$two_templates_kt"
-expect 1 "the Android app composing two three-field names" android_check "$two_templates_kt" "$good_play"
-
-run_number_play="$work/run-number-play.yml"
-play_fixture "$run_number_play" "@" "+" '${GITHUB_REF_NAME#v}' '${GITHUB_RUN_NUMBER}'
-expect 0 "the Play lane reading the run number from the runner's own variable" \
-  android_check "$good_kt" "$run_number_play"
-
-quoted_play="$work/quoted-play.yml"
-sed -E 's/: (\$\{\{.*\}\})$/: "\1"/; s/^( *)ANDROID_VERSION_NAME="(.*)"$/\1ANDROID_VERSION_NAME=\2/' "$good_play" >"$quoted_play"
-grep -q 'VERSION_CODE: "' "$quoted_play" && grep -q 'ANDROID_VERSION_NAME=\$' "$quoted_play" || {
-  echo "  ✗ the quoted Play fixture did not take its edits" >&2
-  failures=$((failures + 1))
-}
-expect 0 "the Play lane quoting its env values and unquoting the strip" android_check "$good_kt" "$quoted_play"
-
 # ── The faint ink check ─────────────────────────────────────────────────────
 
 faint="$work/faint"
-faint_kt="$work/faint-kt"
-mkdir -p "$faint/Views/Components" "$faint/DesignSystem" "$faint/Views/Screens" "$faint_kt/com/intrada/android/ui"
+mkdir -p "$faint/Views/Components" "$faint/DesignSystem" "$faint/Views/Screens"
 faint_check() {
-  FAINT_INK_ROOT="$faint" FAINT_INK_ANDROID_ROOT="$faint_kt" bash "$repo_root/scripts/check-faint-ink.sh"
+  FAINT_INK_ROOT="$faint" bash "$repo_root/scripts/check-faint-ink.sh"
 }
-printf 'val inkFaint = Color(0xFFA99C8C)\n' >"$faint_kt/com/intrada/android/ui/Theme.kt"
 
 printf 'static let inkFaint = Color(hex: 0xA99C8C)\nlet x = IntradaColor.inkFaint\n' >"$faint/DesignSystem/Theme.swift"
 printf 'Image(systemName: "x").foregroundStyle(IntradaColor.inkFaintIcon)\n' >"$faint/Views/Glyph.swift"
@@ -430,10 +324,6 @@ printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Components/Sec
 expect 1 "faint ink on a section title" faint_check
 rm "$faint/Views/Components/SectionHeader.swift"
 
-printf 'Text(meta, color = IntradaColor.inkFaint)\n' >"$faint_kt/com/intrada/android/ui/Row.kt"
-expect 1 "faint ink on an Android meta line" faint_check
-rm "$faint_kt/com/intrada/android/ui/Row.kt"
-
 expect 2 "a root that is not there" env FAINT_INK_ROOT="$work/nowhere" bash "$repo_root/scripts/check-faint-ink.sh"
 
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-faint-ink.sh"
@@ -441,20 +331,16 @@ expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-f
 # ── The theme value check ───────────────────────────────────────────────────
 
 themed="$work/themed"
-themed_kt="$work/themed-kt"
-themed_ui="$themed_kt/com/intrada/android/ui"
 themed_allow="$work/themed-allow.txt"
-mkdir -p "$themed/DesignSystem" "$themed/Views" "$themed_ui"
+mkdir -p "$themed/DesignSystem" "$themed/Views"
 : >"$themed_allow"
 theme_check() {
-  THEME_VALUES_ROOT="$themed" THEME_VALUES_ANDROID_ROOT="$themed_kt" THEME_VALUES_ALLOWLIST="$themed_allow" \
+  THEME_VALUES_ROOT="$themed" THEME_VALUES_ALLOWLIST="$themed_allow" \
     bash "$repo_root/scripts/check-theme-values.sh"
 }
 printf 'static let ink = Color(hex: 0x2A2622)\nstatic let card: CGFloat = 16\nlet x = Text("a").padding(16).foregroundStyle(.red)\n' >"$themed/DesignSystem/Theme.swift"
-printf 'val ink = Color(0xFF2A2622)\nval x = Modifier.padding(16.dp).background(Color.Red)\n' >"$themed_ui/Theme.kt"
 printf 'VStack(spacing: IntradaSpacing.card) {}\n  .padding(.horizontal, IntradaSpacing.card)\n  .foregroundStyle(IntradaColor.ink)\n  .background(Color.clear)\nLinearGradient(colors: [IntradaColor.shadow, .clear], startPoint: .top, endPoint: .bottom)\nHStack(spacing: 0) { Spacer(minLength: 0) }.padding(0)\n  .padding(EdgeInsets(top: 0, leading: IntradaSpacing.card, bottom: 0, trailing: IntradaSpacing.card))\n' >"$themed/Views/Row.swift"
-printf 'Column(Modifier.padding(horizontal = IntradaSpacing.card), verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {}\nText("a", color = IntradaColor.ink, modifier = Modifier.padding(0.dp).background(Color.Transparent))\nText("b", color = Color.Unspecified)\n' >"$themed_ui/Row.kt"
-expect 0 "theme tokens, zero, clear, and raw values inside both theme files" theme_check
+expect 0 "theme tokens, zero, clear, and raw values inside the theme file" theme_check
 
 theme_case() {
   local want="$1" name="$2" file="$3" body="$4"
@@ -469,39 +355,31 @@ theme_case 1 "a typed stack spacing on iPhone" "$themed/Views/Gap.swift" 'VStack
 theme_case 1 "typed edge insets on iPhone" "$themed/Views/Gap.swift" 'Text("a").padding(.init(top: 4, leading: 0, bottom: 0, trailing: 0))'
 theme_case 1 "typed EdgeInsets on iPhone" "$themed/Views/Gap.swift" 'Text("a").padding(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 0))'
 theme_case 1 "a typed spacer length on iPhone" "$themed/Views/Gap.swift" 'HStack { Spacer(minLength: 12) }'
-theme_case 1 "a typed colour on Android" "$themed_ui/Tint.kt" 'Text("a", color = Color(0xFFE53935))'
-theme_case 1 "a named system colour on Android" "$themed_ui/Tint.kt" 'Box(Modifier.background(Color.Black))'
-theme_case 1 "a positional colour on Android" "$themed_ui/Tint.kt" 'Box(Modifier.background(Color(229, 57, 53)))'
-theme_case 1 "a typed padding beside a token on Android" "$themed_ui/Gap.kt" 'Box(Modifier.padding(horizontal = IntradaSpacing.card, vertical = 10.dp))'
-theme_case 1 "a typed padding behind a condition on Android" "$themed_ui/Gap.kt" 'Box(Modifier.padding(horizontal = if (wide) IntradaSpacing.card else 8.dp))'
-theme_case 1 "a typed spacer on Android" "$themed_ui/Spacer.kt" 'Spacer(Modifier.height(12.dp))'
-theme_case 1 "a typed spacer with more modifiers on Android" "$themed_ui/Spacer.kt" 'Spacer(Modifier.width(12.dp).fillMaxHeight())'
-theme_case 1 "a colour from hue on Android" "$themed_ui/Tint.kt" 'Box(Modifier.background(Color.hsl(10f, 0.5f, 0.5f)))'
 theme_case 1 "a named shadow colour on iPhone" "$themed/Views/Tint.swift" 'Card().shadow(color: .black, radius: 4)'
 theme_case 1 "a named colour in a gradient on iPhone" "$themed/Views/Tint.swift" 'LinearGradient(colors: [IntradaColor.ink, .white], startPoint: .top, endPoint: .bottom)'
 theme_case 1 "the accent colour on iPhone" "$themed/Views/Tint.swift" 'Text("a").foregroundStyle(.accentColor)'
 theme_case 1 "a tertiary style on iPhone" "$themed/Views/Tint.swift" 'Text("a").foregroundStyle(.tertiary)'
 
-gap_kt="$themed_ui/Gap.kt"
-printf 'Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {}\n' >"$gap_kt"
-printf '%s\tspacedBy(2.dp)\t1\t#2706\n' "$gap_kt" >"$themed_allow"
+gap_file="$themed/Views/Gap.swift"
+printf 'HStack(spacing: 2) {}\n' >"$gap_file"
+printf '%s\tspacing: 2\t1\t#2706\n' "$gap_file" >"$themed_allow"
 expect 0 "a typed spacing on the allowlist at its count" theme_check
 
-printf 'Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {}\nBox(Modifier.padding(vertical = 10.dp))\n' >"$gap_kt"
+printf 'HStack(spacing: 2) {}\nText("a").padding(.vertical, 10)\n' >"$gap_file"
 expect 1 "an allowed value in the file does not cover a different one" theme_check
 
-printf 'Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {}\nColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {}\n' >"$gap_kt"
+printf 'HStack(spacing: 2) {}\nVStack(spacing: 2) {}\n' >"$gap_file"
 expect 1 "an allowed value used more often than its count" theme_check
 
-printf '%s\tspacedBy(2.dp)\t3\t#2706\n' "$gap_kt" >"$themed_allow"
+printf '%s\tspacing: 2\t3\t#2706\n' "$gap_file" >"$themed_allow"
 expect 1 "an allowed value used less often than its count" theme_check
 
-rm "$gap_kt"
+rm "$gap_file"
 expect 1 "an allowlist entry that matches nothing" theme_check
 
-printf '%s\tspacedBy(2.dp)\t1\n' "$gap_kt" >"$themed_allow"
+printf '%s\tspacing: 2\t1\n' "$gap_file" >"$themed_allow"
 expect 2 "an allowlist entry with no issue" theme_check
-printf '%s\tspacedBy(2.dp)\t1\tpredates the check\n' "$gap_kt" >"$themed_allow"
+printf '%s\tspacing: 2\t1\tpredates the check\n' "$gap_file" >"$themed_allow"
 expect 2 "an allowlist entry with a reason but no issue" theme_check
 : >"$themed_allow"
 
@@ -568,25 +446,21 @@ components_check() {
 }
 reset_catalogue() {
   rm -rf "$cat_root"
-  mkdir -p "$cat_root/design/components/Pills" "$cat_root/ios/Views" "$cat_root/ios/IntradaTests/__Snapshots__/C" \
-    "$cat_root/android/ui" "$cat_root/android/app/src/test/snapshots"
+  mkdir -p "$cat_root/design/components/Pills" "$cat_root/ios/Views" "$cat_root/ios/IntradaTests/__Snapshots__/C"
   printf '| Component | What |\n|---|---|\n| [Pills](Pills/README.md) | choose |\n| Badge | kind |\n' \
     >"$cat_root/design/components/README.md"
   printf 'struct Pills<Option: Hashable>: View {}\n' >"$cat_root/ios/Views/Pills.swift"
-  printf 'internal fun <T> Pills(options: List<T>) {}\n' >"$cat_root/android/ui/Parts.kt"
   : >"$cat_root/ios/IntradaTests/__Snapshots__/C/testPills.1.png"
-  : >"$cat_root/android/app/src/test/snapshots/pills.png"
   write_component_page
 }
 write_component_page() {
-  printf '%s\n' '---' 'name: Pills' 'ios_symbol: Pills' 'ios_file: ios/Views/Pills.swift' \
-    'ios_snapshots: C/testPills.1.png' "$@" '---' '' '# Pills' >"$cat_root/design/components/Pills/README.md"
+  printf '%s\n' '---' 'name: Pills' "${@:-ios_symbol: Pills}" '---' '' '# Pills' >"$cat_root/design/components/Pills/README.md"
 }
-android_keys=('android_symbol: Pills' 'android_file: android/ui/Parts.kt' 'android_snapshots: pills.png')
+ios_keys=('ios_symbol: Pills' 'ios_file: ios/Views/Pills.swift' 'ios_snapshots: C/testPills.1.png')
 
 reset_catalogue
-write_component_page "${android_keys[@]}"
-expect 0 "a page on both apps, a generic symbol and a row still to come" components_check
+write_component_page "${ios_keys[@]}"
+expect 0 "a page with a generic symbol and a row still to come" components_check
 
 pending_names="" expect 1 "a row in the index with no page" components_check
 
@@ -599,58 +473,35 @@ printf '| Component | What |\n|---|---|\n| [Pills](Pils/README.md) | choose |\n|
 expect 1 "an index link to the wrong page" components_check
 reset_catalogue
 
-write_component_page "${android_keys[@]}"
+write_component_page "${ios_keys[@]}"
 mkdir -p "$cat_root/design/components/Stray"
-printf '%s\n' '---' 'name: Stray' 'ios_symbol: Pills' 'ios_file: ios/Views/Pills.swift' \
-  'ios_snapshots: C/testPills.1.png' 'not_on_android: none yet' '---' >"$cat_root/design/components/Stray/README.md"
+printf '%s\n' '---' 'name: Stray' "${ios_keys[@]}" '---' >"$cat_root/design/components/Stray/README.md"
 expect 1 "a page that is not in the index" components_check
 rm -rf "$cat_root/design/components/Stray"
 
-write_component_page "${android_keys[@]}"
+write_component_page "${ios_keys[@]}"
 sed -i.bak 's/^name: Pills$/name: Pill/' "$cat_root/design/components/Pills/README.md"
 expect 1 "a page whose name is not its folder" components_check
 
-write_component_page "${android_keys[@]}" 'not_on_android: none yet'
-expect 1 "Android keys beside a gap" components_check
+write_component_page 'ios_symbol: Pills' 'ios_file: ios/Views/Pills.swift, ios/Views/Gone.swift' 'ios_snapshots: C/testPills.1.png'
+expect 1 "an iOS file that is not there" components_check
 
-write_component_page 'android_symbol: Pills' 'android_file: android/ui/Parts.kt, android/ui/Gone.kt' 'android_snapshots: pills.png'
-expect 1 "an Android file that is not there" components_check
+printf 'struct Pills<Option: Hashable>: View {}\n' >"$cat_root/elsewhere.swift"
+write_component_page 'ios_symbol: Pills' 'ios_file: elsewhere.swift' 'ios_snapshots: C/testPills.1.png'
+expect 1 "an iOS file outside ios/" components_check
 
-printf 'internal fun <T> Pills(options: List<T>) {}\n' >"$cat_root/elsewhere.kt"
-write_component_page 'android_symbol: Pills' 'android_file: elsewhere.kt' 'android_snapshots: pills.png'
-expect 1 "an Android file outside android/" components_check
-
-write_component_page 'android_symbol: ,' 'android_file: ,' 'android_snapshots: ,'
-expect 1 "Android keys that name nothing" components_check
+write_component_page 'ios_symbol: ,' 'ios_file: ,' 'ios_snapshots: ,'
+expect 1 "iOS keys that name nothing" components_check
 
 printf 'struct Other: View {} // Pills\n' >"$cat_root/ios/Views/Pills.swift"
-write_component_page "${android_keys[@]}"
+write_component_page "${ios_keys[@]}"
 expect 1 "an iOS symbol only mentioned, never declared" components_check
 reset_catalogue
 
-printf 'internal fun Other() {}\n' >"$cat_root/android/ui/Parts.kt"
-write_component_page "${android_keys[@]}"
-expect 1 "an Android symbol missing from its file" components_check
-reset_catalogue
-
 rm "$cat_root/ios/IntradaTests/__Snapshots__/C/testPills.1.png"
-write_component_page "${android_keys[@]}"
+write_component_page "${ios_keys[@]}"
 expect 1 "an iOS snapshot that is not there" components_check
 reset_catalogue
-
-rm "$cat_root/android/app/src/test/snapshots/pills.png"
-write_component_page "${android_keys[@]}"
-expect 1 "an Android snapshot that is not there" components_check
-reset_catalogue
-
-write_component_page
-expect 1 "a page with no Android version and no reason" components_check
-
-write_component_page 'not_on_android: built in #2605'
-expect 0 "an Android gap with a reason" components_check
-
-write_component_page "${android_keys[@]}" 'not_on_android:'
-expect 1 "an Android gap with an empty reason" components_check
 
 expect 2 "an index that is not there" env COMPONENTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-components.sh"
 
@@ -685,29 +536,15 @@ rm "$haptics/Store+Feedback.swift"
 
 expect 2 "a root that is not there" env HAPTICS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-haptics.sh"
 
-android_haptics="$work/android-haptics"
-mkdir -p "$android_haptics/ui"
-android_haptics_check() {
-  HAPTICS_ROOT="$haptics" ANDROID_HAPTICS_ROOT="$android_haptics" bash "$repo_root/scripts/check-haptics.sh"
-}
-printf 'SELECTION(HapticFeedbackType.SegmentTick)\n' >"$android_haptics/ui/Haptic.kt"
-printf 'haptics.play(Haptic.SELECTION) // not performHapticFeedback\n' >"$android_haptics/ui/Wheel.kt"
-expect 0 "the Kotlin helper, a call through it and a comment" android_haptics_check
-printf 'view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)\n' >"$android_haptics/ui/Save.kt"
-expect 1 "a Kotlin haptic built by hand" android_haptics_check
-rm "$android_haptics/ui/Save.kt"
-expect 2 "a Kotlin root that is not there" env HAPTICS_ROOT="$haptics" ANDROID_HAPTICS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-haptics.sh"
-
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-haptics.sh"
 
 # ── The bridge-test check ───────────────────────────────────────────────────
 
 bridge="$work/bridge"
-mkdir -p "$bridge/core" "$bridge/tests" "$bridge/android"
+mkdir -p "$bridge/core" "$bridge/tests"
 bridge_check() {
   BRIDGE_CORE_ROOT="$bridge/core" BRIDGE_VIEWMODEL="$bridge/core/model.rs" \
-    BRIDGE_TESTS_ROOT="$bridge/tests" BRIDGE_ANDROID_TESTS_ROOT="$bridge/android" \
-    BRIDGE_ALLOWLIST="$bridge/allow.txt" BRIDGE_COUNT_KOTLIN="${count_kotlin-1}" \
+    BRIDGE_TESTS_ROOT="$bridge/tests" BRIDGE_ALLOWLIST="$bridge/allow.txt" \
     bash "$repo_root/scripts/check-bridge-tests.sh"
 }
 facet='#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]'
@@ -726,7 +563,6 @@ pub struct Beta;
 EOF
 printf 'let a: Alpha = .one\nlet v = ViewModel()\n_ = view.upNext\n' >"$bridge/tests/SessionBridgeTests.swift"
 printf '# frozen\nBeta\nViewModel.errorSeq  # never read\n' >"$bridge/allow.txt"
-printf 'val bridge = LiveBridge()\n' >"$bridge/android/BridgeRoundTripTest.kt"
 expect 0 "every type and field named or allowlisted" bridge_check
 
 printf '%s\n// Boxing changes the wire.\n#[allow(dead_code)]\npub enum Gamma { A }\n' "$facet" >"$bridge/core/gamma.rs"
@@ -747,14 +583,6 @@ printf '#[effect(facet_typegen)]\npub enum Effect { Render }\n' >"$bridge/core/e
 expect 1 "the effect enum, with no test" bridge_check
 rm "$bridge/core/eta.rs"
 
-printf '%s\npub enum Iota { A }\n' "$facet" >"$bridge/core/iota.rs"
-printf 'val i = Iota.A\n' >"$bridge/android/StoreTest.kt"
-expect 1 "a new type named only in a Kotlin test that is not a round trip" bridge_check
-printf 'val i = Iota.A\n' >"$bridge/android/LibraryRoundTripTest.kt"
-expect 0 "a new type named in a Kotlin round trip test" bridge_check
-count_kotlin=0 expect 1 "a new type named only in Kotlin while Android is paused" bridge_check
-rm "$bridge/core/iota.rs" "$bridge/android/StoreTest.kt" "$bridge/android/LibraryRoundTripTest.kt"
-
 cp "$bridge/core/model.rs" "$bridge/model.orig"
 perl -pi -e 's/^(    pub error_seq: u64,\n)/$1    pub notice_seq: u64,\n/' "$bridge/core/model.rs"
 expect 1 "a new ViewModel field with no test" bridge_check
@@ -763,9 +591,6 @@ expect 1 "a new field named only as a variable or an event case" bridge_check
 printf '_ = view.noticeSeq\n' >"$bridge/tests/LibraryBridgeTests.swift"
 expect 0 "a new field read off the view" bridge_check
 rm "$bridge/tests/LibraryBridgeTests.swift"
-printf 'assertEquals(0uL, view.noticeSeq)\n' >"$bridge/android/LibraryRoundTripTest.kt"
-expect 0 "a new field read off the view in Kotlin" bridge_check
-rm "$bridge/android/LibraryRoundTripTest.kt"
 mv "$bridge/model.orig" "$bridge/core/model.rs"
 
 printf 'let b = Beta()\n' >"$bridge/tests/LibraryBridgeTests.swift"
@@ -779,10 +604,9 @@ mv "$bridge/allow.orig" "$bridge/allow.txt"
 
 expect 0 "the fixture back where it started" bridge_check
 expect 2 "a tests root that is not there" env BRIDGE_TESTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-bridge-tests.sh"
-expect 2 "an Android tests root that is not there" env BRIDGE_ANDROID_TESTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-bridge-tests.sh"
-mv "$bridge/android/BridgeRoundTripTest.kt" "$bridge/android/BridgeRoundTrip.kt"
-expect 2 "an Android tests root with no round trip test" bridge_check
-mv "$bridge/android/BridgeRoundTrip.kt" "$bridge/android/BridgeRoundTripTest.kt"
+mv "$bridge/tests/SessionBridgeTests.swift" "$bridge/tests/SessionBridge.swift"
+expect 2 "a tests root with no LiveBridge test" bridge_check
+mv "$bridge/tests/SessionBridge.swift" "$bridge/tests/SessionBridgeTests.swift"
 
 expect 0 "the bridge this repo actually ships" bash "$repo_root/scripts/check-bridge-tests.sh"
 
@@ -817,10 +641,6 @@ commit_only() {
 
 commit_only Screen.txt
 expect 0 "a heavily commented file of a kind the check does not read" density_check
-commit_only Screen.kt
-expect 1 "a heavily commented Kotlin file" density_check
-commit_only build.gradle.kts
-expect 1 "a heavily commented Gradle Kotlin script" density_check
 commit_only Screen.swift
 expect 1 "a heavily commented Swift file" density_check
 expect 0 "the same file with the check bypassed" env SKIP_COMMENT_CHECK=1 COMMENT_CHECK_BASE=main \
@@ -831,54 +651,23 @@ cd "$repo_root"
 # ── The snapshot check ──────────────────────────────────────────────────────
 
 snaps="$work/snaps"
-mkdir -p "$snaps/ios/__Snapshots__/LibrarySnapshotTests" "$snaps/android/kotlin" "$snaps/android/snapshots"
+mkdir -p "$snaps/ios/__Snapshots__/LibrarySnapshotTests"
 snapshot_check() {
-  SNAPSHOT_IOS_ROOT="$snaps/ios" SNAPSHOT_ANDROID_ROOT="$snaps/android" \
-    bash "$repo_root/scripts/check-snapshots.sh"
+  SNAPSHOT_IOS_ROOT="$snaps/ios" bash "$repo_root/scripts/check-snapshots.sh"
 }
 printf 'func testLibrary() {}\n' >"$snaps/ios/LibrarySnapshotTests.swift"
 printf 'png' >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testLibrary.1.png"
-cat >"$snaps/android/kotlin/LibraryScreenSnapshotTest.kt" <<'EOF'
-fun library() = captureRoboImage("src/test/snapshots/library.png") { LibraryScreen(rows) }
-// captureRoboImage("src/test/snapshots/retired.png")
-EOF
-printf 'png' >"$snaps/android/snapshots/library.png"
 expect 0 "every reference named by a test and small" snapshot_check
 
-printf 'png' >"$snaps/android/snapshots/detail.png"
-expect 1 "an Android reference no test names" snapshot_check
-rm "$snaps/android/snapshots/detail.png"
-
-printf 'png' >"$snaps/android/snapshots/retired.png"
-expect 1 "an Android reference named only in a comment" snapshot_check
-rm "$snaps/android/snapshots/retired.png"
-
-printf '/*\n captureRoboImage("src/test/snapshots/boxed.png")\n*/\n' >"$snaps/android/kotlin/Boxed.kt"
-printf 'png' >"$snaps/android/snapshots/boxed.png"
-expect 1 "an Android reference named only in a block comment" snapshot_check
-rm "$snaps/android/kotlin/Boxed.kt" "$snaps/android/snapshots/boxed.png"
-
-printf 'captureRoboImage("src/test/old-snapshots/library.png")\n' >"$snaps/android/kotlin/Old.kt"
-printf 'png' >"$snaps/android/snapshots/detail.png"
-printf 'captureRoboImage("src/test/old-snapshots/detail.png")\n' >>"$snaps/android/kotlin/Old.kt"
-expect 1 "an Android reference named only under another folder" snapshot_check
-rm "$snaps/android/kotlin/Old.kt" "$snaps/android/snapshots/detail.png"
-
-head -c 200001 /dev/zero >"$snaps/android/snapshots/library.png"
-expect 1 "an Android reference over the ceiling" snapshot_check
-head -c 200000 /dev/zero >"$snaps/android/snapshots/library.png"
-expect 0 "an Android reference exactly at the ceiling" snapshot_check
-printf 'png' >"$snaps/android/snapshots/library.png"
+head -c 200001 /dev/zero >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testLibrary.1.png"
+expect 1 "an iOS reference over the ceiling" snapshot_check
+head -c 200000 /dev/zero >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testLibrary.1.png"
+expect 0 "an iOS reference exactly at the ceiling" snapshot_check
+printf 'png' >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testLibrary.1.png"
 
 printf 'png' >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testRetired.1.png"
 expect 1 "an iOS reference no test names" snapshot_check
 rm "$snaps/ios/__Snapshots__/LibrarySnapshotTests/testRetired.1.png"
-
-expect 2 "an Android root that is not there" env SNAPSHOT_ANDROID_ROOT="$work/nowhere" \
-  bash "$repo_root/scripts/check-snapshots.sh"
-mkdir -p "$work/bare-android"
-expect 0 "an Android root with no references yet" env SNAPSHOT_IOS_ROOT="$snaps/ios" \
-  SNAPSHOT_ANDROID_ROOT="$work/bare-android" bash "$repo_root/scripts/check-snapshots.sh"
 
 expect 0 "the references this repo actually ships" bash "$repo_root/scripts/check-snapshots.sh"
 

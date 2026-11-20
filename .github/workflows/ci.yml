@@ -49,10 +49,6 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       native: ${{ steps.filter.outputs.native }}
-      android: ${{ steps.filter.outputs.android }}
-      # Android is paused (#2860): the Android jobs skip, which still
-      # satisfies their required check. Set to "false" to restart.
-      android_paused: "true"
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -78,28 +74,14 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'mise.toml'
               - '.cargo/config.toml'
-            android:
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - 'rust-toolchain.toml'
-              - 'crates/intrada-core/**'
-              - 'crates/intrada-ffi/**'
-              - 'crates/intrada-store/**'
-              - 'android/**'
-              - 'scripts/android-emu-lock.sh'
-              - 'ios/Intrada/DesignSystem/Theme.swift'
-              - 'justfile'
-              - '.github/workflows/ci.yml'
-              - '.cargo/config.toml'
       # A filter that wrongly saw nothing would skip main's Mac gate in
       # silence, so each run says what it saw (#2113).
       - name: Say what the filter saw
         env:
           RUST: ${{ steps.filter.outputs.rust }}
           NATIVE: ${{ steps.filter.outputs.native }}
-          ANDROID: ${{ steps.filter.outputs.android }}
         run: |
-          echo "Path filter on ${GITHUB_EVENT_NAME}: rust=${RUST} native=${NATIVE} android=${ANDROID}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Path filter on ${GITHUB_EVENT_NAME}: rust=${RUST} native=${NATIVE}" >> "$GITHUB_STEP_SUMMARY"
       # Drift installs clippy/rustfmt for the env's version, then cargo resolves
       # to the file's: "clippy is not installed", or a silent second download.
       # Checks every workflow's RUST_VERSION, not just this file's — so a
@@ -123,7 +105,7 @@ jobs:
       # rather than an unpinned `brew install xcodegen` (#1556). Each half
       # fails loudly when its pin is missing, so a reworded cache key cannot
       # turn the guard into a green no-op.
-      - name: Version pins agree (cargo-swift, xcodegen, sentry-cli and the Android NDK across files)
+      - name: Version pins agree (cargo-swift, xcodegen, and sentry-cli across files)
         run: |
           swift_pinned=$(grep -oE '"cargo:cargo-swift" = "[^"]+"' mise.toml | cut -d'"' -f4)
           if [ -z "$swift_pinned" ]; then
@@ -173,31 +155,6 @@ jobs:
             echo "sentry-cli pins disagree across the workflows: $sentry_pins"
             exit 1
           fi
-          # The NDK is pinned once, in android/gradle.properties, and both the
-          # android-package recipe and the android job must read it from there
-          # rather than spell a version of their own (#2264).
-          ndk_pin=$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)
-          if ! printf '%s' "$ndk_pin" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "no exact intrada.ndkVersion in android/gradle.properties: the guard would be a no-op"
-            exit 1
-          fi
-          if ! grep -qxE '[[:space:]]*ndk="\$\(sed .*intrada.*android/gradle\.properties\)"' justfile; then
-            echo "the android-package recipe no longer reads the NDK pin from android/gradle.properties"
-            exit 1
-          fi
-          if ! grep -qxE '[[:space:]]*ndk=\$\(sed .*intrada.*android/gradle\.properties\)' .github/workflows/ci.yml \
-            || ! grep -qxE '[[:space:]]*sdkmanager .*"ndk;\$\{ndk\}"' .github/workflows/ci.yml; then
-            echo "the android job no longer installs the NDK pinned in android/gradle.properties"
-            exit 1
-          fi
-          ndk_spelt=$(grep -ohE '(ndk[;/]|NDK_VERSION: "?)[0-9]+\.[0-9]+\.[0-9]+' \
-            justfile .github/workflows/*.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u || true)
-          for v in $ndk_spelt; do
-            if [ "$v" != "$ndk_pin" ]; then
-              echo "an NDK version $v is spelt outside android/gradle.properties, which pins $ndk_pin"
-              exit 1
-            fi
-          done
 
   test:
     name: Test
@@ -651,164 +608,6 @@ jobs:
             exit 1
           fi
 
-  android:
-    name: Android (build + unit test)
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    needs: changes
-    if: needs.changes.outputs.android_paused != 'true' && (github.event_name == 'push' || needs.changes.outputs.android == 'true')
-    steps:
-      - uses: actions/checkout@v7
-      # rust-toolchain.toml lists no targets, so the two Android ones are added here.
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: aarch64-linux-android,x86_64-linux-android
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "android"
-          # Tools come from the install-tools cache instead (#2778).
-          cache-bin: false
-          shared-key: android
-          cache-on-failure: true
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: ./.github/actions/install-tools
-        with:
-          tools: just@1.59.0,cargo-ndk@4.1.2
-      # 21, not 17: Robolectric's API 36 sandbox needs it for the snapshot test.
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: android-actions/setup-android@v4
-      - name: Install the SDK platform and NDK
-        run: |
-          ndk=$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)
-          sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;${ndk}"
-      # Without the key, setup-gradle cannot store the configuration cache, which
-      # can hold secrets, so every run configures from scratch (27s cold, #2270).
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-      - name: Generate the Kotlin bindings and native libraries
-        run: just android-gen
-      # compareRoborazziDebug, not testDebugUnitTest: without a Roborazzi task the snapshot test
-      # returns before composing. Compare never fails by itself, so the next step fails on a
-      # difference once the upload has a diff to read (#2259).
-      - name: Build and test
-        working-directory: android
-        run: ./gradlew --continue ktfmtCheck :app:assembleDebug :app:lintDebug :app:detektDebug :app:detektDebugUnitTest :app:detektDebugAndroidTest :app:compareRoborazziDebug
-      - name: Say what the snapshot compare saw
-        if: always()
-        run: |
-          summary=android/app/build/test-results/roborazzi/debug/results-summary.json
-          if [ -f "$summary" ]; then
-            echo "Roborazzi: $(jq -c .summary "$summary")" | tee -a "$GITHUB_STEP_SUMMARY"
-            mismatched=$(jq '.summary.changed + .summary.added' "$summary")
-            if [ "$mismatched" -gt 0 ]; then
-              echo "::error::$mismatched Android snapshot(s) no longer match the reference; the diff is in the android-roborazzi artifact"
-              exit 1
-            fi
-          else
-            echo "Roborazzi wrote no summary, so the snapshot test did not compose" | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
-      - name: Upload the Roborazzi render
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: android-roborazzi
-          path: |
-            android/app/build/outputs/roborazzi/
-            android/app/build/test-results/roborazzi/
-          retention-days: 7
-          if-no-files-found: ignore
-      # Unsigned: the upload key exists only in release-play.yml. Last, because the release
-      # core replaces the debug libraries the tests above ran against (#2565).
-      - name: Build the release variant (release core, unsigned)
-        run: |
-          just android-gen release
-          android/gradlew -p android :app:assembleRelease
-          ls -l android/app/build/outputs/apk/release/
-
-  # The iPhone's tap-through flows, ported (#2562): the real app on an x86_64 emulator,
-  # through the same recipe a session runs locally.
-  android-ui:
-    name: Android (UI tests)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    needs: changes
-    if: needs.changes.outputs.android_paused != 'true' && (github.event_name == 'push' || needs.changes.outputs.android == 'true')
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: aarch64-linux-android,x86_64-linux-android
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "android"
-          # Tools come from the install-tools cache instead (#2778).
-          cache-bin: false
-          shared-key: android
-          cache-on-failure: true
-          save-if: false
-      - uses: ./.github/actions/install-tools
-        with:
-          tools: just@1.59.0,cargo-ndk@4.1.2
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: android-actions/setup-android@v4
-      - name: Install the SDK platform and NDK
-        run: |
-          ndk=$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)
-          sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;${ndk}"
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-      # Built before the emulator boots, so the recipe's own regeneration finds it current.
-      - name: Generate the Kotlin bindings and native libraries
-        run: just android-gen
-      - name: Build the app and its UI tests
-        working-directory: android
-        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
-      - name: Let the emulator use KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Run the UI tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 36
-          target: google_apis
-          arch: x86_64
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          # The launch after the tests, so it cannot leave state on the device they read (#2565).
-          script: |
-            just android-test-ui
-            SCREENSHOT="$GITHUB_WORKSPACE/android-screenshots/library.png" just android-run
-      - name: Upload the launch screenshot
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: android-screenshot
-          path: android-screenshots/
-          retention-days: 7
-          if-no-files-found: ignore
-      - name: Upload the UI test results
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: android-ui-results
-          path: |
-            android/app/build/outputs/androidTest-results/
-            android/app/build/reports/androidTests/
-          retention-days: 7
-          if-no-files-found: ignore
-
   # Cheap (<5s, no macOS) guard that keeps the snapshot-reference suite from
   # bloating git history: every PNG must map to a current test (no orphans) and
   # stay under the size ceiling (catches un-optimized references — Xcode writes a
@@ -818,7 +617,7 @@ jobs:
     name: Snapshot Hygiene
     runs-on: ubuntu-latest
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.native == 'true' || needs.changes.outputs.android == 'true'
+    if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
     steps:
       - uses: actions/checkout@v7
       - name: Check snapshot references (orphans + size ceiling)
@@ -1080,7 +879,7 @@ jobs:
   alert-on-red-main:
     name: Alert on red main
     runs-on: ubuntu-latest
-    needs: [changes, test, msrv, clippy, native-ios, android, android-ui, snapshot-hygiene, fmt, security]
+    needs: [changes, test, msrv, clippy, native-ios, snapshot-hygiene, fmt, security]
     if: failure() && github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       issues: write
