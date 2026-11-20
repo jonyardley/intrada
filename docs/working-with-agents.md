@@ -61,18 +61,17 @@ then refuses every git command.
 | You are | Do |
 |---|---|
 | Opening a session | The model and effort `.claude/settings.json` opens it on |
-| Reaching work on the sensitive surfaces | The level the role table gives sensitive surfaces, set with `/effort` before it starts, saying so, and back after; never a new chat |
+| Reaching work on the sensitive surfaces | Stay on the opening level, which is the role table's; never ask Jon to type `/effort`, and never a new chat |
 | Handing work down | Settled work goes to a subagent (step 5); a new chat only frees the session (#1836) |
 
-A session opens on `.claude/settings.json`. Every spawn's model and effort,
-and the lead's raise for sensitive surfaces, come from the role table in
+A session opens on `.claude/settings.json`. Every spawn's model and effort
+come from the role table in
 `~/.claude/CLAUDE.md` (Subagents, review and lane size), named on each Agent
 call; this repo keeps no levels of its own. Review
 rounds, lane size and the one approved plan per change are in the same file's
 "Speed and reliability"; here only the local detail.
 
-`/effort` saves to settings unless you choose session-only, which is why a
-raised stretch ends by setting it back. Fast mode costs twice the standard
+`/effort` saves to settings, so a session never runs it. Fast mode costs twice the standard
 rate: use it only when latency matters, never to save money.
 
 Superpowers is disabled on purpose, because its "invoke a skill for anything"
@@ -100,7 +99,7 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   refactors, docs.
 - **Tier 2, plan comment** (the default for feature work): a component or
   screen on existing patterns, an endpoint on established conventions, a field
-  on a model. A new screen gets a mockup and Jon's word on it first
+  on a model. A new screen gets a SwiftUI sketch and Jon's word on it first
   (`docs/design-workflow.md`), and starts by reading an existing screen, which
   loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features,
@@ -120,9 +119,7 @@ skeleton; one that runs long means Tier 3. It names the issue's epic, and new
 issues go under it the same turn with `just epic-add`; three or more ordered
 issues with no epic are a new one ([Epics](how-the-work-runs.md#epics)).
 
-Every plan names, per task, whether it is on the sensitive surfaces (a
-hand-written opener then starts with `/effort` at the role table's level for
-sensitive surfaces), where it runs, and its streams and serialisation points per `intrada-parallel-streams`. Worked tier
+Every plan names, per task, whether it is on the sensitive surfaces, where it runs, and its streams and serialisation points per `intrada-parallel-streams`. Worked tier
 examples: [`reference.md`](reference.md).
 
 ## 5. Build
