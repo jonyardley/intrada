@@ -96,6 +96,7 @@ hygiene:
         "status-epics-test:bash scripts/tests/status-epics-test.sh"
         "status-ready-test:bash scripts/tests/status-ready-test.sh"
         "worktree-status-test:bash scripts/tests/worktree-status-test.sh"
+        "worktree-done-test:bash scripts/tests/worktree-done-test.sh"
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
@@ -374,7 +375,11 @@ worktree-new name:
         echo "✗ wt reported success but no worktree has branch {{name}}" >&2
         exit 1
     fi
-    echo "  cd $target && just check"
+    # Sessions start inside their worktree (#2918): path-scoped rules load
+    # only there, and nothing needs the `cd <worktree> && ` prefix.
+    echo "✓ worktree $target"
+    echo "  Start its session there:"
+    echo "  cd $target && claude"
 
 # Companion to worktree-new: cleans the worktree's throwaway sim (if any),
 # then removes the worktree via git. Run from any checkout; leaves the
@@ -392,6 +397,16 @@ worktree-rm name:
     fi
     git worktree remove "$target"
     echo "✓ removed worktree $target"
+
+# The session's own way out once its PR merges (#2918): removes the worktree it
+# runs in, and its simulator, only when the PR is merged, the tree is clean and
+# nothing is unpushed. The worktree guard checks the same and refuses the usual
+# removal commands on another session's worktree; some unusual command shapes
+# are known limits. worktree-rm and forced removals skip this check.
+[doc("Remove this worktree once its PR is merged, it is clean and nothing is unpushed")]
+[group('Worktrees')]
+worktree-done:
+    ./scripts/worktree-done.sh
 
 # Every worktree of this repo with its branch, uncommitted file count and the
 # Claude Code session holding its lease. A worktree sitting at main with no
