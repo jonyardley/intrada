@@ -284,7 +284,7 @@ if [ -n "$ready_error" ]; then
   echo "    $ready_error"
 fi
 capped "$ready" "$ready_limit"
-echo "    Only the owner adds the ready label: the plan, and any mockup, are approved."
+echo "    Only the owner adds the ready label: the plan, and any sketch, are approved."
 echo "    Order: horizon, then the board's Priority, then oldest first. Build from"
 echo "    here first; an epic's next child waits until the owner marks it ready."
 

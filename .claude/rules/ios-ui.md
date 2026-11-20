@@ -71,6 +71,6 @@ emerges from behind is also opaque and sits on top (`.zIndex(1)`).
   `scripts/check-haptics.sh` enforces it (#2013).
 - iPad list-to-detail screens use `ListDetailSplit`, built with the view.
 
-A new screen follows the route in `docs/design-workflow.md`: a mockup on a
-Design canvas, Jon's word on it, then the build against the copy saved in its
-spec folder. A new token goes into `Theme.swift` first.
+A new screen follows the route in `docs/design-workflow.md`: options on a
+Design canvas, then a SwiftUI sketch from the real components, Jon's word on
+it, then the build from the sketch branch. A new token goes into `Theme.swift` first.
