@@ -93,7 +93,7 @@ status=0
 if [ ${#untested[@]} -gt 0 ]; then
   echo "✗ on the bridge with no LiveBridge test naming it (#846, #2101):" >&2
   printf '    %s\n' "${untested[@]}" >&2
-  echo "  Drive it through RowsBridge in a *BridgeTests.swift file, or LiveBridge in a *RoundTripTest.kt file, and assert on what comes back." >&2
+  echo "  Drive it through RowsBridge in a *BridgeTests.swift file and assert on what comes back." >&2
   status=1
 fi
 if [ ${#stale[@]} -gt 0 ]; then

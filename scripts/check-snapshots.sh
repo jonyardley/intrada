@@ -10,7 +10,7 @@
 #     `just ios-snapshots-optimize` strips it losslessly, ~75% smaller). Fail so
 #     it's optimized before it lands, keeping per-record history growth low.
 #
-# The root is overridable so the self-test can point them at fixtures
+# The root is overridable so the self-test can point it at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 set -euo pipefail
 

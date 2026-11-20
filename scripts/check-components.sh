@@ -50,10 +50,10 @@ key() {
     NR > 1 { if (index($0, k ":") == 1) { sub("^" k ":[ ]*", ""); print; exit } }' "$2"
 }
 
-# A Swift declaration of the name, generics and receivers allowed:
-# `struct Pills<Option`, `func cardSurface(`, `func View.cardShadow(`.
+# A Swift declaration of the name, generics allowed:
+# `struct Pills<Option`, `func cardSurface(`.
 declares() {
-  printf '(struct|class|enum|protocol|func|fun|val|let|var)[[:space:]]+(<[^>]*>[[:space:]]+)?([A-Za-z]+\\.)?%s([^A-Za-z0-9_]|$)' "$1"
+  printf '(struct|class|enum|protocol|func|let|var)[[:space:]]+(<[^>]*>[[:space:]]+)?%s([^A-Za-z0-9_]|$)' "$1"
 }
 
 list() { printf '%s\n' "$1" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$' || true; }

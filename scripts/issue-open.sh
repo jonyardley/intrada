@@ -9,7 +9,7 @@
 set -euo pipefail
 set -f
 
-kinds="bug ux architecture accessibility documentation ios android security epic"
+kinds="bug ux architecture accessibility documentation ios security epic"
 
 # Labels are collected, stripped of spaces and forwarded as one list, since gh
 # matches names exactly and would reject " bug".
