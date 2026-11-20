@@ -4,6 +4,11 @@ name: Release — TestFlight
 # (macOS runners are 10×-billed; #784, #984).
 on:
   workflow_dispatch:
+    inputs:
+      upload:
+        description: "Upload to TestFlight (off: build and archive only, for timing)"
+        type: boolean
+        default: true
   push:
     # X.Y.Z only: the beta lane hard-rejects other shapes, and failing at the
     # trigger beats failing after ~15 min of 10x-billed macOS build.
@@ -63,7 +68,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+          # The phone slice only: the archive ships nothing for a simulator (#2917).
+          targets: aarch64-apple-ios
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "release-testflight"
@@ -107,12 +113,13 @@ jobs:
           curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
           unzip -q /tmp/xcodegen.zip -d /tmp
           /tmp/xcodegen/install.sh
-      # RELEASE core (debug cores are 10-100× slower in hot paths). cargo-swift
-      # --platforms ios emits the aarch64-apple-ios device slice the archive needs.
+      # RELEASE core (debug cores are 10-100× slower in hot paths), built for
+      # the phone slice alone: the two simulator slices were most of this
+      # step's time and the archive never ships them (#2917).
       - name: Regenerate Swift bindings (release core)
         run: |
           just ios-typegen
-          just ios-package release
+          just ios-package release device
       # The DSN expands into the SENTRY_DSN build setting here; ios/project.yml
       # explains the route from there to the plist. Without it the app's start
       # gate keeps Sentry off and the build reports nothing (#1553).
@@ -129,6 +136,17 @@ jobs:
             exit 1
           fi
           echo "SENTRY_DSN is baked into the generated project."
+      # The Swift packages fastlane clones into build/spm. The pins live in
+      # project.yml (no Package.resolved is checked in), so the key follows it.
+      # Not "release-testflight-": cache-prune.yml keeps two of that family,
+      # which is rust-cache's. A tag run's save is visible to that tag alone,
+      # so a later tag restores what a main run saved.
+      - name: Cache Swift packages
+        uses: actions/cache@v6
+        with:
+          path: build/spm
+          key: testflight-spm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/project.yml') }}
+          restore-keys: testflight-spm-${{ runner.os }}-${{ runner.arch }}-
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
@@ -144,6 +162,8 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           # Empty on branch dispatch; the Fastfile then falls back to project.yml.
           MARKETING_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          # "false" only from a dispatch that turned upload off; a tag always uploads.
+          TESTFLIGHT_UPLOAD: ${{ github.event_name != 'workflow_dispatch' || inputs.upload }}
         run: bundle exec fastlane ios beta
       # sentry-cli, not ci.yml's getsentry/action-release: that is a Docker
       # container action and cannot run on a macOS runner. The name is read off

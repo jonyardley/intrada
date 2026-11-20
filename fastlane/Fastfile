@@ -79,6 +79,12 @@ platform :ios do
       xcargs: xcargs
     )
 
+    # A dispatch with upload off times the build and stops here (#2917).
+    if ENV.fetch("TESTFLIGHT_UPLOAD", "true") == "false"
+      UI.important("TESTFLIGHT_UPLOAD is false: built and archived, not uploaded.")
+      next
+    end
+
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true,
