@@ -86,8 +86,10 @@ for n in $numbers; do
 done
 
 # Drafts until reviewed and green (Jon's rule); `gh pr ready` lifts it.
-case " ${args[*]} " in
-  *" --draft "* | *" -d "*) ;;
-  *) args+=(--draft) ;;
-esac
+# Whole arguments only, so a title or body that quotes -d still drafts.
+draft=0
+for a in "${args[@]}"; do
+  case "$a" in --draft | -d) draft=1 ;; esac
+done
+[ "$draft" = 1 ] || args+=(--draft)
 gh pr create "${args[@]}"
