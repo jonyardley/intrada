@@ -1122,6 +1122,12 @@ write_lessons 31
 expect 1 "31 lessons" lessons_check
 lessons_over_names_archive() { grep -q "lessons-archive.md" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "31 lessons, the message naming the archive" lessons_over_names_archive
+lessons_over_names_both_steps() {
+  local out
+  out=$(lessons_check 2>&1 || true)
+  grep -q "whose issue has closed, then" <<<"$out" && grep -q "and no open issue" <<<"$out"
+}
+expect 0 "31 lessons, the message naming closed issues first and keeping open ones" lessons_over_names_both_steps
 write_lessons 30
 printf -- '- 2026-11-12, #1: lesson 30\n' >>"$lessons"
 lessons_over_and_repeated() {
