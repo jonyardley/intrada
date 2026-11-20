@@ -52,8 +52,8 @@
             spoken: "Hanon No. 1, mastery up from 2 to 3", direction: .up),
           ScoreChange(
             itemId: "piece-2", itemTitle: "Gymnopédie No. 1", previousScore: nil,
-            currentScore: 3, delta: 0, isNew: true, subtitle: "first time marked",
-            spoken: "Gymnopédie No. 1, first time marked, mastery 3", direction: .up),
+            currentScore: 3, delta: 0, isNew: true, subtitle: "first confidence",
+            spoken: "Gymnopédie No. 1, first confidence, mastery 3", direction: .up),
         ],
         variationCoverage: [
           VariationCoverageView(
@@ -228,15 +228,15 @@
           SuggestedItem(
             itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece"),
+            reason: "No confidence with this piece yet"),
           SuggestedItem(
             itemId: "ex-2", itemTitle: "Shell voicings", itemType: .exercise,
             latestScore: 4,
-            reason: "Marked 4 of 10 last time"),
+            reason: "Confidence 4 of 10 last time"),
           SuggestedItem(
             itemId: "piece-1", itemTitle: "Like Someone in Love", itemType: .piece,
             latestScore: 6,
-            reason: "Marked 6 of 10 last time"),
+            reason: "Confidence 6 of 10 last time"),
         ],
         estimatedMinutes: 15)
     }
@@ -250,11 +250,11 @@
           SuggestedItem(
             itemId: "ex-3", itemTitle: "Contrary-motion scales", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece"),
+            reason: "No confidence with this piece yet"),
           SuggestedItem(
             itemId: "piece-2", itemTitle: "Prelude in C", itemType: .piece,
             latestScore: nil,
-            reason: "Not marked yet"),
+            reason: "No confidence yet"),
         ],
         estimatedMinutes: 10)
     }
@@ -270,11 +270,11 @@
           SuggestedItem(
             itemId: "ex-4", itemTitle: "Two-five-one in G minor", itemType: .exercise,
             latestScore: 7,
-            reason: "Marked 7 of 10 last time"),
+            reason: "Confidence 7 of 10 last time"),
           SuggestedItem(
             itemId: "piece-3", itemTitle: "Autumn Leaves", itemType: .piece,
             latestScore: 5,
-            reason: "Marked 5 of 10 last time"),
+            reason: "Confidence 5 of 10 last time"),
         ],
         estimatedMinutes: 10)
     }

@@ -365,7 +365,7 @@ final class ComponentSnapshotTests: SnapshotTestCase {
       VStack(spacing: IntradaSpacing.section) {
         ForEach([0, 4, 10], id: \.self) { score in
           ScoreSelector(
-            score: score, range: 1...10, accessibilityLabel: "Mark for Clair de Lune"
+            score: score, range: 1...10, accessibilityLabel: "Confidence for Clair de Lune"
           ) { _ in }
         }
       }

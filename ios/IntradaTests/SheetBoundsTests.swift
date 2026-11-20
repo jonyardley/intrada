@@ -42,7 +42,7 @@ struct SheetBoundsTests {
   }
 
   private func scoreSelector(score: Int) -> ScoreSelector {
-    ScoreSelector(score: score, range: limits.scoreRange, accessibilityLabel: "Mark") { _ in }
+    ScoreSelector(score: score, range: limits.scoreRange, accessibilityLabel: "Confidence") { _ in }
   }
 
   @Test func theMarkPillsOfferTheScoresTheCoreAccepts() {
@@ -51,6 +51,10 @@ struct SheetBoundsTests {
 
   @Test func theSpokenMarkIsOutOfTheCoresTopScore() {
     #expect(scoreSelector(score: 4).spokenValue == "4 of 6")
+  }
+
+  @Test func noConfidenceIsSpokenAsNoneYet() {
+    #expect(scoreSelector(score: 0).spokenValue == "none yet")
   }
 
   @Test func aSwipeUpFromUnmarkedLandsOnTheCoresLowestScore() {

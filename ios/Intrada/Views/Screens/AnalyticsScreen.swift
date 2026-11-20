@@ -57,7 +57,7 @@ struct AnalyticsScreen: View {
     } else {
       PlaceholderContent(
         systemImage: "chart.line.uptrend.xyaxis",
-        message: "Minutes and marks will show here, week by week.",
+        message: "Minutes and confidence will show here, week by week.",
         actions: [
           .buildSession(
             identifier: "progress.empty.build", store: store, openPractice: openPractice)

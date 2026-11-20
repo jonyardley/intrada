@@ -167,10 +167,10 @@ struct ReflectionSheet: View {
           playRows.padding(.top, IntradaSpacing.controlGap)
         } else if let only = plays.first {
           // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
-          sectionTitle("Mark").padding(.top, IntradaSpacing.section)
+          sectionTitle("Confidence").padding(.top, IntradaSpacing.section)
           ScoreSelector(
             score: mark(for: only.id), range: limits.scoreRange,
-            accessibilityLabel: "Mark for \(itemTitle)"
+            accessibilityLabel: "Confidence for \(itemTitle)"
           ) { next in
             setMark(next, for: only.id)
           }
@@ -219,7 +219,7 @@ struct ReflectionSheet: View {
         .accessibilityIdentifier("reflection.save")
         .padding(.top, IntradaSpacing.card)
 
-        Button("Skip rating") { onSkip() }
+        Button("Skip") { onSkip() }
           .accessibilityIdentifier("reflection.skip")
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.inkSecondary)
@@ -274,7 +274,7 @@ struct ReflectionSheet: View {
           if play.isMarkable {
             ScoreSelector(
               score: mark(for: play.id), range: limits.scoreRange,
-              accessibilityLabel: "Mark for \(rowTitle(play))"
+              accessibilityLabel: "Confidence for \(rowTitle(play))"
             ) { next in
               setMark(next, for: play.id)
             }

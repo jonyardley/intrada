@@ -63,8 +63,8 @@ final class ProgressSnapshotTests: SnapshotTestCase {
           title: "Clair de Lune", subtitle: "D♭ major · now", was: 3, now: 4, direction: .up,
           spoken: "Clair de Lune, D♭ major · now, mastery up from 3 to 4", kind: .piece)
         MasteryDelta(
-          title: "Hanon No. 1", subtitle: "first time marked", was: nil, now: 3, direction: .up,
-          spoken: "Hanon No. 1, first time marked, mastery 3", kind: .exercise)
+          title: "Hanon No. 1", subtitle: "first confidence", was: nil, now: 3, direction: .up,
+          spoken: "Hanon No. 1, first confidence, mastery 3", kind: .exercise)
         MasteryDeltaToast(
           title: "Clair de Lune moved up", subtitle: "D♭ major mastery", was: 3, now: 4)
       }

@@ -25,7 +25,7 @@ struct StartHereCard: View {
         done: progress.added, action: onAdd),
       Step(title: "Build a session", done: progress.built, action: onStartSession),
       Step(title: "Play it through", done: progress.played, action: onStartSession),
-      Step(title: "Mark how it went", done: progress.marked, action: onStartSession),
+      Step(title: "Say how confident it felt", done: progress.marked, action: onStartSession),
     ]
   }
 
