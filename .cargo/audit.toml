@@ -7,20 +7,4 @@
 # Re-evaluate this list whenever an entry's tracking issue closes.
 
 [advisories]
-ignore = [
-    # rsa 0.9.x Marvin Attack (timing side-channel on RSA key recovery).
-    # No upstream fix. jsonwebtoken's `rust_crypto` feature pulls in the rsa
-    # crate for RSA math, but we only perform RS256 *signature verification*
-    # (public-key operation) — the Marvin attack targets RSA *decryption*
-    # (PKCS#1v1.5 padding oracle), which is never exercised in the JWT path.
-    # Re-evaluate when rsa 0.10 drops or if advisory scope broadens.
-    "RUSTSEC-2023-0071",
-
-    # rustls-webpki advisories pulled in transitively by libsql 0.9.30 →
-    # tonic 0.11.0. Cleared by upgrading libsql to ≥0.10. Tracked in
-    # https://github.com/jonyardley/intrada/issues/568.
-    "RUSTSEC-2026-0049", # CRL distribution-point matching
-    "RUSTSEC-2026-0098", # Name constraints — URI names
-    "RUSTSEC-2026-0099", # Name constraints — wildcard certificates
-    "RUSTSEC-2026-0104", # Reachable panic in CRL parsing
-]
+ignore = []
