@@ -50,8 +50,6 @@
 
 - 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives (seen again 1).
 - 2026-11-12, #2801: in auto mode, the rtk hook (this machine only) rewrites some commands after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it (seen again 1).
-- 2026-11-13, #2806: a fake gh that only writes its message to standard error hides how the real one fails; a failed `gh api` read prints the JSON body on standard output with no newline and the "gh:" message joined on, so run one real failing read before writing the fake.
-- 2026-11-13, #2847: a self-test fixture passed with the code it tests removed, because the check refused it for another reason; remove each piece of a new check in turn and watch its own case fail.
 - 2026-11-13, #2847: a session parked on a permission prompt for `rm -r` on a scratch folder; make a fresh `mktemp -d` folder per run and leave it for the job's own cleanup.
 - 2026-11-13, #2847: `sed -E` on macOS rejected a backslash-heavy mutation and wrote an empty script, so the self-test's failure looked like a caught mutant; swap literal text with perl's `\Q...\E` and diff before running.
 - 2026-11-14, #2866: lowering an agent's effort pin makes `guard-spawn.sh` refuse every spawn above it, so a pin that is lifted on some diffs needs an `effort-ceiling:` beside it, or the lift is blocked.
