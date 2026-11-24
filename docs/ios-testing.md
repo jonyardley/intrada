@@ -140,6 +140,10 @@ silently ignores it.
 sleep off. No background load (video wallpaper, Spotlight, #1648) and no local
 iOS work on it, which would share its `intrada` simulator.
 
+**Timing a build** on a Mac that also runs another lane or this runner gives
+skewed numbers, since both compete for the same cores (#2926). Time builds
+only once the other lane's gates and its CI runs are done.
+
 **Offline means queued** for up to 24 hours: check the runner first. After a
 reboot someone must log in (FileVault, launchd user agent):
 `sudo fdesetup authrestart` over SSH, then Screen Sharing.

@@ -47,6 +47,11 @@ command shapes are known limits it does not catch, and the protection that
 holds is the merge lock on GitHub. A lead may launch helper agents that each
 work in their own worktree, which Claude Code makes under `.claude/worktrees`.
 
+A branch stays checked out in the worktree that built it, so a later helper
+on the same branch runs `git switch --detach origin/<branch>`, commits there
+and pushes with `git push origin HEAD:<branch>` (#2955). `just pr-open` reads
+the branch name, so it runs from the builder's worktree, not a detached one.
+
 ## Three places, one rule each
 
 Once the repo has a linked worktree, as intrada always does:
