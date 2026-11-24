@@ -42,7 +42,9 @@ Every session or helper agent that edits works in its own worktree (#1837,
 #2918). The main checkout is for status, claims and making worktrees:
 its working tree is read-only, a `cd <worktree> && ` prefix from it is
 refused for writes while reads pass, and `.claude/rules/` files load only when
-the session's folder is the worktree. Worktrees branch from fresh `origin/main` into
+the session's folder is the worktree. A session started in the main checkout
+moves into its worktree with Claude Code's `EnterWorktree` tool and the
+worktree's path, with no restart. Worktrees branch from fresh `origin/main` into
 `../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the
@@ -168,7 +170,7 @@ nothing, so callers stay a grep job. Restart Claude Code after. Installs:
 
 ## 6. Review
 
-Who reviews, and when, is step 2 of the route in the
+Who reviews, and when, is the review step of the route in the
 [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
 
 ## 7. Ship
