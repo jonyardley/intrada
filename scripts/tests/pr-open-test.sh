@@ -254,25 +254,7 @@ short="$(words 300 note.)"
 
 body_run "## What this fixes
 $long"
-expect_refused "360 words, no Tier 3 heading"
-
-body_run "## What this fixes
-$long
-## Where this could bite
-none"
-expect_opened "360 words with Where this could bite"
-
-body_run "## What this fixes
-$long
-## What changed where
-none"
-expect_opened "360 words with What changed where"
-
-body_run "## What this fixes
-$long
-## Where this could bite
-<!-- say what could go wrong -->"
-expect_refused "360 words with an empty Tier 3 heading"
+expect_refused "360 words"
 
 body_run "## What this fixes
 $short

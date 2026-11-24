@@ -191,7 +191,7 @@ project-status issue status:
     ./scripts/project-status.sh {{issue}} "{{status}}"
 
 # Before-and-after markdown for every snapshot reference this branch changed,
-# ready to paste under "What it looks like" in a PR body (#1631).
+# ready to paste under "What I checked" in a PR body (#1631).
 [doc("Print before-and-after markdown for the snapshot references this branch changed")]
 pr-visuals:
     ./scripts/pr-visuals.sh
@@ -248,7 +248,7 @@ issue-open title body_file labels *flags:
 
 [doc("Mark a PR ready once its checks, review, closing line and lessons are in, and move its issue to In review, e.g. just pr-ready 2600 2593")]
 pr-ready pr issue:
-    bash scripts/pr-ready.sh {{pr}} {{issue}}
+    bash scripts/pr-ready.sh {{quote(pr)}} {{quote(issue)}}
     ./scripts/project-status.sh {{issue}} "In review"
 
 # Check everything (fmt, then lint+test+hygiene overlapped). Mirrors the iOS

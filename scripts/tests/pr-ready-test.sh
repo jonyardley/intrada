@@ -33,6 +33,13 @@ case "$1 $2" in
     fi
     cat "$FIXTURES/checks.json"
     ;;
+  "api "*)
+    if [ ! -f "$FIXTURES/required.json" ]; then
+      echo "gh: Not Found (HTTP 404)" >&2
+      exit 1
+    fi
+    jq -r "$4" "$FIXTURES/required.json"
+    ;;
   "pr ready")
     echo "$3" >>"$CALLS/ready.log"
     ;;
@@ -56,7 +63,7 @@ g config user.name "Test"
 mkdir -p "$repo/docs" "$repo/scripts"
 echo "# Lessons" >"$repo/docs/lessons.md"
 g add -A && g commit -q -m init
-g update-ref refs/remotes/origin/main HEAD
+g remote add origin "$repo"
 
 branch() {
   g checkout -q main
@@ -76,6 +83,8 @@ branch nolessons scripts/x.sh
 pass_checks='[{"name":"Test","bucket":"pass"},{"name":"Alert","bucket":"skipping"}]'
 review_comment='{"author":{"login":"owner"},"body":"**Self-review by the reviewer agent**\nNo findings."}'
 good_body='Closes #42.'
+req_ok='{"contexts":["Test"],"checks":[{"context":"Test","app_id":1}]}'
+req="$req_ok"
 
 # Sets the fixtures from the passing case with one change, then runs.
 case_run() {
@@ -86,6 +95,9 @@ case_run() {
   jq -n --argjson c "[$comments]" --arg b "$body" \
     '{author: {login: "owner"}, body: $b, comments: $c}' >"$FIXTURES/view.json"
   [ -z "${5:-}" ] || printf '%s' "$5" >"$FIXTURES/head"
+  rm -f "$FIXTURES/required.json"
+  [ -z "$req" ] || printf '%s' "$req" >"$FIXTURES/required.json"
+  req="$req_ok"
   set +e
   out="$(cd "$repo" && "$script" 7 42 2>&1)"
   run_status=$?
@@ -134,6 +146,18 @@ expect_refused "a pending check" "Native iOS (pending)"
 case_run code '[{"name":"Clippy","bucket":"fail"}]' "$review_comment" "$good_body"
 expect_refused "a failed check" "Clippy (fail)"
 
+req='{"contexts":["Test","MSRV"],"checks":[{"context":"Test"}]}'
+case_run code "$pass_checks" "$review_comment" "$good_body"
+expect_refused "a required check not reported" "not reported on the last commit: MSRV"
+
+req='{"checks":[{"context":"Test"},{"context":"Clippy"}]}'
+case_run code "$pass_checks" "$review_comment" "$good_body"
+expect_refused "a required check named only under checks" "not reported on the last commit: Clippy"
+
+req=""
+case_run code "$pass_checks" "$review_comment" "$good_body"
+expect_refused "main's protection unreadable" "could not read main's required checks"
+
 case_run code "$pass_checks" "" "$good_body"
 expect_refused "code change, no comments" "no review comment"
 
@@ -149,11 +173,47 @@ expect_refused "body does not close" "does not close #42"
 case_run code "$pass_checks" "$review_comment" "Closes #420."
 expect_refused "body closes a longer number" "does not close #42"
 
+case_run code "$pass_checks" "$review_comment" "Part of #42.
+<!-- Closes #42 -->"
+expect_refused "closing line inside a comment" "does not close #42"
+
+case_run code "$pass_checks" "$review_comment" "Part of #42.
+\`\`\`
+Closes #42
+\`\`\`"
+expect_refused "closing line inside a code block" "does not close #42"
+
 case_run archived "$pass_checks" "$review_comment" "$good_body"
 expect_ready "a lesson sent straight to the archive"
 
 case_run nolessons "$pass_checks" "$review_comment" "$good_body"
 expect_refused "no lessons commit" "no lessons commit"
+
+g remote set-url origin "$work/nowhere"
+case_run code "$pass_checks" "$review_comment" "$good_body"
+expect_refused "main cannot be fetched" "could not fetch main"
+g remote set-url origin "$repo"
+
+# A missing tree makes `git diff` fail with 128, which must not pass as a change.
+case_run code "$pass_checks" "$review_comment" "$good_body"
+tree="$(g rev-parse code:docs)"
+mv "$repo/.git/objects/${tree:0:2}/${tree:2}" "$work/tree"
+rm -f "$CALLS/ready.log"
+set +e
+out="$(cd "$repo" && "$script" 7 42 2>&1)"
+run_status=$?
+set -e
+mv "$work/tree" "$repo/.git/objects/${tree:0:2}/${tree:2}"
+expect_refused "the lessons difference unreadable" "could not compare the lessons files"
+
+for args in "7x 42" "7 42;true" " 42"; do
+  rm -f "$CALLS/ready.log"
+  set +e
+  out="$(cd "$repo" && "$script" "${args% *}" "${args##* }" 2>&1)"
+  run_status=$?
+  set -e
+  expect_refused "arguments \"$args\"" "both numbers"
+done
 
 rm -f "$FIXTURES/view.json" "$CALLS/ready.log"
 set +e

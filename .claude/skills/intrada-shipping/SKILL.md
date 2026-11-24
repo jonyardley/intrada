@@ -38,11 +38,8 @@ review rule there.
 6. **Retro**, once CI is green and every finding is fixed or answered: two or
    three lessons, one per kind `docs/lessons.md` names, each given an outcome
    (below), committed and pushed. Wait for the checks on that commit.
-7. **Ready** with `just pr-ready <pr> <issue>`. It refuses, naming the
-   reason, unless every check on the last commit passed, a review comment is
-   posted (or the change is documentation only), the body names the issue to
-   close, and the branch carries a lessons commit. A screen change also waits
-   for the owner's yes on its pictures.
+7. **Ready**: `just pr-ready <pr> <issue>` refuses until the route is done. A
+   screen change also waits for the owner's yes on its pictures.
 8. **The merge wait**, in the background: poll every three minutes for up to
    an hour, `for i in $(seq 20); do s=$(gh pr view PR --json state -q
    .state); [ "$s" != OPEN ] && break; sleep 180; done; echo "$s"`

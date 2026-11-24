@@ -9,8 +9,12 @@
 
 set -euo pipefail
 
-pr="${1:?usage: pr-ready.sh <pr> <issue>}"
-issue="${2:?usage: pr-ready.sh <pr> <issue>}"
+pr="${1:-}"
+issue="${2:-}"
+[[ "$pr" =~ ^[0-9]+$ && "$issue" =~ ^[0-9]+$ ]] || {
+  echo "✗ usage: pr-ready.sh <pr> <issue>, both numbers." >&2
+  exit 1
+}
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/diff-scope.sh
@@ -22,7 +26,8 @@ refuse() {
   exit 1
 }
 
-git fetch -q origin main 2>/dev/null || true
+# The review route and the lessons commit both diff against main.
+git fetch -q origin main || refuse "could not fetch main."
 view="$(gh pr view "$pr" --json headRefOid,body,author,comments)"
 
 [ "$(jq -r .headRefOid <<<"$view")" = "$(git rev-parse HEAD)" ] ||
@@ -35,18 +40,31 @@ jq -e 'type == "array" and length > 0' <<<"$checks" >/dev/null 2>&1 ||
 waiting="$(jq -r '[.[] | select(.bucket != "pass" and .bucket != "skipping") | "\(.name) (\(.bucket))"] | join(", ")' <<<"$checks")"
 [ -z "$waiting" ] || refuse "checks not passed on the last commit: $waiting."
 
+# A check that has not reported yet is absent, not pending; main's protection
+# names the ones that must be there.
+required="$(gh api 'repos/{owner}/{repo}/branches/main/protection/required_status_checks' \
+  --jq '[.contexts[]?, .checks[]?.context] | unique | .[]')" && [ -n "$required" ] ||
+  refuse "could not read main's required checks."
+missing="$(jq -r --arg req "$required" '($req | split("\n")) - [.[].name] | join(", ")' <<<"$checks")"
+[ -z "$missing" ] || refuse "required checks not reported on the last commit: $missing."
+
 # A review comment is one by the PR's author whose first line names a review,
 # which `just pr-open --review-file` posts; documentation only needs none.
 reviews="$(jq -r '.author.login as $a | [.comments[] | select(.author.login == $a and (.body | split("\n")[0] | test("review"; "i")))] | length' <<<"$view")"
 [[ "$(diff_scope_review_route)" == none:* ]] || [ "$reviews" -gt 0 ] ||
   refuse "no review comment (a comment by the PR's author whose first line names the review)."
 
-body="$(jq -r .body <<<"$view")"
+body="$(jq -r .body <<<"$view" | perl -0pe 's/<!--.*?-->//gs; s/```.*?```//gs')"
 grep -qiE "(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):? +#$issue([^0-9]|$)" <<<"$body" ||
   refuse "the body does not close #$issue; add \"Closes #$issue\"."
 
 base="$(git merge-base origin/main HEAD)"
-git diff --quiet "$base" HEAD -- docs/lessons.md docs/lessons-archive.md &&
-  refuse "no lessons commit on this branch; run the /ship retro first."
+lessons=0
+git diff --quiet "$base" HEAD -- docs/lessons.md docs/lessons-archive.md || lessons=$?
+case "$lessons" in
+  1) ;;
+  0) refuse "no lessons commit on this branch; run the /ship retro first." ;;
+  *) refuse "could not compare the lessons files (git diff exited $lessons)." ;;
+esac
 
 gh pr ready "$pr"

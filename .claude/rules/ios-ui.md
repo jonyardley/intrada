@@ -19,11 +19,10 @@ two disagree, the design principle wins and the tone doc gets a new example.
 
 ## Eyes before ready
 
-A change to what a musician sees opens as a draft with the `just ios-run`
-screenshot under **What it looks like** and the line "Waiting for Jon's word on
-the screenshot". It goes ready only after Jon says yes, and the ready step
-replaces that line with "Jon approved the screenshot on YYYY-MM-DD"; a no is a
-push to the open PR (#1891).
+A change to what a musician sees opens as a draft with its screenshots under
+**What I checked** and the line "Waiting for the owner's word on the
+screenshot", which becomes "Approved on YYYY-MM-DD" on a yes; a no is a push to
+the open PR (#1891).
 
 ## Tokens, then modifiers, then components, then screens
 

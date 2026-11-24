@@ -23,7 +23,10 @@ review_file=""
 args=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --review-file) review_file="${2:-}" && shift ;;
+    --review-file)
+      [ -n "${2:-}" ] || { echo "✗ --review-file needs a path." >&2 && exit 1; }
+      review_file="$2" && shift
+      ;;
     *) args+=("$1") ;;
   esac
   shift
@@ -76,14 +79,8 @@ fi
 
 prose="$(printf '%s\n' "$body" | perl -0pe 's/<!--.*?-->//gs; s/^## Checklist.*//ms')"
 body_words="$(printf '%s' "$prose" | wc -w | tr -d ' ')"
-if [ "$body_words" -gt 350 ] && [ -z "${SKIP_BODY_CHECK:-}" ] &&
-  ! printf '%s' "$prose" | perl -0ne '
-    while (/^## (?:Where this could bite|What changed where)[^\n]*\n?(.*?)(?=^##|\z)/msg) {
-      $found = 1 if $1 =~ /\S/;
-    }
-    exit($found ? 0 : 1)'; then
-  echo "✗ the body runs $body_words words; a Tier 1 or 2 body is at most 350 before the checklist." >&2
-  echo "  Cut it, or add the Tier 3 sections if the work is Tier 3 or sensitive; SKIP_BODY_CHECK=1 for a justified case." >&2
+if [ "$body_words" -gt 350 ] && [ -z "${SKIP_BODY_CHECK:-}" ]; then
+  echo "✗ the body runs $body_words words; at most 350 before the checklist. Cut it, or SKIP_BODY_CHECK=1 for a justified case." >&2
   exit 1
 fi
 
