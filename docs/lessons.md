@@ -16,8 +16,9 @@
   archived one is copied back here with its count raised above the
   archive's. A fixed lesson that comes back means the fix did not hold.
 - A "(issue #N)" lesson is archived with "issue:" in front by the pull
-  request that closes its issue; `just pr-ready` refuses while a lesson waits
-  on that issue or on one already closed (#2968). A lesson that is both seen
+  request that closes its issue, or with "fix:" and the file when that
+  pull request moves it into a doc; `just pr-ready` refuses while a lesson
+  waits on that issue or on one already closed (#2968). A lesson that is both seen
   again and waiting ends "(issue #N) (seen again M)".
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
   the limit archives the oldest with no "seen again" and no open issue.
@@ -30,12 +31,7 @@
 
 ## Lessons
 
-- 2026-11-15, #2876: a workflow command property value holding a comma needs `%2C`, or the annotation title stops at the comma; assert the escaped string in the test (issue #2972).
-- 2026-11-15, #2876: a scheduled job on the self-hosted Mac shares the gate's warm workspace, so a default checkout there would wipe `target/`; fetch only what it needs into a subfolder with `clean: false` (issue #2972).
-- 2026-11-18, #2793: deleting whole snapshot classes by guess missed two split view references that also showed the changed words; grep every snapshot test file for each changed view, split views included, before deleting references (issue #2971).
-- 2026-11-20, #2931: a session without the Xcode tools cannot render a SwiftUI preview; a sketch gets its picture from one snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold and 20 warm (issue #2971).
-- 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch (issue #2972).
-- 2026-11-24, #2926: xcodebuild accepts an unknown build setting override without a word, and the compilation cache path setting is in no Xcode settings list; prove an override took by its effect (the cache folder filling), never by a clean exit (issue #2971).
 - 2026-11-24, #2747: `just handover` run in a merged branch's worktree told the next session to carry on in that worktree; write the opener for a new issue from fresh main, never from the old branch (issue #2969).
 - 2026-11-24, #2747: `gh issue view N --comments` prints only the comments, so on an issue with none it printed nothing and exited cleanly; read the body with `gh issue view N` as well (issue #2969).
 - 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (issue #2973) (seen again 4).
+- 2026-11-24, #2747: the worktree guard refused compound commands, a loop, and one naming a `.github` path that ran no git; split them into plain separate commands (issue #2976) (seen again 2).
