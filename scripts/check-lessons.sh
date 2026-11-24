@@ -2,7 +2,8 @@
 # The lessons file holds at most 30 lessons (#2801). Every session start prints
 # it, so an unpruned file costs every session; the cap makes the archiving
 # happen rather than be remembered. Both lessons files merge by union (#2937),
-# so it also refuses a lesson kept twice or brought back from the archive.
+# so it also refuses a lesson kept twice or brought back from the archive, and
+# a rules line above the list kept twice (#2943).
 #
 # The files are overridable so the self-test can point them at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
@@ -59,6 +60,22 @@ awk -v lessons="$file" -v archive="$archive" '
   FNR == 1 { in_list = 0 }
   FILENAME == archive && /^- / { arch[++na] = norm($0); arch_seen[na] = seen($0); arch_line[na] = FNR; next }
   FILENAME == lessons && /^## Lessons$/ { in_list = 1; next }
+  # Two branches editing one rules line both keep it (#2943). Lines with no
+  # words (blank, a bare quote marker, a rule or table separator) and code
+  # fences repeat by design.
+  FILENAME == lessons && !in_list {
+    r = $0
+    sub(/^[ \t]+/, "", r)
+    sub(/[ \t]+$/, "", r)
+    if (r !~ /[[:alnum:]]/ || r ~ /^(```|~~~)/) next
+    if (r in rule) {
+      printf "✗ %s line %d repeats line %d in the rules above \"## Lessons\": \"%s\"; a merge kept both edits, so read the rules around both lines and keep one version, or, if no merge did this, reword one (#2943)\n", lessons, FNR, rule[r], r > "/dev/stderr"
+      bad = 1
+    } else {
+      rule[r] = FNR
+    }
+    next
+  }
   FILENAME == lessons && in_list && /^- / {
     t = norm($0)
     if (t in first) {

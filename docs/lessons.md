@@ -8,7 +8,9 @@
 - A lesson is one line: the date, the issue, then what to do differently and
   why. **What to look for**, one of each kind the session has: a mistake or
   correction; a slow or costly step, read from the session's row in
-  `just usage 1 --quality`; and a tool, recipe or doc that misled.
+  `just usage 1 --quality`; and a tool, recipe or doc that misled. A
+  subagent has no row of its own there, since its cost counts in its lead's
+  session, so it names its slow step from its own run or says it has none.
 - A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
   not added again: its line ends "(seen again N)", counting up, and an
   archived one is copied back here with its count raised above the
@@ -24,10 +26,10 @@
   it. A worktree prints its own copy, so one behind main misses newer lessons.
 - A local merge of main keeps both sides' lessons (#2937), and the lessons
   check refuses a line kept twice, bumped on two branches, or brought back
-  from the archive.
+  from the archive. It also refuses a rules line above the list kept twice
+  (#2943).
 
 ## Lessons
 
-- 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).
 - 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (issue #2973) (seen again 4).
 - 2026-11-24, #2747: the worktree guard refused compound commands, a loop, and one naming a `.github` path that ran no git; split them into plain separate commands (issue #2976) (seen again 2).

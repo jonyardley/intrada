@@ -975,6 +975,46 @@ expect 1 "a lesson archived as a rule" lessons_check
 write_lessons_with "a rule." "2026-11-02, #4: a rule." "2026-11-01, #1: an archived lesson, said again."
 expect 0 "lessons that only share an archived line's start or end" lessons_check
 
+# A union merge of two edits to one rule line keeps both (#2943).
+printf '# Lessons\n\n- a rule that\n  one is copied back here.\n- another rule\n    one is copied back here. \n\n## Lessons\n\n- 2026-11-12, #1: a lesson.\n' >"$lessons"
+expect 1 "a rules line above the heading kept twice, indented differently" lessons_check
+lessons_rule_dup_message() {
+  grep -qF 'lessons.md line 6 repeats line 4 in the rules above "## Lessons": "one is copied back here."' <<<"$(lessons_check 2>&1 || true)"
+}
+expect 0 "a doubled rules line, both lines and the text in the message" lessons_rule_dup_message
+cat >"$lessons" <<'EOF'
+# Lessons
+
+> A quoted header
+>
+> over two paragraphs.
+>
+
+```text
+just check
+```
+
+```text
+just pre-review
+```
+
+~~~
+just usage
+~~~
+
+---
+
+| a | b |
+| --- | --- |
+| c | d |
+| --- | --- |
+
+## Lessons
+
+- 2026-11-12, #1: a lesson.
+EOF
+expect 0 "rules with code fences, bare quote markers and separators repeated" lessons_check
+
 # ── Fixes that did not hold (#2968) ────────────────────────────────────────
 fixes_say() {
   local out
