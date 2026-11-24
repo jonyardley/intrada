@@ -10,7 +10,9 @@ working tree at a time** (#1741). Reading is never banned.
 origin/main`: it fetches first and refuses a name whose simulator would collide
 with another worktree's. It ends by printing `cd <worktree> && claude`, the
 command that starts the session inside the new worktree (#2918): the
-`.claude/rules/` files load only there, and every command runs in place.
+`.claude/rules/` files load only there, and every command runs in place. It
+also prints the `EnterWorktree` call that moves a session already running into
+it (#2967).
 Worktrunk's machine-local config
 (`~/.config/worktrunk/config.toml`) does the rest:
 
@@ -60,7 +62,8 @@ Once the repo has a linked worktree, as intrada always does:
   tree is read-only: the shell may only look (the list below) and file tools
   cannot write, so main stays the clean base. Writes outside every checkout,
   such as the scratchpad, still pass. To build, start a session in the
-  worktree (`cd <worktree> && claude`) or launch a helper agent in its own; a
+  worktree (`cd <worktree> && claude`), move this one in with Claude Code's
+  `EnterWorktree` and the worktree's path, or launch a helper agent in its own; a
   `cd <worktree> && ` prefix from main is refused for writes, and reads pass.
 - **Your own worktree.** The first write claims it, and everything works.
 - **Someone else's worktree.** Reads pass. Builds are denied with the writes,
