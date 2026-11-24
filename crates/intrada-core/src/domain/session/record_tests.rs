@@ -1164,6 +1164,36 @@ fn a_deleted_variation_the_play_never_recorded_is_still_refused() {
 }
 
 #[test]
+fn an_unkeyed_plan_on_a_piece_with_no_written_key_reads_as_its_first_key() {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    let id = entry_id(&m, 0);
+    if let SessionStatus::Building(b) = &mut m.session_status {
+        b.entries
+            .iter_mut()
+            .find(|e| e.id == id)
+            .expect("p")
+            .plan
+            .key = None;
+    }
+
+    let view = building_view(&m);
+    let keys = view
+        .entry_keys
+        .iter()
+        .find(|k| k.entry_id == id)
+        .expect("p keeps keys");
+    assert_eq!(keys.current_label, "G major");
+}
+
+#[test]
 fn the_key_row_names_a_planned_key_outside_the_pieces_own() {
     let (mut m, id) = building_clair(false);
     if let SessionStatus::Building(b) = &mut m.session_status {
@@ -1291,7 +1321,8 @@ fn the_key_row_spells_a_planned_key_as_the_piece_keeps_it() {
 #[test]
 fn a_plain_item_with_keys_of_its_own_can_change_its_rows() {
     let mut m = model();
-    m.items.iter_mut().find(|i| i.id == "q").expect("q").keys = vec![key("D major").expect("key")];
+    m.items.iter_mut().find(|i| i.id == "q").expect("q").keys =
+        vec![key("D major").expect("key"), key("E major").expect("key")];
     send(&mut m, SessionEvent::StartBuilding);
     send(
         &mut m,
@@ -1310,7 +1341,7 @@ fn a_plain_item_with_keys_of_its_own_can_change_its_rows() {
 
     let row = finish_row(&m);
     assert!(row.can_change);
-    assert_eq!(row.label, "No variation");
+    assert_eq!(row.label, "D major", "a new plan starts on the first key");
 }
 
 #[test]
@@ -1627,7 +1658,7 @@ fn the_key_chip_names_the_open_key_as_the_piece_spells_it() {
 }
 
 #[test]
-fn the_key_chip_names_no_key_a_piece_with_no_written_key_does_not_keep() {
+fn an_unkeyed_play_on_a_piece_with_no_written_key_reads_as_its_first_key() {
     let mut m = model();
     keeping_g_and_a(&mut m);
     send(&mut m, SessionEvent::StartBuilding);
@@ -1642,7 +1673,10 @@ fn the_key_chip_names_no_key_a_piece_with_no_written_key_does_not_keep() {
 
     switch(&mut m, &id, None, vec!["v-dot".to_string()], 60);
 
-    assert_eq!(active_view(&m).current_key_label, None);
+    assert_eq!(
+        active_view(&m).current_key_label.as_deref(),
+        Some("G major")
+    );
 }
 
 #[test]

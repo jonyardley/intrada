@@ -318,7 +318,8 @@ pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysVie
     let current_label = keys
         .iter()
         .find(|k| k.key == current)
-        .map_or_else(|| "No key".to_string(), |k| k.label.clone());
+        .or_else(|| keys.first())
+        .map_or_else(String::new, |k| k.label.clone());
     Some(EntryKeysView {
         entry_id: entry.id.clone(),
         keys,
@@ -560,6 +561,7 @@ pub fn build_active_session_view(
     let current_key_label = current_key_choices
         .iter()
         .find(|c| c.key == current_key)
+        .or_else(|| current_key_choices.first())
         .map(|c| c.label.clone());
 
     // Breadcrumb only applies to a related exercise practiced inside a block,
