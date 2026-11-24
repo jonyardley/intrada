@@ -21,14 +21,14 @@ pub struct LinkedExerciseView {
     pub tempo_line_spoken: Option<String>,
     pub practice: Option<ItemPracticeSummary>,
     /// This exercise's latest score *on the piece it's linked from* (#1087 B2),
-    /// derived from the shared session block — distinct from `practice`, which
+    /// derived from the shared session block, distinct from `practice`, which
     /// is the exercise's flat score across every context. `None` when the pair
     /// has never been practised together (or scored) in a session.
     #[serde(default)]
     pub piece_context_score: Option<u8>,
 }
 
-/// The derived scaffold curriculum for a charted piece — the read-only preview
+/// The derived scaffold curriculum for a charted piece: the read-only preview
 /// (Phase A). Recomputed from the stored chart in `build_view`; the shell renders
 /// it and never derives.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -61,14 +61,14 @@ pub struct ScaffoldSpecView {
 pub struct PieceRefView {
     pub id: String,
     pub title: String,
-    /// Composer, when the piece has one — disambiguates identically titled
+    /// Composer, when the piece has one, which disambiguates identically titled
     /// pieces in provenance UI (#1049).
     pub subtitle: Option<String>,
 }
 
 /// One piece an exercise is used in, or the "On its own" bucket. A row comes
 /// from the piece's live exercise links (an intention), from practising the
-/// two together (history, resolved per session from `group_id` — #1087 B1), or
+/// two together (history, resolved per session from `group_id`, #1087 B1), or
 /// from both; `linked` says which (#1363).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -82,7 +82,7 @@ pub struct ExerciseUsageView {
     pub session_count: usize,
     /// Most recent session date for this context (RFC3339, sorts as a string).
     pub last_practiced_at: Option<String>,
-    /// `true` when this row's `piece` no longer exists in the library — the
+    /// `true` when this row's `piece` no longer exists in the library: the
     /// piece was deleted since it was practised (#1093, decision 2a). The row
     /// is kept (its sessions are real history), but `piece.title` is the
     /// snapshot title and the shell renders the row muted + non-tappable. Always
@@ -120,7 +120,7 @@ pub struct LibraryItemView {
     pub priority: bool,
     pub linked_exercises: Vec<LinkedExerciseView>,
     /// For exercises: every piece this exercise is used in, plus the "On its
-    /// own" bucket — links and practice history merged (#1363). Empty for
+    /// own" bucket, links and practice history merged (#1363). Empty for
     /// pieces.
     #[serde(default)]
     pub used_in: Vec<ExerciseUsageView>,
@@ -128,7 +128,7 @@ pub struct LibraryItemView {
     /// `None` for exercises and un-charted pieces.
     #[serde(default)]
     pub scaffold_preview: Option<ScaffoldPreviewView>,
-    /// The parsed chord chart, for pieces that have one — the shell renders the
+    /// The parsed chord chart, for pieces that have one; the shell renders the
     /// bar grid from `symbol.raw` and pre-fills the editor from it.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
@@ -330,7 +330,7 @@ mod tests {
     }
 
     /// `ScaffoldPreviewView` crosses the bincode wire inside the ViewModel
-    /// (`LibraryItemView.scaffold_preview`) — guard it against the #846 drop class.
+    /// (`LibraryItemView.scaffold_preview`); guard it against the #846 drop class.
     #[test]
     fn scaffold_preview_view_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(ScaffoldPreviewView {
@@ -372,7 +372,7 @@ mod tests {
     }
 
     /// `LinkedExerciseView` crosses the same bincode wire; `piece_context_score`
-    /// (#1087 B2) is a trailing `Option` — guard it against the #846 drop class.
+    /// (#1087 B2) is a trailing `Option`; guard it against the #846 drop class.
     #[test]
     fn linked_exercise_view_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(LinkedExerciseView {
