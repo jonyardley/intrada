@@ -61,7 +61,8 @@ reviews="$(jq -r "$mine | length" <<<"$view")"
 [[ "$(diff_scope_review_route)" == none:* ]] || [ "$reviews" -gt 0 ] ||
   refuse "no review comment (a comment by the PR's author whose first line names the review)."
 
-# A retro edit to agent instructions after the newest review gets a second look.
+# An edit to agent instructions after the newest review comment, such as a
+# review fix, gets a second look (#2962).
 if [ "$reviews" -gt 0 ]; then
   reviewed="$(jq -r "$mine | map(.createdAt | fromdateiso8601) | max" <<<"$view")" ||
     refuse "could not read the review comment's time."
@@ -84,7 +85,7 @@ lessons=0
 git diff --quiet "$base" HEAD -- docs/lessons.md docs/lessons-archive.md || lessons=$?
 case "$lessons" in
   1) ;;
-  0) refuse "no lessons commit on this branch; run the /ship retro first." ;;
+  0) refuse "no lessons commit on this branch; write the retro, the route's first step." ;;
   *) refuse "could not compare the lessons files (git diff exited $lessons)." ;;
 esac
 

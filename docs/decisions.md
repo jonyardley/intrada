@@ -58,7 +58,9 @@ Decisions whose full records were removed from the repo, one line each; git hist
 ## Process
 
 - Agent teams retired: one agent per vertical slice (#1239).
-- Mutation-test by deleting a line, not inverting it (#1423).
+- Mutation-test by deleting a line, not inverting it (#1423), and count the
+  changed line with `grep -c` before the run: a pattern that matched nothing
+  leaves the tests green, which reads as a mutant they missed (#2962).
 - Rented macOS runners replaced by the self-hosted Mac (#1577, #1962).
 - Harness changes were judged on speed, rework and spend, with a revert after two unmoved reads (#1897, #1898); the reads and the revert rule were dropped on 2026-11-24 (#2959), since no read was ever recorded.
 - Components: one spec per component in the repo, pictures from snapshot tests, a check in just check; the design page is a view (#2603).

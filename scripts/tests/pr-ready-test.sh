@@ -80,11 +80,12 @@ branch docs docs/guide.md docs/lessons.md
 branch archived scripts/x.sh docs/lessons-archive.md
 branch nolessons scripts/x.sh
 branch behind scripts/x.sh docs/lessons.md
-GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch retro scripts/x.sh docs/lessons.md
+GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch early scripts/x.sh docs/lessons.md .claude/skills/s/SKILL.md
+GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch late scripts/x.sh docs/lessons.md
 mkdir -p "$repo/.claude/skills/s"
-echo retro >"$repo/.claude/skills/s/SKILL.md"
-echo retro >>"$repo/scripts/x.sh"
-g add -A && GIT_COMMITTER_DATE="2026-01-03T00:00:00Z" g commit -q -m "retro fix"
+echo fix >"$repo/.claude/skills/s/SKILL.md"
+echo fix >>"$repo/scripts/x.sh"
+g add -A && GIT_COMMITTER_DATE="2026-01-03T00:00:00Z" g commit -q -m "review fix"
 
 pass_checks='[{"name":"Test","bucket":"pass"},{"name":"Alert","bucket":"skipping"}]'
 review_comment='{"author":{"login":"owner"},"createdAt":"2099-01-01T00:00:00Z","body":"**Self-review by the reviewer agent**\nNo findings."}'
@@ -193,14 +194,17 @@ case_run archived "$pass_checks" "$review_comment" "$good_body"
 expect_ready "a lesson sent straight to the archive"
 
 case_run nolessons "$pass_checks" "$review_comment" "$good_body"
-expect_refused "no lessons commit" "no lessons commit"
+expect_refused "no lessons commit" "no lessons commit on this branch; write the retro"
 
 reviewed_on() { jq -c --arg t "$1" '.createdAt = $t' <<<"$review_comment"; }
-case_run retro "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z)" "$good_body"
+case_run early "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z)" "$good_body"
+expect_ready "lessons and an agent instruction fix committed before the review"
+
+case_run late "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z)" "$good_body"
 expect_refused "agent instructions edited after the review" "after the newest review comment: .claude/skills/s/SKILL.md; review"
 
-case_run retro "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z),$(reviewed_on 2026-01-04T00:00:00Z)" "$good_body"
-expect_ready "a newer review comment clears the retro edit"
+case_run late "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z),$(reviewed_on 2026-01-04T00:00:00Z)" "$good_body"
+expect_ready "a newer review comment clears the late edit"
 
 g remote set-url origin "$work/nowhere"
 case_run code "$pass_checks" "$review_comment" "$good_body"

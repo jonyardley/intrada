@@ -1,6 +1,6 @@
 ---
 name: intrada-shipping
-description: The route from finished code to merge in intrada, in order (gates, review, draft, CI, retro, ready, the merge wait), with the PR, issue and plan comment templates. Read before opening or updating any PR or writing an issue.
+description: The route from finished code to merge in intrada, in order (retro, gates, review, draft, CI, ready, the merge wait), with the PR, issue and plan comment templates. Read before opening or updating any PR or writing an issue.
 ---
 
 ## The route
@@ -10,11 +10,15 @@ Each spawn names its model and effort from the role table in
 `~/.claude/CLAUDE.md`; rounds, and who fixes findings, follow the global
 review rule there.
 
-1. **Gates**, through `test-runner`: `just pre-review`, plus `just ios-test`
+1. **Retro**, once the code is done and before the gates, so the lessons and
+   their fixes are checked, reviewed and built with the code (#2962): two or
+   three lessons, one per kind `docs/lessons.md` names, each given an outcome
+   (below), committed.
+2. **Gates**, through `test-runner`: `just pre-review`, plus `just ios-test`
    when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
    class the diff adds or edits; CI runs the full UI tier (#2114). Stop at the
    first failure.
-2. **Review** before the push, because one left until after gets skipped
+3. **Review** before the push, because one left until after gets skipped
    (#1550). `just review-route` decides: `reviewer` on code or tests, Tier 1
    included, launched from the builder's worktree so it can run tests (#2960),
    briefed with that worktree's absolute path and the issue; a second
@@ -26,21 +30,18 @@ review rule there.
    A new or reshaped bridge type ships with a `LiveBridge` test (#846, #1953);
    `scripts/check-bridge-tests.sh` checks one names it (#2101), and the
    reviewer reads the assertion.
-3. **Out-of-scope findings** are fixed here, or listed under "Not fixed" in
+4. **Out-of-scope findings** are fixed here, or listed under "Not fixed" in
    the review comment with one line of why. Only one with horizon now or next
    becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
    review comment ends `Deferred items tracked: #N` or `none`.
-4. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
+5. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
    body below, written to the scratchpad with the Write tool and passed as
    text, `"$(cat <scratchpad>/body.md)"`; the review summary goes on verbatim
    as the first comment, naming the agent.
-5. **Watch CI** to a conclusion in the same turn and read the PR's
+6. **Watch CI** to a conclusion in the same turn and read the PR's
    mergeability. Reproduce a red UI test with `just ios-test-ui-class`. Compare
    Codecov's patch comment with the body's Coverage line; an unexpected gap
    gets a test or a PR comment.
-6. **Retro**, once CI is green and every finding is fixed or answered: two or
-   three lessons, one per kind `docs/lessons.md` names, each given an outcome
-   (below), committed and pushed. Wait for the checks on that commit.
 7. **Ready**: `just pr-ready <pr> <issue>` refuses until the route is done. A
    screen change also waits for the owner's yes on its pictures.
 8. **The merge wait**, in the background: poll every three minutes for up to
@@ -48,10 +49,10 @@ review rule there.
    .state); [ "$s" != OPEN ] && break; sleep 180; done; echo "$s"`
    (`gh event listen` fails with HTTP 403 on this account). Merged: write the
    handover for the next issue from the main checkout (`just handover N`
-   reads the current branch), with any lesson learned after ready for the
-   next retro, then `just worktree-done`. Closed unmerged: stop and say so.
-   Timed out: read the PR state first on the owner's next message. Never ask
-   the owner to say merged.
+   reads the current branch), with any lesson found after the retro (gates,
+   review, CI or the wait) for the next retro, then `just worktree-done`.
+   Closed unmerged: stop and say so. Timed out: read the PR state first on
+   the owner's next message. Never ask the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
 says, each lesson gets one of two outcomes; a line that reaches "(seen again

@@ -2,7 +2,7 @@
 
 > What sessions learned, so the next one does not relearn it (#2801). Every
 > session start prints the lessons below. The retro that writes them, and
-> what each lesson's outcome is, is step 6 of the route in the
+> what each lesson's outcome is, is the first step of the route in the
 > [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
 
 - A lesson is one line: the date, the issue, then what to do differently and
@@ -45,7 +45,6 @@
 - 2026-11-20, #2931: a session without the Xcode tools cannot render a SwiftUI preview; a sketch gets its picture from one snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold and 20 warm.
 - 2026-11-20, #2922: the sensitive surface rule named `ios/generated/`, which is gitignored and so never appears in a diff; judge a bridge change by the Facet derive the type generator follows, not by folder.
 - 2026-11-20, #2934: a request to research a process step found it had shipped a week earlier (#2801); search issues and merged PRs for the topic before researching it.
-- 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (seen again 1).
 - 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch.
 - 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).
 - 2026-11-24, #2921: the handover brief gave its own order and said to stop at the draft, and the session followed it over the ship route, so the pull request opened with no lessons, no review comment, no template headings and no closing line; read the ship route before opening a pull request, whatever the brief says (issue #2955).
@@ -53,4 +52,3 @@
 - 2026-11-24, #2926: xcodebuild accepts an unknown build setting override without a word, and the compilation cache path setting is in no Xcode settings list; prove an override took by its effect (the cache folder filling), never by a clean exit.
 - 2026-11-24, #2926: the guard refuses `xcodebuild -version` even though it builds nothing; read the installed version from Xcode's Info.plist with `plutil -p` instead.
 - 2026-11-24, #2955: a reviewer launched from the main checkout could not run the self-tests, since the main checkout guard refuses running scripts there, so both reviews left the mutation claims unverified; a reviewer that must run tests needs its own worktree (issue #2960).
-- 2026-11-24, #2960: the ready step refused a green pull request for want of a lessons commit, so the retro cost a third CI run on a two-file docs change; until the retro moves before review, write the lessons before opening the draft (issue #2962).
