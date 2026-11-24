@@ -88,6 +88,15 @@ files="$(git diff --name-only "origin/main...$branch" | sed -n '1,12p')"
 pr="$(gh pr list --repo "$repo" --head "$branch" --state all --json number,state,isDraft,url \
   -q '([.[] | select(.state == "OPEN")] + .) | .[0] // empty')"
 
+# Only an issue claimed on this branch, with its PR not yet merged, carries on
+# here; anything else starts from fresh main, since a merged branch's worktree
+# is stale and a new issue has no work in it (#2969).
+resume=""
+if [ -n "$claimed_branch" ] && [ "$claimed_branch" = "$branch" ] &&
+  [ "$(printf '%s' "$pr" | jq -r '.state // empty')" != "MERGED" ]; then
+  resume=1
+fi
+
 # ── the opener ───────────────────────────────────────────────────────────────
 
 echo "Paste this into a new session in the main checkout:"
@@ -96,6 +105,7 @@ echo '```'
 echo "Pick up #$number in intrada: $title"
 echo
 echo "Read first, the plan comment is the brief:"
+echo "  gh issue view $number"
 echo "  gh issue view $number --comments"
 [ -n "$epic_number" ] && echo "  epic #$epic_number: $epic_title"
 [ -n "$labels" ] && echo "  labels: $labels"
@@ -105,26 +115,32 @@ echo "Where it stands"
 if [ -n "$claimed_branch" ]; then
   echo "  claimed on branch $claimed_branch"
 else
-  echo "  not claimed yet, so run just claim $number first"
+  echo "  not claimed yet"
 fi
-echo "  branch $branch, $position, $pushed"
-if [ -n "$pr" ]; then
-  pr_number="$(printf '%s' "$pr" | jq -r '.number')"
-  pr_state="$(printf '%s' "$pr" | jq -r 'if .isDraft then "draft" else (.state | ascii_downcase) end')"
-  echo "  PR #$pr_number, $pr_state: $(printf '%s' "$pr" | jq -r '.url')"
-else
-  echo "  no PR yet"
-fi
-if [ -n "$files" ]; then
-  echo
-  echo "Files already touched on this branch"
-  printf '%s\n' "$files" | sed 's/^/  /'
+if [ -n "$resume" ]; then
+  echo "  branch $branch, $position, $pushed"
+  if [ -n "$pr" ]; then
+    pr_number="$(printf '%s' "$pr" | jq -r '.number')"
+    pr_state="$(printf '%s' "$pr" | jq -r 'if .isDraft then "draft" else (.state | ascii_downcase) end')"
+    echo "  PR #$pr_number, $pr_state: $(printf '%s' "$pr" | jq -r '.url')"
+  else
+    echo "  no PR yet"
+  fi
+  if [ -n "$files" ]; then
+    echo
+    echo "Files already touched on this branch"
+    printf '%s\n' "$files" | sed 's/^/  /'
+  fi
 fi
 echo
-if [ "$claimed_branch" != "$branch" ] && [ "$ahead" = "0" ]; then
-  echo "Make your own worktree with just worktree-new <name> from the main"
-  echo "checkout, then start the session inside it with the command it prints:"
-  echo "  cd <worktree> && claude"
+if [ -z "$resume" ]; then
+  echo "Start from fresh main: in the main checkout run"
+  echo "  just worktree-new <name>"
+  echo "then start the session inside it with the command it prints."
+  if [ -z "$claimed_branch" ]; then
+    echo "Claim the issue from inside the new worktree:"
+    echo "  just claim $number"
+  fi
 else
   echo "The work is in this worktree, so carry on there rather than making a new"
   echo "one, which would branch fresh from origin/main and leave it behind:"

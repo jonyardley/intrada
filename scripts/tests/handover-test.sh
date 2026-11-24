@@ -47,7 +47,11 @@ case "$cmd $sub" in
     number="$2"
     file="$FIXTURES/issue_$number.json"
     [ -f "$file" ] || exit 1
-    emit "$(cat "$file")"
+    case " $* " in
+      *" --json "*) emit "$(cat "$file")" ;;
+      *" --comments "*) jq -r '.comments[].body' "$file" ;;
+      *) jq -r '.title, (.body // "")' "$file" ;;
+    esac
     ;;
   *)
     echo "unexpected gh call: $cmd $sub" >&2
@@ -77,6 +81,7 @@ cat >"$work/fixtures/issue_1990.json" <<'JSON'
   "title": "An issue nobody has claimed",
   "state": "OPEN",
   "url": "https://github.com/jonyardley/intrada/issues/1990",
+  "body": "What you would notice: the opener shows this body.",
   "labels": [],
   "comments": []
 }
@@ -140,22 +145,49 @@ check "carries the labels" "$out" "labels: harness, tier-2"
 
 check "sends the next session to this worktree" "$out" "  cd $(pwd -P)"
 check "says the lease releases at session end" "$out" "lease releases when this session ends"
-refute "does not tell it to branch fresh over the work" "$out" "Make your own worktree"
+refute "does not tell it to branch fresh over the work" "$out" "just worktree-new"
 
 # ── an unclaimed issue says so, rather than implying a claim ──────────────────
 
 out="$(bash "$script" 1990)"
-check "an unclaimed issue names the claim step" "$out" "not claimed yet, so run just claim 1990"
+check "an unclaimed issue says so" "$out" "not claimed yet"
 refute "an issue with no epic says nothing about one" "$out" "epic #"
+
+# ── the opener's read shows the body of an issue with no comments (#2969) ────
+
+read_out="$(printf '%s\n' "$out" | grep -E '^  gh issue view ' | while read -ra words; do "${words[@]}"; done)"
+check "the read shows the body when there are no comments" "$read_out" "the opener shows this body"
+
+# ── a new issue starts from fresh main, even on a branch with commits (#2969) ─
+
+check "a new issue names a fresh worktree" "$out" "just worktree-new"
+check "a new issue is claimed in the new worktree" "$out" "just claim 1990"
+refute "a new issue does not carry on in this worktree" "$out" "carry on there"
+refute "a new issue does not point at this worktree" "$out" "cd $(pwd -P) &&"
+refute "a new issue does not list this branch's files" "$out" "Files already touched"
 
 # ── nothing claimed and nothing committed starts a worktree ──────────────────
 
 git checkout -q --no-track -b clean-slate origin/main
 out="$(bash "$script" 1990)"
-check "a cold branch sends the next session to its own worktree" "$out" "Make your own worktree"
+check "a cold branch sends the next session to its own worktree" "$out" "Start from fresh main"
 refute "a cold branch does not point at this one" "$out" "carry on there"
-check "a cold branch is level with main" "$out" "0 commit(s) ahead of origin/main"
+check "a cold branch names the claim step" "$out" "just claim 1990"
 git checkout -q cold-context
+
+# ── a merged branch's own issue also starts from fresh main (#2969) ──────────
+
+cat >"$work/fixtures/prs.json" <<'JSON'
+[
+  { "number": 1995, "title": "Cut the cold context bill (#1986)", "state": "MERGED", "isDraft": false, "url": "https://github.com/jonyardley/intrada/pull/1995" }
+]
+JSON
+out="$(bash "$script" 1986)"
+check "a merged branch names a fresh worktree" "$out" "just worktree-new"
+refute "a merged branch does not carry on there" "$out" "carry on there"
+refute "a merged branch does not point at this worktree" "$out" "cd $(pwd -P) &&"
+refute "a claimed issue is not claimed again" "$out" "just claim 1986"
+echo '[]' >"$work/fixtures/prs.json"
 
 # ── pushed is the commits that are not on the remote, not the ref existing ───
 
