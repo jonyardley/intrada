@@ -51,8 +51,8 @@ review rule there.
    handover for the next issue from the main checkout (`just handover N`
    reads the current branch), with any lesson found after the retro (gates,
    review, CI or the wait) for the next retro, then `just worktree-done`.
-   Closed unmerged: stop and say so. Timed out: read the PR state first on the owner's next message. Never ask
-   the owner to say merged.
+   Closed unmerged: stop and say so. Timed out: read the PR state first on
+   the owner's next message. Never ask the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
 says, each lesson gets one of two outcomes; a line that reaches "(seen again
