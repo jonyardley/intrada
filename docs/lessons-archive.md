@@ -23,3 +23,4 @@
 - 2026-11-13, #2847: a session parked on a permission prompt for `rm -r` on a scratch folder; make a fresh `mktemp -d` folder per run and leave it for the job's own cleanup.
 - fix: docs/worktrees.md, 2026-11-24, #2955: a helper launched into its own worktree from the main checkout can build and push, but the branch stays checked out in the builder's worktree, so a later helper runs `git switch --detach origin/<branch>` and pushes `HEAD:<branch>`, and `just pr-open` runs from the builder's worktree because it reads the branch name.
 - fix: docs/ios-testing.md, 2026-11-24, #2926: two lanes timing builds on the same Mac skew each other, and the self-hosted CI runner shares that Mac; time builds only once the other lane's gates and CI are done.
+- fix: docs/harness-log.md, 2026-11-20, #2934: the harness log's first read for the lessons file was due 2026-11-16 and is still blank, and nothing prompts it; check a harness change's read date before building on that change.
