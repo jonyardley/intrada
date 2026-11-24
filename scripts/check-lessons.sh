@@ -60,14 +60,16 @@ awk -v lessons="$file" -v archive="$archive" '
   FNR == 1 { in_list = 0 }
   FILENAME == archive && /^- / { arch[++na] = norm($0); arch_seen[na] = seen($0); arch_line[na] = FNR; next }
   FILENAME == lessons && /^## Lessons$/ { in_list = 1; next }
-  # Two branches editing one rules line both keep it (#2943); blank lines repeat by design.
+  # Two branches editing one rules line both keep it (#2943). Lines with no
+  # words (blank, a bare quote marker, a rule or table separator) and code
+  # fences repeat by design.
   FILENAME == lessons && !in_list {
     r = $0
     sub(/^[ \t]+/, "", r)
     sub(/[ \t]+$/, "", r)
-    if (r == "") next
+    if (r !~ /[[:alnum:]]/ || r ~ /^(```|~~~)/) next
     if (r in rule) {
-      printf "✗ %s line %d repeats line %d in the rules above \"## Lessons\": \"%s\"; a merge kept both edits, so read the rules around both lines and keep one version (#2943)\n", lessons, FNR, rule[r], r > "/dev/stderr"
+      printf "✗ %s line %d repeats line %d in the rules above \"## Lessons\": \"%s\"; a merge kept both edits, so read the rules around both lines and keep one version, or, if no merge did this, reword one (#2943)\n", lessons, FNR, rule[r], r > "/dev/stderr"
       bad = 1
     } else {
       rule[r] = FNR

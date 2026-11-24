@@ -25,7 +25,8 @@
   it. A worktree prints its own copy, so one behind main misses newer lessons.
 - A local merge of main keeps both sides' lessons (#2937), and the lessons
   check refuses a line kept twice, bumped on two branches, or brought back
-  from the archive, and a rules line above the list kept twice (#2943).
+  from the archive. It also refuses a rules line above the list kept twice
+  (#2943).
 
 ## Lessons
 
