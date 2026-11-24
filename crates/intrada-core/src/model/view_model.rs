@@ -34,13 +34,13 @@ pub struct ViewModel {
     pub building_setlist: Option<BuildingSetlistView>,
     pub summary: Option<SummaryView>,
     pub error: Option<String>,
-    /// See [`Model::last_error_target`].
+    /// See [`Model::last_error_target`](super::Model::last_error_target).
     pub error_target: Option<FormErrorTarget>,
     /// See `Model::error_seq`; compare around a send instead of the message.
     pub error_seq: u64,
-    /// See [`Model::last_notice`]: true, expected, not a failure (#1325).
+    /// See [`Model::last_notice`](super::Model::last_notice): true, expected, not a failure (#1325).
     pub notice: Option<String>,
-    /// See [`Model::notice_seq`].
+    /// See [`Model::notice_seq`](super::Model::notice_seq).
     pub notice_seq: u64,
     pub analytics: Option<AnalyticsView>,
     pub last_practised: Option<LastPractisedView>,
