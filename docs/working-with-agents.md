@@ -33,7 +33,7 @@ branch (#1702).
 | You are | Do |
 |---|---|
 | About to edit anything | `just worktree-new <name>` from the main checkout, then the session that does the work starts inside the worktree with the command it prints, `cd <worktree> && claude` |
-| Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. Make the worktree first and paste the opener into a session started inside it, not in the main checkout |
+| Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. For a fresh start, make the worktree with `just worktree-new` first and paste the opener into a session started inside it, not in the main checkout; the opener's first line says where it goes |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
 | Spawning a subagent | One that edits gets its own worktree (Claude Code's, under `.claude/worktrees`) or works in yours; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861); launch it inside that worktree (move yourself in with `EnterWorktree` first, or give it worktree isolation), since one launched in the main checkout can neither write nor move itself in (#2967) |
 | Your PR has merged | `just worktree-done` inside the worktree, then end the session |
@@ -222,7 +222,7 @@ mutation gets a fixture where only the mutated line decides, since a shadowed
 line stays green (#2866), and for a small fix, reverting it and rerunning the
 self-test is the cheapest mutation (#2845). A self-test's text check is a
 substring match, so a printed command that is a prefix of another passes on
-the longer one alone; match the whole line, or run what is printed through
+the longer one alone. Match the whole line, or run what is printed through
 the fake and check what it shows, with the fake printing what the real tool
 prints for each form of the command (#2969). Edit
 rule files with `/memory`; tidy permission prompts with
