@@ -51,10 +51,13 @@ review rule there.
 8. **The merge wait**, in the background: poll every three minutes for up to
    an hour, `for i in $(seq 20); do s=$(gh pr view PR --json state -q
    .state); [ "$s" != OPEN ] && break; sleep 180; done; echo "$s"`
-   (`gh event listen` fails with HTTP 403 on this account). Merged: write the
-   handover for the next issue from the main checkout (`just handover N`
-   reads the current branch), with any lesson found after the retro (gates,
-   review, CI or the wait) for the next retro, then `just worktree-done`.
+   (`gh event listen` fails with HTTP 403 on this account). A lesson found
+   after the retro (gates, review, CI or the wait) is posted on the PR as a
+   comment when found, first line "Late lesson", so it survives a session
+   that ends early (#2968). Merged: write the handover for the next issue
+   from the main checkout (`just handover N` reads the current branch),
+   copying the PR's late lessons for the next retro, then
+   `just worktree-done`.
    Closed unmerged: stop and say so. Timed out: read the PR state first on
    the owner's next message. Never ask the owner to say merged.
 

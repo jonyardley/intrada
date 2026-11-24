@@ -466,6 +466,8 @@ usage *args:
     else
         echo "no usage-report.py in ~/.claude/hooks on this machine, so nothing to read"
     fi
+    # Read from the repo, so it prints on any machine (#2968).
+    bash scripts/lesson-fixes.sh
 
 # Neither language server resolved before this existed: `rust-analyzer` on PATH
 # is a rustup shim that fails unless the component is installed for the pinned

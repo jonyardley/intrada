@@ -40,6 +40,13 @@ case "$1 $2" in
     fi
     jq -r "$4" "$FIXTURES/required.json"
     ;;
+  "issue view")
+    if [ ! -f "$FIXTURES/issue-$3" ]; then
+      echo "GraphQL: Could not resolve to an issue or pull request with the number of $3. (repository.issue)" >&2
+      exit 1
+    fi
+    cat "$FIXTURES/issue-$3"
+    ;;
   "pr ready")
     echo "$3" >>"$CALLS/ready.log"
     ;;
@@ -86,6 +93,20 @@ mkdir -p "$repo/.claude/skills/s"
 echo fix >"$repo/.claude/skills/s/SKILL.md"
 echo fix >>"$repo/scripts/x.sh"
 g add -A && GIT_COMMITTER_DATE="2026-01-03T00:00:00Z" g commit -q -m "review fix"
+
+# Lessons waiting on issues (#2968): only the list under the heading counts.
+waits_on() {
+  g checkout -q main
+  g checkout -q -b "$1"
+  printf '# Lessons\n\n- A rule naming (issue #9).\n\n## Lessons\n\n- 2026-01-01, #1: a lesson %s.\n' "$2" >"$repo/docs/lessons.md"
+  g commit -q -am "$1"
+}
+waits_on wait-open "(issue #8)"
+waits_on wait-own "(issue #42)"
+waits_on wait-closed "(issue #9)"
+waits_on wait-unread "(issue #5)"
+printf OPEN >"$FIXTURES/issue-8"
+printf CLOSED >"$FIXTURES/issue-9"
 
 pass_checks='[{"name":"Test","bucket":"pass"},{"name":"Alert","bucket":"skipping"}]'
 review_comment='{"author":{"login":"owner"},"createdAt":"2099-01-01T00:00:00Z","body":"**Self-review by the reviewer agent**\nNo findings."}'
@@ -195,6 +216,18 @@ expect_ready "a lesson sent straight to the archive"
 
 case_run nolessons "$pass_checks" "$review_comment" "$good_body"
 expect_refused "no lessons commit" "no lessons commit on this branch; write the retro"
+
+case_run wait-open "$pass_checks" "$review_comment" "$good_body"
+expect_ready "a lesson waiting on an open issue, and a rule above the list naming a closed one"
+
+case_run wait-own "$pass_checks" "$review_comment" "$good_body"
+expect_refused "a lesson waiting on the issue this PR closes" "waits on #42, which this PR closes"
+
+case_run wait-closed "$pass_checks" "$review_comment" "$good_body"
+expect_refused "a lesson waiting on a closed issue" "waits on #9, which has closed"
+
+case_run wait-unread "$pass_checks" "$review_comment" "$good_body"
+expect_refused "a lesson waiting on an issue that cannot be read" "could not read #5, which a lesson waits on"
 
 reviewed_on() { jq -c --arg t "$1" '.createdAt = $t' <<<"$review_comment"; }
 case_run early "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z)" "$good_body"
