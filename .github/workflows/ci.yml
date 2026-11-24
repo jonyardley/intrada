@@ -839,6 +839,8 @@ jobs:
         run: bash scripts/tests/issue-open-test.sh
       - name: just issue still prints only the owner's comments
         run: bash scripts/tests/issue-read-test.sh
+      - name: Every helper agent still starts with the plain git rule
+        run: bash scripts/tests/subagent-start-test.sh
       - name: The session claims list still reads in-flight issues
         run: bash scripts/tests/session-claims-test.sh
       - name: just status still shows each epic's next child

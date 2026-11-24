@@ -94,9 +94,9 @@ esac
 waits="$(awk '/^## Lessons$/ { on = 1; next } on && /^- / && match($0, /\(issue #[0-9]+\)/) { print substr($0, RSTART + 8, RLENGTH - 9) }' docs/lessons.md | sort -un)" ||
   refuse "could not read docs/lessons.md."
 for n in $waits; do
-  [ "$n" != "$issue" ] || refuse "a lesson in docs/lessons.md waits on #$n, which this PR closes; archive it with \"issue:\" in front."
+  [ "$n" != "$issue" ] || refuse "a lesson in docs/lessons.md waits on #$n, which this PR closes; archive it with \"issue:\" in front, or with \"fix:\" and the file when this PR moves it into a doc."
   state="$(gh issue view "$n" --json state --jq .state 2>&1)" || refuse "could not read #$n, which a lesson waits on ($state)."
-  [ "$state" != CLOSED ] || refuse "a lesson in docs/lessons.md waits on #$n, which has closed; merge main first, and if it is still there, archive it with \"issue:\" in front."
+  [ "$state" != CLOSED ] || refuse "a lesson in docs/lessons.md waits on #$n, which has closed; merge main first, and if it is still there, archive it with \"issue:\" in front, or with \"fix:\" and the file when this PR moves it into a doc."
 done
 
 gh pr ready "$pr"

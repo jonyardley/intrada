@@ -34,7 +34,7 @@ fi
 
 status=0
 if [ "$count" -gt "$cap" ]; then
-  echo "✗ $file holds $count lessons, over the cap of $cap: archive to docs/lessons-archive.md each \"(issue #N)\" lesson whose issue has closed, with \"issue:\" in front, then the oldest with no \"seen again\" and no open issue (#2801, #2936)" >&2
+  echo "✗ $file holds $count lessons, over the cap of $cap: archive to docs/lessons-archive.md each \"(issue #N)\" lesson whose issue has closed, with \"issue:\" in front, or with \"fix:\" and the file when the pull request moves it into a doc, then the oldest with no \"seen again\" and no open issue (#2801, #2936)" >&2
   status=1
 fi
 

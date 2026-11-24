@@ -46,7 +46,8 @@ the session's folder is the worktree. A session started in the main checkout
 moves into an existing worktree with Claude Code's `EnterWorktree` tool and
 the worktree's path, with no restart; `just worktree-new` makes one (#2967).
 Plain git commands pass there, though Claude Code may refuse a compound one it
-cannot check, so split it. Worktrees branch from fresh `origin/main` into
+cannot check, so split it; every helper agent is told so at its start
+(`scripts/subagent-start.sh`, #2976). Worktrees branch from fresh `origin/main` into
 `../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the

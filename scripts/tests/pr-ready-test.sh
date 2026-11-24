@@ -221,10 +221,10 @@ case_run wait-open "$pass_checks" "$review_comment" "$good_body"
 expect_ready "a lesson waiting on an open issue, and a rule above the list naming a closed one"
 
 case_run wait-own "$pass_checks" "$review_comment" "$good_body"
-expect_refused "a lesson waiting on the issue this PR closes" "waits on #42, which this PR closes"
+expect_refused "a lesson waiting on the issue this PR closes" "waits on #42, which this PR closes; archive it with \"issue:\" in front, or with \"fix:\" and the file"
 
 case_run wait-closed "$pass_checks" "$review_comment" "$good_body"
-expect_refused "a lesson waiting on a closed issue" "waits on #9, which has closed"
+expect_refused "a lesson waiting on a closed issue" "waits on #9, which has closed; merge main first, and if it is still there, archive it with \"issue:\" in front, or with \"fix:\" and the file"
 
 case_run wait-unread "$pass_checks" "$review_comment" "$good_body"
 expect_refused "a lesson waiting on an issue that cannot be read" "could not read #5, which a lesson waits on"
