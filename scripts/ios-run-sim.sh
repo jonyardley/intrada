@@ -15,10 +15,10 @@ SHOT="${1:-${SCREENSHOT:-/tmp/intrada-native.png}}"
 mkdir -p "$(dirname "$SHOT")"
 
 # Pick a simulator deterministically (the old `devs[-1]` depended on JSON
-# ordering, so device/arch drifted between machines — #854). Prefer the device
-# CI pins (overridable via SIM_DEVICE) on the highest installed iOS; fall back
-# to the newest available iPhone. Stable udid tie-break keeps repeated runs
-# identical.
+# ordering, so device/arch drifted between machines, #854): the device named
+# SIM_DEVICE on the highest installed iOS, stable udid tie-break. With none of
+# that name, create one rather than take any iPhone: on GitHub's Mac that
+# fallback took a two-screen iPhone Duo, whose screenshot fails (#2747).
 SIM_DEVICE="${SIM_DEVICE:-iPhone 16}"
 UDID=$(xcrun simctl list devices available --json | python3 -c "
 import json, re, sys
@@ -27,17 +27,25 @@ runtimes = json.load(sys.stdin)['devices']
 def ver(key):
     m = re.search(r'iOS-(\d+)-(\d+)', key)
     return (int(m.group(1)), int(m.group(2))) if m else (-1, -1)
-family = 'iPad' if want.startswith('iPad') else 'iPhone'
 cands = [
-    (dev['name'] == want, ver(key), dev['udid'])
+    (ver(key), dev['udid'])
     for key, devices in runtimes.items() if 'iOS' in key
-    for dev in devices if family in dev['name']
+    for dev in devices if dev['name'] == want
 ]
-print(max(cands)[2] if cands else '')
+print(max(cands)[1] if cands else '')
 " "$SIM_DEVICE")
 if [ -z "$UDID" ]; then
-    echo "✗ No $SIM_DEVICE simulator available (Xcode → Settings → Platforms → iOS)" >&2
-    exit 1
+    RUNTIME=$(xcrun simctl list runtimes available --json | python3 -c "
+import json, sys
+ios = [r for r in json.load(sys.stdin)['runtimes'] if r.get('platform') == 'iOS']
+ios.sort(key=lambda r: [int(p) for p in r['version'].split('.')])
+print(ios[-1]['identifier'] if ios else '')
+")
+    if [ -z "$RUNTIME" ] || ! UDID=$(xcrun simctl create "$SIM_DEVICE" "$SIM_DEVICE" "$RUNTIME"); then
+        echo "✗ No $SIM_DEVICE simulator, and none could be made (Xcode → Settings → Platforms → iOS)" >&2
+        exit 1
+    fi
+    echo "… created the simulator $SIM_DEVICE on $RUNTIME"
 fi
 
 # REUSE_BUILD=1 reuses an existing build/dd .app (e.g. CI, right after the

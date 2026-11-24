@@ -6,6 +6,8 @@ description: The route from finished code to merge in intrada, in order (retro, 
 ## The route
 
 Every PR follows these steps in order, whatever order a brief gives (#2921).
+Point at a step by its name, never its number, which goes stale when the
+route changes.
 Each spawn names its model and effort from the role table in
 `~/.claude/CLAUDE.md`; rounds, and who fixes findings, follow the global
 review rule there.
@@ -32,9 +34,11 @@ review rule there.
    reviewer reads the assertion.
 4. **Out-of-scope findings** are fixed here, or listed under "Not fixed" in
    the review comment with one line of why. Only one with horizon now or next
-   becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
+   becomes an issue, through `just issue-open` and `just epic-add EPIC N`, run
+   from a worktree, since the main checkout refuses them as scripts. The
    review comment ends `Deferred items tracked: #N` or `none`.
-5. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
+5. **Open** a draft with `just pr-open` once the branch is pushed (it
+   refuses an unpushed branch), never a bare `gh pr create`, with the
    body below, written to the scratchpad with the Write tool and passed as
    text, `"$(cat <scratchpad>/body.md)"`; the review summary goes on verbatim
    as the first comment, naming the agent.

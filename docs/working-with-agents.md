@@ -184,14 +184,22 @@ price (#1842).
 **Verification.** For UI, drive the simulator and show proof, or
 say what a human must check by hand. "All green" never means only
 `cargo test`. Report failures with the output, and never call a gate broken
-without making it fail. Delete any scratch simulator you made when done. If
+without making it fail. Before fixing a CI failure, read the failing step's
+last lines: a cause an issue gives is a guess until a log shows it. Delete
+any scratch simulator you made when done. If
 CI is green, local pty errors were host-only.
+
+**Red main is fixed or switched off the same day.** The alert on the
+`ci-red-main` issue names the failing job and step. Fix it, or, when a step
+that runs only on main is itself broken, switch it off in a PR that day
+(`if: false` with the issue number beside it) and open an issue to switch it
+back on. Red left standing hides the next real break (#2747).
 
 ## 8. Measure
 
 | You are | Do |
 |---|---|
-| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed; a `/ship` retro fix is recorded in the lessons archive instead |
+| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed, with the number read once the draft opens, never guessed; a `/ship` retro fix is recorded in the lessons archive instead |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |
 | Wanting session costs | `just usage`, or `just usage 14` for a fortnight |
 | Switching a user hook off or on | Delete its line from `hooks` in `~/.claude/settings.json`, leaving the script; restore it from the dated backup in `~/.claude/backups/` (#1990) |
@@ -228,6 +236,7 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | `gh pr merge` or a push to main refused | Merging is Jon's, on GitHub |
 | Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it (#2812) |
 | `xcodebuild` refused | Use the `just` recipe |
+| A worktree session's command refused as too complex | A loop, a compound command, or text that looks like git (a `.github` path) tripped the guard; split it into plain separate commands |
 | Waiting on the simulator lock | Another run holds it; it queues |
 | A dash on a changed line | Fix the line |
 | `just claim` refused | The issue is taken or has two merged PRs (#1890): pick another, finish that PR, or rethink the approach |
