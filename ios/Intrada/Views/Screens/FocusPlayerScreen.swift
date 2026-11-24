@@ -22,6 +22,7 @@ struct FocusPlayerScreen: View {
   @State private var click = ClickController()
   @State private var configuringClick = false
   @State private var switchingVariation = false
+  @State private var switchingKey = false
   /// The away offer the musician waved off, so it stays gone until the next time away.
   @State private var keptAway: String?
 
@@ -69,7 +70,15 @@ struct FocusPlayerScreen: View {
           itemTitle: active.currentItemTitle,
           currentVariations: active.currentVariations,
           currentVariationId: active.currentVariationIds.first,
-          onPick: { switchVariation(active, to: $0) })
+          onPick: { switchPlay(active, key: active.currentKey, variationIds: [$0]) })
+      }
+    }
+    .sheet(isPresented: $switchingKey) {
+      if let active {
+        KeyPickerSheet(
+          itemTitle: active.currentItemTitle, choices: active.currentKeyChoices,
+          current: active.currentKey,
+          onPick: { switchPlay(active, key: $0, variationIds: active.currentVariationIds) })
       }
     }
     .task { reseedClick() }
@@ -201,15 +210,15 @@ struct FocusPlayerScreen: View {
       // Side by side where they fit: stacked, they push the header under the
       // status bar on a 6.3 inch phone (#2249).
       if active.record.lastTime == nil {
-        variationChip(active)
+        wayChips(active)
       } else {
         ViewThatFits(in: .horizontal) {
           HStack(spacing: IntradaSpacing.controlGap) {
-            variationChip(active)
+            wayChips(active)
             lastTimeOffer(active)
           }
           VStack(spacing: IntradaSpacing.controlGap) {
-            variationChip(active)
+            wayChips(active)
             lastTimeOffer(active)
           }
         }
@@ -242,35 +251,44 @@ struct FocusPlayerScreen: View {
       variationIds: offer.variationIds, now: now, reading: reading)
   }
 
-  // ── The variation being practised right now (#1739 decision 6) ──
+  // ── The key and variation being practised right now (#1739 decision 6, #2788) ──
+
+  /// Side by side only when both show, so an empty row adds no spacing.
+  @ViewBuilder private func wayChips(_ active: ActiveSessionView) -> some View {
+    if active.currentKeyLabel != nil && !active.currentVariations.isEmpty {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        keyChip(active)
+        variationChip(active)
+      }
+    } else {
+      keyChip(active)
+      variationChip(active)
+    }
+  }
+
+  /// One key reads as its name; two or more open the picker.
+  @ViewBuilder private func keyChip(_ active: ActiveSessionView) -> some View {
+    if let label = active.currentKeyLabel {
+      if active.currentKeyChoices.count > 1 {
+        chip(label, muted: false) { switchingKey = true }
+          .accessibilityLabel("Key")
+          .accessibilityIdentifier("player.key")
+          .accessibilityValue(label)
+          .accessibilityHint("Switches to another key")
+      } else if !active.currentKeyChoices.isEmpty {
+        Text(label)
+          .font(IntradaFont.segment)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .accessibilityLabel("Key, \(label)")
+      }
+    }
+  }
 
   @ViewBuilder private func variationChip(_ active: ActiveSessionView) -> some View {
     if !active.currentVariations.isEmpty {
-      Button {
+      chip(active.currentPlayLabel ?? "Pick a variation", muted: active.currentPlayLabel == nil) {
         switchingVariation = true
-      } label: {
-        HStack(spacing: 7) {
-          Text(active.currentPlayLabel ?? "Pick a variation")
-            .font(IntradaFont.segment)
-            .foregroundStyle(
-              active.currentPlayLabel == nil
-                ? IntradaColor.inkSecondary : IntradaColor.ink
-            )
-            // A variation named "2nd inversion" shrinks rather than
-            // ellipsising, as the click's readout does (T19).
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-          Image(systemName: "chevron.down")
-            .font(IntradaFont.small.weight(.semibold))
-            .foregroundStyle(IntradaColor.inkSecondary)
-        }
-        .padding(.horizontal, 14)
-        .frame(minHeight: 44)
-        .background(IntradaColor.cardFill, in: Capsule())
-        .overlay(Capsule().stroke(IntradaColor.hairline, lineWidth: 1))
-        .cardShadow()
       }
-      .buttonStyle(PressRebound())
       .accessibilityLabel("Variation")
       .accessibilityIdentifier("player.variation")
       .accessibilityValue(active.currentPlayLabel ?? "none picked")
@@ -278,15 +296,38 @@ struct FocusPlayerScreen: View {
     }
   }
 
+  private func chip(_ text: String, muted: Bool, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      HStack(spacing: 7) {
+        Text(text)
+          .font(IntradaFont.segment)
+          .foregroundStyle(muted ? IntradaColor.inkSecondary : IntradaColor.ink)
+          // A variation named "2nd inversion" shrinks rather than
+          // ellipsising, as the click's readout does (T19).
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
+        Image(systemName: "chevron.down")
+          .font(IntradaFont.small.weight(.semibold))
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+      .padding(.horizontal, 14)
+      .frame(minHeight: 44)
+      .background(IntradaColor.cardFill, in: Capsule())
+      .overlay(Capsule().stroke(IntradaColor.hairline, lineWidth: 1))
+      .cardShadow()
+    }
+    .buttonStyle(PressRebound())
+  }
+
   /// False when the core refused the switch (the per-entry cap, or a variation
   /// that has since been deleted), so the picker stays up beside the banner.
-  private func switchVariation(_ active: ActiveSessionView, to variationId: String) -> Bool {
+  private func switchPlay(_ active: ActiveSessionView, key: Key?, variationIds: [String]) -> Bool {
     let pos = Int(active.currentPosition)
     guard active.entries.indices.contains(pos) else { return false }
     return store.sendAccepted(
       .session(
         .switchPlay(
-          entryId: active.entries[pos].id, key: active.currentKey, variationIds: [variationId],
+          entryId: active.entries[pos].id, key: key, variationIds: variationIds,
           now: SessionClock.nowRFC3339(), reading: tempoReading)))
   }
 

@@ -157,6 +157,36 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(afterSwitch.currentPlayLabel, "D", "the chip follows the switch")
   }
 
+  /// The key chip's rows and text cross the bridge, and a switch moves the chip (#2788).
+  func testSwitchingKeyMovesTheKeyChipOverTheRealBridge() throws {
+    let bridge = RowsBridge()
+    let itemId = try exerciseWithTwoVariations(bridge)
+    let cMajor = Key(letter: .c, accidental: .natural, mode: .major)
+    let gMajor = Key(letter: .g, accidental: .natural, mode: .major)
+    _ = try bridge.update(.item(.updateKeys(id: itemId, keys: [cMajor, gMajor])))
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
+
+    let before = try XCTUnwrap(try bridge.rendered().activeSession)
+    XCTAssertEqual(before.currentKeyChoices.map(\.label), ["C major", "G major"])
+    XCTAssertEqual(before.currentKeyChoices.map(\.key), [cMajor, gMajor])
+    XCTAssertEqual(before.currentKeyLabel, "C major", "a new plan opens on the first key")
+
+    _ = try bridge.update(
+      .session(
+        .switchPlay(
+          entryId: entryId, key: gMajor, variationIds: before.currentVariationIds,
+          now: "2026-09-01T10:05:00Z", reading: .silent)))
+
+    let after = try XCTUnwrap(try bridge.rendered().activeSession)
+    XCTAssertNil(try bridge.rendered().error, "the switch decodes on the wire (#846)")
+    XCTAssertEqual(after.currentKey, gMajor)
+    XCTAssertEqual(after.currentKeyLabel, "G major", "the chip follows the switch")
+  }
+
   /// A tempo lands on the play it was played on (#1761): the switch stamps the
   /// plain play from the click sounding then and the hand-off stamps D, through real
   /// bincode with a quaver click on both events.

@@ -39,7 +39,7 @@ is_large() {
       testUpNextHeroNeverMarked | \
       testUpNextHeroCoral | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
-      testFocusPlayerWithVariations | \
+      testFocusPlayerWithVariations | testFocusPlayerKeyChip | \
       testFocusPlayerHoldsTheItemTimerWhileTheSheetIsOpen | \
       testFocusPlayerSectionTimeUp | testFocusPlayerAwayOffer | testFocusPlayerLastTimeOffer | \
       testPracticeSessionDetailAccessibilitySize | \
