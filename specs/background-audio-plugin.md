@@ -41,7 +41,6 @@ ship to TestFlight or the App Store as-is.
 - Lock-screen *controls* (play/pause/skip from the lock screen). Could come
   later but adds scope; the v1 lock screen is read-only Now Playing info.
 - macOS support (Tauri 2 supports it but practice on Mac isn't a target).
-- Android. Separate plugin if/when we get there.
 
 ## Approach
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Every component in the catalogue index has a page, every page is in the
-# index, and each page names a real file, symbol and snapshot on both apps
-# (#2620). An Android gap passes only with `not_on_android:` and a reason;
-# while Android is paused, new pages give #2860 as theirs.
+# index, and each page names a real file, symbol and snapshot in the iPhone
+# app (#2620).
 #
 # The page proves the component exists and has pictures, not that its words
 # are still true; that stays with review.
@@ -18,7 +17,6 @@ root="${COMPONENTS_ROOT:-.}"
 catalogue="$root/design/components"
 index="$catalogue/README.md"
 ios_snaps="$root/ios/IntradaTests/__Snapshots__"
-android_snaps="$root/android/app/src/test/snapshots"
 
 # Components listed in the index whose page is still to be written. This list
 # only shrinks: a name here that has a page fails the check.
@@ -52,10 +50,10 @@ key() {
     NR > 1 { if (index($0, k ":") == 1) { sub("^" k ":[ ]*", ""); print; exit } }' "$2"
 }
 
-# A Swift or Kotlin declaration of the name, generics and receivers allowed:
-# `struct Pills<Option`, `func cardSurface(`, `fun <T> Pills(`, `fun Modifier.cardShadow(`.
+# A Swift declaration of the name, generics allowed:
+# `struct Pills<Option`, `func cardSurface(`.
 declares() {
-  printf '(struct|class|enum|protocol|func|fun|val|let|var)[[:space:]]+(<[^>]*>[[:space:]]+)?([A-Za-z]+\\.)?%s([^A-Za-z0-9_]|$)' "$1"
+  printf '(struct|class|enum|protocol|func|let|var)[[:space:]]+(<[^>]*>[[:space:]]+)?%s([^A-Za-z0-9_]|$)' "$1"
 }
 
 list() { printf '%s\n' "$1" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$' || true; }
@@ -110,16 +108,6 @@ for page in "$catalogue"/*/README.md; do
   in_index "$name" || problems+=("$page is not in the index")
   [ "$(key name "$page")" = "$name" ] || problems+=("$page: name: should be $name")
   check_side "$page" ios "$ios_snaps"
-  gap=$(key not_on_android "$page")
-  if [ -n "$gap" ]; then
-    if grep -q '^android_' "$page"; then
-      problems+=("$page: has android_ keys beside not_on_android")
-    fi
-  elif grep -q '^not_on_android:' "$page"; then
-    problems+=("$page: not_on_android needs a reason")
-  else
-    check_side "$page" android "$android_snaps"
-  fi
 done
 
 if [ "${#problems[@]}" -gt 0 ]; then

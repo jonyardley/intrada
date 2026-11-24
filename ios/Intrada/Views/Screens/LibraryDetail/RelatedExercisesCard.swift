@@ -27,7 +27,7 @@ struct RelatedExercisesCard: View {
         if !editing {
           // The rings below are each exercise's score *on this piece*, not its
           // overall. Say so, as the exercise hero's "Overall" (#1087 B2).
-          Text("Marks shown are for this piece")
+          Text("Confidence shown is for this piece")
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -254,9 +254,9 @@ private struct LinkedExerciseRow: View {
     var parts = ["Exercise", exercise.title]
     if let meta = exercise.metaSpoken { parts.append(meta) }
     if let score = exercise.pieceContextScore {
-      parts.append("Mark \(score) of \(scoreRange.upperBound) on this piece")
+      parts.append("Confidence \(score) of \(scoreRange.upperBound) on this piece")
     } else {
-      parts.append("Not yet rated on this piece")
+      parts.append("No confidence yet on this piece")
     }
     return parts.joined(separator: ", ")
   }

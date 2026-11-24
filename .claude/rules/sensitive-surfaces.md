@@ -1,12 +1,10 @@
 ---
 paths:
-  - "crates/intrada-core/src/domain/session/**"
   - "crates/intrada-ffi/**"
   - "ios/generated/**"
+  - "crates/intrada-core/src/**"
   - "crates/intrada-store/**"
   - "ios/Intrada/Core/SharedItemStore.swift"
-  - "android/generated/**"
-  - "android/app/src/main/kotlin/com/intrada/android/core/CoreBridge.kt"
 ---
 
 # You are on a silent-failure surface
@@ -14,7 +12,10 @@ paths:
 A wrong change here does not crash. It decodes into a plausible wrong value,
 drops a write, or destroys the only copy of a user's data. Never spell out an
 exploitable gap in a public PR body: say a gap exists and route the detail to
-Jon. Before editing:
+Jon. A diff is on this surface when it changes a type that crosses the bridge
+(an item deriving Facet: view types, `Event` and its sub-events, effect
+operations), a `BLOB_VERSION` line, the store or the FFI source, wherever the
+file sits, and `just review-route` names them (#2922); auth is judged by hand. Before editing:
 
 **Additive or not.** An additive bridge change adds a field, an event variant
 or a view type and renames, removes, reorders or retypes nothing. It keeps its
@@ -48,12 +49,6 @@ The hazards, by file:
 - **`ios/generated/`.** Never hand-edit; fix the Rust type and regenerate.
   UniFFI output fails under Swift 6.2 `MainActor`-default isolation
   (uniffi-rs#2818); the build recipe keeps the package non-MainActor-defaulted.
-- **`android/generated/` and `CoreBridge.kt`.** Paused with Android (#2860):
-  leave them alone until it restarts. Then: the same wire, read by a second
-  decoder: extend `BridgeRoundTripTest` as well as the Swift `LiveBridge`
-  tests. Generate only through `just android-gen`, which runs the
-  `uniffi-bindgen` pinned inside `intrada-ffi`, never a global one, or the
-  bridge skews silently.
 - **`domain/session/`.** A new field anywhere in the `ActiveSession` graph
   invalidates every crash-recovery blob on every device (#1345).
   `active_session_blob_wire_is_pinned` fails on purpose: bump

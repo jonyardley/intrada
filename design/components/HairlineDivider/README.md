@@ -4,9 +4,6 @@ status: stable
 ios_symbol: HairlineDivider
 ios_file: ios/Intrada/DesignSystem/HairlineDivider.swift
 ios_snapshots: ComponentSnapshotTests/testHairlineDivider.1.png
-android_symbol: HairlineDivider
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/HairlineDivider.kt
-android_snapshots: hairline-divider.png
 decisions: T24
 ---
 
@@ -32,13 +29,11 @@ The 1 point line between rows in a card, and between columns.
 - **Darker** (`colour: IntradaColor.divider`): use for a stronger line on a busy bar, such as the metronome bar.
 - **Inset:** use where the line should start with the row's text; the caller pads the leading edge by `IntradaSpacing.card` (16).
 
-Android's metronome bar draws its upright line by hand; moving it onto this component is #2661.
-
 ## Behaviour
 
 No motion. Lists draw it before every row but the first (`if index > 0`), so the card's own edge closes the list.
 
-Whether a divider should be inset at all is with Jon (the refinement observations in #2608); until he decides, the inset variant stays as both apps ship it.
+Whether a divider should be inset at all is with Jon (the refinement observations in #2608); until he decides, the inset variant stays as the app ships it.
 
 ## Content
 
@@ -47,7 +42,7 @@ Whether a divider should be inset at all is with Jon (the refinement observation
 
 ## Accessibility
 
-Decorative: it adds nothing to VoiceOver or TalkBack. It does not scale with text size.
+Decorative: it adds nothing to VoiceOver. It does not scale with text size.
 
 ## Do and don't
 
@@ -60,11 +55,6 @@ Decorative: it adds nothing to VoiceOver or TalkBack. It does not scale with tex
 if index > 0 { HairlineDivider() }
 HairlineDivider().padding(.leading, IntradaSpacing.card)
 HairlineDivider(axis: .vertical, colour: IntradaColor.divider)
-```
-
-```kotlin
-if (index > 0) HairlineDivider()
-HairlineDivider(Modifier.padding(start = IntradaSpacing.card))
 ```
 
 ## Related

@@ -4,9 +4,6 @@ status: stable
 ios_symbol: ConsistencyBars
 ios_file: ios/Intrada/Views/Components/ConsistencyBars.swift
 ios_snapshots: ProgressSnapshotTests/testConsistencyBars.1.png
-android_symbol: ConsistencyBars
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/ProgressParts.kt
-android_snapshots: consistency-bars.png
 ---
 
 # ConsistencyBars
@@ -26,7 +23,6 @@ Minutes practised in each recent week, as bars, with this week picked out.
 ## Behaviour
 
 - On iPhone the bars grow from the baseline when the view appears, one after another, with `IntradaMotion.barGrow` and `barGrowStagger`. Under Reduce Motion they appear at full height.
-- Android draws the bars at full height at once; the grow is G1 in #2762.
 - The bars are not interactive.
 
 ## Content
@@ -41,16 +37,12 @@ Minutes practised in each recent week, as bars, with this week picked out.
 ## Accessibility
 
 - Each week is one element, read by the core's spoken line for that week. The bar height is not read on its own.
-- Labels scale with Dynamic Type and font scale; the bars keep their height.
+- Labels scale with Dynamic Type; the bars keep their height.
 
 ## Usage
 
 ```swift
 ConsistencyBars(weeks: analytics.consistencyWeeks)
-```
-
-```kotlin
-ConsistencyBars(analytics.consistencyWeeks)
 ```
 
 ## Related

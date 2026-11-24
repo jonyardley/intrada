@@ -89,7 +89,7 @@ final class SessionRecoveryUITests: XCTestCase {
       "the note survived the kill")
     XCTAssertEqual(again.element("reflection.mark").value as? String, "7 of 10")
 
-    again.control("reflection.skip", spoken: "Skip rating").tap()
+    again.control("reflection.skip", spoken: "Skip").tap()
     again.discardSummary()
   }
 

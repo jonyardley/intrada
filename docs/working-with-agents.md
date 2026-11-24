@@ -81,11 +81,15 @@ posture fights the tiers; four of its skills stay as globals
 (`test-driven-development`, `requesting-code-review`, `receiving-code-review`,
 `using-git-worktrees`), and `/speckit-*` is deprecated.
 
-**The sensitive surfaces** are where wrong is silent: the FFI bridge
-(positional bincode, #846), store migrations, the `ActiveSession`
-crash-recovery blob and auth. That work, including any bridge change that is
-not additive (`.claude/rules/sensitive-surfaces.md`), runs at the role
-table's level for sensitive surfaces with `reviewer` paired from the core diff. A plan comment, direction
+**The sensitive surfaces** are where wrong is silent: what crosses the FFI
+bridge (positional bincode, #846), store migrations, the wire-pinned blobs and
+auth. They are judged by type, not folder: a changed item deriving Facet (view
+types, `Event` and its sub-events, effect operations), a `BLOB_VERSION` line,
+the store or the FFI source, as `just review-route` names them (#2922); auth
+is judged by hand. That work, including
+any bridge change that is not additive (`.claude/rules/sensitive-surfaces.md`),
+runs at the role table's level for sensitive surfaces with `reviewer` paired
+from the core diff. A plan comment, direction
 call or unexplained bug counts only when its work is on that list (#1985).
 
 ## 4. Plan
@@ -110,8 +114,8 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   PR's first commit, never its own PR. The spec is deleted once the screens
   ship, unless an open issue cites it (`specs/README.md`).
 
-A feature ships as one PR across the stack, core commits first, then iOS
-(Android is paused, #2860): a merged core with no caller is shell-dead (#1374). On the sensitive
+A feature ships as one PR across the stack, core commits first, then iOS:
+a merged core with no caller is shell-dead (#1374). On the sensitive
 surfaces, `reviewer` reviews the core commits before the screens commits
 start, and lead-only work goes up a tier.
 
@@ -159,17 +163,18 @@ The justfile and `ci.yml` change together. More in
 
 **Code intelligence.** Run `just lsp-setup` once per machine and per worktree
 that wants Swift; without it neither LSP answers. Swift's `references` returns
-nothing, so callers stay a grep job. Kotlin needs `android/local.properties`,
-which the recipe writes (#2630); restart Claude Code after. Installs:
+nothing, so callers stay a grep job. Restart Claude Code after. Installs:
 [README](../README.md#prerequisites).
 
 ## 6. Review
 
 | You are | Do |
 |---|---|
+| Any diff | `just review-route` says which row applies; this table is the one place that decides it |
 | Holding a diff that changes code or tests | `just pre-review` first, then `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
-| Holding a diff on a sensitive surface | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
-| Holding a docs-only diff | `/code-review` inline stands in; say "comment-policy violations are Blockers" |
+| Holding a diff that `just review-route` calls sensitive, or one touching auth | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff |
+| Holding a diff that changes only markdown under `.claude/`, a `CLAUDE.md`, `AGENTS.md`, this file or `docs/how-the-work-runs.md`, with or without documentation | `/code-review` inline; these steer agents, so they are not documentation; say "comment-policy violations are Blockers". Anything else under `.claude/`, such as settings or scripts, is code |
+| Holding a documentation-only diff (`docs/`, `specs/`, markdown under `design/`, the README) | No code review: code review found nothing on these (approved 2026-11-20, this repo only); `just pre-review` still runs |
 
 `reviewer` checks the diff against the plan comment first, reports and
 yields: no GitHub writes, no waiting for a PR number. The lead posts its
@@ -191,7 +196,7 @@ Gates, Codecov, deferred issues and body templates are in
 closes the issue on merge; close one by hand only when no PR closed it. Update
 `docs/roadmap.md` if a phase changed and `CLAUDE.md` if architecture did.
 
-**Verification.** For UI, drive the simulator and emulator and show proof, or
+**Verification.** For UI, drive the simulator and show proof, or
 say what a human must check by hand. "All green" never means only
 `cargo test`. Report failures with the output, and never call a gate broken
 without making it fail. Delete any scratch simulator you made when done. If

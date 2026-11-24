@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Android 9 to 11. The practice in progress lives in intrada.practice.xml and stays behind (#2433). -->
-<full-backup-content>
-    <include domain="database" path="intrada.sqlite" />
-    <include domain="database" path="intrada.sqlite-journal" />
-    <include domain="database" path="intrada.sqlite-wal" />
-    <include domain="sharedpref" path="intrada.xml" />
-</full-backup-content>

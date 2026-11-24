@@ -4,9 +4,6 @@ status: stable
 ios_symbol: GlobalBanner, AppBannerStack
 ios_file: ios/Intrada/DesignSystem/GlobalBanner.swift, ios/Intrada/Views/Components/AppBannerStack.swift
 ios_snapshots: RootShellSnapshotTests/testGlobalBanner.1.png
-android_symbol: GlobalBanner, BannerTone, BannerAction
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/GlobalBanner.kt
-android_snapshots: global-banner.png
 decisions: T30
 ---
 
@@ -39,21 +36,20 @@ A full-width line under the status bar for something the whole app needs to say:
 - There is one stack, on every screen and over the player. Several banners stack one under another in a fixed order, stopped, storage, error, notice, Undo, each dismissed on its own.
 - Dismissing sends one event to the core (`clearError`, `clearNotice`, `dismissUndoDelete`), which clears the message. Undo sends `undoDelete`.
 - No motion of its own.
-- Android does not yet show the storage line or the core's notices, such as the metronome note; #2646.
 
 ## Content
 
 - What happened and what it means for the musician's data, in one or two sentences ([tone of voice](../../../docs/tone-of-voice.md), rule 8). Sentence case.
-- The core writes the error and notice wording; the shells write only the stopped and storage lines.
+- The core writes the error and notice wording; the shell writes only the stopped and storage lines.
 - Danger: `dangerBanner` fill (`danger` at 12%), the warning triangle, the message in `danger`.
-- Notice: `cardFill`, the info circle, the message in `inkSecondary`, with a hairline under the banner (Android draws none yet; #2688).
+- Notice: `cardFill`, the info circle, the message in `inkSecondary`, with a hairline under the banner.
 - The message is `IntradaFont.bodyMedium` and wraps onto as many lines as it needs. The action is one word in `IntradaFont.button`, `ink`.
 
 ## Accessibility
 
-- The banner is one element, read as its message, with "Note, " before a notice. The action and Dismiss are accessibility actions on it (custom actions on Android), because combining the children hides the buttons.
-- The message scales with Dynamic Type and font scale, and wraps rather than truncates.
-- The dismiss target is at least 48dp on Android; the iPhone cross reaching 44 points is #2687.
+- The banner is one element, read as its message, with "Note, " before a notice. The action and Dismiss are accessibility actions on it, because combining the children hides the buttons.
+- The message scales with Dynamic Type, and wraps rather than truncates.
+- The dismiss cross reaching 44 points is #2687.
 
 ## Do and don't
 
@@ -65,17 +61,6 @@ A full-width line under the status bar for something the whole app needs to say:
 ```swift
 GlobalBanner(message: message) { store.send(.clearError) }
 GlobalBanner(message: message, tone: .notice) { store.send(.clearNotice) }
-```
-
-```kotlin
-GlobalBanner(error, tag = "banner.error", onDismiss = actions.onDismissError)
-GlobalBanner(
-    message,
-    tag = "banner.undoDelete",
-    tone = BannerTone.NOTICE,
-    action = BannerAction("Undo") { store.send(Event.Session(SessionEvent.UndoDelete(SessionClock.now()))) },
-    onDismiss = { store.send(Event.Session(SessionEvent.DismissUndoDelete)) },
-)
 ```
 
 ## Related

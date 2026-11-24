@@ -96,15 +96,38 @@
   }
 
   extension LibraryItemView {
-    static var previewPiece: LibraryItemView {
+    /// Preview and snapshot fixture. A new core field costs one edit here rather
+    /// than one per call site (#2921).
+    static func fixture(
+      id: String = "piece-2", itemType: ItemKind = .piece, title: String = "Prelude in C",
+      subtitle: String = "", key: Key? = nil, keyLabel: String? = nil,
+      tempoMarking: String? = nil, tempoBpm: UInt16? = nil, tempoLine: String? = nil,
+      tempoLineSpoken: String? = nil, notes: String? = nil, tags: [String] = [],
+      createdAt: String = "", updatedAt: String = "", practice: ItemPracticeSummary? = nil,
+      priority: Bool = false, linkedExercises: [LinkedExerciseView] = [],
+      usedIn: [ExerciseUsageView] = [], scaffoldPreview: ScaffoldPreviewView? = nil,
+      chordChart: ChordChart? = nil, metre: Metre? = nil, variations: [VariationView] = [],
+      photoId: String? = nil, keys: [ItemKeyView] = [], keysCaption: String? = nil,
+      variationsCaption: String? = nil, keySelection: KeyWheelSelection? = nil
+    ) -> LibraryItemView {
       LibraryItemView(
-        id: "piece-1", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
+        id: id, itemType: itemType, title: title, subtitle: subtitle, key: key,
+        keyLabel: keyLabel, tempoMarking: tempoMarking, tempoBpm: tempoBpm, tempoLine: tempoLine,
+        tempoLineSpoken: tempoLineSpoken, notes: notes, tags: tags, createdAt: createdAt,
+        updatedAt: updatedAt, practice: practice, priority: priority,
+        linkedExercises: linkedExercises, usedIn: usedIn, scaffoldPreview: scaffoldPreview,
+        chordChart: chordChart, metre: metre, variations: variations, photoId: photoId,
+        keys: keys, keysCaption: keysCaption, variationsCaption: variationsCaption,
+        keySelection: keySelection)
+    }
+
+    static var previewPiece: LibraryItemView {
+      .fixture(
+        id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy",
         key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
         tempoMarking: "Andante",
         tempoBpm: 72, tempoLine: "Andante · ♩ = 72",
         tempoLineSpoken: "Andante, 72 beats per minute",
-        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        priority: false,
         linkedExercises: [
           LinkedExerciseView(
             id: "exercise-1", title: "Hanon No. 1",
@@ -119,55 +142,34 @@
             tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil, practice: nil,
             pieceContextScore: nil),
         ],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
-        variations: [], photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     static var previewExercise: LibraryItemView {
-      LibraryItemView(
+      .fixture(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
         key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
-        tempoMarking: nil, tempoBpm: 108, tempoLine: "♩ = 108",
+        tempoBpm: 108, tempoLine: "♩ = 108",
         tempoLineSpoken: "108 beats per minute",
-        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
-        photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
     /// library row can share an id.
     static var previewScales: LibraryItemView {
-      LibraryItemView(
-        id: "ex-a", itemType: .exercise, title: "Scales", subtitle: "",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil, tempoLine: nil,
-        tempoLineSpoken: nil,
-        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
-        photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
-        keySelection: nil)
+      .fixture(id: "ex-a", itemType: .exercise, title: "Scales")
     }
 
     static var previewDetail: LibraryItemView {
-      LibraryItemView(
-        id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
+      .fixture(
+        id: "piece-3", title: "Clair de Lune", subtitle: "Claude Debussy",
         key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
         tempoMarking: "Andante",
         tempoBpm: 72, tempoLine: "Andante · ♩ = 72",
         tempoLineSpoken: "Andante, 72 beats per minute",
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
-        tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
-        practice: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
-        variations: [], photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
+        tags: ["recital", "impressionist", "memorised"],
         keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
@@ -189,15 +191,10 @@
               Bar(chords: [chord("Ebmaj7", 3, .maj7)]),
             ])
         ])
-      return LibraryItemView(
-        id: "piece-charted", itemType: .piece, title: "Autumn Leaves", subtitle: "Standard",
+      return .fixture(
+        id: "piece-charted", title: "Autumn Leaves", subtitle: "Standard",
         key: Key(letter: .g, accidental: .natural, mode: .minor), keyLabel: "G minor",
-        tempoMarking: nil, tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil,
-        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variations: [],
-        photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
+        scaffoldPreview: .preview, chordChart: chart,
         keySelection: KeyWheelSelection(ring: 10, modality: .minor, spelling: "G"))
     }
 
@@ -206,14 +203,14 @@
     /// A piece with a populated linked-exercises list (3 items, varied scores including
     /// one unrated), for the linked-exercises section snapshots.
     static var previewDetailWithLinkedExercises: LibraryItemView {
-      LibraryItemView(
-        id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
+      .fixture(
+        id: "piece-3", title: "Clair de Lune", subtitle: "Claude Debussy",
         key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
         tempoMarking: "Andante",
         tempoBpm: 72, tempoLine: "Andante · ♩ = 72",
         tempoLineSpoken: "Andante, 72 beats per minute",
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
-        tags: ["recital", "impressionist"], createdAt: "", updatedAt: "",
+        tags: ["recital", "impressionist"],
         practice: ItemPracticeSummary.fixture(
           sessionCount: 12, totalMinutes: 240, latestScore: 6,
           scoreHistory: [
@@ -224,7 +221,6 @@
           scoreTrend: ScoreTrend(from: 4, to: 6),
           tempoTrend: .fixture([66, nil, 69, 72]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
-        priority: false,
         linkedExercises: [
           // Per-piece scores deliberately differ from the exercises' overall
           // `latestScore` (7 / 4), so the snapshot shows the B2 re-source.
@@ -252,21 +248,17 @@
             tempoMarking: nil, tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil,
             practice: nil, pieceContextScore: nil),
         ],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
-        variations: [], photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
     static var previewExerciseLinkedOnly: LibraryItemView {
-      LibraryItemView(
+      .fixture(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
         key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
-        tempoMarking: nil, tempoBpm: 108, tempoLine: "♩ = 108",
+        tempoBpm: 108, tempoLine: "♩ = 108",
         tempoLineSpoken: "108 beats per minute",
-        notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: ItemPracticeSummary.fixture(
           sessionCount: 9, totalMinutes: 90, latestScore: 7,
           scoreHistory: [
@@ -277,7 +269,6 @@
           scoreTrend: ScoreTrend(from: 5, to: 7),
           tempoTrend: .fixture([96, 100, nil, 104, 108]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
-        priority: false, linkedExercises: [],
         usedIn: [
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
@@ -287,22 +278,19 @@
             piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
             pieceRemoved: false, pieceInLibrary: true, offersLink: false),
-        ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
-        photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
+        ],
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// Every "Used in" row state at once: linked and practised, practised
     /// only, linked only, removed, and "On its own" (#1087 B2, #1363).
     static var previewExerciseUsedIn: LibraryItemView {
-      LibraryItemView(
+      .fixture(
         id: "exercise-1", itemType: .exercise, title: "Enclosures",
         subtitle: "Bebop vocabulary",
         key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
-        tempoMarking: nil, tempoBpm: 120, tempoLine: "♩ = 120",
+        tempoBpm: 120, tempoLine: "♩ = 120",
         tempoLineSpoken: "120 beats per minute",
-        notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: ItemPracticeSummary.fixture(
           sessionCount: 10, totalMinutes: 120, latestScore: 7,
           scoreHistory: [
@@ -310,7 +298,6 @@
           ],
           tempoTrend: .fixture([120]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
-        priority: false, linkedExercises: [],
         usedIn: [
           ExerciseUsageView(
             piece: PieceRefView(
@@ -336,23 +323,18 @@
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false, pieceInLibrary: false,
             offersLink: false),
-        ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
-        photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
+        ],
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// An exercise with variations: one solid, one marked but not yet solid,
     /// one unrated.
     static var previewExerciseWithVariations: LibraryItemView {
-      LibraryItemView(
+      .fixture(
         id: "exercise-2", itemType: .exercise, title: "ii–V–i Enclosures",
         subtitle: "Bebop vocabulary, 12 keys",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: 132, tempoLine: "♩ = 132",
+        tempoBpm: 132, tempoLine: "♩ = 132",
         tempoLineSpoken: "132 beats per minute",
-        notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [
           VariationView(
             id: "variation-c", label: "C", latestScore: 9, scoreHistory: [], caption: "9 of 10"),
@@ -361,9 +343,8 @@
           VariationView(
             id: "variation-bb", label: "B♭", latestScore: nil, scoreHistory: [],
             caption: "Not yet played"),
-        ], photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: "1 of 3 solid",
-        keySelection: nil)
+        ],
+        variationsCaption: "1 of 3 solid")
     }
 
     /// Twelve chromatic variations, stress-testing the horizontal scroller
@@ -372,14 +353,11 @@
       let keys = [
         "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B",
       ]
-      return LibraryItemView(
+      return .fixture(
         id: "exercise-3", itemType: .exercise, title: "Chromatic run",
         subtitle: "All 12 keys",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: 72, tempoLine: "♩ = 72",
+        tempoBpm: 72, tempoLine: "♩ = 72",
         tempoLineSpoken: "72 beats per minute",
-        notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: keys.enumerated().map { index, label in
           let solid = index < 4
           let current = index == 4
@@ -387,29 +365,22 @@
             id: "variation-\(index)", label: label,
             latestScore: solid ? 9 : (current ? 6 : nil), scoreHistory: [],
             caption: solid ? "9 of 10" : (current ? "6 of 10" : "Not yet played"))
-        }, photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: "4 of 12 solid",
-        keySelection: nil)
+        },
+        variationsCaption: "4 of 12 solid")
     }
 
     /// Variations that are inversions, not keys: pins the "variations" word and the stairs
     /// glyph, the one judgement the shell still makes for itself (#1467).
     static var previewExerciseWithNamedVariations: LibraryItemView {
       let rungs = ["Root position", "1st inversion", "2nd inversion"]
-      return LibraryItemView(
-        id: "exercise-4", itemType: .exercise, title: "Triad inversions", subtitle: "",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil, tempoLine: nil,
-        tempoLineSpoken: nil,
-        notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
+      return .fixture(
+        id: "exercise-4", itemType: .exercise, title: "Triad inversions",
         variations: rungs.enumerated().map { index, label in
           VariationView(
             id: "rung-\(index)", label: label, latestScore: nil,
             scoreHistory: [], caption: "Not yet played")
-        }, photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: "0 of 3 solid",
-        keySelection: nil)
+        },
+        variationsCaption: "0 of 3 solid")
     }
 
     /// Free-text variation names, matching the issue's own example (#1786).
@@ -417,38 +388,26 @@
       let names = [
         "Hands together, two octaves", "Hands separately", "Slow, with the metronome",
       ]
-      return LibraryItemView(
-        id: "exercise-5", itemType: .exercise, title: "Arpeggios, four octaves", subtitle: "",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil, tempoLine: nil,
-        tempoLineSpoken: nil,
-        notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
+      return .fixture(
+        id: "exercise-5", itemType: .exercise, title: "Arpeggios, four octaves",
         variations: names.enumerated().map { index, label in
           VariationView(
             id: "long-variation-\(index)", label: label,
             latestScore: index == 0 ? 8 : nil, scoreHistory: [],
             caption: index == 0 ? "8 of 10" : "Not yet played")
-        }, photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: "1 of 3 solid",
-        keySelection: nil)
+        },
+        variationsCaption: "1 of 3 solid")
     }
 
     /// A piece with no linked exercises, for the empty-state snapshot.
     static var previewDetailLinkedEmpty: LibraryItemView {
-      LibraryItemView(
-        id: "piece-4", itemType: .piece, title: "Gymnopédie No. 1", subtitle: "Erik Satie",
+      .fixture(
+        id: "piece-4", title: "Gymnopédie No. 1", subtitle: "Erik Satie",
         key: Key(letter: .d, accidental: .natural, mode: .major), keyLabel: "D major",
         tempoMarking: "Lent et douloureux",
         tempoBpm: 60, tempoLine: "Lent et douloureux · ♩ = 60",
-        tempoLineSpoken: "Lent et douloureux, 60 beats per minute", notes: nil, tags: [],
-        createdAt: "", updatedAt: "",
-        practice: nil, priority: false,
-        linkedExercises: [], usedIn: [], scaffoldPreview: nil,
-        chordChart: nil, metre: nil, variations: [], photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
-        keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D")
-      )
+        tempoLineSpoken: "Lent et douloureux, 60 beats per minute",
+        keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D"))
     }
   }
 
@@ -487,16 +446,9 @@
       id: String = "piece-2", itemType: ItemKind = .piece, title: String = "Prelude in C",
       subtitle: String = "", key: Key? = nil, keySelection: KeyWheelSelection? = nil
     ) -> LibraryItemView {
-      LibraryItemView(
+      .fixture(
         id: id, itemType: itemType, title: title, subtitle: subtitle,
-        key: key, keyLabel: key.flatMap(KeyHelper.display), tempoMarking: nil, tempoBpm: nil,
-        tempoLine: nil, tempoLineSpoken: nil,
-        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
-        photoId: nil, keys: [],
-        keysCaption: nil, variationsCaption: nil,
-        keySelection: keySelection)
+        key: key, keyLabel: key.flatMap(KeyHelper.display), keySelection: keySelection)
     }
 
     static func record(

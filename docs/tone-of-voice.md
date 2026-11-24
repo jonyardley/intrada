@@ -58,7 +58,7 @@ disagree, the screen wins and the core keeps its own name.
 | `variant` | Variation |
 | `entry`, `block` | the piece, the exercise, the group |
 | `item type` | Piece / Exercise |
-| `score`, `rating` (the 0 to 10) | Mark ([V4](#v4--the-screen-says-mark-the-core-keeps-score)) |
+| `score`, `rating`, `mark` (the 1 to 10) | Confidence ([V4](#v4-the-screen-says-confidence-the-core-keeps-score)) |
 | `click` (the `Click*` types) | Metronome ([V7](#v7-metronome-never-click)) |
 | BPM, quarter note | `♩ = 132`, crotchet |
 | measure | bar |
@@ -201,15 +201,18 @@ points at a screen, cut it.
 **Decided 2026-08-14 (Jon, #1359).** `priorities` wins because it names what
 the user meant; the star is the glyph that shows it, not the word for it.
 
-### V4 — The screen says `Mark`, the core keeps `score`
+### V4: The screen says `Confidence`, the core keeps `score`
 
-**Decided 2026-08-14 (Jon, #1359).** Rule 2 applied to the 0-to-10 rating.
-`Score` means the printed music to a musician; `Mark` is what an exam board
-gives a performance. Per rule 2 the core keeps `score` in its types, events
-and columns, so **this is a copy change with no FFI, no migration and no bridge
-surface**. Swift view names (`ScoreRing`, `ScoreSelector`) are shell-local and
-may be renamed for consistency or left alone; neither is load-bearing.
-Rejected: `Grade` (ABRSM levels) and `Rating` (the data model's word).
+**Decided 2026-11-10 (Jon, #2793), replacing `Mark` (#1359).** Rule 2 applied
+to the 1 to 10 number a musician gives a play: it says how confident it felt,
+as in "How confident did that feel?", so the screen calls it `Confidence`
+everywhere, spoken labels included. `Score` means the printed music to a
+musician; `Mark` did not say what the number means. The core keeps `score` in
+its types, events and columns, so **this is a copy change with no FFI, no
+migration and no bridge surface**; code names may follow later. `Mastery` stays
+the average's own word. Android needs the same change when it restarts (#2860).
+Rejected: `Mark`, `Score`, `Grade` (ABRSM levels) and `Rating` (the data
+model's word).
 
 ### V5 — Dates read `14 Aug` by localising, not by pinning
 

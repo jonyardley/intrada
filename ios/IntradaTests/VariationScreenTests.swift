@@ -11,12 +11,11 @@ struct VariationScreenTests {
     _ id: String, _ label: String?, seconds: UInt64, tempo: UInt16? = nil,
     isMarkable: Bool = true
   ) -> PlayView {
-    PlayView(
-      id: id, key: nil, variationIds: label.map { ["v-\($0)"] } ?? [],
+    .fixture(
+      id: id, variationIds: label.map { ["v-\($0)"] } ?? [],
       label: label, seconds: seconds,
-      durationDisplay: "4m 10s", metaParts: [], achievedTempo: tempo, clickPattern: nil,
-      tempoDisplay: tempo,
-      score: nil, isMarkable: isMarkable)
+      durationDisplay: "4m 10s", metaParts: [], achievedTempo: tempo,
+      tempoDisplay: tempo, isMarkable: isMarkable)
   }
 
   // ── The sheet's rows ──

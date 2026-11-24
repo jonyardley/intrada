@@ -4,9 +4,6 @@ status: stable
 ios_symbol: FormErrorBanner
 ios_file: ios/Intrada/DesignSystem/FormErrorBanner.swift
 ios_snapshots: ComponentSnapshotTests/testFormErrorBanner.1.png
-android_symbol: FormErrorBanner
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/FormErrorBanner.kt
-android_snapshots: form-error-banner.png
 decisions: T35
 ---
 
@@ -31,7 +28,7 @@ One. There is no tone, size or action option.
 ## Behaviour
 
 - No motion of its own; a caller may fade it in.
-- The banner announces its message to VoiceOver and TalkBack, as a polite live region. Android's banner does this; moving it into the iPhone banner, so no iPhone form swallows its error, is #2655.
+- The banner should announce its message to VoiceOver as a polite live region, so no form swallows its error; that is #2655.
 - One iPhone sheet, the chord chart editor, draws its own error box; #2608 moves it onto this banner.
 
 ## Content
@@ -41,13 +38,13 @@ One. There is no tone, size or action option.
 - `IntradaSpacing.cardCompact` (12) inside, `controlGap` (8) between the triangle and the message.
 - Shown while the caller holds a message, gone when it does not.
 - Say what happened and what it means for the musician's data, in one sentence ([tone of voice](../../../docs/tone-of-voice.md), rule 8). The core writes the form messages; #2610 rewrites them to say what is wrong, such as "Add a composer".
-- The shells write only two kinds of message: photo and scan failures, which never reach the core ("Couldn't save the photo. Try again."), and a fallback when the core refused but left no message ("Couldn't save. Try again.").
+- The shell writes only two kinds of message: photo and scan failures, which never reach the core ("Couldn't save the photo. Try again."), and a fallback when the core refused but left no message ("Couldn't save. Try again.").
 - Callers that can run while the app has halted, such as the reflection, show the halted message instead (`Store.haltedMessage`, `Store.HALTED_MESSAGE`).
 
 ## Accessibility
 
 - One element, read as "Error: " and the message.
-- The message scales with Dynamic Type and font scale, and wraps rather than truncates.
+- The message scales with Dynamic Type, and wraps rather than truncates.
 - Colour is not the only signal: the triangle and the word "Error" carry it too.
 
 ## Do and don't
@@ -59,10 +56,6 @@ One. There is no tone, size or action option.
 
 ```swift
 if let formError { FormErrorBanner(message: formError) }
-```
-
-```kotlin
-formError?.let { FormErrorBanner(it, Modifier.testTag("keysSheet.error")) }
 ```
 
 ## Related

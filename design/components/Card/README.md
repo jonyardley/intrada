@@ -4,9 +4,6 @@ status: stable
 ios_symbol: cardSurface, cardShadow
 ios_file: ios/Intrada/DesignSystem/CardSurface.swift, ios/Intrada/DesignSystem/CardShadow.swift
 ios_snapshots: ComponentSnapshotTests/testCard.1.png
-android_symbol: cardSurface, cardShadow
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/CardSurface.kt, android/app/src/main/kotlin/com/intrada/android/ui/components/CardShadow.kt
-android_snapshots: card-surface.png, card-shadow.png
 decisions: T24, T36
 ---
 
@@ -30,13 +27,13 @@ The white surface every grouped block of content sits on, lifted faintly off the
 - **Card with lift** (`cardSurface()` with `cardShadow()`): use for every card on paper. This is the look T24 in [the design principles](../../../docs/design-principles.md) decided ("white cards with a 3pt corner and a faint lift").
 - **Card without lift** (`cardSurface()` alone): use only inside something already lifted, such as a sheet or a card in a card.
 
-Every card has the same 3 point corner. The corner parameter goes from both apps in #2664.
+Every card has the same 3 point corner. The corner parameter goes in #2664.
 
 ## Behaviour
 
 None. Motion belongs to what the card holds. A card that slides or fades in keeps its opaque fill, so the transition never ghosts.
 
-No card on either app is drawn with the lift yet; restoring it everywhere is part of the refinement pass, #2638.
+No card in the app is drawn with the lift yet; restoring it everywhere is part of the refinement pass, #2638.
 
 Sketches draw the lift on purpose: the sketch kit's `Card` shows the look T24 decided.
 
@@ -49,7 +46,7 @@ Sketches draw the lift on purpose: the sketch kit's `Card` shows the look T24 de
 
 ## Accessibility
 
-A card adds nothing to VoiceOver or TalkBack. When a whole card is one action, combine its children into one element with one label.
+A card adds nothing to VoiceOver. When a whole card is one action, combine its children into one element with one label.
 
 ## Do and don't
 
@@ -67,12 +64,6 @@ VStack(alignment: .leading) { content }
   .cardSurface()
   .cardShadow()
 ```
-
-```kotlin
-Column(Modifier.cardShadow().cardSurface().padding(IntradaSpacing.card)) { content() }
-```
-
-On Android the shadow comes first in the modifier chain, so it is drawn outside the clipped surface.
 
 ## Related
 

@@ -71,15 +71,15 @@ final class VariationPickerUITests: XCTestCase {
 
     app.control("player.advance", spoken: "Finish session").tap()
 
-    let markPlain = app.mark("reflection.mark", "Mark for No variation")
+    let markPlain = app.mark("reflection.mark", "Confidence for No variation")
     XCTAssertTrue(
       markPlain.waitForExistence(timeout: 10), "the plain stretch has its own mark")
-    let markHands = app.mark("reflection.mark", "Mark for Hands separately")
+    let markHands = app.mark("reflection.mark", "Confidence for Hands separately")
     XCTAssertTrue(markHands.exists, "and so does the stretch hands separately")
 
     // Two different marks, so one write cannot satisfy both, then save: the
     // sheet's marks only reach the core once the item is completed, which is
-    // the path a "Skip rating" test never covers. ScoreSelector hides its ten
+    // the path a "Skip" test never covers. ScoreSelector hides its ten
     // pills behind one accessibility element, so the taps go by position:
     // pill N's centre sits at (N - 0.5) / 10 across the row.
     tapPill(markPlain, 7)
@@ -89,13 +89,13 @@ final class VariationPickerUITests: XCTestCase {
 
     // The summary is the core's answer: each variation kept the mark it was
     // given, rather than one overwriting the other.
-    let summaryPlain = app.mark("summary.mark", "Mark for Major Scales, No variation")
+    let summaryPlain = app.mark("summary.mark", "Confidence for Major Scales, No variation")
     XCTAssertTrue(
       summaryPlain.waitForExistence(timeout: 10), "the summary marks each variation separately")
     XCTAssertEqual(
       summaryPlain.value as? String, "7 of 10", "the plain play kept the seven it was given")
     XCTAssertEqual(
-      app.mark("summary.mark", "Mark for Major Scales, Hands separately").value as? String,
+      app.mark("summary.mark", "Confidence for Major Scales, Hands separately").value as? String,
       "3 of 10",
       "and hands separately kept its three rather than seven")
 

@@ -15,11 +15,11 @@ changed colour is changed by hand there too, or `just check` fails.
 
 | Thing | Lives in | Why there |
 |-------|----------|-----------|
-| **Tokens** | `ios/Intrada/DesignSystem/Theme.swift`, with Android's `Theme.kt` checked against it | One source both apps and the design system read (#2603). |
-| **Components** | `design/components/<Name>/README.md`, with snapshots from both apps | `just check` fails when a page and the code disagree (T37, #2620). |
+| **Tokens** | `ios/Intrada/DesignSystem/Theme.swift` | One source the app and the design system read (#2603). |
+| **Components** | `design/components/<Name>/README.md`, with snapshots from the app | `just check` fails when a page and the code disagree (T37, #2620). |
 | **The sketch kit** | `design/sketch-kit/`: tokens, icons, phone frames and web copies of five components | Mockups draw on the real look; the tokens and icons are made from the code by `just sketch-kit` (T38). |
 | **A screen being designed** | Its Design canvas for the options, then its SwiftUI sketch on a branch, both linked from the issue | A build session finds it from the issue without asking. |
-| **A screen that has shipped** | The apps and their snapshot tests | A mockup goes stale the day the build merges. |
+| **A screen that has shipped** | The app and its snapshot tests | A mockup goes stale the day the build merges. |
 | **The design system** | The [Design System artifact](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs) | A view to draw from, republished after merge and never edited there, so it cannot drift from the repo. |
 
 ## The route
@@ -28,7 +28,7 @@ changed colour is changed by hand there too, or `just check` fails.
    sketch. A screen made only of catalogue components on an existing pattern
    can go straight to the build; the plan says so.
 2. **Explore on canvas.** Rough options side by side on a Design canvas, an
-   iPhone frame for each (no Android frame while Android is paused, #2860).
+   iPhone frame for each.
    Jon starts one in claude.ai; a session starts one with the Artifact tool's
    Design type. `DesignSync` only moves files and cannot make a mockup. Draw
    it from the sketch kit: `ScreenScaffold` with `device` set gives each phone
@@ -58,8 +58,8 @@ changed colour is changed by hand there too, or `just check` fails.
    `scripts/check-snapshots.sh` fails on an orphan image.
 5. **Build.** From the catalogue components and theme values only;
    `scripts/check-theme-values.sh` fails a typed colour or spacing number. A
-   new or changed component starts with its page (below), then SwiftUI, then
-   Compose, with snapshots on both.
+   new or changed component starts with its page (below), then SwiftUI, with
+   its snapshots.
 6. **Jon's word on the screenshot.** "Eyes before ready" in
    `.claude/rules/ios-ui.md`.
 7. **After merge.** Refresh the design system (below).
@@ -67,7 +67,7 @@ changed colour is changed by hand there too, or `just check` fails.
 ## Refreshing the design system
 
 Run this after any merge that changes a component page, `Theme.swift`, the
-Android icons or the sketch kit. The design system is published from `main`
+kit's icon drawables or the sketch kit. The design system is published from `main`
 and never edited by hand in Claude Design outside a refresh. A rehearsal
 before merge reads the branch in place of `main`: use `HEAD` where step 3 says
 `origin/main`, and stop before step 5.
@@ -81,7 +81,7 @@ before merge reads the branch in place of `main`: use `HEAD` where step 3 says
    has not read is refused.
 3. **Find what changed.** Run `git fetch origin`, then `git diff --stat
    <commit>..origin/main -- design/ ios/Intrada/Resources/Fonts/
-   ios/IntradaTests/__Snapshots__/ android/app/src/test/snapshots/`, where
+   ios/IntradaTests/__Snapshots__/`, where
    `<commit>` is the hash written after `main@` in `lastChange.via` in
    `project/design-system.json`. With no hash there, refresh every file
    below. `design/intrada-design-system.dc.html`, `design/explorations/` and
@@ -143,27 +143,26 @@ before merge reads the branch in place of `main`: use `HEAD` where step 3 says
 ## Changing a component
 
 The component catalogue in `design/components/` is the source for how each
-component looks and behaves on both apps (#2620, T37). A change runs in this
+component looks and behaves (#2620, T37). A change runs in this
 order, in one PR:
 
 1. **The page.** Change `design/components/<Name>/README.md`: an agent drafts,
    Jon approves the words. A new component starts from `_template.md`, a
    row in the index and a row in the component table in
    `design/sketch-kit/design-system.md`, the design system's readme.
-2. **SwiftUI, then Compose.** Change the iPhone component, then the Android one.
-3. **Snapshots on both.** Record the pictures the page names, and look at them.
+2. **SwiftUI.** Change the iPhone component.
+3. **Snapshots.** Record the pictures the page names, and look at them.
 4. **`just check`.** `scripts/check-components.sh` fails when a page and the
    code disagree on a file, a symbol or a snapshot.
 
-While Android is paused (#2860), `Theme.kt`, `just android-test` and the
-Android snapshots below are skipped, and a new kit icon needs an Android
-`ic_*.xml` drawable, since the kit reads its icons from there.
+A new kit icon needs an `ic_*.xml` vector drawable in
+`design/sketch-kit/drawables/`, since the kit reads its icons from there.
 
-A new token goes into `Theme.swift` and `Theme.kt` in the same PR, before any
+A new token goes into `Theme.swift` in the same PR, before any
 screen uses it, with its usage note in `design/sketch-kit/token-notes.json`
 and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
 
-1. **Both themes.** Change the value in `Theme.swift` and `Theme.kt`, and its
+1. **The theme.** Change the value in `Theme.swift`, and its
    note in `token-notes.json` if the note is no longer true.
 2. **The kit.** Run `just sketch-kit`, which rewrites `tokens.json` and
    `tokens.css`.
@@ -172,11 +171,10 @@ and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
    `rgba()` made from it. The standalone `design/intrada-design-system.html`
    is left alone; nothing reads it.
 4. **Snapshots.** Even a small shift fails every snapshot that shows the
-   colour: a slightly deeper `danger` failed 6 on iPhone and 17 on Android
+   colour: a slightly deeper `danger` failed 6 on iPhone
    (#2772).
-   Run `just ios-test` and `just android-test`, re-record each failing iPhone
-   class with `just ios-snapshots-record <Class>` and Android's with
-   `source android/env.sh && android/gradlew -q -p android :app:recordRoborazziDebug`,
+   Run `just ios-test`, re-record each failing
+   class with `just ios-snapshots-record <Class>`,
    then look at each new picture.
 5. **`just check`**, then the refresh after merge.
 

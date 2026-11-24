@@ -132,8 +132,8 @@ struct MasteryDeltaToast: View {
           spoken: "Clair de Lune, D♭ major · 3 weeks ago → now, mastery up from 3 to 4",
           kind: .piece)
         MasteryDelta(
-          title: "Hanon No. 1", subtitle: "first time marked",
-          was: nil, now: 3, direction: .up, spoken: "Hanon No. 1, first time marked, mastery 3",
+          title: "Hanon No. 1", subtitle: "first confidence",
+          was: nil, now: 3, direction: .up, spoken: "Hanon No. 1, first confidence, mastery 3",
           kind: .exercise)
         MasteryDelta(
           title: "Arpeggios", was: 6, now: 4, direction: .down,

@@ -8,6 +8,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - The Leptos web shell and Tauri iOS host were removed in July 2026, leaving the two native shells (PR #1133).
 - Coach pivot reversed on 2026-08-13 (#1344): session builder restored, coach machinery removed; it went too far, too fast, in an unwanted direction.
 - API, account, sync service and MCP removed on 2026-09-12 (#1746): nothing on the roadmap needed a server; any return starts from scratch.
+- The paused Android app (#2860) was removed on 2026-11-20 (#2924): every feature ships on iPhone only; its last state is on the tag `android-paused-2026-11-20`.
 - July 2026: the ten-step notebook journey stopped being the yardstick; the roadmap now ranks the work (#1146, #1344).
 - August 2026: quick wins first (metronome, tempo, Up next, getting cold), then capture through one pass create (#1390).
 - No lesson entity: adding a piece with its chart and exercises in one save is the lesson capture answer (#1390, #1080).

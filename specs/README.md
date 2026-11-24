@@ -4,11 +4,11 @@ Specs for work not yet built, and shipped ones kept until the issue that cites
 them closes. A spec rides with its first pull request and is otherwise deleted
 once the screens ship; settled decisions move to
 [`docs/decisions.md`](../docs/decisions.md). A `<spec>/design/` folder goes
-once the snapshots on both apps cover its screens, even while its spec stays. Direction is in [`docs/roadmap.md`](../docs/roadmap.md).
+once the snapshots cover its screens, even while its spec stays. Direction is in [`docs/roadmap.md`](../docs/roadmap.md).
 
 The specs that remain:
 
-- [`android-shell.md`](android-shell.md): the Android app on the shared core
+- [`android-shell.md`](android-shell.md): the Android app on the shared core, removed on 20 November 2026 and restorable from the tag `android-paused-2026-11-20`; kept as a record
 - [`background-audio-plugin.md`](background-audio-plugin.md): the click in the background, prior art for #1600
 - [`chart-to-scaffold.md`](chart-to-scaffold.md): exercises from a chord chart
 - [`exercise-variations.md`](exercise-variations.md): variations, keys and plays

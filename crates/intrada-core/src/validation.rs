@@ -274,7 +274,7 @@ pub fn validate_score(score: u8) -> Result<(), LibraryError> {
     if !(MIN_SCORE..=MAX_SCORE).contains(&score) {
         return Err(LibraryError::Validation {
             field: "score".to_string(),
-            message: format!("Mark must be between {MIN_SCORE} and {MAX_SCORE}"),
+            message: format!("Confidence must be between {MIN_SCORE} and {MAX_SCORE}"),
         });
     }
     Ok(())
@@ -2040,6 +2040,18 @@ mod tests {
             });
             assert_eq!(got, expected.map_err(str::to_string), "{typed:?}");
         }
+    }
+
+    #[test]
+    fn a_refused_score_is_named_confidence() {
+        assert_eq!(validate_score(MAX_SCORE), Ok(()));
+        assert_eq!(
+            validate_score(MAX_SCORE + 1),
+            Err(LibraryError::Validation {
+                field: "score".to_string(),
+                message: format!("Confidence must be between {MIN_SCORE} and {MAX_SCORE}"),
+            })
+        );
     }
 
     #[test]

@@ -99,8 +99,6 @@ for n in $numbers; do
 done
 
 # Drafts until reviewed and green (Jon's rule); `gh pr ready` lifts it.
-case " ${args[*]} " in
-  *" --draft "* | *" -d "*) ;;
-  *) args+=(--draft) ;;
-esac
+# Always appended last, so no title, body or earlier flag can turn it off.
+args+=(--draft)
 gh pr create "${args[@]}"

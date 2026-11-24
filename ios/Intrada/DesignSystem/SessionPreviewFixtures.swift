@@ -52,8 +52,8 @@
             spoken: "Hanon No. 1, mastery up from 2 to 3", direction: .up),
           ScoreChange(
             itemId: "piece-2", itemTitle: "Gymnopédie No. 1", previousScore: nil,
-            currentScore: 3, delta: 0, isNew: true, subtitle: "first time marked",
-            spoken: "Gymnopédie No. 1, first time marked, mastery 3", direction: .up),
+            currentScore: 3, delta: 0, isNew: true, subtitle: "first confidence",
+            spoken: "Gymnopédie No. 1, first confidence, mastery 3", direction: .up),
         ],
         variationCoverage: [
           VariationCoverageView(
@@ -228,15 +228,15 @@
           SuggestedItem(
             itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece"),
+            reason: "No confidence with this piece yet"),
           SuggestedItem(
             itemId: "ex-2", itemTitle: "Shell voicings", itemType: .exercise,
             latestScore: 4,
-            reason: "Marked 4 of 10 last time"),
+            reason: "Confidence 4 of 10 last time"),
           SuggestedItem(
             itemId: "piece-1", itemTitle: "Like Someone in Love", itemType: .piece,
             latestScore: 6,
-            reason: "Marked 6 of 10 last time"),
+            reason: "Confidence 6 of 10 last time"),
         ],
         estimatedMinutes: 15)
     }
@@ -250,11 +250,11 @@
           SuggestedItem(
             itemId: "ex-3", itemTitle: "Contrary-motion scales", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece"),
+            reason: "No confidence with this piece yet"),
           SuggestedItem(
             itemId: "piece-2", itemTitle: "Prelude in C", itemType: .piece,
             latestScore: nil,
-            reason: "Not marked yet"),
+            reason: "No confidence yet"),
         ],
         estimatedMinutes: 10)
     }
@@ -270,11 +270,11 @@
           SuggestedItem(
             itemId: "ex-4", itemTitle: "Two-five-one in G minor", itemType: .exercise,
             latestScore: 7,
-            reason: "Marked 7 of 10 last time"),
+            reason: "Confidence 7 of 10 last time"),
           SuggestedItem(
             itemId: "piece-3", itemTitle: "Autumn Leaves", itemType: .piece,
             latestScore: 5,
-            reason: "Marked 5 of 10 last time"),
+            reason: "Confidence 5 of 10 last time"),
         ],
         estimatedMinutes: 10)
     }
@@ -384,13 +384,10 @@
       let plays =
         status == .completed
         ? [
-          PlayView(
-            id: "entry-\(position)-p1", key: nil, variationIds: [], label: nil,
-            seconds: 600,
-            durationDisplay: "10 min",
+          PlayView.fixture(
+            id: "entry-\(position)-p1",
             metaParts: previewMetaParts("10 min", tempo: tempo),
-            achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score,
-            isMarkable: true)
+            achievedTempo: tempo, tempoDisplay: tempo, score: score)
         ] : []
       return SetlistEntryView(
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
@@ -429,22 +426,49 @@
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
         groupId: groupId, removable: removable, plannedVariationIds: [],
         plannedLabel: nil,
-        plays: [
-          PlayView(
-            id: "entry-\(position)-p1", key: nil, variationIds: [], label: nil,
-            seconds: 600,
-            durationDisplay: "10 min", metaParts: ["10 min"], achievedTempo: nil, clickPattern: nil,
-            tempoDisplay: nil, score: nil,
-            isMarkable: true)
-        ], scoreSummary: nil, plannedKey: nil,
+        plays: [PlayView.fixture(id: "entry-\(position)-p1")], scoreSummary: nil, plannedKey: nil,
         planTags: [])
     }
 
-    static var previewActive: ActiveSessionView {
+    /// Preview and snapshot fixture. A new core field costs one edit here rather
+    /// than one per call site (#2921).
+    static func fixture(
+      currentItemTitle: String = "Clair de Lune", currentItemType: ItemKind = .piece,
+      currentPosition: UInt64 = 0, totalItems: UInt64 = 1,
+      startedAt: String = ActiveSessionView.previewSessionStartedAt,
+      currentItemStartedAt: String = ActiveSessionView.previewStartedAt,
+      entries: [SetlistEntryView] = [], currentKey: Key? = nil,
+      currentVariationIds: [String] = [], currentPlayLabel: String? = nil,
+      currentPlannedDurationSecs: UInt32? = nil, nextItemTitle: String? = nil,
+      currentItemIntention: String? = nil, currentItemNotes: String? = nil,
+      currentRelatedPieceTitle: String? = nil, currentItemTempoMarking: String? = nil,
+      currentItemTempoBpm: UInt16? = nil, currentItemTempoLine: String? = nil,
+      currentItemTempoLineSpoken: String? = nil, currentClickSounding: UInt16 = 0b1111,
+      currentVariations: [PickerVariationView] = [], reflection: ReflectionView? = nil,
+      clickSeedMetre: Metre = Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: UInt16 = 66,
+      clickSeedSoundsTarget: Bool = true, clickSeedPresets: [ClickPresetOption] = [],
+      clickSeedOpening: UInt16 = 0b1111, record: ActiveRecordView = .empty
+    ) -> ActiveSessionView {
       ActiveSessionView(
-        currentItemTitle: "Clair de Lune", currentItemType: .piece,
+        currentItemTitle: currentItemTitle, currentItemType: currentItemType,
+        currentPosition: currentPosition, totalItems: totalItems, startedAt: startedAt,
+        currentItemStartedAt: currentItemStartedAt, entries: entries, currentKey: currentKey,
+        currentVariationIds: currentVariationIds, currentPlayLabel: currentPlayLabel,
+        currentPlannedDurationSecs: currentPlannedDurationSecs, nextItemTitle: nextItemTitle,
+        currentItemIntention: currentItemIntention, currentItemNotes: currentItemNotes,
+        currentRelatedPieceTitle: currentRelatedPieceTitle,
+        currentItemTempoMarking: currentItemTempoMarking,
+        currentItemTempoBpm: currentItemTempoBpm, currentItemTempoLine: currentItemTempoLine,
+        currentItemTempoLineSpoken: currentItemTempoLineSpoken,
+        currentClickSounding: currentClickSounding, currentVariations: currentVariations,
+        reflection: reflection, clickSeedMetre: clickSeedMetre, clickSeedBpm: clickSeedBpm,
+        clickSeedSoundsTarget: clickSeedSoundsTarget, clickSeedPresets: clickSeedPresets,
+        clickSeedOpening: clickSeedOpening, record: record)
+    }
+
+    static var previewActive: ActiveSessionView {
+      .fixture(
         currentPosition: 1, totalItems: 5,
-        startedAt: previewSessionStartedAt, currentItemStartedAt: previewStartedAt,
         entries: [
           previewEntry(0, "Hanon No. 1", .exercise),
           previewEntry(1, "Clair de Lune", .piece),
@@ -452,74 +476,41 @@
           previewEntry(3, "Gymnopédie No. 1", .piece),
           previewEntry(4, "Czerny Op. 299", .exercise),
         ],
-        currentKey: nil, currentVariationIds: [],
-        currentPlayLabel: nil,
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Hanon No. 1",
-        currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
-        currentRelatedPieceTitle: nil,
+        currentItemIntention: "Let the melody breathe",
         currentItemTempoMarking: "Andante", currentItemTempoBpm: 66,
         currentItemTempoLine: "Andante · ♩ = 66",
         currentItemTempoLineSpoken: "Andante, 66 beats per minute",
-        currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil,
-        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 66,
-        clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
-          for: Metre(beats: 4, unit: 4, groups: nil)),
-        clickSeedOpening: 0b1111,
-        record: .empty)
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
     static var previewActiveLongSession: ActiveSessionView {
-      let base = previewActive
-      return ActiveSessionView(
-        currentItemTitle: base.currentItemTitle, currentItemType: base.currentItemType,
-        currentPosition: base.currentPosition, totalItems: base.totalItems,
-        startedAt: previewLongSessionStartedAt, currentItemStartedAt: base.currentItemStartedAt,
-        entries: base.entries,
-        currentKey: base.currentKey,
-        currentVariationIds: base.currentVariationIds, currentPlayLabel: base.currentPlayLabel,
-        currentPlannedDurationSecs: base.currentPlannedDurationSecs,
-        nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
-        currentItemNotes: base.currentItemNotes,
-        currentRelatedPieceTitle: base.currentRelatedPieceTitle,
-        currentItemTempoMarking: base.currentItemTempoMarking,
-        currentItemTempoBpm: base.currentItemTempoBpm,
-        currentItemTempoLine: base.currentItemTempoLine,
-        currentItemTempoLineSpoken: base.currentItemTempoLineSpoken,
-        currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil,
-        clickSeedMetre: base.clickSeedMetre, clickSeedBpm: base.clickSeedBpm,
-        clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets,
-        clickSeedOpening: base.clickSeedOpening,
-        record: .empty)
+      var active = previewActive
+      active.startedAt = previewLongSessionStartedAt
+      return active
     }
 
     /// The current item is an exercise practised in C, now on G: the chip reads
     /// the open play and the picker switches it (#1739).
     static var previewActiveVariations: ActiveSessionView {
-      ActiveSessionView(
+      .fixture(
         currentItemTitle: LibraryItemView.previewExerciseWithVariations.title,
         currentItemType: .exercise,
         currentPosition: 0, totalItems: 3,
-        startedAt: previewSessionStartedAt, currentItemStartedAt: previewStartedAt,
         entries: [
           variationEntry(), previewEntry(1, "Clair de Lune", .piece),
           previewEntry(2, "Czerny Op. 299", .exercise),
         ],
-        currentKey: nil,
         currentVariationIds: ["variation-f"],
         currentPlayLabel: "F",
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Clair de Lune",
         currentItemIntention: "Even tone through the turn",
-        currentItemNotes: nil,
-        currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: nil, currentItemTempoBpm: 104, currentItemTempoLine: "♩ = 104",
+        currentItemTempoBpm: 104, currentItemTempoLine: "♩ = 104",
         currentItemTempoLineSpoken: "104 beats per minute",
-        currentClickSounding: 0b1111,
         currentVariations: [
           PickerVariationView(
             id: "variation-c", label: "C", caption: "Played this session · 3m 10s"),
@@ -528,13 +519,9 @@
           PickerVariationView(
             id: "variation-bb", label: "B♭", caption: "Not yet played"),
         ],
-        reflection: nil,
-        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 104,
-        clickSeedSoundsTarget: true,
+        clickSeedBpm: 104,
         clickSeedPresets: LimitsView.preview.clickPresets(
-          for: Metre(beats: 4, unit: 4, groups: nil)),
-        clickSeedOpening: 0b1111,
-        record: .empty)
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -548,18 +535,12 @@
         groupId: nil, removable: true, plannedVariationIds: ["variation-c"],
         plannedLabel: "C",
         plays: [
-          PlayView(
-            id: "entry-0-p1", key: nil, variationIds: ["variation-c"], label: "C",
-            seconds: 190,
-            durationDisplay: "3m 10s", metaParts: ["3m 10s", "10 of 10 reps"],
-            achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
-            isMarkable: true),
-          PlayView(
-            id: "entry-0-p2", key: nil, variationIds: ["variation-f"], label: "F",
-            seconds: 0,
-            durationDisplay: "0s", metaParts: ["0s", "4 of 10 reps"],
-            achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
-            isMarkable: true),
+          PlayView.fixture(
+            id: "entry-0-p1", variationIds: ["variation-c"], label: "C", seconds: 190,
+            durationDisplay: "3m 10s", metaParts: ["3m 10s", "10 of 10 reps"]),
+          PlayView.fixture(
+            id: "entry-0-p2", variationIds: ["variation-f"], label: "F", seconds: 0,
+            durationDisplay: "0s", metaParts: ["0s", "4 of 10 reps"]),
         ], scoreSummary: nil, plannedKey: nil,
         planTags: [])
     }
@@ -614,13 +595,10 @@
       let plays =
         status == .completed
         ? [
-          PlayView(
-            id: "\(id)-p1", key: nil, variationIds: [], label: nil,
-            seconds: seconds,
+          PlayView.fixture(
+            id: "\(id)-p1", seconds: seconds,
             durationDisplay: duration, metaParts: previewMetaParts(duration, tempo: tempo),
-            achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo,
-            score: score, isMarkable: true
-          )
+            achievedTempo: tempo, tempoDisplay: tempo, score: score)
         ] : []
       return SetlistEntryView(
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
@@ -673,13 +651,39 @@
       _ id: String, _ variationLabel: String?, seconds: UInt64, duration: String,
       score: UInt8? = nil, tempo: UInt16? = nil
     ) -> PlayView {
-      PlayView(
-        id: id, key: nil, variationIds: variationLabel.map { ["v-\($0)"] } ?? [],
+      .fixture(
+        id: id, variationIds: variationLabel.map { ["v-\($0)"] } ?? [],
         label: variationLabel,
         seconds: seconds, durationDisplay: duration,
         metaParts: previewMetaParts(duration, tempo: tempo),
-        achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score, isMarkable: true
-      )
+        achievedTempo: tempo, tempoDisplay: tempo, score: score)
+    }
+
+    /// Preview and snapshot fixture. A new core field costs one edit here rather
+    /// than one per call site (#2921).
+    static func fixture(
+      id: String = "play-1", key: Key? = nil, variationIds: [String] = [],
+      label: String? = nil, seconds: UInt64 = 600, durationDisplay: String = "10 min",
+      metaParts: [String] = ["10 min"], achievedTempo: UInt16? = nil,
+      clickPattern: ClickState? = nil, tempoDisplay: UInt16? = nil, score: UInt8? = nil,
+      isMarkable: Bool = true
+    ) -> PlayView {
+      PlayView(
+        id: id, key: key, variationIds: variationIds, label: label, seconds: seconds,
+        durationDisplay: durationDisplay, metaParts: metaParts, achievedTempo: achievedTempo,
+        clickPattern: clickPattern, tempoDisplay: tempoDisplay, score: score,
+        isMarkable: isMarkable)
+    }
+  }
+
+  extension ClickBarOption {
+    /// Preview and test fixture. A new core field costs one edit here rather
+    /// than one per call site (#2921).
+    static func fixture(
+      beats: UInt8 = 4, groups: [UInt8]? = nil, presets: [ClickPresetOption] = [],
+      opening: UInt16 = 0b1111
+    ) -> ClickBarOption {
+      ClickBarOption(beats: beats, groups: groups, presets: presets, opening: opening)
     }
   }
 

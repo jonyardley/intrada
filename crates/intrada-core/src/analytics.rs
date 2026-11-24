@@ -68,7 +68,7 @@ pub struct ScoreChange {
 
 impl ScoreChange {
     pub fn new(item_id: &str, item_title: &str, previous: Option<u8>, current: u8) -> Self {
-        let subtitle = previous.is_none().then(|| "first time marked".to_string());
+        let subtitle = previous.is_none().then(|| "first confidence".to_string());
         let direction = match previous {
             Some(p) if current < p => Direction::Down,
             Some(p) if current == p => Direction::Same,
@@ -1259,8 +1259,8 @@ mod tests {
             (
                 None,
                 3,
-                Some("first time marked"),
-                "Clair de Lune, first time marked, mastery 3",
+                Some("first confidence"),
+                "Clair de Lune, first confidence, mastery 3",
                 Direction::Up,
             ),
         ];

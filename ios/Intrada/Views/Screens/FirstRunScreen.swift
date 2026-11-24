@@ -164,7 +164,7 @@ private struct WelcomeStep: View {
             .splashItem(intro, 1)
             PillarLine(
               systemImage: "timer", name: "Practice",
-              line: "Build a session, play it through, mark how it went."
+              line: "Build a session, play it through, say how confident it felt."
             )
             .splashItem(intro, 2)
             PillarLine(

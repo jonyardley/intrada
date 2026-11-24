@@ -3,8 +3,8 @@
 # Assumes the Xcode project + generated packages already exist (the `ios-run`
 # just recipe runs `_ios-sync` + xcodegen first). Reused by CI in A5.
 #
-# Usage: scripts/ios-run-sim.sh [screenshot-path], or SCREENSHOT=<path> as
-# android-run takes it, so the QA agent keeps each worktree's shot apart (#2820).
+# Usage: scripts/ios-run-sim.sh [screenshot-path], or SCREENSHOT=<path>, so the
+# QA agent keeps each worktree's shot apart (#2820).
 set -euo pipefail
 
 cd "$(dirname "$0")/../ios"

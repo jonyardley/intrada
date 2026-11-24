@@ -42,7 +42,7 @@ struct VariationRowsSection: View {
       }
       Button("Cancel", role: .cancel) {}
     } message: { _ in
-      Text("Its marks go with it.")
+      Text("Its confidence goes with it.")
     }
   }
 

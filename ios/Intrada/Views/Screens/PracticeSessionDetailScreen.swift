@@ -74,7 +74,7 @@ struct PracticeSessionDetailScreen: View {
   private var sessionScoreText: some View {
     VStack(alignment: .leading, spacing: 4) {
       SectionTitle("How it went")
-      Text("Your mark for the session")
+      Text("Your confidence for the session")
         .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
@@ -191,7 +191,7 @@ struct PracticeSessionDetailScreen: View {
   private func playLine(_ play: PlayView) -> String {
     var parts = [play.displayLabel]
     parts.append(contentsOf: play.metaParts)
-    if let score = play.score { parts.append("marked \(score)") }
+    if let score = play.score { parts.append("confidence \(score)") }
     return parts.joined(separator: " · ")
   }
 
@@ -211,7 +211,7 @@ struct PracticeSessionDetailScreen: View {
       parts.append(singleVariationLine(play))
     }
     if entry.status == .completed, let score = entry.scoreSummary {
-      parts.append("marked \(score) out of \(scoreRange.upperBound)")
+      parts.append("confidence \(score) out of \(scoreRange.upperBound)")
     }
     if let notes = entry.notes, !notes.isEmpty { parts.append(notes) }
     return parts.joined(separator: ", ")

@@ -2,7 +2,6 @@
 paths:
   - "crates/**"
   - "ios/**/*.swift"
-  - "android/**"
 ---
 
 # Code style and tests

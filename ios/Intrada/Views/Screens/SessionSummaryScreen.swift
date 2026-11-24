@@ -241,8 +241,8 @@ struct SessionSummaryScreen: View {
             score: play.score.map(Int.init) ?? 0,
             range: scoreRange,
             accessibilityLabel: entry.plays.count > 1
-              ? "Mark for \(entry.itemTitle), \(play.displayLabel)"
-              : "Mark for \(entry.itemTitle)"
+              ? "Confidence for \(entry.itemTitle), \(play.displayLabel)"
+              : "Confidence for \(entry.itemTitle)"
           ) { next in
             store.send(.session(.updateEntryScore(entryId: entry.id, playId: play.id, score: next)))
           }
@@ -260,7 +260,7 @@ struct SessionSummaryScreen: View {
         ScoreSelector(
           score: summary.sessionScore.map(Int.init) ?? 0,
           range: scoreRange,
-          accessibilityLabel: "Overall session mark"
+          accessibilityLabel: "Overall confidence"
         ) { next in
           store.send(.session(.updateSessionScore(score: next)))
         }
