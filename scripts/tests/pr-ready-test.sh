@@ -79,6 +79,7 @@ branch code scripts/x.sh docs/lessons.md
 branch docs docs/guide.md docs/lessons.md
 branch archived scripts/x.sh docs/lessons-archive.md
 branch nolessons scripts/x.sh
+branch behind scripts/x.sh docs/lessons.md
 GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch early scripts/x.sh docs/lessons.md .claude/skills/s/SKILL.md
 GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch late scripts/x.sh docs/lessons.md
 mkdir -p "$repo/.claude/skills/s"
@@ -221,6 +222,21 @@ run_status=$?
 set -e
 mv "$work/tree" "$repo/.git/objects/${tree:0:2}/${tree:2}"
 expect_refused "the lessons difference unreadable" "could not compare the lessons files"
+
+# Main moves on after the branch point; only a CI change makes the branch stale.
+on_main() {
+  g checkout -q main
+  mkdir -p "$(dirname "$repo/$1")"
+  echo main >>"$repo/$1"
+  g add "$1" && g commit -q -m "main: $1"
+}
+on_main docs/guide.md
+case_run behind "$pass_checks" "$review_comment" "$good_body"
+expect_ready "main changed only a doc since the branch point"
+
+on_main .github/workflows/ci.yml
+case_run behind "$pass_checks" "$review_comment" "$good_body"
+expect_refused "main changed a workflow since the branch point" "main changed CI since this branch started (.github/workflows/ci.yml)"
 
 for args in "7x 42" "7 42;true" " 42"; do
   rm -f "$CALLS/ready.log"
