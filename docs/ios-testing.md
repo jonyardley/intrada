@@ -56,6 +56,13 @@ References live in `ios/IntradaTests/__Snapshots__/**`, recorded on
 after any intentional UI change; delete a test and you delete its PNG, since
 orphans fail CI. Optimise before committing or **Snapshot Hygiene** fails.
 
+- **Find every reference by search before deleting any.** Grep every snapshot
+  test file for each changed view, split views included: deleting classes by
+  guess missed two split view references (#2793).
+- **No Xcode tools means no preview.** A sketch gets its picture from one
+  snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold
+  and 20 warm, since `RenderPreview` needs Xcode's tool server (#2931).
+
 ## UI tests (gesture and interaction, what snapshots cannot cover)
 
 `ios/IntradaUITests/` drives the running app, seeded with the six-item demo set
@@ -77,6 +84,9 @@ interaction works: a snapshot cannot catch a gesture that never fired.
 - **`IDERunDestination: Supported platforms ... is empty` is noise.**
 - **A raw `xcodebuild test` needs `CODE_SIGNING_ALLOWED=NO`**, or both test
   targets fail to sign (#1537).
+- **Prove a build setting override by its effect.** xcodebuild accepts an
+  unknown setting without a word, so a clean exit proves nothing; look for
+  what it should change, such as the cache folder filling (#2926).
 
 ## Running alongside another checkout (worktrees)
 
@@ -132,6 +142,18 @@ A tree that already passed on the runner skips the tests and links that run
 Check a cache rule by listing the refs that wrote its entries, never by reading
 the workflow: `save-if` is a rust-cache input, not an `actions/cache` one, which
 silently ignores it.
+
+Writing a CI workflow:
+
+- **Escape a comma as `%2C`** in a workflow command property value, or the
+  annotation title stops at the comma; assert the escaped string in the test
+  (#2876).
+- **On the self-hosted Mac, a scheduled job shares the gate's warm
+  workspace**, so a default checkout would wipe `target/`. Fetch only what it
+  needs into a subfolder with `clean: false` (#2876).
+- **A cache saved by a tag run is visible to that tag alone**, so the next tag
+  restores only what a run on main saved. Warm a tag-only workflow's caches
+  from a dispatch on main (#2917).
 
 ## The self-hosted iOS runner
 
