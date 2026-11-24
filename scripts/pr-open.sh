@@ -5,7 +5,9 @@
 # 2026-09-11 duplicate (#1694) happened, and the claim step alone cannot
 # catch that.
 #
-# Called via `just pr-open <title> <body> [extra gh pr create flags]`.
+# Called via `just pr-open <title> <body> [extra gh pr create flags]`;
+# `--review-file <path>` posts the self-review as the first comment, which
+# `just pr-ready` looks for.
 
 set -euo pipefail
 
@@ -17,7 +19,19 @@ repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 branch="$(git rev-parse --abbrev-ref HEAD)"
 
 title=""
-args=("$@")
+review_file=""
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --review-file) review_file="${2:-}" && shift ;;
+    *) args+=("$1") ;;
+  esac
+  shift
+done
+if [ -n "$review_file" ] && [ ! -s "$review_file" ]; then
+  echo "✗ no review summary at $review_file." >&2
+  exit 1
+fi
 for i in "${!args[@]}"; do
   case "${args[$i]}" in
     --title | -t)
@@ -101,4 +115,6 @@ done
 # Drafts until reviewed and green (Jon's rule); `gh pr ready` lifts it.
 # Always appended last, so no title, body or earlier flag can turn it off.
 args+=(--draft)
-gh pr create "${args[@]}"
+url="$(gh pr create "${args[@]}")"
+echo "$url"
+[ -z "$review_file" ] || gh pr comment "$url" --body-file "$review_file"

@@ -833,6 +833,8 @@ jobs:
         run: bash scripts/tests/claim-issue-test.sh
       - name: just pr-open still refuses an unclaimed issue
         run: bash scripts/tests/pr-open-test.sh
+      - name: just pr-ready still refuses an unfinished PR
+        run: bash scripts/tests/pr-ready-test.sh
       - name: just issue-open still refuses an unlabelled issue
         run: bash scripts/tests/issue-open-test.sh
       - name: just issue still prints only the owner's comments

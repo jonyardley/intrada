@@ -44,6 +44,9 @@ case "$cmd $sub" in
     echo "$*" >>"$CALLS/pr_create.log"
     echo "https://github.com/jonyardley/intrada/pull/1"
     ;;
+  "pr comment")
+    echo "$*" >>"$CALLS/pr_comment.log"
+    ;;
   *)
     echo "fake gh: unhandled invocation: $cmd $sub $*" >&2
     exit 1
@@ -157,6 +160,31 @@ if grep -qF -- "--title Fix the thing (#42)" "$CALLS/pr_create.log" 2>/dev/null;
 else
   fail=$((fail + 1))
   printf '✗ claimed on this branch: expected gh pr create to run with the same args\n' >&2
+fi
+
+# ── The review summary is the first comment (#2955), never a create flag ────
+
+printf 'Self-review: no findings.\n' >"$work/review.md"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+( cd "$work/repo" && "$script" --title "Fix the thing (#42)" --body "x" --review-file "$work/review.md" ) >/dev/null
+if grep -qF -- "pull/1 --body-file $work/review.md" "$CALLS/pr_comment.log" 2>/dev/null &&
+  ! grep -qF -- "--review-file" "$CALLS/pr_create.log"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ review file: expected it posted as a comment on the new PR, not passed to create\n' >&2
+fi
+
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+set +e
+out="$(cd "$work/repo" && "$script" --title "Fix the thing (#42)" --body "x" --review-file "$work/missing.md" 2>&1)"
+run_status=$?
+set -e
+if [ "$run_status" -ne 0 ] && grep -qF "no review summary" <<<"$out" && [ ! -f "$CALLS/pr_create.log" ]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ missing review file: expected a refusal before gh pr create\n    status=%s output=%s\n' "$run_status" "$out" >&2
 fi
 
 # ── One claim naming two branches (#2669): either opens, a third is refused ─

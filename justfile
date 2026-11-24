@@ -100,6 +100,7 @@ hygiene:
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
+        "pr-ready-test:bash scripts/tests/pr-ready-test.sh"
         "issue-open-test:bash scripts/tests/issue-open-test.sh"
         "issue-read-test:bash scripts/tests/issue-read-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
@@ -245,9 +246,9 @@ issue number:
 issue-open title body_file labels *flags:
     bash scripts/issue-open.sh --title {{quote(title)}} --body-file {{quote(body_file)}} --label {{quote(labels)}} {{flags}}
 
-[doc("Mark a reviewed PR ready and move its issue to In review, e.g. just pr-ready 2600 2593")]
+[doc("Mark a PR ready once its checks, review, closing line and lessons are in, and move its issue to In review, e.g. just pr-ready 2600 2593")]
 pr-ready pr issue:
-    -gh pr ready {{pr}}
+    bash scripts/pr-ready.sh {{pr}} {{issue}}
     ./scripts/project-status.sh {{issue}} "In review"
 
 # Check everything (fmt, then lint+test+hygiene overlapped). Mirrors the iOS

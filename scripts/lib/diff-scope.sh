@@ -38,7 +38,7 @@ diff_scope_select_checks() {
   fi
 }
 
-# The review route for this branch, by docs/working-with-agents.md section 6
+# The review route for this branch, by the intrada-shipping skill
 # (#2922); an empty, unreadable or unknown diff is reviewed.
 diff_scope_review_route() {
   local paths p kind=none bridge
