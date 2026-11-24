@@ -23,7 +23,9 @@ review rule there.
    "comment-policy violations are Blockers"; none on documentation only. A fix
    touching `ios/` reruns `just ios-test` and the UI class it touched (#1884).
    Read a fix agent's diff before the re-review; its report is not the diff.
-   A new or reshaped bridge type ships with a `LiveBridge` test, checked (#2101).
+   A new or reshaped bridge type ships with a `LiveBridge` test (#846, #1953);
+   `scripts/check-bridge-tests.sh` checks one names it (#2101), and the
+   reviewer reads the assertion.
 3. **Out-of-scope findings** are fixed here, or listed under "Not fixed" in
    the review comment with one line of why. Only one with horizon now or next
    becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
@@ -47,10 +49,9 @@ review rule there.
    (`gh event listen` fails with HTTP 403 on this account). Merged: write the
    handover for the next issue from the main checkout (`just handover N`
    reads the current branch), with any lesson learned after ready for the
-   next retro, then `just worktree-done` (a session taking the next issue then
-   leaves through ExitWorktree, kept, and makes the next worktree). Closed
-   unmerged: stop and say so. Timed out: read the PR state first on the
-   owner's next message. Never ask the owner to say merged.
+   next retro, then `just worktree-done`. Closed unmerged: stop and say so.
+   Timed out: read the PR state first on the owner's next message. Never ask
+   the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
 says, each lesson gets one of two outcomes; a line that reaches "(seen again
