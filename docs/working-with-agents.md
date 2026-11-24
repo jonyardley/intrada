@@ -234,6 +234,7 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | `gh pr merge` or a push to main refused | Merging is Jon's, on GitHub |
 | Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it (#2812) |
 | `xcodebuild` refused | Use the `just` recipe |
+| A worktree session's command refused as too complex | A loop, a compound command, or text that looks like git (a `.github` path) tripped the guard; split it into plain separate commands |
 | Waiting on the simulator lock | Another run holds it; it queues |
 | A dash on a changed line | Fix the line |
 | `just claim` refused | The issue is taken or has two merged PRs (#1890): pick another, finish that PR, or rethink the approach |
