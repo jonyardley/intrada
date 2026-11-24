@@ -438,6 +438,7 @@
       startedAt: String = ActiveSessionView.previewSessionStartedAt,
       currentItemStartedAt: String = ActiveSessionView.previewStartedAt,
       entries: [SetlistEntryView] = [], currentKey: Key? = nil,
+      currentKeyChoices: [KeyChoiceView] = [], currentKeyLabel: String? = nil,
       currentVariationIds: [String] = [], currentPlayLabel: String? = nil,
       currentPlannedDurationSecs: UInt32? = nil, nextItemTitle: String? = nil,
       currentItemIntention: String? = nil, currentItemNotes: String? = nil,
@@ -453,6 +454,7 @@
         currentItemTitle: currentItemTitle, currentItemType: currentItemType,
         currentPosition: currentPosition, totalItems: totalItems, startedAt: startedAt,
         currentItemStartedAt: currentItemStartedAt, entries: entries, currentKey: currentKey,
+        currentKeyChoices: currentKeyChoices, currentKeyLabel: currentKeyLabel,
         currentVariationIds: currentVariationIds, currentPlayLabel: currentPlayLabel,
         currentPlannedDurationSecs: currentPlannedDurationSecs, nextItemTitle: nextItemTitle,
         currentItemIntention: currentItemIntention, currentItemNotes: currentItemNotes,
@@ -734,6 +736,35 @@
       return active
     }
 
+    /// Clair de Lune kept in two keys, so the player shows the key chip (#2788).
+    static var previewActiveKeys: ActiveSessionView {
+      var active = previewActive
+      active.currentKeyChoices = FinishSheetView.previewWayChoices.keys
+      active.currentKeyLabel = "D\u{266d} major"
+      return active
+    }
+
+    /// One key is no choice, so it reads as its name rather than a chip (#2788).
+    static var previewActiveOneKey: ActiveSessionView {
+      var active = previewActive
+      active.currentKeyChoices = Array(FinishSheetView.previewWayChoices.keys.prefix(1))
+      active.currentKeyLabel = "D\u{266d} major"
+      return active
+    }
+
+    /// Both chips and the "Last time" offer on one row, the tightest the
+    /// header gets (#2788).
+    static var previewActiveKeysVariationsLastTime: ActiveSessionView {
+      var active = previewActiveVariations
+      active.currentKeyChoices = FinishSheetView.previewWayChoices.keys
+      active.currentKey = Key(letter: .g, accidental: .natural, mode: .major)
+      active.currentKeyLabel = "G major"
+      active.record.lastTime = LastTimeView(
+        entryId: "entry-0", variationIds: ["variation-c"],
+        label: "Last time: D major · C", key: Key(letter: .d, accidental: .natural, mode: .major))
+      return active
+    }
+
     static var previewActiveLastTime: ActiveSessionView {
       var active = previewActive
       active.record.lastTime = LastTimeView(
@@ -748,7 +779,7 @@
     static var previewWayChoices: FinishSheetView {
       var finish = FinishSheetView(rows: [], keys: [])
       finish.keys = [
-        KeyChoiceView(key: nil, label: "Written key", caption: "D\u{266d} major"),
+        KeyChoiceView(key: nil, label: "D\u{266d} major", caption: "Written key"),
         KeyChoiceView(
           key: Key(letter: .d, accidental: .natural, mode: .major), label: "D major", caption: nil),
         KeyChoiceView(

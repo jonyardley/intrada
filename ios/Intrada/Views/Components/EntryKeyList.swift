@@ -18,14 +18,10 @@ struct EntryKeyList: View {
       PaperBackground()
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-          VStack(spacing: 0) {
-            ForEach(Array(choices.enumerated()), id: \.element.label) { index, choice in
-              row(choice)
-              if index < choices.count - 1 {
-                HairlineDivider().padding(.leading, IntradaSpacing.card)
-              }
-            }
-          }
+          KeyChoiceRows(
+            choices: choices, current: keysView?.current, hint: "Plans this key",
+            identifier: "entryKey.row", onPick: choose
+          )
           .cardSurface()
           Text("The keys you keep for this piece. Add more on the piece's page.")
             .font(IntradaFont.small)
@@ -37,15 +33,6 @@ struct EntryKeyList: View {
     }
     .navigationTitle("Key")
     .navigationBarTitleDisplayMode(.inline)
-  }
-
-  private func row(_ choice: KeyChoiceView) -> some View {
-    PickerRow(
-      label: choice.label, caption: choice.caption, isCurrent: choice.key == keysView?.current,
-      hint: "Plans this key", identifier: "entryKey.row"
-    ) {
-      choose(choice.key)
-    }
   }
 
   private func choose(_ key: Key?) {

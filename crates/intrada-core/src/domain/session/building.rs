@@ -1,7 +1,8 @@
 use super::plays::*;
 use super::*;
 use crate::app::{Effect, Event};
-use crate::domain::item::ItemKind;
+use crate::domain::item::{Item, ItemKind};
+use crate::domain::key::Key;
 use crate::error::LibraryError;
 use crate::model::Model;
 use crate::validation;
@@ -20,6 +21,42 @@ pub(super) fn create_entry(
         item_title,
         PlannedItem::new(item_id, item_type),
     )
+}
+
+/// The key a new plan starts on: the written key, stored as `None`, else the
+/// item's first key (#2788).
+pub(crate) fn opening_key(item: &Item) -> Option<Key> {
+    if item.key.is_some() {
+        None
+    } else {
+        item.keys.first().copied()
+    }
+}
+
+/// The key a play or plan with no key reads as: the written key, else the
+/// item's first key; storage keeps `None` (#2788).
+pub(crate) fn reads_as(item: &Item, key: Option<Key>) -> Option<Key> {
+    key.or_else(|| opening_key(item))
+}
+
+pub(crate) fn item_reads_as(model: &Model, item_id: &str, key: Option<Key>) -> Option<Key> {
+    match model.items.iter().find(|i| i.id == item_id) {
+        Some(item) => reads_as(item, key),
+        None => key,
+    }
+}
+
+/// The way a plan starts in, so "Last time" is offered over it as over a
+/// plain play.
+pub(crate) fn opening_way(model: &Model, item_id: &str) -> PlayWay {
+    PlayWay {
+        key: model
+            .items
+            .iter()
+            .find(|i| i.id == item_id)
+            .and_then(opening_key),
+        variation_ids: Vec::new(),
+    }
 }
 
 pub(super) fn reindex_entries(entries: &mut [SetlistEntry]) {
@@ -173,7 +210,7 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
             .any(|v| &v.id == id && v.deleted_at.is_none())
     };
     let way = PlayWay {
-        key: play.key,
+        key: item_reads_as(model, item_id, play.key),
         variation_ids: play
             .variation_ids
             .iter()
@@ -181,7 +218,8 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
             .cloned()
             .collect(),
     };
-    (way != PlayWay::default()).then_some(way)
+    (!way.is_same_way(&PlayWay::default()) && !way.is_same_way(&opening_way(model, item_id)))
+        .then_some(way)
 }
 
 pub(super) fn set_session_length(
@@ -280,6 +318,11 @@ fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
                 suggested.item_type.clone(),
                 position,
             );
+            entry.plan.key = model
+                .items
+                .iter()
+                .find(|i| i.id == suggested.item_id)
+                .and_then(opening_key);
             entry.plan.group_id = Some(group_id.clone());
             building.entries.push(entry);
         }
@@ -340,8 +383,13 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
         model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
         return crux_core::render::render();
     };
-    let piece = (item.id.clone(), item.title.clone(), item.kind.clone());
-    let related: Vec<(String, String, ItemKind)> = if item.kind == ItemKind::Piece {
+    let piece = (
+        item.id.clone(),
+        item.title.clone(),
+        item.kind.clone(),
+        opening_key(item),
+    );
+    let related: Vec<(String, String, ItemKind, Option<Key>)> = if item.kind == ItemKind::Piece {
         item.linked_exercise_ids()
             .iter()
             .filter_map(|ex_id| {
@@ -349,7 +397,14 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
                     .items
                     .iter()
                     .find(|i| &i.id == ex_id && i.kind == ItemKind::Exercise)
-                    .map(|i| (i.id.clone(), i.title.clone(), i.kind.clone()))
+                    .map(|i| {
+                        (
+                            i.id.clone(),
+                            i.title.clone(),
+                            i.kind.clone(),
+                            opening_key(i),
+                        )
+                    })
             })
             .collect()
     } else {
@@ -367,9 +422,9 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
         .iter()
         .map(|e| e.plan.item_id.clone())
         .collect();
-    let related_to_add: Vec<(String, String, ItemKind)> = related
+    let related_to_add: Vec<(String, String, ItemKind, Option<Key>)> = related
         .into_iter()
-        .filter(|(id, _, _)| !existing.contains(id))
+        .filter(|(id, _, _, _)| !existing.contains(id))
         .collect();
 
     // A block forms only when ≥1 related exercise actually comes along.
@@ -380,14 +435,16 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
     };
 
     // Related first (warm-up order), then the piece.
-    for (id, title, kind) in &related_to_add {
+    for (id, title, kind, key) in &related_to_add {
         let position = building.entries.len();
         let mut entry = create_entry(id, title, kind.clone(), position);
+        entry.plan.key = *key;
         entry.plan.group_id.clone_from(&group_id);
         building.entries.push(entry);
     }
     let position = building.entries.len();
     let mut piece_entry = create_entry(&piece.0, &piece.1, piece.2, position);
+    piece_entry.plan.key = piece.3;
     piece_entry.plan.group_id = group_id;
     building.entries.push(piece_entry);
 
@@ -605,13 +662,19 @@ pub(super) fn add_exercise_to_block(
         model.raise_error("Only an exercise can be added to a block".to_string());
         return crux_core::render::render();
     }
-    let (id, title, kind) = (item.id.clone(), item.title.clone(), item.kind.clone());
+    let (id, title, kind, key) = (
+        item.id.clone(),
+        item.title.clone(),
+        item.kind.clone(),
+        opening_key(item),
+    );
 
     let SessionStatus::Building(ref mut building) = model.session_status else {
         model.raise_error("Internal error: expected Building state".to_string());
         return crux_core::render::render();
     };
     let mut entry = create_entry(&id, &title, kind, anchor_index);
+    entry.plan.key = key;
     entry.plan.group_id = Some(group_id);
     building.entries.insert(anchor_index, entry);
     reindex_entries(&mut building.entries);

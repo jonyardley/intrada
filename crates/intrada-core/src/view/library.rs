@@ -1,5 +1,5 @@
 use crate::domain::item::ItemKind;
-use crate::domain::session::PracticeSession;
+use crate::domain::session::{reads_as, PracticeSession};
 use crate::domain::tempo_words::{self, TempoWords};
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::model::{
@@ -504,7 +504,7 @@ pub(crate) fn build_key_views(
         .iter()
         .map(|key| {
             let written = item.key.is_some_and(|k| k.same_key(key));
-            let latest_score = history(plays, |p| match p.key {
+            let latest_score = history(plays, |p| match reads_as(item, p.key) {
                 Some(k) => k.same_key(key),
                 None => written,
             })
@@ -765,6 +765,36 @@ mod tests {
     use super::*;
     use crate::domain::item::Item;
     use crate::model::Model;
+
+    #[test]
+    fn an_unkeyed_mark_on_a_piece_with_no_written_key_counts_for_its_first_key() {
+        let item = Item {
+            keys: vec![
+                crate::domain::key::Key::parse("G major").expect("key"),
+                crate::domain::key::Key::parse("A major").expect("key"),
+            ],
+            ..Item::fixture("item-1")
+        };
+        let mut entry = crate::domain::session::SetlistEntry::fixture();
+        entry.plays = vec![crate::domain::session::Play {
+            score: Some(4),
+            ..crate::domain::session::Play::fixture()
+        }];
+        let session = PracticeSession {
+            entries: vec![entry],
+            ..PracticeSession::fixture("s1")
+        };
+        let sessions = [session];
+        let scored = build_scored_plays(&sessions);
+
+        let keys = build_key_views(&item, &scored["item-1"]);
+
+        let marks: Vec<_> = keys
+            .iter()
+            .map(|k| (k.label.as_str(), k.latest_score))
+            .collect();
+        assert_eq!(marks, [("G major", Some(4)), ("A major", None)]);
+    }
 
     #[test]
     fn each_rows_tempo_line_reads_in_its_own_items_metre() {

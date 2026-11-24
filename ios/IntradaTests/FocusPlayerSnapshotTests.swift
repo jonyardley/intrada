@@ -30,6 +30,30 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         store: Store(bridge: PreviewBridge(activeSession: active))), as: config)
   }
 
+  func testFocusPlayerKeyChip() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: .previewActiveKeys))),
+      as: config)
+  }
+
+  func testFocusPlayerOneKeyReadsAsText() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: .previewActiveOneKey))),
+      as: config)
+  }
+
+  func testFocusPlayerKeyAndVariationChipsWithLastTime() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: .previewActiveKeysVariationsLastTime))),
+      as: config)
+  }
+
   func testFocusPlayerAwayOffer() {
     assertSnapshot(
       of: host(

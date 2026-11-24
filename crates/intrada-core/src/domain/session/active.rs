@@ -155,7 +155,15 @@ pub(super) fn switch_play(
     // Switching to the way already open writes nothing, so a stray tap
     // cannot split the play (#1739 decision 6). Checked before capacity,
     // or a full entry could not re-tap its own row.
-    if entry.open_play().is_some_and(|p| p.is_played(&way)) {
+    let read = |way: PlayWay| PlayWay {
+        key: item_reads_as(model, &entry.plan.item_id, way.key),
+        ..way
+    };
+    let wanted = read(way.clone());
+    if entry
+        .open_play()
+        .is_some_and(|p| read(p.way()).is_same_way(&wanted))
+    {
         model.last_error = None;
         return crux_core::render::render();
     }
@@ -286,8 +294,13 @@ pub(super) fn update_reflection_draft(
     }
     answers.ways.retain(|row| {
         !entry.play(&row.play_id).is_some_and(|play| {
-            play.is_played(&PlayWay {
-                key: row.key,
+            let read = |key| item_reads_as(model, &entry.plan.item_id, key);
+            PlayWay {
+                key: read(play.key),
+                variation_ids: play.variation_ids.clone(),
+            }
+            .is_same_way(&PlayWay {
+                key: read(row.key),
                 variation_ids: row.variation_ids.clone(),
             })
         })

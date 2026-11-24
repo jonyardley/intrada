@@ -19,7 +19,7 @@ pub struct LastTimeView {
 pub struct KeyChoiceView {
     pub key: Option<crate::domain::key::Key>,
     pub label: String,
-    /// The written key's name under "Written key", when the item has one.
+    /// "Written key" under the written key's name; `None` on every other row.
     pub caption: Option<String>,
 }
 

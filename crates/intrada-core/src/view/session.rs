@@ -7,8 +7,8 @@ use crate::domain::item::{Item, ItemKind};
 use crate::domain::key::Key;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
-    self as session, ActiveSession, ClickState, EntryStatus, Play, PlayWay, PracticeSession,
-    ReflectionDraft, SetlistEntry, SummarySession,
+    self as session, reads_as, ActiveSession, ClickState, EntryStatus, Play, PlayWay,
+    PracticeSession, ReflectionDraft, SetlistEntry, SummarySession,
 };
 use crate::domain::tempo_words::{self, TempoWords};
 use crate::domain::variation::Variation;
@@ -131,6 +131,11 @@ impl PlayLabels<'_> {
 
     pub fn play(&self, play: &Play) -> Option<String> {
         Self::joined(self.parts(play.key.as_ref(), &play.variation_ids))
+    }
+
+    /// The variation chip's text: the key has its own chip (#2788).
+    pub fn variations(&self, play: &Play) -> Option<String> {
+        Self::joined(self.parts(None, &play.variation_ids))
     }
 
     pub fn plan(&self, entry: &SetlistEntry) -> Option<String> {
@@ -257,15 +262,17 @@ pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -
     }
 }
 
-/// The written key first, then the item's own, skipping one that repeats it,
-/// then any of `also` the list does not hold in either spelling.
+/// The written key first, when the item has one, then the item's own,
+/// skipping one that repeats it, then any of `also` the list does not hold in
+/// either spelling. Every row leads with a key name (#2788).
 pub fn key_choices(item: &Item, also: &[Key]) -> Vec<KeyChoiceView> {
-    let written = KeyChoiceView {
+    let written = item.key.map(|written| KeyChoiceView {
         key: None,
-        label: "Written key".to_string(),
-        caption: item.key.as_ref().map(Key::label),
-    };
-    let mut choices: Vec<KeyChoiceView> = std::iter::once(written)
+        label: written.label(),
+        caption: Some("Written key".to_string()),
+    });
+    let mut choices: Vec<KeyChoiceView> = written
+        .into_iter()
         .chain(
             item.keys
                 .iter()
@@ -306,18 +313,19 @@ fn spelt_as(item: &Item, choices: &[KeyChoiceView], key: Option<Key>) -> Option<
     )
 }
 
-/// The builder's Key row: listed while there is a key besides the written
-/// one, so a key from last time can be set back to the written one.
+/// The builder's Key row: listed while there are two keys to choose from.
 pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysView> {
-    let keys = key_choices(item, entry.plan.key.as_slice());
+    let planned = reads_as(item, entry.plan.key);
+    let keys = key_choices(item, planned.as_slice());
     if keys.len() < 2 {
         return None;
     }
-    let current = spelt_as(item, &keys, entry.plan.key);
+    let current = spelt_as(item, &keys, planned);
     let current_label = keys
         .iter()
         .find(|k| k.key == current)
-        .map_or_else(|| "Written key".to_string(), |k| k.label.clone());
+        .or_else(|| keys.first())
+        .map_or_else(String::new, |k| k.label.clone());
     Some(EntryKeysView {
         entry_id: entry.id.clone(),
         keys,
@@ -346,15 +354,16 @@ pub fn fill_finish_choices(
                 .iter()
                 .find(|w| w.play_id == play.id)
                 .map_or_else(
-                    || PlayWay {
-                        key: play.key,
-                        variation_ids: play.variation_ids.clone(),
-                    },
+                    || play.way(),
                     |w| PlayWay {
                         key: w.key,
                         variation_ids: w.variation_ids.clone(),
                     },
                 )
+        })
+        .map(|way| PlayWay {
+            key: reads_as(item, way.key),
+            ..way
         })
         .collect();
     let recorded: Vec<Key> = ways.iter().filter_map(|w| w.key).collect();
@@ -548,6 +557,20 @@ pub fn build_active_session_view(
     let safe_index = active.current_index.min(active.entries.len() - 1);
     let current = active.current_entry();
     let open = current.open_play();
+    let open_key = open.and_then(|p| p.key);
+    let (current_key, current_key_choices) =
+        item_index
+            .get(current.plan.item_id.as_str())
+            .map_or((open_key, Vec::new()), |item| {
+                let open_key = reads_as(item, open_key);
+                let choices = key_choices(item, open_key.as_slice());
+                (spelt_as(item, &choices, open_key), choices)
+            });
+    let current_key_label = current_key_choices
+        .iter()
+        .find(|c| c.key == current_key)
+        .or_else(|| current_key_choices.first())
+        .map(|c| c.label.clone());
 
     // Breadcrumb only applies to a related exercise practiced inside a block,
     // not the anchor piece itself.
@@ -591,9 +614,11 @@ pub fn build_active_session_view(
             .iter()
             .map(|e| entry_to_view(e, labels))
             .collect(),
-        current_key: open.and_then(|p| p.key),
+        current_key,
+        current_key_choices,
+        current_key_label,
         current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
-        current_play_label: open.and_then(|p| labels.play(p)),
+        current_play_label: open.and_then(|p| labels.variations(p)),
         current_planned_duration_secs: current.plan.duration_secs,
         next_item_title: active
             .entries
