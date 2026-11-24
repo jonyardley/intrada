@@ -184,7 +184,9 @@ price (#1842).
 **Verification.** For UI, drive the simulator and show proof, or
 say what a human must check by hand. "All green" never means only
 `cargo test`. Report failures with the output, and never call a gate broken
-without making it fail. Delete any scratch simulator you made when done. If
+without making it fail. Before fixing a CI failure, read the failing step's
+last lines: a cause an issue gives is a guess until a log shows it. Delete
+any scratch simulator you made when done. If
 CI is green, local pty errors were host-only.
 
 **Red main is fixed or switched off the same day.** The alert on the
