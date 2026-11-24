@@ -14,7 +14,8 @@
   archived one is copied back here with its count raised above the
   archive's. A fixed lesson that comes back means the fix did not hold.
 - A "(issue #N)" lesson is archived with "issue:" in front by the pull
-  request that closes its issue; `just pr-ready` refuses while a lesson waits
+  request that closes its issue, or with "fix:" and the file when that
+  issue moves it into a doc; `just pr-ready` refuses while a lesson waits
   on that issue or on one already closed (#2968). A lesson that is both seen
   again and waiting ends "(issue #N) (seen again M)".
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
