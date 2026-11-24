@@ -5,13 +5,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::{AnalyticsView, LastPractisedView, ScoreChange};
-use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::first_run::{FirstRun, FirstRunView};
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::key::Key;
 use crate::domain::metre::{ClickBarOption, ClickPresetOption, TempoBand};
 use crate::domain::practice_defaults::PracticeDefaults;
-use crate::domain::profile::{Profile, ProfileField, ProfileView};
+use crate::domain::profile::{Profile, ProfileView};
 use crate::domain::session::{
     ClickState, CompletionStatus, EntryStatus, PracticeSession, ReflectionAnswers, SessionStatus,
     TempoReading,
@@ -20,6 +19,20 @@ use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
 use crate::recognition::PhotoDraft;
 use crate::suggestion::SuggestedPlan;
+
+mod add_form;
+mod library;
+mod practice_summary;
+
+pub use add_form::{FormErrorField, FormErrorTarget, PhotoRecognitionStatus, PhotoRecognitionView};
+pub(crate) use library::{saved_mark_caption, solid_caption, SOLID_MIN};
+pub use library::{
+    ExerciseUsageView, ItemKeyView, LibraryItemView, LinkedExerciseView, PieceRefView,
+    ScaffoldPreviewView, ScaffoldSpecView, VariationOptionView, VariationView,
+};
+pub use practice_summary::{
+    ItemPracticeSummary, ScoreHistoryEntry, ScoreTrend, TempoTrendPoint, TempoTrendView,
+};
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -216,56 +229,6 @@ impl Model {
     }
 }
 
-/// Where on the create form the failure the banner names actually is (#1595).
-/// Set only by the handler that reported the error, and only where the form has
-/// somewhere to point; every other path leaves it `None`, which reads as the
-/// banner alone.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
-pub enum FormErrorTarget {
-    Piece {
-        field: FormErrorField,
-    },
-    /// The chord chart as a whole, which is what a chart holding no bars at all
-    /// produces: there is nothing inside it to point at.
-    Chart,
-    /// One bar of the chord chart, numbered from 1, and the token the parser
-    /// stumbled on.
-    ChartBar {
-        bar_number: usize,
-        token: String,
-    },
-    Profile {
-        field: ProfileField,
-    },
-    /// A staged exercise by position, from 0, in the exercises the event
-    /// carried. `field` is `None` for a chosen exercise, which has no field of
-    /// its own. The shell reorders that list without telling the core, so the
-    /// position holds only until it does (#1390 decision 12).
-    Exercise {
-        index: usize,
-        field: Option<FormErrorField>,
-    },
-}
-
-/// A field the add form shows. A validation failure on anything else maps to no
-/// target rather than a field nobody can reach. Named apart from the shell's own
-/// `FormField` view, which it would otherwise shadow inside the app module.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
-pub enum FormErrorField {
-    Title,
-    Composer,
-    Tempo,
-    Notes,
-    Tags,
-    /// The exercise's inline variation rows (#1831). Appended last: the
-    /// bincode wire is positional.
-    Variations,
-}
-
 /// Serializable view state sent to shells for rendering.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -406,233 +369,6 @@ impl Default for LimitsView {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct PhotoRecognitionView {
-    pub status: PhotoRecognitionStatus,
-    /// The photo being read, so the shell can show it beside the fields.
-    pub photo_id: Option<String>,
-    /// Present only under `Ready`. Each field carries its own `weak`, which is
-    /// what the form marks; there is deliberately no whole-draft flag beside
-    /// it, since nothing would read one.
-    pub draft: Option<PhotoDraft>,
-    /// A finished read whose draft holds no field at all.
-    pub read_nothing: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
-pub enum PhotoRecognitionStatus {
-    #[default]
-    Idle,
-    Reading,
-    Ready,
-    Failed,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct LinkedExerciseView {
-    pub id: String,
-    pub title: String,
-    pub key: Option<Key>,
-    /// "E♭ major", as the musician reads it.
-    pub key_label: Option<String>,
-    pub tempo_marking: Option<String>,
-    pub tempo_bpm: Option<u16>,
-    /// "Lent · ♩ = 70", and its spoken form.
-    pub tempo_line: Option<String>,
-    pub tempo_line_spoken: Option<String>,
-    pub practice: Option<ItemPracticeSummary>,
-    /// This exercise's latest score *on the piece it's linked from* (#1087 B2),
-    /// derived from the shared session block — distinct from `practice`, which
-    /// is the exercise's flat score across every context. `None` when the pair
-    /// has never been practised together (or scored) in a session.
-    #[serde(default)]
-    pub piece_context_score: Option<u8>,
-}
-
-/// The derived scaffold curriculum for a charted piece — the read-only preview
-/// (Phase A). Recomputed from the stored chart in `build_view`; the shell renders
-/// it and never derives.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ScaffoldPreviewView {
-    /// The key the exercises are derived in (the piece's key), as read.
-    pub key: String,
-    pub specs: Vec<ScaffoldSpecView>,
-    /// How many specs hit the arpeggio fallback (out-of-vocab chord).
-    pub fallback_total: u8,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ScaffoldSpecView {
-    /// Row identity: the shell sends the ticked `kind`s back on commit and the
-    /// core re-derives, so spec content never crosses the wire (#1106).
-    pub kind: ScaffoldKind,
-    pub title: String,
-    pub rationale: String,
-    pub key: String,
-    /// This spec fell back to the chord's arpeggio for at least one change.
-    pub fallback: bool,
-    /// A matching exercise is already linked to the piece (dedup surface).
-    pub already_linked: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct PieceRefView {
-    pub id: String,
-    pub title: String,
-    /// Composer, when the piece has one — disambiguates identically titled
-    /// pieces in provenance UI (#1049).
-    pub subtitle: Option<String>,
-}
-
-/// One piece an exercise is used in, or the "On its own" bucket. A row comes
-/// from the piece's live exercise links (an intention), from practising the
-/// two together (history, resolved per session from `group_id` — #1087 B1), or
-/// from both; `linked` says which (#1363).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ExerciseUsageView {
-    /// `None` is the "On its own" bucket: practice with no piece in the block.
-    pub piece: Option<PieceRefView>,
-    /// Always `false` for "On its own".
-    pub linked: bool,
-    pub latest_score: Option<u8>,
-    /// Distinct sessions the exercise was practised in, in this context.
-    pub session_count: usize,
-    /// Most recent session date for this context (RFC3339, sorts as a string).
-    pub last_practiced_at: Option<String>,
-    /// `true` when this row's `piece` no longer exists in the library — the
-    /// piece was deleted since it was practised (#1093, decision 2a). The row
-    /// is kept (its sessions are real history), but `piece.title` is the
-    /// snapshot title and the shell renders the row muted + non-tappable. Always
-    /// `false` for the "On its own" bucket.
-    #[serde(default)]
-    pub piece_removed: bool,
-    /// The row names a piece still in the library: it opens, and it counts
-    /// towards the card's piece total.
-    pub piece_in_library: bool,
-    /// The row shows the link button: a piece in the library, practised
-    /// alongside but not linked.
-    pub offers_link: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct LibraryItemView {
-    pub id: String,
-    pub item_type: ItemKind,
-    pub title: String,
-    pub subtitle: String,
-    pub key: Option<Key>,
-    /// "E♭ major", as the musician reads it.
-    pub key_label: Option<String>,
-    pub tempo_marking: Option<String>,
-    pub tempo_bpm: Option<u16>,
-    /// "Lent · ♩ = 70", and its spoken form.
-    pub tempo_line: Option<String>,
-    pub tempo_line_spoken: Option<String>,
-    pub notes: Option<String>,
-    pub tags: Vec<String>,
-    pub created_at: String,
-    pub updated_at: String,
-    pub practice: Option<ItemPracticeSummary>,
-    pub priority: bool,
-    pub linked_exercises: Vec<LinkedExerciseView>,
-    /// For exercises: every piece this exercise is used in, plus the "On its
-    /// own" bucket — links and practice history merged (#1363). Empty for
-    /// pieces.
-    #[serde(default)]
-    pub used_in: Vec<ExerciseUsageView>,
-    /// For a charted piece: the derived scaffold curriculum (read-only preview).
-    /// `None` for exercises and un-charted pieces.
-    #[serde(default)]
-    pub scaffold_preview: Option<ScaffoldPreviewView>,
-    /// The parsed chord chart, for pieces that have one — the shell renders the
-    /// bar grid from `symbol.raw` and pre-fills the editor from it.
-    #[serde(default)]
-    pub chord_chart: Option<ChordChart>,
-    /// The piece's time signature, which seeds the click's bar (#1499).
-    pub metre: Option<Metre>,
-    /// The live library variations this item uses, in the order chosen, with
-    /// their practice state (#2246).
-    pub variations: Vec<VariationView>,
-    #[serde(default)]
-    pub photo_id: Option<String>,
-    /// The keys chosen for practice, in order, with their practice state.
-    pub keys: Vec<ItemKeyView>,
-    /// "3 of 12 solid" beside the Keys heading; `None` with no keys (#2366).
-    pub keys_caption: Option<String>,
-    /// The same count beside the Variations heading.
-    pub variations_caption: Option<String>,
-    /// The wedge the key picker lights for the stored key (#2074).
-    pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
-}
-
-/// One library variation an item uses, with its practice state on that item:
-/// the marks of the plays on it (#2246).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct VariationView {
-    pub id: String,
-    pub label: String,
-    pub latest_score: Option<u8>,
-    pub score_history: Vec<ScoreHistoryEntry>,
-    pub caption: String,
-}
-
-/// One of an item's keys for practice, with the marks of the plays in it,
-/// either spelling (#2106).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ItemKeyView {
-    pub key: Key,
-    pub label: String,
-    pub latest_score: Option<u8>,
-    pub caption: String,
-}
-
-/// A live row of the library's variation list, for the pickers (#2246).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct VariationOptionView {
-    pub id: String,
-    pub label: String,
-    /// "On Clair de lune" for one item, "On 2 items" for more, `None` when
-    /// no item uses it, so a rename shows how far it reaches (#2366).
-    pub usage: Option<String>,
-}
-
-/// A key or variation counts as solid once its latest mark reaches this, of
-/// 10 (#1762).
-pub(crate) const SOLID_MIN: u8 = 8;
-
-/// "3 of 12 solid" over the latest marks of an item's keys or variations;
-/// `None` when it holds none (#2366).
-pub(crate) fn solid_caption(latest: impl Iterator<Item = Option<u8>>) -> Option<String> {
-    let (solid, total) = latest.fold((0, 0), |(solid, total), mark| {
-        (
-            solid + usize::from(mark.is_some_and(|m| m >= SOLID_MIN)),
-            total + 1,
-        )
-    });
-    (total > 0).then(|| format!("{solid} of {total} solid"))
-}
-
-/// The saved mark in the musician's words: the one wording the Library row and
-/// the picker's out-of-session fallback share (#1809).
-pub(crate) fn saved_mark_caption(latest_score: Option<u8>) -> String {
-    match latest_score {
-        Some(score) => format!("{score} of {}", crate::validation::MAX_SCORE),
-        None => "Not yet played".to_string(),
-    }
-}
-
 /// One row of a variation picker, captioned by the core so a variation played
 /// earlier in this item never reads as not yet played (#1784).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -673,90 +409,6 @@ pub struct PlayView {
     /// sheet, after `PrepareReflection`; mid-item it reads the open play as
     /// incidental regardless of how long it has actually run.
     pub is_markable: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ItemPracticeSummary {
-    pub session_count: usize,
-    pub total_minutes: u32,
-    pub latest_score: Option<u8>,
-    pub score_history: Vec<ScoreHistoryEntry>,
-    pub score_trend: Option<ScoreTrend>,
-    pub tempo_trend: TempoTrendView,
-    /// Most recent session date for this item (max `started_at`), independent
-    /// of whether a score/tempo was recorded. `None` if never practised.
-    /// RFC3339 — sorts chronologically as a string.
-    pub last_practiced_at: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ScoreHistoryEntry {
-    pub session_date: String,
-    pub score: u8,
-    pub session_id: String,
-}
-
-/// The recent-sessions chip: the oldest and newest marks in `score_history`,
-/// only when they differ.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ScoreTrend {
-    pub from: u8,
-    pub to: u8,
-}
-
-impl ScoreTrend {
-    pub(crate) fn over(newest_first: &[ScoreHistoryEntry]) -> Option<Self> {
-        let (to, from) = (newest_first.first()?.score, newest_first.last()?.score);
-        (from != to).then_some(Self { from, to })
-    }
-}
-
-/// One practised session's slot in a `TempoTrendView`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct TempoTrendPoint {
-    pub session_date: String,
-    pub session_id: String,
-    pub tempo: Option<u16>,
-}
-
-/// An item's measured tempo over time, as a plottable series. A session that
-/// measured no tempo keeps its slot with `tempo: None`, so the chart breaks the
-/// line there rather than drawing a zero or interpolating across it (#1420).
-/// Every number present was measured, because the evidence contract keeps
-/// unevidenced defaults out of `achieved_tempo` upstream (T16, #1422).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct TempoTrendView {
-    /// Oldest first, the reverse of `score_history`. One point per setlist
-    /// entry, matching `session_count`: an item practised twice in one session
-    /// contributes two points at the same date.
-    pub points: Vec<TempoTrendPoint>,
-    /// Two or more measured tempos; below that there is no direction to read.
-    pub has_trend: bool,
-    /// `♩ = 88 → 104`, beside the title once there is a trend.
-    pub chip: Option<String>,
-    /// `Measured once, at ♩ = 72 · no trend yet`, in place of the plot.
-    pub caption: Option<String>,
-    pub spoken: String,
-}
-
-impl TempoTrendView {
-    #[must_use]
-    pub fn new(points: Vec<TempoTrendPoint>) -> Self {
-        let measured: Vec<u16> = points.iter().filter_map(|p| p.tempo).collect();
-        let words = crate::domain::tempo_words::trend_words(&measured, points.len());
-        Self {
-            has_trend: measured.len() >= 2,
-            points,
-            chip: words.chip,
-            caption: words.caption,
-            spoken: words.spoken,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1049,157 +701,9 @@ pub struct SummaryView {
     pub top_mover: Option<ScoreChange>,
 }
 
-// ── Test fixtures ─────────────────────────────────────────────────────
-// One place per many-field view type, composed with struct update, so a new
-// field costs one edit rather than one per call site (CLAUDE.md, Testing).
-
-#[cfg(test)]
-impl LibraryItemView {
-    pub(crate) fn fixture(id: &str, title: &str, item_type: ItemKind) -> Self {
-        Self {
-            id: id.to_string(),
-            item_type,
-            title: title.to_string(),
-            subtitle: String::new(),
-            key: None,
-            key_label: None,
-            tempo_marking: None,
-            tempo_bpm: None,
-            tempo_line: None,
-            tempo_line_spoken: None,
-            notes: None,
-            tags: Vec::new(),
-            created_at: String::new(),
-            updated_at: String::new(),
-            practice: None,
-            priority: false,
-            linked_exercises: Vec::new(),
-            used_in: Vec::new(),
-            scaffold_preview: None,
-            chord_chart: None,
-            metre: None,
-            variations: Vec::new(),
-            photo_id: None,
-            keys: Vec::new(),
-            keys_caption: None,
-            variations_caption: None,
-            key_selection: None,
-        }
-    }
-}
-
-#[cfg(test)]
-impl LinkedExerciseView {
-    pub(crate) fn fixture(id: &str, title: &str) -> Self {
-        Self {
-            id: id.to_string(),
-            title: title.to_string(),
-            key: None,
-            key_label: None,
-            tempo_marking: None,
-            tempo_bpm: None,
-            tempo_line: None,
-            tempo_line_spoken: None,
-            practice: None,
-            piece_context_score: None,
-        }
-    }
-}
-
-#[cfg(test)]
-impl VariationView {
-    pub(crate) fn fixture(id: &str, label: &str) -> Self {
-        Self {
-            id: id.to_string(),
-            label: label.to_string(),
-            latest_score: None,
-            score_history: Vec::new(),
-            caption: saved_mark_caption(None),
-        }
-    }
-
-    pub(crate) fn scored(self, score: u8) -> Self {
-        Self {
-            latest_score: Some(score),
-            caption: saved_mark_caption(Some(score)),
-            ..self
-        }
-    }
-}
-
-#[cfg(test)]
-impl ItemPracticeSummary {
-    pub(crate) fn fixture() -> Self {
-        Self {
-            session_count: 0,
-            total_minutes: 0,
-            latest_score: None,
-            score_history: Vec::new(),
-            score_trend: None,
-            tempo_trend: TempoTrendView::new(Vec::new()),
-            last_practiced_at: None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ── Solid counts (#2366) ──
-
-    #[test]
-    fn solid_caption_counts_latest_marks_of_eight_or_more() {
-        let cases: [(&[Option<u8>], Option<&str>); 4] = [
-            (&[], None),
-            (&[None, Some(7)], Some("0 of 2 solid")),
-            (&[Some(8), Some(10), Some(7), None], Some("2 of 4 solid")),
-            (&[Some(9)], Some("1 of 1 solid")),
-        ];
-        for (marks, expected) in cases {
-            assert_eq!(
-                solid_caption(marks.iter().copied()).as_deref(),
-                expected,
-                "{marks:?}"
-            );
-        }
-    }
-
-    // ── Score trend (#2233) ──
-
-    fn history(newest_first: &[u8]) -> Vec<ScoreHistoryEntry> {
-        newest_first
-            .iter()
-            .enumerate()
-            .map(|(i, score)| ScoreHistoryEntry {
-                session_date: format!("2026-09-{:02}T09:00:00Z", 28 - i),
-                score: *score,
-                session_id: format!("s{i}"),
-            })
-            .collect()
-    }
-
-    type TrendCase<'a> = (&'a [u8], Option<(u8, u8)>);
-
-    #[test]
-    fn score_trend_runs_from_the_oldest_mark_to_the_newest() {
-        let cases: &[TrendCase] = &[
-            (&[], None),
-            (&[7], None),
-            (&[5, 3], Some((3, 5))),
-            (&[3, 5], Some((5, 3))),
-            (&[6, 2, 9, 4], Some((4, 6))),
-            (&[4, 9, 4], None),
-        ];
-        for (newest_first, expected) in cases {
-            let trend = ScoreTrend::over(&history(newest_first));
-            assert_eq!(
-                trend.map(|t| (t.from, t.to)),
-                *expected,
-                "scores {newest_first:?}"
-            );
-        }
-    }
 
     // ── Projected limits (#1512) ──
 
@@ -1372,100 +876,6 @@ mod tests {
     #[test]
     fn limits_view_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(LimitsView::default());
-    }
-
-    /// `ExerciseUsageView` crosses the bincode FFI bridge inside the
-    /// ViewModel; guard it against the #846 silent-drop class.
-    #[test]
-    fn exercise_usage_view_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(ExerciseUsageView {
-            piece: Some(PieceRefView {
-                id: "P".to_string(),
-                title: "Sonata".to_string(),
-                subtitle: Some("Beethoven".to_string()),
-            }),
-            linked: true,
-            latest_score: Some(6),
-            session_count: 2,
-            last_practiced_at: Some("2026-07-01T00:00:00+00:00".to_string()),
-            piece_removed: true,
-            piece_in_library: false,
-            offers_link: true,
-        });
-    }
-
-    /// `ScaffoldPreviewView` crosses the bincode wire inside the ViewModel
-    /// (`LibraryItemView.scaffold_preview`) — guard it against the #846 drop class.
-    #[test]
-    fn scaffold_preview_view_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(ScaffoldPreviewView {
-            key: "G".to_string(),
-            specs: vec![ScaffoldSpecView {
-                kind: ScaffoldKind::Shells,
-                title: "Shells".to_string(),
-                rationale: "3rd + 7th of every chord".to_string(),
-                key: "G".to_string(),
-                fallback: false,
-                already_linked: true,
-            }],
-            fallback_total: 0,
-        });
-    }
-
-    /// The item's variations and keys cross the bincode wire inside
-    /// `LibraryItemView`; guard them against the #846 drop class.
-    #[test]
-    fn variation_and_key_views_round_trip_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(VariationView {
-            id: "v-1".to_string(),
-            label: "Hands separately".to_string(),
-            latest_score: Some(8),
-            score_history: vec![ScoreHistoryEntry {
-                session_date: "2026-07-01T00:00:00+00:00".to_string(),
-                score: 8,
-                session_id: "s1".to_string(),
-            }],
-            caption: "8 of 10".to_string(),
-        });
-        let key = crate::domain::key::Key::parse("Eb minor").expect("a key");
-        crate::domain::types::assert_round_trips(ItemKeyView {
-            key,
-            label: key.label(),
-            latest_score: None,
-            caption: "Not yet played".to_string(),
-        });
-    }
-
-    #[test]
-    fn tempo_trend_view_round_trips_on_ffi_bincode_wire() {
-        let point = |tempo| TempoTrendPoint {
-            session_date: "2026-10-01T00:00:00+00:00".to_string(),
-            session_id: "s1".to_string(),
-            tempo,
-        };
-        crate::domain::types::assert_round_trips(TempoTrendView::new(vec![
-            point(Some(88)),
-            point(None),
-            point(Some(104)),
-        ]));
-    }
-
-    /// `LinkedExerciseView` crosses the same bincode wire; `piece_context_score`
-    /// (#1087 B2) is a trailing `Option` — guard it against the #846 drop class.
-    #[test]
-    fn linked_exercise_view_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(LinkedExerciseView {
-            id: "E".to_string(),
-            title: "Enclosures".to_string(),
-            key: crate::domain::key::Key::parse("C minor"),
-            key_label: Some("C minor".to_string()),
-            tempo_marking: Some("Allegro".to_string()),
-            tempo_bpm: Some(132),
-            tempo_line: Some("Allegro · ♩ = 132".to_string()),
-            tempo_line_spoken: Some("Allegro, 132 beats per minute".to_string()),
-            practice: None,
-            piece_context_score: Some(7),
-        });
     }
 
     // ── Model error methods ────────────────────────────────────────────
