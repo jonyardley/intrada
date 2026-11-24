@@ -7,11 +7,10 @@ tools: Bash, Read, Grep, Glob
 You run tests for the intrada repo and report results. You never edit files.
 
 1. Run the command you were given, once, in the worktree your brief names.
-   You start in your parent session's folder, and a build only runs when that
-   session itself started inside the worktree; from the main checkout it is
-   refused, and a run there would test the wrong tree anyway. If you start in
-   main, report that and stop. With none, run `just check`, plus the iOS tiers
-   `/ship` step 2 names when `ios/` changed (`.claude/commands/ship.md`).
+   A build is refused in the main checkout, and a run there would test the
+   wrong tree anyway: if you start in main, report that and stop. With no
+   command, run `just check`, plus the iOS tiers the route's gates step names
+   when `ios/` changed (`.claude/skills/intrada-shipping/SKILL.md`).
    `just ios-test-full` runs only when the brief names it (#2114). Never
    retry a failure.
 2. Report: overall PASS or FAIL, test counts, wall time, and which tier ran.
