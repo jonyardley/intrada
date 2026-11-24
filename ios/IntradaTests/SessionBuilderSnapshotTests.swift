@@ -118,7 +118,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
   private static let clairKeys = EntryKeysView(
     entryId: "plan-p",
     keys: [
-      KeyChoiceView(key: nil, label: "Written key", caption: "D\u{266D} major"),
+      KeyChoiceView(key: nil, label: "D\u{266D} major", caption: "Written key"),
       KeyChoiceView(
         key: Key(letter: .d, accidental: .natural, mode: .major), label: "D major", caption: nil),
       KeyChoiceView(

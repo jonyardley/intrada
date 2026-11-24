@@ -28,8 +28,10 @@ struct SessionBuilderPlanTests {
   func choosingAKeySetsThePlannedKey() throws {
     let (bridge, entryId) = try plannedPiece()
     let pieceId = try #require(try bridge.rendered().items.first?.id)
+    let c = Key(letter: .c, accidental: .natural, mode: .major)
     let d = Key(letter: .d, accidental: .natural, mode: .major)
-    _ = try bridge.update(.item(.updateKeys(id: pieceId, keys: [d])))
+    // Two keys: with no written key, one key offers no choice (#2788).
+    _ = try bridge.update(.item(.updateKeys(id: pieceId, keys: [c, d])))
     let choices = try #require(
       try bridge.rendered().buildingSetlist?.entryKeys.first { $0.entryId == entryId }?.keys)
     let choice = try #require(choices.first { $0.key == d })

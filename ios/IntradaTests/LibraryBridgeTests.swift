@@ -1050,11 +1050,19 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(try link(.unlink(exerciseId: thirds)).map(\.id), [scales])
   }
 
-  /// The key picker offers the written key then the piece's own (#2249).
+  /// The key picker offers the written key then the piece's own, each row
+  /// leading with a key name (#2249, #2788).
   func testRealBridgeTheBuilderOffersThePiecesKeys() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let nocturne = try add(bridge, "Nocturne", .piece)
+    let dFlat = Key(letter: .d, accidental: .flat, mode: .major)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Nocturne", kind: .piece, composer: nil, key: dFlat,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    let nocturne = try XCTUnwrap(try bridge.rendered().items.first { $0.title == "Nocturne" }?.id)
     let dMajor = Key(letter: .d, accidental: .natural, mode: .major)
     _ = try bridge.update(.item(.updateKeys(id: nocturne, keys: [dMajor])))
     _ = try bridge.update(.session(.startBuilding))
@@ -1064,10 +1072,11 @@ final class LibraryBridgeTests: XCTestCase {
     let building = try XCTUnwrap(try bridge.rendered().buildingSetlist)
     let entryKeys: [EntryKeysView] = building.entryKeys
     let keys: [KeyChoiceView] = try XCTUnwrap(entryKeys.first { $0.entryId == entryId }).keys
-    XCTAssertEqual(keys.map(\.label), ["Written key", "D major"])
+    XCTAssertEqual(keys.map(\.label), ["D\u{266D} major", "D major"])
+    XCTAssertEqual(keys.map(\.caption), ["Written key", nil])
     XCTAssertEqual(keys.map(\.key), [nil, dMajor])
     let keyRow = try XCTUnwrap(entryKeys.first { $0.entryId == entryId })
-    XCTAssertEqual(keyRow.currentLabel, "Written key")
+    XCTAssertEqual(keyRow.currentLabel, "D\u{266D} major")
     XCTAssertNil(keyRow.current)
 
     _ = try bridge.update(.session(.setEntryKey(entryId: entryId, key: dMajor)))
