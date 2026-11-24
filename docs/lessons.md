@@ -53,3 +53,4 @@
 - 2026-11-24, #2926: xcodebuild accepts an unknown build setting override without a word, and the compilation cache path setting is in no Xcode settings list; prove an override took by its effect (the cache folder filling), never by a clean exit.
 - 2026-11-24, #2926: the guard refuses `xcodebuild -version` even though it builds nothing; read the installed version from Xcode's Info.plist with `plutil -p` instead.
 - 2026-11-24, #2955: a reviewer launched from the main checkout could not run the self-tests, since the main checkout guard refuses running scripts there, so both reviews left the mutation claims unverified; a reviewer that must run tests needs its own worktree (issue #2960).
+- 2026-11-24, #2960: the ready step refused a green pull request for want of a lessons commit, so the retro cost a third CI run on a two-file docs change; until the retro moves before review, write the lessons before opening the draft (issue #2962).

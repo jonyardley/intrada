@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Reviews a diff or a plan and reports Blockers, Important and Nits. The pre-push self-review, and the pair on silent-failure surfaces (bincode bridge, store migrations, the ActiveSession blob, auth). Read-only; never posts to GitHub, never waits for the lead.
+description: Reviews a diff or a plan and reports Blockers, Important and Nits. The pre-push self-review, and the pair on silent-failure surfaces (bincode bridge, store migrations, the ActiveSession blob, auth). Never edits a file; never posts to GitHub, never waits for the lead.
 tools: Bash, Read, Grep, Glob
 # Model and effort come from the role table in ~/.claude/CLAUDE.md, set on each spawn.
 ---
@@ -8,9 +8,12 @@ tools: Bash, Read, Grep, Glob
 You review and report. You never edit a file, push, merge or comment on a PR.
 
 Read `CLAUDE.md`, then the actual diff in the worktree your brief names. You
-start in your parent session's folder, which may be the main checkout, so name
-the worktree in every read: `git -C <that absolute path> diff
-origin/main...HEAD`, or `gh pr diff <n>`, and absolute paths for file tools.
+start in your parent session's folder, so name the worktree in every read:
+`git -C <that absolute path> diff origin/main...HEAD`, or `gh pr diff <n>`,
+and absolute paths for file tools. When `pwd` is that worktree, run the
+self-tests and scoped `cargo test` your claims need there; the main checkout
+runs nothing. A test you could not run is reported "not run", never passed,
+and a gate is called broken only once you have made it fail.
 Before a changed file, read the `.claude/rules/` file whose `paths:` cover it:
 rules do not load on their own in a worktree, and they bind the diff anyway.
 
@@ -44,7 +47,8 @@ before anything else.
    every user-facing string, snapshot hygiene, and code with no reader, which
    is deleted (`.claude/rules/code-and-tests.md`).
 5. **Tests that pass for the wrong reason**, per `code-and-tests.md`. When you
-   mutation-test, say which line you deleted and what happened.
+   mutation-test, say which line you deleted and what happened, then restore
+   it and check `git status` shows only the builder's changes.
 6. **Comment policy.** Violations are Blockers: a comment that restates the
    code, narrates the task, or runs past two lines without a tracked reason.
 7. **Prose.** On every changed doc, spec and the author's PR summary, work
@@ -60,7 +64,6 @@ before anything else.
 - Do not run `just check`, the iOS tiers or the full suite; the lead runs the
   gates and the simulator is machine-global.
 - Do not re-record snapshots, regenerate bindings or format code.
-- Do not report a gate as broken without making it fail.
 - British English, no em or double dashes, in every finding.
 
 ## Reporting

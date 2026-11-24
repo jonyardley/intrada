@@ -16,7 +16,8 @@ review rule there.
    first failure.
 2. **Review** before the push, because one left until after gets skipped
    (#1550). `just review-route` decides: `reviewer` on code or tests, Tier 1
-   included, briefed with the worktree's absolute path and the issue; a second
+   included, launched from the builder's worktree so it can run tests (#2960),
+   briefed with that worktree's absolute path and the issue; a second
    `reviewer` paired from the core diff on a sensitive diff, and on auth, which
    is judged by hand; `/code-review` inline on agent instructions, saying
    "comment-policy violations are Blockers"; none on documentation only. A fix
