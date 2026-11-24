@@ -384,6 +384,7 @@ worktree-new name:
     echo "✓ worktree $target"
     echo "  Start its session there:"
     echo "  cd $target && claude"
+    echo "  Or move a session already running into it: Claude Code's EnterWorktree tool, path $target"
 
 # Companion to worktree-new: cleans the worktree's throwaway sim (if any),
 # then removes the worktree via git. Run from any checkout; leaves the

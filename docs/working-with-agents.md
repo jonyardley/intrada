@@ -35,7 +35,7 @@ branch (#1702).
 | About to edit anything | `just worktree-new <name>` from the main checkout, then the session that does the work starts inside the worktree with the command it prints, `cd <worktree> && claude` |
 | Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. Make the worktree first and paste the opener into a session started inside it, not in the main checkout |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
-| Spawning a subagent | One that edits gets its own worktree (Claude Code's, under `.claude/worktrees`) or works in yours; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861) |
+| Spawning a subagent | One that edits gets its own worktree (Claude Code's, under `.claude/worktrees`) or works in yours; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861); launch it inside that worktree (move yourself in with `EnterWorktree` first, or give it worktree isolation), since one launched in the main checkout can neither write nor move itself in (#2967) |
 | Your PR has merged | `just worktree-done` inside the worktree, then end the session |
 
 Every session or helper agent that edits works in its own worktree (#1837,
@@ -43,8 +43,10 @@ Every session or helper agent that edits works in its own worktree (#1837,
 its working tree is read-only, a `cd <worktree> && ` prefix from it is
 refused for writes while reads pass, and `.claude/rules/` files load only when
 the session's folder is the worktree. A session started in the main checkout
-moves into its worktree with Claude Code's `EnterWorktree` tool and the
-worktree's path, with no restart. Worktrees branch from fresh `origin/main` into
+moves into an existing worktree with Claude Code's `EnterWorktree` tool and
+the worktree's path, with no restart; `just worktree-new` makes one (#2967).
+Plain git commands pass there, though Claude Code may refuse a compound one it
+cannot check, so split it. Worktrees branch from fresh `origin/main` into
 `../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the
@@ -57,8 +59,7 @@ query it there by path for architecture answers, never a full-repo read.
 
 Read `just worktrees` before touching a worktree you did not create: a clean
 tree at main is not evidence it is free. The lease and what the guard allows
-are in [`worktrees.md`](worktrees.md). `EnterWorktree` is banned: the bash guard
-then refuses every git command.
+are in [`worktrees.md`](worktrees.md).
 
 ## 3. Route
 

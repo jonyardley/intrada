@@ -62,8 +62,10 @@ review rule there.
    the owner's next message. Never ask the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
-says, each lesson gets one of two outcomes; a line that reaches "(seen again
-3)" always takes Issue:
+says, each lesson gets one of two outcomes. A lesson seen a second time (its
+line reaches "(seen again 1)") always takes Issue, and that issue first
+changes what the session saw when it went wrong (the message, refusal or
+recipe output) so it names the right move; any doc line comes after (#2967):
 
 - **Fixed here**: a prose change of about 30 lines or fewer to the doc, rule,
   skill, agent brief or command that would have prevented it, in its own
