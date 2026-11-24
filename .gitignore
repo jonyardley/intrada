@@ -44,6 +44,7 @@ ios/*.xcodeproj/
 # ios/build/* not ios/build/, so .worktreeinclude can reach ios/build/spm (#2191).
 ios/build/*
 # Xcode compilation cache, kept outside ios/build so a clean keeps it (#2926).
+# Also stays out of .worktreeinclude: bound to this worktree's paths.
 /.xcode-cache/
 # fastlane TestFlight lane output (build dir holds the .ipa/.xcarchive) + scratch.
 # Gemfile.lock is intentionally NOT ignored — commit it for reproducible CI.
