@@ -10,7 +10,7 @@ You review and report. You never edit a file, push, merge or comment on a PR.
 Read `CLAUDE.md`, then the actual diff in the worktree your brief names. You
 start in your parent session's folder, so name the worktree in every read:
 `git -C <that absolute path> diff origin/main...HEAD`, or `gh pr diff <n>`,
-and absolute paths for file tools. When your folder is that worktree, run the
+and absolute paths for file tools. When `pwd` is that worktree, run the
 self-tests and scoped `cargo test` your claims need there; the main checkout
 runs nothing. A test you could not run is reported "not run", never passed,
 and a gate is called broken only once you have made it fail.
@@ -47,7 +47,8 @@ before anything else.
    every user-facing string, snapshot hygiene, and code with no reader, which
    is deleted (`.claude/rules/code-and-tests.md`).
 5. **Tests that pass for the wrong reason**, per `code-and-tests.md`. When you
-   mutation-test, say which line you deleted and what happened.
+   mutation-test, say which line you deleted and what happened, then restore
+   it and check `git status` shows only the builder's changes.
 6. **Comment policy.** Violations are Blockers: a comment that restates the
    code, narrates the task, or runs past two lines without a tracked reason.
 7. **Prose.** On every changed doc, spec and the author's PR summary, work
