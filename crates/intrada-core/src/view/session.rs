@@ -133,6 +133,11 @@ impl PlayLabels<'_> {
         Self::joined(self.parts(play.key.as_ref(), &play.variation_ids))
     }
 
+    /// The variation chip's text: the key has its own chip (#2788).
+    pub fn variations(&self, play: &Play) -> Option<String> {
+        Self::joined(self.parts(None, &play.variation_ids))
+    }
+
     pub fn plan(&self, entry: &SetlistEntry) -> Option<String> {
         Self::joined(self.parts(entry.plan.key.as_ref(), &entry.plan.variation_ids))
     }
@@ -613,7 +618,7 @@ pub fn build_active_session_view(
         current_key_choices,
         current_key_label,
         current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
-        current_play_label: open.and_then(|p| labels.play(p)),
+        current_play_label: open.and_then(|p| labels.variations(p)),
         current_planned_duration_secs: current.plan.duration_secs,
         next_item_title: active
             .entries

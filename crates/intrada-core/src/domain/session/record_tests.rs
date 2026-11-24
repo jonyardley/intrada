@@ -1694,6 +1694,24 @@ fn practising_p_in_g_and_a() -> (Model, String) {
 }
 
 #[test]
+fn the_variation_chip_leaves_the_key_to_its_own_chip() {
+    let (mut m, id) = practising_p_in_g_and_a();
+    m.items
+        .iter_mut()
+        .find(|i| i.id == "p")
+        .expect("p")
+        .variation_ids = vec!["v-dot".to_string()];
+    assert_eq!(active_view(&m).current_key, key("G major"));
+    assert_eq!(active_view(&m).current_play_label, None, "a fresh play");
+
+    switch(&mut m, &id, key("A major"), vec!["v-dot".to_string()], 60);
+
+    let view = active_view(&m);
+    assert_eq!(view.current_key_label.as_deref(), Some("A major"));
+    assert_eq!(view.current_play_label.as_deref(), Some("Dotted"));
+}
+
+#[test]
 fn naming_the_first_key_over_an_unkeyed_play_does_not_split_it() {
     let (mut m, id) = practising_p_in_g_and_a();
     switch(&mut m, &id, None, vec!["v-dot".to_string()], 60);

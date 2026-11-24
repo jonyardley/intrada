@@ -83,7 +83,7 @@ pub struct ActiveSessionView {
     /// `None` only when `current_key_choices` is empty.
     pub current_key_label: Option<String>,
     pub current_variation_ids: Vec<String>,
-    /// The open play's label; `None` for the whole item, plain.
+    /// The open play's variations, named; `None` when it has none.
     pub current_play_label: Option<String>,
     pub current_planned_duration_secs: Option<u32>,
     pub next_item_title: Option<String>,
