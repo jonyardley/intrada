@@ -34,7 +34,8 @@ review rule there.
    reviewer reads the assertion.
 4. **Out-of-scope findings** are fixed here, or listed under "Not fixed" in
    the review comment with one line of why. Only one with horizon now or next
-   becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
+   becomes an issue, through `just issue-open` and `just epic-add EPIC N`, run
+   from a worktree, since the main checkout refuses them as scripts. The
    review comment ends `Deferred items tracked: #N` or `none`.
 5. **Open** a draft with `just pr-open` once the branch is pushed (it
    refuses an unpushed branch), never a bare `gh pr create`, with the
