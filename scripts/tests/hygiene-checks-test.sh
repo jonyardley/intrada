@@ -993,6 +993,8 @@ expect 0 "a fixed lesson back in the lessons file counts" fixes_say "Fixes that 
 expect 0 "a fix that came back is named" fixes_say "  2026-11-09, #9: a fix that did not hold"
 write_lessons_with "a rule." "2026-11-07, #7: a fix seen before it was made (seen again 2)."
 expect 0 "a copy at the fixed line's own count does not count" fixes_say "Fixes that did not hold: 1 of 4 fixed lessons"
+write_lessons_with "a rule." "2026-11-07, #7: a fix seen before it was made (issue #70) (seen again 3)."
+expect 0 "a fix back with an issue beside its count counts" fixes_say "Fixes that did not hold: 2 of 4 fixed lessons"
 
 mv "$lessons_archive" "$work/archive-away.md"
 lessons_no_archive() { grep -q "no $lessons_archive to read" <<<"$(lessons_check 2>&1 || true)"; }

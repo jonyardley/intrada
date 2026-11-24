@@ -23,13 +23,14 @@ for f in "$file" "$archive"; do
 done
 
 # A lesson is compared from its date on, so the "fix:" or "issue:" in front of
-# an archive line and its count and full stop are set aside.
+# an archive line, its count, its "(issue #N)" and full stop are set aside.
 awk -v lessons="$file" -v archive="$archive" '
   function norm(s) {
     if (match(s, /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9], /)) s = substr(s, RSTART)
     sub(/[ \t]+$/, "", s)
     sub(/\.$/, "", s)
     sub(/ \(seen again [0-9]+\)$/, "", s)
+    sub(/ \(issue #[0-9]+\)$/, "", s)
     sub(/\.$/, "", s)
     return s
   }
