@@ -6,6 +6,8 @@ description: The route from finished code to merge in intrada, in order (retro, 
 ## The route
 
 Every PR follows these steps in order, whatever order a brief gives (#2921).
+Point at a step by its name, never its number, which goes stale when the
+route changes.
 Each spawn names its model and effort from the role table in
 `~/.claude/CLAUDE.md`; rounds, and who fixes findings, follow the global
 review rule there.
