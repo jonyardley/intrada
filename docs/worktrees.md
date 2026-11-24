@@ -106,6 +106,9 @@ tool that reads and is denied anyway. It allows:
 - the usual file and text commands, `sed` without an in-place flag, `sort`
   without `-o`, `find` without `-delete` or `-exec`, and `mktemp` into the
   temp folder;
+- loops, `case` and pauses: `for`, `while`, `case` (only what follows each
+  pattern's `)` runs), `sleep`, `seq`, `wait`, `exit`, `return`, `break`,
+  `continue` and `shift`;
 - read-only `git`, including `git branch` with no name or only listing flags,
   and no `--output` to a file in the checkout; `rtk read`;
 - `just` limited to `worktrees`, `worktree-status`, `status`, `worktree-new`,
@@ -121,8 +124,11 @@ A redirection is a write unless it goes to `/dev/null`, to a path main's
 `.gitignore` excludes (runtime state such as a ledger, spelled plainly), or to
 a path outside every checkout, such as the scratchpad or `/tmp`. A script in a
 temp folder outside every checkout, run by absolute path with `python3`,
-`perl` or `ruby`, is not a build where it runs; inline code (`-c`, `-e`) is
-still judged.
+`perl`, `ruby`, `bash`, `sh` or `zsh`, is not a build where it runs; inline
+code (`-c`, `-e`), a shell reading standard input (`-s`), a shell flag other
+than `-e`, `-u`, `-x`, `-v` or `-n`, and `BASH_ENV`, `ENV` or `ZDOTDIR` in
+the command are still judged. Such a script can still do anything in main, by
+design.
 
 The guard follows a literal `cd` or `pushd`, and a literal `git -C <path>` for
 that one part; a subshell's `cd` ends with the subshell. A `cd` it cannot
