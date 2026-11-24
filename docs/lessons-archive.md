@@ -2,7 +2,7 @@
 
 > Lessons pruned from [`lessons.md`](lessons.md), kept so their insight is not
 > lost (#2801). No session start prints this file; search it when a problem
-> looks familiar. The retro, the cap and the monthly prune append here, newest
+> looks familiar. The retro and the cap append here, newest
 > last, each line as it stood, with "fix:" and the changed file in front when
 > the retro fixed it (#2934), "issue:" when its issue closed, or "rule:" and the
 > rule's file when it became one.
