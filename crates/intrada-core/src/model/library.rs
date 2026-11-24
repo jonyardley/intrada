@@ -210,7 +210,7 @@ pub(crate) fn saved_mark_caption(latest_score: Option<u8>) -> String {
 
 // ── Test fixtures ─────────────────────────────────────────────────────
 // One place per many-field view type, composed with struct update, so a new
-// field costs one edit rather than one per call site (CLAUDE.md, Testing).
+// field costs one edit rather than one per call site (code-and-tests.md, Tests).
 
 #[cfg(test)]
 impl LibraryItemView {
