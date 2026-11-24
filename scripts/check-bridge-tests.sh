@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 core="${BRIDGE_CORE_ROOT:-crates}"
-model="${BRIDGE_VIEWMODEL:-crates/intrada-core/src/model.rs}"
+model="${BRIDGE_VIEWMODEL:-crates/intrada-core/src/model/view_model.rs}"
 tests="${BRIDGE_TESTS_ROOT:-ios/IntradaTests}"
 allowlist="${BRIDGE_ALLOWLIST:-scripts/bridge-tests-allowlist.txt}"
 
