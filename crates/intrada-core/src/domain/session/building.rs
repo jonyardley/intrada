@@ -33,6 +33,19 @@ pub(crate) fn opening_key(item: &Item) -> Option<Key> {
     }
 }
 
+/// The key a play or plan with no key reads as: the written key, else the
+/// item's first key; storage keeps `None` (#2788).
+pub(crate) fn reads_as(item: &Item, key: Option<Key>) -> Option<Key> {
+    key.or_else(|| opening_key(item))
+}
+
+pub(crate) fn item_reads_as(model: &Model, item_id: &str, key: Option<Key>) -> Option<Key> {
+    match model.items.iter().find(|i| i.id == item_id) {
+        Some(item) => reads_as(item, key),
+        None => key,
+    }
+}
+
 /// The way a plan starts in, so "Last time" is offered over it as over a
 /// plain play.
 pub(crate) fn opening_way(model: &Model, item_id: &str) -> PlayWay {
@@ -197,7 +210,7 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
             .any(|v| &v.id == id && v.deleted_at.is_none())
     };
     let way = PlayWay {
-        key: play.key,
+        key: item_reads_as(model, item_id, play.key),
         variation_ids: play
             .variation_ids
             .iter()
@@ -205,7 +218,8 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
             .cloned()
             .collect(),
     };
-    (way != PlayWay::default() && way != opening_way(model, item_id)).then_some(way)
+    (!way.is_same_way(&PlayWay::default()) && !way.is_same_way(&opening_way(model, item_id)))
+        .then_some(way)
 }
 
 pub(super) fn set_session_length(
@@ -304,7 +318,11 @@ fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
                 suggested.item_type.clone(),
                 position,
             );
-            entry.plan.key = opening_way(model, &suggested.item_id).key;
+            entry.plan.key = model
+                .items
+                .iter()
+                .find(|i| i.id == suggested.item_id)
+                .and_then(opening_key);
             entry.plan.group_id = Some(group_id.clone());
             building.entries.push(entry);
         }

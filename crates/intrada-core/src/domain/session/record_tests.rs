@@ -1673,10 +1673,69 @@ fn an_unkeyed_play_on_a_piece_with_no_written_key_reads_as_its_first_key() {
 
     switch(&mut m, &id, None, vec!["v-dot".to_string()], 60);
 
-    assert_eq!(
-        active_view(&m).current_key_label.as_deref(),
-        Some("G major")
+    let view = active_view(&m);
+    assert_eq!(view.current_key, key("G major"));
+    assert_eq!(view.current_key_label.as_deref(), Some("G major"));
+}
+
+fn practising_p_in_g_and_a() -> (Model, String) {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
     );
+    let id = entry_id(&m, 0);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    (m, id)
+}
+
+#[test]
+fn naming_the_first_key_over_an_unkeyed_play_does_not_split_it() {
+    let (mut m, id) = practising_p_in_g_and_a();
+    switch(&mut m, &id, None, vec!["v-dot".to_string()], 60);
+    assert_eq!(entries(&m)[0].plays.len(), 2);
+
+    switch(&mut m, &id, key("G major"), vec!["v-dot".to_string()], 90);
+
+    assert_eq!(entries(&m)[0].plays.len(), 2);
+}
+
+#[test]
+fn an_unkeyed_finish_row_on_a_piece_with_no_written_key_reads_as_its_first_key() {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    let entry_id = entry_id(&m, 0);
+    send(
+        &mut m,
+        SessionEvent::SetEntryKey {
+            entry_id,
+            key: None,
+        },
+    );
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    assert_eq!(active(&m).current_entry().plays[0].key, None);
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    let row = finish_row(&m);
+    assert_eq!(row.key, key("G major"));
+    assert_eq!(row.label, "G major");
 }
 
 #[test]

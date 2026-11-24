@@ -73,12 +73,14 @@ pub struct ActiveSessionView {
     pub current_item_started_at: String,
     pub entries: Vec<SetlistEntryView>,
     /// How the open play is being played, so the player can show it (#2246).
-    /// Spelt as its row in `current_key_choices`; the written key is `None`.
+    /// Spelt as its row in `current_key_choices`; the written key is `None`,
+    /// and an unkeyed play on an item with none reads as its first key.
     pub current_key: Option<Key>,
     /// The key chip's rows: one is shown as its name, two or more as a chip
     /// (#2788); empty when the item keeps no key.
     pub current_key_choices: Vec<KeyChoiceView>,
-    /// The chip's text: the row `current_key` matches, `None` when none does.
+    /// The chip's text: the row `current_key` matches, else the first row;
+    /// `None` only when `current_key_choices` is empty.
     pub current_key_label: Option<String>,
     pub current_variation_ids: Vec<String>,
     /// The open play's label; `None` for the whole item, plain.

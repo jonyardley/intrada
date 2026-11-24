@@ -72,6 +72,22 @@ pub struct PlayWay {
     pub variation_ids: Vec<String>,
 }
 
+impl PlayWay {
+    pub(crate) fn is_same_way(&self, other: &PlayWay) -> bool {
+        same_way(self.key, &self.variation_ids, other)
+    }
+}
+
+/// The same key in either spelling, and set of variations, in any order.
+fn same_way(key: Option<Key>, variation_ids: &[String], way: &PlayWay) -> bool {
+    let sorted = |ids: &[String]| {
+        let mut ids = ids.to_vec();
+        ids.sort();
+        ids
+    };
+    Key::same_or_written(key, way.key) && sorted(variation_ids) == sorted(&way.variation_ids)
+}
+
 impl Play {
     pub fn opened(way: PlayWay, started_at: DateTime<Utc>) -> Self {
         Self {
@@ -94,18 +110,15 @@ impl Play {
         self.variation_ids.is_empty()
     }
 
-    /// The same key in either spelling, and set of variations, in any order.
     pub fn is_played(&self, way: &PlayWay) -> bool {
-        let sorted = |ids: &[String]| {
-            let mut ids = ids.to_vec();
-            ids.sort();
-            ids
-        };
-        let same_key = match (self.key, way.key) {
-            (Some(open), Some(named)) => open.same_key(&named),
-            (open, named) => open == named,
-        };
-        same_key && sorted(&self.variation_ids) == sorted(&way.variation_ids)
+        same_way(self.key, &self.variation_ids, way)
+    }
+
+    pub(crate) fn way(&self) -> PlayWay {
+        PlayWay {
+            key: self.key,
+            variation_ids: self.variation_ids.clone(),
+        }
     }
 
     /// A play nobody practised: no mark and under five seconds. Time alone is
@@ -712,7 +725,7 @@ mod summary;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use building::{last_time, opening_way};
+pub(crate) use building::{item_reads_as, last_time, opening_way, reads_as};
 pub use record::Away;
 pub(crate) use record::*;
 pub(crate) use saved::{forget_restored_delete, undo_offer};

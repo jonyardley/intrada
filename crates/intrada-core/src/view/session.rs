@@ -7,8 +7,8 @@ use crate::domain::item::{Item, ItemKind};
 use crate::domain::key::Key;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
-    self as session, ActiveSession, ClickState, EntryStatus, Play, PlayWay, PracticeSession,
-    ReflectionDraft, SetlistEntry, SummarySession,
+    self as session, reads_as, ActiveSession, ClickState, EntryStatus, Play, PlayWay,
+    PracticeSession, ReflectionDraft, SetlistEntry, SummarySession,
 };
 use crate::domain::tempo_words::{self, TempoWords};
 use crate::domain::variation::Variation;
@@ -310,11 +310,12 @@ fn spelt_as(item: &Item, choices: &[KeyChoiceView], key: Option<Key>) -> Option<
 
 /// The builder's Key row: listed while there are two keys to choose from.
 pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysView> {
-    let keys = key_choices(item, entry.plan.key.as_slice());
+    let planned = reads_as(item, entry.plan.key);
+    let keys = key_choices(item, planned.as_slice());
     if keys.len() < 2 {
         return None;
     }
-    let current = spelt_as(item, &keys, entry.plan.key);
+    let current = spelt_as(item, &keys, planned);
     let current_label = keys
         .iter()
         .find(|k| k.key == current)
@@ -348,15 +349,16 @@ pub fn fill_finish_choices(
                 .iter()
                 .find(|w| w.play_id == play.id)
                 .map_or_else(
-                    || PlayWay {
-                        key: play.key,
-                        variation_ids: play.variation_ids.clone(),
-                    },
+                    || play.way(),
                     |w| PlayWay {
                         key: w.key,
                         variation_ids: w.variation_ids.clone(),
                     },
                 )
+        })
+        .map(|way| PlayWay {
+            key: reads_as(item, way.key),
+            ..way
         })
         .collect();
     let recorded: Vec<Key> = ways.iter().filter_map(|w| w.key).collect();
@@ -555,6 +557,7 @@ pub fn build_active_session_view(
         item_index
             .get(current.plan.item_id.as_str())
             .map_or((open_key, Vec::new()), |item| {
+                let open_key = reads_as(item, open_key);
                 let choices = key_choices(item, open_key.as_slice());
                 (spelt_as(item, &choices, open_key), choices)
             });

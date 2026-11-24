@@ -1,8 +1,9 @@
 use crate::analytics::LocalClock;
 use crate::domain::first_run::build_first_run_view;
 use crate::domain::item::ItemKind;
+use crate::domain::key::Key;
 use crate::domain::profile::build_profile_view;
-use crate::domain::session::SessionStatus;
+use crate::domain::session::{item_reads_as, last_time, opening_way, PlayWay, SessionStatus};
 use crate::model::{
     BuildingSetlistView, EntryVariationsView, LimitsView, Model, PhotoRecognitionView,
     SetlistBlockView, ViewModel,
@@ -10,8 +11,8 @@ use crate::model::{
 use crate::view::cache::ProjectionKey;
 use crate::view::library::{library_count_line, matches_query};
 use crate::view::session::{
-    build_active_session_view, build_blocks, build_summary_view, entry_to_view, picker_variations,
-    plan_tags,
+    build_active_session_view, build_blocks, build_summary_view, entry_to_view, last_time_view,
+    picker_variations, plan_tags,
 };
 
 pub mod cache;
@@ -114,13 +115,16 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .iter()
                 // Decided 2026-10-04 (#2249, spec): an offer only while nothing is planned.
                 .filter(|entry| {
+                    let item_id = &entry.plan.item_id;
                     entry.plan.variation_ids.is_empty()
-                        && entry.plan.key
-                            == crate::domain::session::opening_way(model, &entry.plan.item_id).key
+                        && Key::same_or_written(
+                            item_reads_as(model, item_id, entry.plan.key),
+                            opening_way(model, item_id).key,
+                        )
                 })
                 .filter_map(|entry| {
-                    let way = crate::domain::session::last_time(model, &entry.plan.item_id)?;
-                    Some(crate::view::session::last_time_view(entry, way, &labels))
+                    let way = last_time(model, &entry.plan.item_id)?;
+                    Some(last_time_view(entry, way, &labels))
                 })
                 .collect();
             let entry_keys = building
@@ -177,14 +181,17 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 &model.practice_defaults,
             );
             // Offered only before the musician has chosen a way (#2249).
-            let opening = crate::domain::session::opening_way(model, &current_entry.plan.item_id);
-            let played_plain = current_entry
-                .open_play()
-                .is_some_and(|p| p.is_played(&opening));
-            view.record.last_time =
-                crate::domain::session::last_time(model, &current_entry.plan.item_id)
-                    .filter(|_| played_plain && active.reflection.is_none())
-                    .map(|way| crate::view::session::last_time_view(current_entry, way, &labels));
+            let item_id = &current_entry.plan.item_id;
+            let played_plain = current_entry.open_play().is_some_and(|p| {
+                PlayWay {
+                    key: item_reads_as(model, item_id, p.key),
+                    ..p.way()
+                }
+                .is_same_way(&opening_way(model, item_id))
+            });
+            view.record.last_time = last_time(model, item_id)
+                .filter(|_| played_plain && active.reflection.is_none())
+                .map(|way| last_time_view(current_entry, way, &labels));
             if let (Some(finish), Some(item), Some(draft)) = (
                 view.record.finish.as_mut(),
                 model

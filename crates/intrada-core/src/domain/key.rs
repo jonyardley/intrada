@@ -119,6 +119,14 @@ impl Key {
         self.pitch_class() == other.pitch_class() && self.mode == other.mode
     }
 
+    /// `same_key` with `None`, the written key, agreeing only with itself.
+    pub(crate) fn same_or_written(a: Option<Key>, b: Option<Key>) -> bool {
+        match (a, b) {
+            (Some(a), Some(b)) => a.same_key(&b),
+            (a, b) => a == b,
+        }
+    }
+
     /// The tonic as stored and as the wheel names it: "C", "Eb", "F#".
     pub fn spelling(&self) -> String {
         let sign = match self.accidental {
