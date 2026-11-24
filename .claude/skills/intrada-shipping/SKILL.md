@@ -34,7 +34,8 @@ review rule there.
    the review comment with one line of why. Only one with horizon now or next
    becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
    review comment ends `Deferred items tracked: #N` or `none`.
-5. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
+5. **Open** a draft with `just pr-open` once the branch is pushed (it
+   refuses an unpushed branch), never a bare `gh pr create`, with the
    body below, written to the scratchpad with the Write tool and passed as
    text, `"$(cat <scratchpad>/body.md)"`; the review summary goes on verbatim
    as the first comment, naming the agent.
