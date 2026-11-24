@@ -13,7 +13,7 @@ enforce loses its prose in the same change.
 | You are | Do |
 |---|---|
 | Jon, picking the next unit | `just status` in the main checkout, not a session; open a session there with the epic's next child and one sentence |
-| Starting a unit of work | `just claim N`. It refuses, naming the other branch, when the issue is claimed or an open PR references it; otherwise it labels the issue and moves the board to In progress |
+| Starting a unit of work | Make the worktree first, then `just claim N` from inside it, since the main checkout refuses it. It refuses, naming the other branch, when the issue is claimed or an open PR references it; otherwise it labels the issue and moves the board to In progress |
 | Asked "what's next" or "what can run in parallel" | Answer from `just status` and the session-start claims list, with no further reads (#1836) |
 | Jon, losing track of the worktrees | `just worktree-status`: whose move each one is, and how many are safe to remove (#2783) |
 | About to start a third fix on one issue | Stop: two corrections on one point mean asking whether the approach is wrong, and `just claim` refuses a third claim at two merged PRs titled with the issue (#1890, #2593) |
@@ -101,7 +101,9 @@ call or unexplained bug counts only when its work is on that list (#1985).
 | Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit and wait for Jon's approval, unless it is the next Tier 2 child of an epic whose body names it, off the sensitive surfaces, naming no choice Jon has not made |
 | Holding a Tier 1 fix | No plan comment; build it |
 
-Match ceremony to scope; if unsure, go one tier lighter and drift up.
+Match ceremony to scope; if unsure, go one tier lighter and drift up. Before
+researching or planning a topic, search issues and merged PRs for it, since
+it may have shipped already (#2934).
 
 - **Tier 1, just do it**: bug fixes, copy, style, renames, lint, one-file
   refactors, docs.
@@ -156,6 +158,8 @@ Context length sets the bill (#1985, #1849).
   and have research agents mark observed against inferred.
 - **A fan-out, a Workflow or a full-repo scan** is costed before it runs, and
   only when Jon asked.
+- **Before editing a shared script**, check `just status` for in-flight work
+  that touches it, or the clash shows only at the merge (#2198).
 
 **Build and test.** `just check` and `just ios-test` skip a green HEAD
 (delete `target/.check-stamp` or `ios/build/.ios-test-stamp` to force), and
@@ -201,7 +205,7 @@ back on. Red left standing hides the next real break (#2747).
 |---|---|
 | Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed, with the number read once the draft opens, never guessed; a `/ship` retro fix is recorded in the lessons archive instead |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |
-| Wanting session costs | `just usage`, or `just usage 14` for a fortnight |
+| Wanting session costs | `just usage`, or `just usage 14` for a fortnight; it ends with how many fixed lessons came back, the fixes that did not hold (#2968) |
 | Switching a user hook off or on | Delete its line from `hooks` in `~/.claude/settings.json`, leaving the script; restore it from the dated backup in `~/.claude/backups/` (#1990) |
 
 The numbers are **speed** (Jon's time from claim to merged PR), **rework**
@@ -212,7 +216,10 @@ A rule lives in one layer: a gate (whose prose then goes), `CLAUDE.md` (near
 memory (which does not load into subagents) or a doc. A setting that hurts
 only its author is personal; anything else is checked in. When a hook's
 threshold or name changes, grep the docs for it. Every user hook fails open
-and ships with a test battery that is mutation-tested, not trusted green. Edit
+and ships with a test battery that is mutation-tested, not trusted green: each
+mutation gets a fixture where only the mutated line decides, since a shadowed
+line stays green (#2866), and for a small fix, reverting it and rerunning the
+self-test is the cheapest mutation (#2845). Edit
 rule files with `/memory`; tidy permission prompts with
 `/fewer-permission-prompts`.
 
@@ -235,8 +242,8 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | `just worktree-done` refused | The PR is not merged, the tree has changes, or a commit is not in the merged PR; the message names which |
 | `gh pr merge` or a push to main refused | Merging is Jon's, on GitHub |
 | Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it (#2812) |
-| `xcodebuild` refused | Use the `just` recipe |
-| A worktree session's command refused as too complex | A loop, a compound command, or text that looks like git (a `.github` path) tripped the guard; split it into plain separate commands |
+| `xcodebuild` refused | Use the `just` recipe; for the installed version, `-version` is refused too, so read Xcode's Info.plist with `plutil -p` |
+| A worktree session's command refused as too complex | A loop, a compound command, or text that looks like git (a `.github` path) tripped the guard; split it into plain separate commands. A loop over git, such as a mutation run, goes in a scratch script, written before the first try |
 | Waiting on the simulator lock | Another run holds it; it queues |
 | A dash on a changed line | Fix the line |
 | `just claim` refused | The issue is taken or has two merged PRs (#1890): pick another, finish that PR, or rethink the approach |

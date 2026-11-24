@@ -89,4 +89,14 @@ case "$lessons" in
   *) refuse "could not compare the lessons files (git diff exited $lessons)." ;;
 esac
 
+# A printed lesson waiting on a closed issue stayed printed until the cap
+# (#2968), so archive it now: the one this PR closes, or one closed already.
+waits="$(awk '/^## Lessons$/ { on = 1; next } on && /^- / && match($0, /\(issue #[0-9]+\)/) { print substr($0, RSTART + 8, RLENGTH - 9) }' docs/lessons.md | sort -un)" ||
+  refuse "could not read docs/lessons.md."
+for n in $waits; do
+  [ "$n" != "$issue" ] || refuse "a lesson in docs/lessons.md waits on #$n, which this PR closes; archive it with \"issue:\" in front."
+  state="$(gh issue view "$n" --json state --jq .state 2>&1)" || refuse "could not read #$n, which a lesson waits on ($state)."
+  [ "$state" != CLOSED ] || refuse "a lesson in docs/lessons.md waits on #$n, which has closed; merge main first, and if it is still there, archive it with \"issue:\" in front."
+done
+
 gh pr ready "$pr"

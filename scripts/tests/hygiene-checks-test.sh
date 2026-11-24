@@ -974,6 +974,28 @@ write_lessons_with "a rule." "2026-11-02, #4: a lesson that became a rule."
 expect 1 "a lesson archived as a rule" lessons_check
 write_lessons_with "a rule." "2026-11-02, #4: a rule." "2026-11-01, #1: an archived lesson, said again."
 expect 0 "lessons that only share an archived line's start or end" lessons_check
+
+# ── Fixes that did not hold (#2968) ────────────────────────────────────────
+fixes_say() {
+  local out
+  out=$(LESSONS_FILE="$lessons" LESSONS_ARCHIVE="$lessons_archive" bash "$repo_root/scripts/lesson-fixes.sh" 2>&1) || return 1
+  grep -qF -- "$1" <<<"$out"
+}
+printf -- '- fix: docs/a.md, 2026-11-06, #6: a fix that held.\n' >>"$lessons_archive"
+printf -- '- fix: docs/b.md, 2026-11-07, #7: a fix seen before it was made (seen again 2).\n' >>"$lessons_archive"
+printf -- '- fix: docs/c.md, 2026-11-08, #8: a fix archived again after it failed.\n' >>"$lessons_archive"
+printf -- '- issue: 2026-11-08, #8: a fix archived again after it failed (seen again 1).\n' >>"$lessons_archive"
+write_lessons_with "a rule." "2026-11-06, #6: a fix that held, said differently (seen again 1)."
+expect 0 "a fix archived again with a higher count counts; one that held and one counted before its fix do not" fixes_say "Fixes that did not hold: 1 of 3 fixes"
+printf -- '- fix: docs/d.md, 2026-11-09, #9: a fix that did not hold.\n' >>"$lessons_archive"
+write_lessons_with "a rule." "2026-11-09, #9: a fix that did not hold (seen again 1)."
+expect 0 "a fixed lesson back in the lessons file counts" fixes_say "Fixes that did not hold: 2 of 4 fixes"
+expect 0 "a fix that came back is named" fixes_say "  2026-11-09, #9: a fix that did not hold"
+write_lessons_with "a rule." "2026-11-07, #7: a fix seen before it was made (seen again 2)."
+expect 0 "a copy at the fixed line's own count does not count" fixes_say "Fixes that did not hold: 1 of 4 fixes"
+write_lessons_with "a rule." "2026-11-07, #7: a fix seen before it was made (issue #70) (seen again 3)."
+expect 0 "a fix back with an issue beside its count counts" fixes_say "Fixes that did not hold: 2 of 4 fixes"
+
 mv "$lessons_archive" "$work/archive-away.md"
 lessons_no_archive() { grep -q "no $lessons_archive to read" <<<"$(lessons_check 2>&1 || true)"; }
 expect 0 "no archive, named in the message" lessons_no_archive
