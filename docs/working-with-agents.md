@@ -220,7 +220,11 @@ threshold or name changes, grep the docs for it. Every user hook fails open
 and ships with a test battery that is mutation-tested, not trusted green: each
 mutation gets a fixture where only the mutated line decides, since a shadowed
 line stays green (#2866), and for a small fix, reverting it and rerunning the
-self-test is the cheapest mutation (#2845). Edit
+self-test is the cheapest mutation (#2845). A self-test's text check is a
+substring match, so a printed command that is a prefix of another passes on
+the longer one alone; match the whole line, or run what is printed through
+the fake and check what it shows, with the fake printing what the real tool
+prints for each form of the command (#2969). Edit
 rule files with `/memory`; tidy permission prompts with
 `/fewer-permission-prompts`.
 
