@@ -69,12 +69,6 @@ claimed=$(gh issue list --repo "$repo" --label in-flight --state open \
 # would read as "no release in flight", which is the silent-wrong this script
 # exists to remove, and swallowing the tags call took the whole script down
 # with it under `set -e`.
-milestones_error=""
-if ! milestones=$(gh api "repos/$repo/milestones?state=open" 2>&1); then
-  milestones_error=$(printf '%s' "$milestones" | head -1)
-  milestones='[]'
-fi
-
 # A failed read joins gh's message onto the JSON body with no newline (#2806),
 # so the reason is what follows the last "gh: "; with none, the first line stands.
 gh_reason() {
@@ -83,6 +77,12 @@ gh_reason() {
   [ -n "$reason" ] || reason=$(printf '%s' "$1" | head -1)
   printf '%s' "$reason"
 }
+
+milestones_error=""
+if ! milestones=$(gh api "repos/$repo/milestones?state=open" 2>&1); then
+  milestones_error=$(gh_reason "$milestones")
+  milestones='[]'
+fi
 
 # The epics are the backlog's containers (#1968): the next slice is picked from
 # one of them, not from the flat list of open issues. GitHub caps an epic at
@@ -116,7 +116,7 @@ if tags=$(gh api "repos/$repo/tags?per_page=100" --jq '.[].name' 2>&1); then
   last_tag=$(printf '%s\n' "$tags" |
     grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
 else
-  tags_error=$(printf '%s' "$tags" | head -1)
+  tags_error=$(gh_reason "$tags")
 fi
 
 # Interpolated into a line the reader trusts, so anything but a count is
@@ -142,7 +142,7 @@ if drafts=$(gh api "repos/$repo/releases?per_page=100" \
       ;;
   esac
 else
-  drafts_error=$(printf '%s' "$drafts" | head -1)
+  drafts_error=$(gh_reason "$drafts")
   drafts=""
 fi
 
