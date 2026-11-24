@@ -63,8 +63,10 @@ labels="$(printf '%s' "$issue" | jq -r '[.labels[].name] | join(", ")')"
 epic_number="$(printf '%s' "$issue" | jq -r '.parent.number // empty')"
 epic_title="$(printf '%s' "$issue" | jq -r '.parent.title // empty')"
 
-claim_body="$(gh issue view "$number" --repo "$repo" --json comments -q \
-  '[.comments[] | select(.body | test("^Claimed"; "i"))] | last | .body // empty')"
+# Only the owner's claim counts, as in claim-issue.sh: anyone can comment on a
+# public repository.
+claim_body="$(gh issue view "$number" --repo "$repo" --json comments |
+  jq -r --arg owner "${repo%%/*}" '[.comments[] | select(.author.login == $owner and (.body | test("^Claimed"; "i")))] | last | .body // empty')"
 claimed_branch="$(claim_branch_from_body "$claim_body")"
 
 ahead="$(git rev-list --count "origin/main..$branch" 2>/dev/null || true)"
@@ -85,18 +87,39 @@ fi
 
 files="$(git diff --name-only "origin/main...$branch" | sed -n '1,12p')"
 
-pr="$(gh pr list --repo "$repo" --head "$branch" --state all --json number,state,isDraft,url \
-  -q '([.[] | select(.state == "OPEN")] + .) | .[0] // empty')"
+prs="$(gh pr list --repo "$repo" --head "$branch" --state all --json number,state,isDraft,url)"
+pr="$(printf '%s' "$prs" | jq -c '([.[] | select(.state == "OPEN")] + .) | .[0] // empty')"
+merged="$(printf '%s' "$prs" | jq -r 'any(.[]; .state == "MERGED")')"
+
+# Only an issue claimed on this branch, with no merged PR, carries on here (#2969).
+resume=""
+elsewhere=""
+if [ -n "$claimed_branch" ] && [ "$claimed_branch" = "$branch" ] && [ "$merged" != "true" ]; then
+  resume=1
+elif [ -n "$claimed_branch" ] && [ "$claimed_branch" != "$branch" ]; then
+  elsewhere=1
+fi
 
 # ── the opener ───────────────────────────────────────────────────────────────
 
-echo "Paste this into a new session in the main checkout:"
+if [ -n "$resume" ]; then
+  echo "Once this session ends, paste this into a new session in this worktree:"
+elif [ -n "$elsewhere" ]; then
+  echo "The issue is claimed on branch $claimed_branch, not this one. Work in that"
+  echo "branch's worktree (git worktree list names it), or ask the owner before"
+  echo "taking it over. Paste this into a session started there:"
+else
+  echo "Start from fresh main: in the main checkout run"
+  echo "  just worktree-new <name>"
+  echo "then start a session inside the new worktree with the command it prints,"
+  echo "and paste this there:"
+fi
 echo
 echo '```'
 echo "Pick up #$number in intrada: $title"
 echo
 echo "Read first, the plan comment is the brief:"
-echo "  gh issue view $number --comments"
+echo "  just issue $number"
 [ -n "$epic_number" ] && echo "  epic #$epic_number: $epic_title"
 [ -n "$labels" ] && echo "  labels: $labels"
 echo "  issue is $state"
@@ -105,30 +128,42 @@ echo "Where it stands"
 if [ -n "$claimed_branch" ]; then
   echo "  claimed on branch $claimed_branch"
 else
-  echo "  not claimed yet, so run just claim $number first"
+  echo "  not claimed yet"
 fi
-echo "  branch $branch, $position, $pushed"
-if [ -n "$pr" ]; then
-  pr_number="$(printf '%s' "$pr" | jq -r '.number')"
-  pr_state="$(printf '%s' "$pr" | jq -r 'if .isDraft then "draft" else (.state | ascii_downcase) end')"
-  echo "  PR #$pr_number, $pr_state: $(printf '%s' "$pr" | jq -r '.url')"
-else
-  echo "  no PR yet"
-fi
-if [ -n "$files" ]; then
-  echo
-  echo "Files already touched on this branch"
-  printf '%s\n' "$files" | sed 's/^/  /'
+if [ -n "$resume" ]; then
+  echo "  branch $branch, $position, $pushed"
+  if [ -n "$pr" ]; then
+    pr_number="$(printf '%s' "$pr" | jq -r '.number')"
+    pr_state="$(printf '%s' "$pr" | jq -r 'if .isDraft then "draft" else (.state | ascii_downcase) end')"
+    echo "  PR #$pr_number, $pr_state: $(printf '%s' "$pr" | jq -r '.url')"
+  else
+    echo "  no PR yet"
+  fi
+  if [ -n "$files" ]; then
+    echo
+    echo "Files already touched on this branch"
+    printf '%s\n' "$files" | sed 's/^/  /'
+  fi
 fi
 echo
-if [ "$claimed_branch" != "$branch" ] && [ "$ahead" = "0" ]; then
-  echo "Make your own worktree with just worktree-new <name> from the main"
-  echo "checkout, then start the session inside it with the command it prints:"
-  echo "  cd <worktree> && claude"
-else
+if [ -n "$resume" ]; then
   echo "The work is in this worktree, so carry on there rather than making a new"
   echo "one, which would branch fresh from origin/main and leave it behind:"
   echo "  cd $root && claude"
   echo "Its lease releases when this session ends, so start once it has."
+elif [ -n "$elsewhere" ]; then
+  echo "This session is in the worktree for branch $claimed_branch, where the"
+  echo "work is; if that branch has no worktree, ask the owner before starting."
+elif [ -z "$claimed_branch" ]; then
+  echo "This session is in a fresh worktree from main. Claim the issue first:"
+  echo "  just claim $number"
+else
+  # The claim names this branch, whose PR has merged, so `just claim` in the
+  # new worktree would refuse: the fresh claim is the one claim-issue.sh asks for.
+  echo "This session is in a fresh worktree from main. The claim still names the"
+  echo "merged branch $claimed_branch, so first post a fresh comment on the issue:"
+  echo "  Claimed: branch \`<new-branch>\`"
+  echo "naming this worktree's branch, then run:"
+  echo "  just claim $number"
 fi
 echo '```'

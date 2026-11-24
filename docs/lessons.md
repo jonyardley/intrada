@@ -31,7 +31,5 @@
 
 ## Lessons
 
-- 2026-11-24, #2747: `just handover` run in a merged branch's worktree told the next session to carry on in that worktree; write the opener for a new issue from fresh main, never from the old branch (issue #2969).
-- 2026-11-24, #2747: `gh issue view N --comments` prints only the comments, so on an issue with none it printed nothing and exited cleanly; read the body with `gh issue view N` as well (issue #2969).
 - 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (issue #2973) (seen again 4).
 - 2026-11-24, #2747: the worktree guard refused compound commands, a loop, and one naming a `.github` path that ran no git; split them into plain separate commands (issue #2976) (seen again 2).

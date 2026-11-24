@@ -57,7 +57,18 @@ esac
 FAKE
 chmod +x "$work/bin/gh"
 
+# The opener's read is `just issue N`, which runs issue-read.sh against the
+# fake gh, so the read test sees what the real recipe prints.
+cat >"$work/bin/just" <<FAKE
+#!/usr/bin/env bash
+set -euo pipefail
+[ "\$1" = issue ] || { echo "unexpected just call: \$*" >&2; exit 1; }
+exec bash "$work/repo/scripts/issue-read.sh" "\$2"
+FAKE
+chmod +x "$work/bin/just"
+
 cp "$root/scripts/handover.sh" "$work/repo/scripts/handover.sh"
+cp "$root/scripts/issue-read.sh" "$work/repo/scripts/issue-read.sh"
 cp "$root/scripts/lib/claim-branch.sh" "$work/repo/scripts/lib/claim-branch.sh"
 script="$work/repo/scripts/handover.sh"
 
@@ -68,17 +79,40 @@ cat >"$work/fixtures/issue_1986.json" <<'JSON'
   "url": "https://github.com/jonyardley/intrada/issues/1986",
   "labels": [{ "name": "harness" }, { "name": "tier-2" }],
   "parent": { "number": 1967, "title": "Spend less on the harness" },
-  "comments": [{ "body": "Claimed: branch `cold-context`, by a session in its own worktree." }]
+  "comments": [{ "author": { "login": "jonyardley" }, "body": "Claimed: branch `cold-context`, by a session in its own worktree." }]
 }
 JSON
 
 cat >"$work/fixtures/issue_1990.json" <<'JSON'
 {
+  "number": 1990,
+  "author": { "login": "jonyardley" },
   "title": "An issue nobody has claimed",
   "state": "OPEN",
   "url": "https://github.com/jonyardley/intrada/issues/1990",
+  "body": "What you would notice: the opener shows this body.",
   "labels": [],
   "comments": []
+}
+JSON
+
+cat >"$work/fixtures/issue_1992.json" <<'JSON'
+{
+  "title": "An issue only a stranger has claimed",
+  "state": "OPEN",
+  "url": "https://github.com/jonyardley/intrada/issues/1992",
+  "labels": [],
+  "comments": [{ "author": { "login": "a-stranger" }, "body": "Claimed: branch `cold-context`, by a stranger." }]
+}
+JSON
+
+cat >"$work/fixtures/issue_1993.json" <<'JSON'
+{
+  "title": "An issue claimed on another branch",
+  "state": "OPEN",
+  "url": "https://github.com/jonyardley/intrada/issues/1993",
+  "labels": [],
+  "comments": [{ "author": { "login": "jonyardley" }, "body": "Claimed: branch `other-work`, by a session in its own worktree." }]
 }
 JSON
 
@@ -112,6 +146,17 @@ check() {
     printf '%s\n' "$haystack" | sed 's/^/    /' >&2
   fi
 }
+# The whole line, since a substring match passes a longer line that holds it.
+check_line() {
+  local name=$1 haystack=$2 line=$3
+  if grep -qxF -- "$line" <<<"$haystack"; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    echo "✗ $name: expected the line '$line'" >&2
+    printf '%s\n' "$haystack" | sed 's/^/    /' >&2
+  fi
+}
 refute() {
   local name=$1 haystack=$2 needle=$3
   if contains "$needle" "$haystack"; then
@@ -140,22 +185,77 @@ check "carries the labels" "$out" "labels: harness, tier-2"
 
 check "sends the next session to this worktree" "$out" "  cd $(pwd -P)"
 check "says the lease releases at session end" "$out" "lease releases when this session ends"
-refute "does not tell it to branch fresh over the work" "$out" "Make your own worktree"
+refute "does not tell it to branch fresh over the work" "$out" "just worktree-new"
 
 # ── an unclaimed issue says so, rather than implying a claim ──────────────────
 
 out="$(bash "$script" 1990)"
-check "an unclaimed issue names the claim step" "$out" "not claimed yet, so run just claim 1990"
+check "an unclaimed issue says so" "$out" "not claimed yet"
 refute "an issue with no epic says nothing about one" "$out" "epic #"
+
+# ── the opener's read shows the body of an issue with no comments (#2969) ────
+
+check_line "the read is the owner-only issue recipe" "$out" "  just issue 1990"
+read_out="$(printf '%s\n' "$out" | grep -E '^  just issue ' | while read -ra words; do "${words[@]}"; done || true)"
+check "the read shows the body when there are no comments" "$read_out" "the opener shows this body"
+
+# ── a new issue starts from fresh main, even on a branch with commits (#2969) ─
+
+check "a new issue names a fresh worktree" "$out" "just worktree-new"
+check_line "a new issue is claimed in the new worktree" "$out" "  just claim 1990"
+refute "a new issue does not carry on in this worktree" "$out" "carry on there"
+refute "a new issue does not point at this worktree" "$out" "cd $(pwd -P) &&"
+refute "a new issue does not list this branch's files" "$out" "Files already touched"
 
 # ── nothing claimed and nothing committed starts a worktree ──────────────────
 
 git checkout -q --no-track -b clean-slate origin/main
 out="$(bash "$script" 1990)"
-check "a cold branch sends the next session to its own worktree" "$out" "Make your own worktree"
+check "a cold branch sends the next session to its own worktree" "$out" "Start from fresh main"
 refute "a cold branch does not point at this one" "$out" "carry on there"
-check "a cold branch is level with main" "$out" "0 commit(s) ahead of origin/main"
+check_line "a cold branch names the claim step" "$out" "  just claim 1990"
 git checkout -q cold-context
+
+# ── a stranger's claim comment is not a claim ─────────────────────────────────
+
+out="$(bash "$script" 1992)"
+check "a stranger's claim is ignored" "$out" "not claimed yet"
+refute "a stranger's claim does not carry on here" "$out" "carry on there"
+check_line "a stranger's claim still asks for a claim" "$out" "  just claim 1992"
+
+# ── an issue claimed on another branch goes to that branch's worktree ────────
+
+out="$(bash "$script" 1993)"
+check "names the other branch" "$out" "claimed on branch other-work"
+check "sends the session to that branch's worktree" "$out" "Work in that"
+refute "another branch's claim does not carry on here" "$out" "carry on there"
+refute "another branch's claim does not start fresh" "$out" "just worktree-new"
+refute "another branch's claim is not claimed again" "$out" "just claim 1993"
+
+# ── a merged branch's own issue also starts from fresh main (#2969) ──────────
+
+cat >"$work/fixtures/prs.json" <<'JSON'
+[
+  { "number": 1995, "title": "Cut the cold context bill (#1986)", "state": "MERGED", "isDraft": false, "url": "https://github.com/jonyardley/intrada/pull/1995" }
+]
+JSON
+out="$(bash "$script" 1986)"
+check "a merged branch names a fresh worktree" "$out" "just worktree-new"
+refute "a merged branch does not carry on there" "$out" "carry on there"
+refute "a merged branch does not point at this worktree" "$out" "cd $(pwd -P) &&"
+check_line "a merged branch's claim is posted afresh" "$out" '  Claimed: branch `<new-branch>`'
+check_line "a merged branch's issue is claimed after that" "$out" "  just claim 1986"
+
+# Merged even when a closed PR is listed first.
+cat >"$work/fixtures/prs.json" <<'JSON'
+[
+  { "number": 1980, "title": "An earlier attempt (#1986)", "state": "CLOSED", "isDraft": false, "url": "https://github.com/jonyardley/intrada/pull/1980" },
+  { "number": 1995, "title": "Cut the cold context bill (#1986)", "state": "MERGED", "isDraft": false, "url": "https://github.com/jonyardley/intrada/pull/1995" }
+]
+JSON
+out="$(bash "$script" 1986)"
+refute "any merged PR ends the branch's work" "$out" "carry on there"
+echo '[]' >"$work/fixtures/prs.json"
 
 # ── pushed is the commits that are not on the remote, not the ref existing ───
 
