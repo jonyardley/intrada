@@ -35,3 +35,6 @@
 - fix: docs/working-with-agents.md, 2026-11-24, #2747: the harness log row needs the pull request number before it exists, and it was guessed from the newest issue number; read it once the draft opens.
 - fix: docs/working-with-agents.md, 2026-11-24, #2747: the worktree guard refused compound commands, a loop, and one naming a `.github` path that ran no git; split them into plain separate commands.
 - fix: docs/working-with-agents.md, 2026-11-24, #2747: the issue blamed a slow simulator migration, guessed from one log, but both failed logs ended with a two-screen device's screenshot refusal; read the failing step's last lines before fixing.
+- fix: docs/working-with-agents.md, 2026-11-24, #2967: a lane launched in the main checkout could neither write there nor move itself into its worktree, and was relaunched; launch an editing subagent inside its worktree.
+- fix: docs/decisions.md, 2026-11-24, #2967: a mutant copy of the worktree guard lost its run permission through `sed ... > copy`, so 168 cases failed and looked caught; run the unbroken copy first and expect green.
+- fix: docs/working-with-agents.md, 2026-11-24, #2967: the agent guide said `EnterWorktree` was banned because the bash guard then refused git, which the guard does not do; it moves a session into an existing worktree.
