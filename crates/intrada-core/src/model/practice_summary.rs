@@ -98,6 +98,7 @@ impl ItemPracticeSummary {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
