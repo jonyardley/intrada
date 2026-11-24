@@ -50,8 +50,6 @@
 
 - 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives (seen again 1).
 - 2026-11-12, #2801: in auto mode, the rtk hook (this machine only) rewrites some commands after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it (seen again 1).
-- 2026-11-13, #2821: on Claude Code 2.1.323 a call waiting on permission reaches the transcript only once the session is stopped, so read a stuck session's calls after the stop.
-- 2026-11-13, #2821: a self-test whose default caps run to minutes turns one surviving mutant into a ten minute wait; keep every timing default in a test to seconds.
 - 2026-11-13, #2806: a fake gh that only writes its message to standard error hides how the real one fails; a failed `gh api` read prints the JSON body on standard output with no newline and the "gh:" message joined on, so run one real failing read before writing the fake.
 - 2026-11-13, #2847: a self-test fixture passed with the code it tests removed, because the check refused it for another reason; remove each piece of a new check in turn and watch its own case fail.
 - 2026-11-13, #2847: a session parked on a permission prompt for `rm -r` on a scratch folder; make a fresh `mktemp -d` folder per run and leave it for the job's own cleanup.
@@ -78,3 +76,5 @@
 - 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (seen again 1).
 - 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch.
 - 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).
+- 2026-11-24, #2921: the handover brief gave its own order and said to stop at the draft, and the session followed it over the ship route, so the pull request opened with no lessons, no review comment, no template headings and no closing line; read the ship route before opening a pull request, whatever the brief says (issue #2955).
+- 2026-11-24, #2921: the agent guide says merging needs a code owner's approval, but main's protection has asked for none since 2026-11-20; read the protection with `gh api` before trusting a doc line about it (issue #2955).
