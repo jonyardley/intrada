@@ -29,4 +29,4 @@ Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. Tier 1: n/a. -
 - [ ] Persistence or new-entity changes: the offline-first checklist in `.claude/rules/offline-first.md` applied
 - [ ] CLAUDE.md updated (if architecture, components or patterns changed)
 - [ ] Roadmap updated (if a feature is now complete or scope changed)
-- [ ] Deferred items opened as tracked issues and listed in the review comment
+- [ ] Each out-of-scope finding fixed or listed under "Not fixed"; only horizon now or next opened as an issue

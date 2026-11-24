@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The lessons file holds at most 30 lessons (#2801). Every session start prints
-# it, so an unpruned file costs every session; the cap makes the monthly prune
+# it, so an unpruned file costs every session; the cap makes the archiving
 # happen rather than be remembered. Both lessons files merge by union (#2937),
 # so it also refuses a lesson kept twice or brought back from the archive.
 #

@@ -50,15 +50,31 @@ missing="$(jq -r --arg req "$required" '($req | split("\n")) - [.[].name] | join
 
 # A review comment is one by the PR's author whose first line names a review,
 # which `just pr-open --review-file` posts; documentation only needs none.
-reviews="$(jq -r '.author.login as $a | [.comments[] | select(.author.login == $a and (.body | split("\n")[0] | test("review"; "i")))] | length' <<<"$view")"
+mine='.author.login as $a | [.comments[] | select(.author.login == $a and (.body | split("\n")[0] | test("review"; "i")))]'
+reviews="$(jq -r "$mine | length" <<<"$view")"
 [[ "$(diff_scope_review_route)" == none:* ]] || [ "$reviews" -gt 0 ] ||
   refuse "no review comment (a comment by the PR's author whose first line names the review)."
+
+# A retro edit to agent instructions after the newest review gets a second look.
+base="$(git merge-base origin/main HEAD)"
+if [ "$reviews" -gt 0 ]; then
+  reviewed="$(jq -r "$mine | map(.createdAt | fromdateiso8601) | max" <<<"$view")" ||
+    refuse "could not read the review comment's time."
+  late=""
+  while IFS= read -r line; do
+    case "$line" in
+      @*) at="${line#@}" ;;
+      ?*) [ "$at" -le "$reviewed" ] || ! diff_scope_is_agents "$line" || late="$late$line"$'\n' ;;
+    esac
+  done < <(git log --format=@%ct --name-only "$base"..HEAD)
+  late="$(sort -u <<<"$late" | grep -v '^$' | paste -sd, - | sed 's/,/, /g')" || true
+  [ -z "$late" ] || refuse "agent instructions changed after the newest review comment: $late; review them again."
+fi
 
 body="$(jq -r .body <<<"$view" | perl -0pe 's/<!--.*?-->//gs; s/```.*?```//gs')"
 grep -qiE "(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):? +#$issue([^0-9]|$)" <<<"$body" ||
   refuse "the body does not close #$issue; add \"Closes #$issue\"."
 
-base="$(git merge-base origin/main HEAD)"
 lessons=0
 git diff --quiet "$base" HEAD -- docs/lessons.md docs/lessons-archive.md || lessons=$?
 case "$lessons" in

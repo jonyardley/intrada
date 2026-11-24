@@ -24,10 +24,10 @@ review rule there.
    A new or reshaped bridge type ships with a `LiveBridge` test (#846, #1953);
    `scripts/check-bridge-tests.sh` checks one names it (#2101), and the
    reviewer reads the assertion.
-3. **Deferred items**: each becomes an issue through `just issue-open`
-   (horizon and kind label required) and joins its epic with
-   `just epic-add EPIC N`. The review comment ends `Deferred items tracked:
-   #N, #M` or `none, all flagged items addressed inline`.
+3. **Out-of-scope findings** are fixed here, or listed under "Not fixed" in
+   the review comment with one line of why. Only one with horizon now or next
+   becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
+   review comment ends `Deferred items tracked: #N` or `none`.
 4. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
    body below; the review summary goes on verbatim as the first comment,
    naming the agent.
@@ -51,16 +51,16 @@ review rule there.
    the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
-says, each lesson gets one outcome:
+says, each lesson gets one of two outcomes:
 
 - **Fixed here**: a prose change of about 30 lines or fewer to the doc, rule,
   skill, agent brief or command that would have prevented it, in its own
-  commit, named on the body's Process fixes line; merging is the owner's yes.
-  The lesson goes straight to the archive with "fix:" and the file in front.
-- **Issue**: anything bigger, and any change to a script, recipe, hook,
-  settings, CI workflow, `CLAUDE.md`, app code, frontmatter or a sensitive
-  surface path. The lesson stays under Lessons ending "(issue #N)".
-- **Kept**: no clear fix; it waits for the monthly prune.
+  commit, named on the body's Process fixes line. The lesson goes straight to
+  the archive with "fix:" and the file in front.
+- **Issue** under the harness epic #1983: anything bigger, and any change to a
+  script, recipe, hook, settings, CI workflow, `CLAUDE.md`, app code,
+  frontmatter or a sensitive surface path. The lesson stays under Lessons
+  ending "(issue #N)" while the issue is open.
 
 ## Verifying a change on the simulator
 

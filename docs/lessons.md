@@ -16,10 +16,6 @@
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
   the limit archives any "(issue #N)" lesson whose issue has closed, with
   "issue:" in front, then the oldest with no "seen again" and no open issue.
-- **Monthly prune**: the first Monday usage read of each month puts any
-  lesson seen again three times to the owner as a rule, and archives what is
-  stale or done. A rule needs the owner's yes, and its lesson moves to the
-  archive with "rule:" and the rule's file in front.
 - The archive is never printed at session start and nothing is deleted from
   it. A worktree prints its own copy, so one behind main misses newer lessons.
 - A local merge of main keeps both sides' lessons (#2937), and the lessons

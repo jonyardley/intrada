@@ -79,9 +79,14 @@ branch code scripts/x.sh docs/lessons.md
 branch docs docs/guide.md docs/lessons.md
 branch archived scripts/x.sh docs/lessons-archive.md
 branch nolessons scripts/x.sh
+GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch retro scripts/x.sh docs/lessons.md
+mkdir -p "$repo/.claude/skills/s"
+echo retro >"$repo/.claude/skills/s/SKILL.md"
+echo retro >>"$repo/scripts/x.sh"
+g add -A && GIT_COMMITTER_DATE="2026-01-03T00:00:00Z" g commit -q -m "retro fix"
 
 pass_checks='[{"name":"Test","bucket":"pass"},{"name":"Alert","bucket":"skipping"}]'
-review_comment='{"author":{"login":"owner"},"body":"**Self-review by the reviewer agent**\nNo findings."}'
+review_comment='{"author":{"login":"owner"},"createdAt":"2099-01-01T00:00:00Z","body":"**Self-review by the reviewer agent**\nNo findings."}'
 good_body='Closes #42.'
 req_ok='{"contexts":["Test"],"checks":[{"context":"Test","app_id":1}]}'
 req="$req_ok"
@@ -188,6 +193,13 @@ expect_ready "a lesson sent straight to the archive"
 
 case_run nolessons "$pass_checks" "$review_comment" "$good_body"
 expect_refused "no lessons commit" "no lessons commit"
+
+reviewed_on() { jq -c --arg t "$1" '.createdAt = $t' <<<"$review_comment"; }
+case_run retro "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z)" "$good_body"
+expect_refused "agent instructions edited after the review" "after the newest review comment: .claude/skills/s/SKILL.md; review"
+
+case_run retro "$pass_checks" "$(reviewed_on 2026-01-02T00:00:00Z),$(reviewed_on 2026-01-04T00:00:00Z)" "$good_body"
+expect_ready "a newer review comment clears the retro edit"
 
 g remote set-url origin "$work/nowhere"
 case_run code "$pass_checks" "$review_comment" "$good_body"
