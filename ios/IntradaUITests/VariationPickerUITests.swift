@@ -4,7 +4,8 @@ import XCTest
 /// item-complete sheet offers a mark per variation, proved through
 /// `ScoreSelector`'s coordinate-based pill taps, which only a real rendered
 /// view can exercise. "Major Scales" is the seeded exercise whose one
-/// variation is "Hands separately" (`sample.rs`); a play opens plain (#2246).
+/// variation is "Hands separately" (`sample.rs`); its keys start at C major,
+/// so a play opens in C major with no variation (#2788).
 ///
 /// #1825 moved the chip/rep-count switch assertion to `VariationPlayBridgeTests`.
 @MainActor
@@ -71,10 +72,10 @@ final class VariationPickerUITests: XCTestCase {
 
     app.control("player.advance", spoken: "Finish session").tap()
 
-    let markPlain = app.mark("reflection.mark", "Confidence for No variation")
+    let markPlain = app.mark("reflection.mark", "Confidence for C major")
     XCTAssertTrue(
       markPlain.waitForExistence(timeout: 10), "the plain stretch has its own mark")
-    let markHands = app.mark("reflection.mark", "Confidence for Hands separately")
+    let markHands = app.mark("reflection.mark", "Confidence for C major \u{00B7} Hands separately")
     XCTAssertTrue(markHands.exists, "and so does the stretch hands separately")
 
     // Two different marks, so one write cannot satisfy both, then save: the
@@ -89,13 +90,14 @@ final class VariationPickerUITests: XCTestCase {
 
     // The summary is the core's answer: each variation kept the mark it was
     // given, rather than one overwriting the other.
-    let summaryPlain = app.mark("summary.mark", "Confidence for Major Scales, No variation")
+    let summaryPlain = app.mark("summary.mark", "Confidence for Major Scales, C major")
     XCTAssertTrue(
       summaryPlain.waitForExistence(timeout: 10), "the summary marks each variation separately")
     XCTAssertEqual(
       summaryPlain.value as? String, "7 of 10", "the plain play kept the seven it was given")
     XCTAssertEqual(
-      app.mark("summary.mark", "Confidence for Major Scales, Hands separately").value as? String,
+      app.mark("summary.mark", "Confidence for Major Scales, C major \u{00B7} Hands separately")
+        .value as? String,
       "3 of 10",
       "and hands separately kept its three rather than seven")
 
