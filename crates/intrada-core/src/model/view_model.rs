@@ -24,7 +24,7 @@ pub struct ViewModel {
     /// The Library header's line, "2 pieces · 1 exercise", worded for the
     /// visible set so both phones show the same text (#2454).
     pub library_count_line: String,
-    /// Distinct tags across the whole library (case-folded dedupe, sorted) —
+    /// Distinct tags across the whole library (case-folded dedupe, sorted):
     /// the vocabulary for the filter sheet and the add/edit autocomplete.
     pub available_tags: Vec<String>,
     /// Distinct composers (sorted) for the add/edit autocomplete. Computed
@@ -36,7 +36,7 @@ pub struct ViewModel {
     pub error: Option<String>,
     /// See [`Model::last_error_target`].
     pub error_target: Option<FormErrorTarget>,
-    /// See `Model::error_seq` — compare around a send instead of the message.
+    /// See `Model::error_seq`; compare around a send instead of the message.
     pub error_seq: u64,
     /// See [`Model::last_notice`]: true, expected, not a failure (#1325).
     pub notice: Option<String>,

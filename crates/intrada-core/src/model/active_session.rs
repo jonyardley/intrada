@@ -68,7 +68,7 @@ pub struct ActiveSessionView {
     /// Wall-clock anchor (RFC3339 UTC) for the *current item*. Resets to
     /// "now" on each item advance (Next / Skip). The shell derives the
     /// per-item elapsed timer from `Utc::now() - current_item_started_at`
-    /// rather than incrementing a counter — survives WebView suspension /
+    /// rather than incrementing a counter, so it survives WebView suspension /
     /// tab backgrounding without drift.
     pub current_item_started_at: String,
     pub entries: Vec<SetlistEntryView>,
@@ -89,7 +89,7 @@ pub struct ActiveSessionView {
     /// the current entry *is* the anchor piece itself.
     pub current_related_piece_title: Option<String>,
     /// The current item's own declared tempo marking/bpm (from its library
-    /// entry) — the practice target, distinct from `achieved_tempo` (what was
+    /// entry): the practice target, distinct from `achieved_tempo` (what was
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
