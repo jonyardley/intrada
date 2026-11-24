@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Hand every helper agent the plain git rule before its first command (#2976).
 # Claude Code refuses a git command chained with other steps in a worktree,
-# because it cannot check where the chain writes. The agent guide said so,
-# and lanes still lost a call to it, so the rule now arrives in the agent's
-# own context at its start.
+# because it cannot check where the chain writes, and a refused call is a
+# wasted one.
 #
 # Run by the SubagentStart hook in .claude/settings.json.
 
