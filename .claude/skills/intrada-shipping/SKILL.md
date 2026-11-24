@@ -21,6 +21,7 @@ review rule there.
    is judged by hand; `/code-review` inline on agent instructions, saying
    "comment-policy violations are Blockers"; none on documentation only. A fix
    touching `ios/` reruns `just ios-test` and the UI class it touched (#1884).
+   Read a fix agent.s diff before the re-review; its report is not the diff.
    A new or reshaped bridge type ships with a `LiveBridge` test (#846, #1953);
    `scripts/check-bridge-tests.sh` checks one names it (#2101), and the
    reviewer reads the assertion.
@@ -29,7 +30,7 @@ review rule there.
    becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
    review comment ends `Deferred items tracked: #N` or `none`.
 4. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
-   body below; the review summary goes on verbatim as the first comment,
+   body below as text (`"$(cat body.md)"`; it takes no file); the review summary goes on verbatim as the first comment,
    naming the agent.
 5. **Watch CI** to a conclusion in the same turn and read the PR's
    mergeability. Reproduce a red UI test with `just ios-test-ui-class`. Compare
