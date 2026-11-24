@@ -34,8 +34,8 @@ view="$(gh pr view "$pr" --json headRefOid,body,author,comments)"
   refuse "this checkout's last commit is not the PR's; push it, or run from the PR's worktree."
 
 # A branch that predates a new check never ran it, so main went red after a green merge (#2198).
-base="$(git merge-base origin/main HEAD)"
-stale="$(git diff --name-only "$base" origin/main -- .github/workflows 'scripts/check-*' | paste -sd, - | sed 's/,/, /g')" ||
+base="$(git merge-base origin/main HEAD)" || refuse "could not find where this branch left main."
+stale="$(git diff --name-only "$base" origin/main -- .github/workflows | paste -sd, - | sed 's/,/, /g')" ||
   refuse "could not compare main's CI files with the branch point."
 [ -z "$stale" ] || refuse "main changed CI since this branch started ($stale); merge main into the branch (never rebase) and push."
 
