@@ -49,9 +49,9 @@ review rule there.
    .state); [ "$s" != OPEN ] && break; sleep 180; done; echo "$s"`
    (`gh event listen` fails with HTTP 403 on this account). Merged: write the
    handover for the next issue from the main checkout (`just handover N`
-   reads the current branch), with any lesson learned after the retro, in
-   gates, review, CI or the wait, for the next retro, then `just worktree-done`. Closed unmerged: stop and say so.
-   Timed out: read the PR state first on the owner's next message. Never ask
+   reads the current branch), with any lesson found after the retro (gates,
+   review, CI or the wait) for the next retro, then `just worktree-done`.
+   Closed unmerged: stop and say so. Timed out: read the PR state first on the owner's next message. Never ask
    the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header

@@ -170,7 +170,7 @@ nothing, so callers stay a grep job. Restart Claude Code after. Installs:
 
 ## 6. Review
 
-Who reviews, and when, is step 2 of the route in the
+Who reviews, and when, is the review step of the route in the
 [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
 
 ## 7. Ship

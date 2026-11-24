@@ -55,8 +55,8 @@ reviews="$(jq -r "$mine | length" <<<"$view")"
 [[ "$(diff_scope_review_route)" == none:* ]] || [ "$reviews" -gt 0 ] ||
   refuse "no review comment (a comment by the PR's author whose first line names the review)."
 
-# The retro comes before the review (#2962), so an edit to agent instructions
-# after the newest review comment, a review fix say, gets a second look.
+# An edit to agent instructions after the newest review comment, such as a
+# review fix, gets a second look (#2962).
 base="$(git merge-base origin/main HEAD)"
 if [ "$reviews" -gt 0 ]; then
   reviewed="$(jq -r "$mine | map(.createdAt | fromdateiso8601) | max" <<<"$view")" ||
