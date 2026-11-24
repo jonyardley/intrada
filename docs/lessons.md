@@ -45,7 +45,6 @@
 - 2026-11-20, #2931: a session without the Xcode tools cannot render a SwiftUI preview; a sketch gets its picture from one snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold and 20 warm.
 - 2026-11-20, #2922: the sensitive surface rule named `ios/generated/`, which is gitignored and so never appears in a diff; judge a bridge change by the Facet derive the type generator follows, not by folder.
 - 2026-11-20, #2934: a request to research a process step found it had shipped a week earlier (#2801); search issues and merged PRs for the topic before researching it.
-- 2026-11-20, #2934: the harness log's first read for the lessons file was due 2026-11-16 and is still blank, and nothing prompts it; check a harness change's read date before building on that change.
 - 2026-11-20, #2918: a session in the main checkout reaching into its worktree with a `cd` prefix was refused 76 times in five weeks and loaded no path rules; start the session inside the worktree instead, and let it remove its own with `just worktree-done` once merged (seen again 1).
 - 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch.
 - 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).

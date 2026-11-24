@@ -2,10 +2,9 @@
 
 > Lessons pruned from [`lessons.md`](lessons.md), kept so their insight is not
 > lost (#2801). No session start prints this file; search it when a problem
-> looks familiar. The retro, the cap and the monthly prune append here, newest
+> looks familiar. The retro and the cap append here, newest
 > last, each line as it stood, with "fix:" and the changed file in front when
-> the retro fixed it (#2934), "issue:" when its issue closed, or "rule:" and the
-> rule's file when it became one.
+> the retro fixed it (#2934), or "issue:" when its issue closed.
 
 ## Archived
 - 2026-11-12, #2801: rebasing a branch of several commits onto a main that changed the same lines conflicts once per commit; squash it to one commit first and resolve once.
@@ -23,3 +22,6 @@
 - 2026-11-13, #2847: a session parked on a permission prompt for `rm -r` on a scratch folder; make a fresh `mktemp -d` folder per run and leave it for the job's own cleanup.
 - fix: docs/worktrees.md, 2026-11-24, #2955: a helper launched into its own worktree from the main checkout can build and push, but the branch stays checked out in the builder's worktree, so a later helper runs `git switch --detach origin/<branch>` and pushes `HEAD:<branch>`, and `just pr-open` runs from the builder's worktree because it reads the branch name.
 - fix: docs/ios-testing.md, 2026-11-24, #2926: two lanes timing builds on the same Mac skew each other, and the self-hosted CI runner shares that Mac; time builds only once the other lane's gates and CI are done.
+- fix: docs/harness-log.md, 2026-11-20, #2934: the harness log's first read for the lessons file was due 2026-11-16 and is still blank, and nothing prompts it; check a harness change's read date before building on that change.
+- fix: .claude/skills/intrada-shipping/SKILL.md, 2026-11-24, #2959: a fix agent reported cutting a clause from the archive header that its commit never touched, and only the re-review caught it; read a fix agent's diff before the re-review, since its report is not the diff.
+- fix: .claude/skills/intrada-shipping/SKILL.md, 2026-11-24, #2959: `just pr-open` takes the body as text, not a file, and the worktree guard refused a body written with a heredoc beside the worktree; write the body to the scratchpad with the Write tool and pass `"$(cat body.md)"`.

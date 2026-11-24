@@ -21,6 +21,7 @@ review rule there.
    is judged by hand; `/code-review` inline on agent instructions, saying
    "comment-policy violations are Blockers"; none on documentation only. A fix
    touching `ios/` reruns `just ios-test` and the UI class it touched (#1884).
+   Read a fix agent's diff before the re-review; its report is not the diff.
    A new or reshaped bridge type ships with a `LiveBridge` test (#846, #1953);
    `scripts/check-bridge-tests.sh` checks one names it (#2101), and the
    reviewer reads the assertion.
@@ -29,8 +30,9 @@ review rule there.
    becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
    review comment ends `Deferred items tracked: #N` or `none`.
 4. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
-   body below; the review summary goes on verbatim as the first comment,
-   naming the agent.
+   body below, written to the scratchpad with the Write tool and passed as
+   text, `"$(cat <scratchpad>/body.md)"`; the review summary goes on verbatim
+   as the first comment, naming the agent.
 5. **Watch CI** to a conclusion in the same turn and read the PR's
    mergeability. Reproduce a red UI test with `just ios-test-ui-class`. Compare
    Codecov's patch comment with the body's Coverage line; an unexpected gap
@@ -51,7 +53,8 @@ review rule there.
    the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
-says, each lesson gets one of two outcomes:
+says, each lesson gets one of two outcomes; a line that reaches "(seen again
+3)" always takes Issue:
 
 - **Fixed here**: a prose change of about 30 lines or fewer to the doc, rule,
   skill, agent brief or command that would have prevented it, in its own

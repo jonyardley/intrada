@@ -169,18 +169,15 @@ belong here: they follow the plain-language rule (`docs/style-guide.md`).
   settings, the recipes agents drive, and memory. Every change to it gets a row
   in [`harness-log.md`](harness-log.md).
 - **process**, the steps one unit of work takes: claim, isolate, route, plan,
-  build, review, ship, measure.
+  build, review, ship.
 - **isolation**, worktrees and who may edit where
   ([`worktrees.md`](worktrees.md)).
 - **routing**, which rung a piece of work runs on. A **rung** is one model and
   effort pair; the role table in `~/.claude/CLAUDE.md` picks it.
 - **context**, what a session carries and for how long.
-- **speed**, Jon's time from claiming an issue to its merged PR. One of the
-  three numbers the harness is measured by.
-- **rework**, the fix PRs, reverts and corrections a piece of work needed. The
-  second of the three numbers.
-- **spend**, tokens and dollars. The third number, and the constraint rather
-  than the goal.
+- **speed**, Jon's time from claiming an issue to its merged PR.
+- **rework**, the fix PRs, reverts and corrections a piece of work needed.
+- **spend**, tokens and dollars; the constraint rather than the goal.
 
 ## Worked tier examples
 
