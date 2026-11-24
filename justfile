@@ -107,6 +107,7 @@ hygiene:
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
         "ios-sim-device-test:bash scripts/tests/ios-sim-device-test.sh"
+        "ios-run-sim-test:bash scripts/tests/ios-run-sim-test.sh"
         "ios-failed-tests-test:bash scripts/tests/ios-failed-tests-test.sh"
         "ios-ui-shards-test:bash scripts/tests/ios-ui-shards-test.sh"
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
