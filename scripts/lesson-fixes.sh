@@ -54,7 +54,7 @@ awk -v lessons="$file" -v archive="$archive" '
         if (text[j] == text[i] && count[j] > count[i]) { back++; list = list "  " text[i] "\n"; break }
       }
     }
-    printf "Fixes that did not hold: %d of %d fixed lessons came back (seen again after the fix).\n", back, fixes
+    printf "Fixes that did not hold: %d of %d fixes came back (seen again after the fix).\n", back, fixes
     printf "%s", list
   }
 ' "$archive" "$file"

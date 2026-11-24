@@ -96,7 +96,7 @@ waits="$(awk '/^## Lessons$/ { on = 1; next } on && /^- / && match($0, /\(issue 
 for n in $waits; do
   [ "$n" != "$issue" ] || refuse "a lesson in docs/lessons.md waits on #$n, which this PR closes; archive it with \"issue:\" in front."
   state="$(gh issue view "$n" --json state --jq .state 2>&1)" || refuse "could not read #$n, which a lesson waits on ($state)."
-  [ "$state" != CLOSED ] || refuse "a lesson in docs/lessons.md waits on #$n, which has closed; archive it with \"issue:\" in front."
+  [ "$state" != CLOSED ] || refuse "a lesson in docs/lessons.md waits on #$n, which has closed; merge main first, and if it is still there, archive it with \"issue:\" in front."
 done
 
 gh pr ready "$pr"
