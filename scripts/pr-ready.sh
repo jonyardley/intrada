@@ -33,6 +33,12 @@ view="$(gh pr view "$pr" --json headRefOid,body,author,comments)"
 [ "$(jq -r .headRefOid <<<"$view")" = "$(git rev-parse HEAD)" ] ||
   refuse "this checkout's last commit is not the PR's; push it, or run from the PR's worktree."
 
+# A branch that predates a new check never ran it, so main went red after a green merge (#2198).
+base="$(git merge-base origin/main HEAD)"
+stale="$(git diff --name-only "$base" origin/main -- .github/workflows 'scripts/check-*' | paste -sd, - | sed 's/,/, /g')" ||
+  refuse "could not compare main's CI files with the branch point."
+[ -z "$stale" ] || refuse "main changed CI since this branch started ($stale); merge main into the branch (never rebase) and push."
+
 # `gh pr checks` fails with "no checks reported" just after a push.
 checks="$(gh pr checks "$pr" --json name,bucket 2>&1)" || true
 jq -e 'type == "array" and length > 0' <<<"$checks" >/dev/null 2>&1 ||
@@ -56,7 +62,6 @@ reviews="$(jq -r "$mine | length" <<<"$view")"
   refuse "no review comment (a comment by the PR's author whose first line names the review)."
 
 # A retro edit to agent instructions after the newest review gets a second look.
-base="$(git merge-base origin/main HEAD)"
 if [ "$reviews" -gt 0 ]; then
   reviewed="$(jq -r "$mine | map(.createdAt | fromdateiso8601) | max" <<<"$view")" ||
     refuse "could not read the review comment's time."
