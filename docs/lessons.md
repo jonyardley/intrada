@@ -31,3 +31,4 @@
 
 ## Lessons
 
+- 2026-11-24, #2983: the session start message says to make a worktree with `wt switch -c` but not to move into it, so the session reached in with a `cd` prefix and was refused; make the worktree, then call `EnterWorktree` with its path before any edit (issue #2985) (seen again 5).
