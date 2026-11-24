@@ -55,7 +55,8 @@ reviews="$(jq -r "$mine | length" <<<"$view")"
 [[ "$(diff_scope_review_route)" == none:* ]] || [ "$reviews" -gt 0 ] ||
   refuse "no review comment (a comment by the PR's author whose first line names the review)."
 
-# A retro edit to agent instructions after the newest review gets a second look.
+# The retro comes before the review (#2962), so an edit to agent instructions
+# after the newest review comment, a review fix say, gets a second look.
 base="$(git merge-base origin/main HEAD)"
 if [ "$reviews" -gt 0 ]; then
   reviewed="$(jq -r "$mine | map(.createdAt | fromdateiso8601) | max" <<<"$view")" ||
@@ -79,7 +80,7 @@ lessons=0
 git diff --quiet "$base" HEAD -- docs/lessons.md docs/lessons-archive.md || lessons=$?
 case "$lessons" in
   1) ;;
-  0) refuse "no lessons commit on this branch; run the /ship retro first." ;;
+  0) refuse "no lessons commit on this branch; write the retro, the route's first step." ;;
   *) refuse "could not compare the lessons files (git diff exited $lessons)." ;;
 esac
 

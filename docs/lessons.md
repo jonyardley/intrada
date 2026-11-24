@@ -2,7 +2,7 @@
 
 > What sessions learned, so the next one does not relearn it (#2801). Every
 > session start prints the lessons below. The retro that writes them, and
-> what each lesson's outcome is, is step 6 of the route in the
+> what each lesson's outcome is, is the first step of the route in the
 > [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
 
 - A lesson is one line: the date, the issue, then what to do differently and
