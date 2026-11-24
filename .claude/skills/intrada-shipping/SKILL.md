@@ -49,8 +49,8 @@ review rule there.
    reads the current branch), with any lesson learned after ready for the
    next retro, then `just worktree-done` (a session taking the next issue then
    leaves through ExitWorktree, kept, and makes the next worktree). Closed
-   unmerged: stop and say so. Timed out: read the PR state first on the owner's next message. Never ask
-   the owner to say merged.
+   unmerged: stop and say so. Timed out: read the PR state first on the
+   owner's next message. Never ask the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
 says, each lesson gets one of two outcomes; a line that reaches "(seen again
