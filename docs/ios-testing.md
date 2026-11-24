@@ -200,9 +200,12 @@ bundles, uninstalls the app (a leftover crash-recovery blob would satisfy
 `SessionRecoveryUITests`) and shuts down booted simulators.
 
 **The disk stays clear** (#2983). At the end of every run, pass or fail,
-`scripts/runner-tidy.sh` deletes every simulator not named `intrada-test-` and
-every iOS runtime but the one `SELFHOSTED_IOS_RUNTIME` pins, so a simulator made
-by hand on this Mac does not survive the next run. Runner housekeeping erases
+`scripts/runner-tidy.sh` deletes every simulator except the test devices
+(`intrada-test-`), the clone template (`intrada-template-`) and main's smoke
+device (`iPhone 16`), so a simulator made by hand on this Mac does not survive
+the next run. On a push to main it also deletes old iOS runtimes, keeping the
+one `SELFHOSTED_IOS_RUNTIME` pins (with its patch releases) and the newest
+installed. A pull request never deletes runtimes, since it may change the pin. Runner housekeeping erases
 the six test simulators each Monday, since they grow to 5 to 6 GB each. The
 runner check fails "not your code" below 40 GB free, well before the tests
 start failing (they did at 11 GB). Runner housekeeping has no checkout, since

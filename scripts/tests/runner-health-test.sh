@@ -33,7 +33,7 @@ xcode="27.2"
 runtime="26.5"
 printf 'env:\n  SELFHOSTED_XCODE: "%s"\n  SELFHOSTED_IOS_RUNTIME: "%s"\n' "$xcode" "$runtime" >"$tmp/ci.yml"
 printf 'env:\n  OTHER: "1"\n' >"$tmp/no-pins.yml"
-unset SELFHOSTED_XCODE SELFHOSTED_IOS_RUNTIME RUNNER_MIN_FREE_GB RUNNER_HEALTH_TIMEOUT
+unset SELFHOSTED_XCODE SELFHOSTED_IOS_RUNTIME RUNNER_MIN_FREE_GB RUNNER_HEALTH_TIMEOUT TIDY_RUNTIMES
 
 pass=0
 fail=0
@@ -112,31 +112,39 @@ if [ "$status" = 2 ] && grep -qF usage <<<"$usage"; then pass=$((pass + 1)); els
   echo "✗ alarm, an unknown mode is refused: exit $status" >&2
 fi
 
-# The tidy (#2983): a stub xcrun serves two simulators and three runtimes and
-# logs each change, so the cases read what would have been deleted or erased.
+# The tidy (#2983): a stub xcrun serves simulators and runtimes and logs each
+# change, so the cases read what would have been deleted. 26.10 is the newest
+# runtime, so a string compare (which picks 26.9) would get it wrong.
 mkdir "$tmp/tidy"
 cat >"$tmp/tidy/xcrun" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
 "simctl list devices --json")
-  echo '{"devices":{"r":[{"name":"intrada-test-26-5-intrada-1","udid":"T1"},{"name":"iPhone 16","udid":"X1"}]}}' ;;
+  echo '{"devices":{"r":[{"name":"intrada-test-26-5-intrada-1","udid":"T1"},
+         {"name":"intrada-template-iPhone-16-26-5","udid":"TPL"},
+         {"name":"iPhone 16","udid":"SMOKE"},{"name":"iPhone 15 Pro","udid":"X1"}]}}' ;;
 "simctl runtime list -j")
-  echo '{"a":{"identifier":"PIN","version":"26.5","platformIdentifier":"com.apple.platform.iphonesimulator","deletable":true},
-         "b":{"identifier":"OLD","version":"26.2","platformIdentifier":"com.apple.platform.iphonesimulator","deletable":true},
-         "c":{"identifier":"WATCH","version":"26.2","platformIdentifier":"com.apple.platform.watchsimulator","deletable":true}}' ;;
+  ios='"platformIdentifier":"com.apple.platform.iphonesimulator"'
+  echo "{\"a\":{\"identifier\":\"PIN\",\"version\":\"26.5\",$ios,\"deletable\":true},
+         \"b\":{\"identifier\":\"PATCH\",\"version\":\"26.5.1\",$ios,\"deletable\":true},
+         \"c\":{\"identifier\":\"OLD\",\"version\":\"26.2\",$ios,\"deletable\":true},
+         \"d\":{\"identifier\":\"NINE\",\"version\":\"26.9\",$ios,\"deletable\":true},
+         \"e\":{\"identifier\":\"NEWEST\",\"version\":\"26.10\",$ios,\"deletable\":true},
+         \"f\":{\"identifier\":\"FIXED\",\"version\":\"25.0\",$ios,\"deletable\":false},
+         \"g\":{\"identifier\":\"WATCH\",\"version\":\"26.2\",\"platformIdentifier\":\"com.apple.platform.watchsimulator\",\"deletable\":true}}" ;;
 "simctl shutdown "*) ;;
 *) echo "$*" >>"$TIDY_LOG" ;;
 esac
 EOF
 chmod +x "$tmp/tidy/xcrun"
-# tidy <want exit> <want log, lines joined by |> <name> <args...>
+# tidy <want exit> <want log, lines joined by |> <name> <env assignments...>
 tidy() {
   local want="$1" log="$2" name="$3" got status
   shift 3
   : >"$tmp/tidy.log"
   set +e
-  PATH="$tmp/tidy:$PATH" TIDY_LOG="$tmp/tidy.log" RUNNER_HEALTH_CI_FILE="${TIDY_CI-$tmp/ci.yml}" \
-    bash "$root/scripts/runner-tidy.sh" "$@" >/dev/null 2>&1
+  env PATH="$tmp/tidy:$PATH" TIDY_LOG="$tmp/tidy.log" RUNNER_HEALTH_CI_FILE="$tmp/ci.yml" "$@" \
+    bash "$root/scripts/runner-tidy.sh" ${TIDY_ARGS:-} >/dev/null 2>&1
   status=$?
   set -e
   got="$(paste -sd '|' "$tmp/tidy.log")"
@@ -145,10 +153,13 @@ tidy() {
     echo "✗ tidy, $name: exit $status, changes: ${got:-none}" >&2
   fi
 }
-tidy 0 "simctl delete X1|simctl runtime delete OLD" \
-  "after a run, only the extra simulator and the old iOS runtime go"
-TIDY_CI="$tmp/no-pins.yml" tidy 1 "" "with no runtime pin, nothing is deleted"
-tidy 2 "" "an argument is refused" weekly
+tidy 0 "simctl delete X1|simctl runtime delete OLD|simctl runtime delete NINE" \
+  "on main, only the spare simulator and old runtimes go: the pin, its patch, the newest and an undeletable one stay" TIDY_RUNTIMES=true
+tidy 0 "simctl delete X1" "on a pull request, no runtime goes" TIDY_RUNTIMES=false
+tidy 0 "simctl delete X1" "with the switch unset, no runtime goes"
+tidy 1 "" "on main with no runtime pin, nothing is deleted" TIDY_RUNTIMES=true RUNNER_HEALTH_CI_FILE="$tmp/no-pins.yml"
+tidy 0 "simctl delete X1" "on a pull request with no runtime pin, simulators still go" RUNNER_HEALTH_CI_FILE="$tmp/no-pins.yml"
+TIDY_ARGS=weekly tidy 2 "" "an argument is refused"
 
 echo "runner-health: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
