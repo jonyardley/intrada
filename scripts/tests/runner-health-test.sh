@@ -57,9 +57,9 @@ expect() {
 title="::error title=Mac runner broken%2C not your code::"
 expect 0 "runner healthy" "healthy machine passes"
 expect 1 "${title}Only 3 GB free" "low disk fails" FREE_KB=$((3 * 1024 * 1024))
-expect 0 "runner healthy" "12 GB free passes, as the gate does" FREE_KB=$((12 * 1024 * 1024))
-expect 0 "runner healthy" "exactly the 8 GB floor passes" FREE_KB=$((8 * 1024 * 1024))
-expect 1 "${title}Only 7 GB free" "just under the 8 GB floor fails" FREE_KB=$((8 * 1024 * 1024 - 1))
+expect 1 "${title}Only 11 GB free" "11 GB free fails, where the UI tests did" FREE_KB=$((11 * 1024 * 1024))
+expect 0 "runner healthy" "exactly the 40 GB floor passes" FREE_KB=$((40 * 1024 * 1024))
+expect 1 "${title}Only 39 GB free" "just under the 40 GB floor fails" FREE_KB=$((40 * 1024 * 1024 - 1))
 expect 1 "IOS_RUNNER=hosted" "the failure names the hosted fallback" FREE_KB=$((3 * 1024 * 1024))
 expect 1 "$title" "forced threshold fails" RUNNER_MIN_FREE_GB=100000
 expect 1 "${title}The runner is on Xcode 1.0" "wrong Xcode fails" HAVE_XCODE=1.0
@@ -111,6 +111,44 @@ if [ "$status" = 2 ] && grep -qF usage <<<"$usage"; then pass=$((pass + 1)); els
   fail=$((fail + 1))
   echo "✗ alarm, an unknown mode is refused: exit $status" >&2
 fi
+
+# The tidy (#2983): a stub xcrun serves two simulators and three runtimes and
+# logs each change, so the cases read what would have been deleted or erased.
+mkdir "$tmp/tidy"
+cat >"$tmp/tidy/xcrun" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+"simctl list devices --json")
+  echo '{"devices":{"r":[{"name":"intrada-test-26-5-intrada-1","udid":"T1"},{"name":"iPhone 16","udid":"X1"}]}}' ;;
+"simctl runtime list -j")
+  echo '{"a":{"identifier":"PIN","version":"26.5","platformIdentifier":"com.apple.platform.iphonesimulator","deletable":true},
+         "b":{"identifier":"OLD","version":"26.2","platformIdentifier":"com.apple.platform.iphonesimulator","deletable":true},
+         "c":{"identifier":"WATCH","version":"26.2","platformIdentifier":"com.apple.platform.watchsimulator","deletable":true}}' ;;
+"simctl shutdown "*) ;;
+*) echo "$*" >>"$TIDY_LOG" ;;
+esac
+EOF
+chmod +x "$tmp/tidy/xcrun"
+# tidy <want exit> <want log, lines joined by |> <name> <args...>
+tidy() {
+  local want="$1" log="$2" name="$3" got status
+  shift 3
+  : >"$tmp/tidy.log"
+  set +e
+  PATH="$tmp/tidy:$PATH" TIDY_LOG="$tmp/tidy.log" RUNNER_HEALTH_CI_FILE="${TIDY_CI-$tmp/ci.yml}" \
+    bash "$root/scripts/runner-tidy.sh" "$@" >/dev/null 2>&1
+  status=$?
+  set -e
+  got="$(paste -sd '|' "$tmp/tidy.log")"
+  if [ "$status" = "$want" ] && [ "$got" = "$log" ]; then pass=$((pass + 1)); else
+    fail=$((fail + 1))
+    echo "✗ tidy, $name: exit $status, changes: ${got:-none}" >&2
+  fi
+}
+tidy 0 "simctl delete X1|simctl runtime delete OLD" \
+  "after a run, only the extra simulator and the old iOS runtime go"
+TIDY_CI="$tmp/no-pins.yml" tidy 1 "" "with no runtime pin, nothing is deleted"
+tidy 2 "" "an argument is refused" weekly
 
 echo "runner-health: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -3,8 +3,9 @@ name: Runner housekeeping
 # The self-hosted Mac keeps its workspace between runs, which is where most of
 # the gate's speed comes from (#1577): warm `target/`, DerivedData and resolved
 # SwiftPM sources. The gate drops its own test result bundles at the start of
-# each run, so what is left to grow here is xcodebuild's build logs and any
-# simulator device whose runtime an Xcode update has taken away.
+# each run and drops extra simulators and runtimes at the end (#2983), so what
+# is left to grow here is xcodebuild's build logs, the compilation cache and
+# the six test simulators.
 on:
   schedule:
     - cron: "0 4 * * 1"
@@ -52,6 +53,19 @@ jobs:
       # own toolchain assertion has already failed by then.
       - name: Drop simulator devices with no runtime
         run: xcrun simctl delete unavailable
+      # The six test devices grow to 5 to 6 GB each (#2983). Weekly, not per
+      # run: booting them fresh is the wait the gate avoids (#2269). Inline,
+      # since this job has no checkout: one would share the gate's warm folder.
+      - name: Erase the test simulators
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices --json \
+            | python3 -c "import json,sys; [print(d['udid']) for v in json.load(sys.stdin)['devices'].values() for d in v if d['name'].startswith('intrada-test-')]" \
+            | while read -r udid; do
+                echo "erasing test simulator $udid"
+                xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+                xcrun simctl erase "$udid"
+              done
       # The gate adds one small record per green tree (#2113); a month-old
       # tree will not be merged again.
       - name: Drop green-tree records older than 30 days

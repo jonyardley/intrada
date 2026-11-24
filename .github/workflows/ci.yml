@@ -457,6 +457,14 @@ jobs:
           path: ios-screenshots/
           retention-days: 7
           if-no-files-found: ignore
+      # Last, and always: every simulator but the six test devices, and every
+      # iOS runtime but the pinned one, goes (#2983). Unused ones filled the
+      # disk to 98% and the UI tests failed on a PR with no app change.
+      # Seconds when there is nothing to delete; main's smoke device is made
+      # again on its next run.
+      - name: Drop extra simulators and old iOS runtimes
+        if: always()
+        run: bash scripts/runner-tidy.sh
 
   # The same gate on GitHub's Xcode 27 Mac, for while the self-hosted one is
   # away: on only when the repository variable IOS_RUNNER is `hosted`. The
