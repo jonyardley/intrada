@@ -12,11 +12,10 @@ set -uo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ci="${RUNNER_HEALTH_CI_FILE:-$root/.github/workflows/ci.yml}"
 volume="${RUNNER_HEALTH_VOLUME:-/System/Volumes/Data}"
-# The floor sits between what the gate is known to pass on and what broke it:
-# full unit and UI runs pass at 12 GB free, the full-disk failure was at
-# 3.4 GB, and a housekeeping prune leaves only about 21 to 26 GB, so a floor
-# at 25 GB would call a working Mac broken on most days.
-min_gb="${RUNNER_MIN_FREE_GB:-8}"
+# The floor warns while there is still room: the UI tests failed at 11 GB free
+# (#2983), and with the gate's tidy after each run (runner-tidy.sh) the Mac
+# sits near 120 GB free, so 40 GB means something is piling up again.
+min_gb="${RUNNER_MIN_FREE_GB:-40}"
 limit="${RUNNER_HEALTH_TIMEOUT:-60}"
 
 pin() {
