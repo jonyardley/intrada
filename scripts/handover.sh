@@ -158,6 +158,12 @@ elif [ -z "$claimed_branch" ]; then
   echo "This session is in a fresh worktree from main. Claim the issue first:"
   echo "  just claim $number"
 else
-  echo "This session is in a fresh worktree from main."
+  # The claim names this branch, whose PR has merged, so `just claim` in the
+  # new worktree would refuse: the fresh claim is the one claim-issue.sh asks for.
+  echo "This session is in a fresh worktree from main. The claim still names the"
+  echo "merged branch $claimed_branch, so first post a fresh comment on the issue:"
+  echo "  Claimed: branch \`<new-branch>\`"
+  echo "naming this worktree's branch, then run:"
+  echo "  just claim $number"
 fi
 echo '```'

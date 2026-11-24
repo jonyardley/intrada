@@ -47,11 +47,7 @@ case "$cmd $sub" in
     number="$2"
     file="$FIXTURES/issue_$number.json"
     [ -f "$file" ] || exit 1
-    case " $* " in
-      *" --json "*) emit "$(cat "$file")" ;;
-      *" --comments "*) jq -r '.comments[].body' "$file" ;;
-      *) jq -r '.title, (.body // "")' "$file" ;;
-    esac
+    emit "$(cat "$file")"
     ;;
   *)
     echo "unexpected gh call: $cmd $sub" >&2
@@ -247,7 +243,8 @@ out="$(bash "$script" 1986)"
 check "a merged branch names a fresh worktree" "$out" "just worktree-new"
 refute "a merged branch does not carry on there" "$out" "carry on there"
 refute "a merged branch does not point at this worktree" "$out" "cd $(pwd -P) &&"
-refute "a claimed issue is not claimed again" "$out" "just claim 1986"
+check_line "a merged branch's claim is posted afresh" "$out" '  Claimed: branch `<new-branch>`'
+check_line "a merged branch's issue is claimed after that" "$out" "  just claim 1986"
 
 # Merged even when a closed PR is listed first.
 cat >"$work/fixtures/prs.json" <<'JSON'
