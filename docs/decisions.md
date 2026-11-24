@@ -60,7 +60,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - Agent teams retired: one agent per vertical slice (#1239).
 - Mutation-test by deleting a line, not inverting it (#1423).
 - Rented macOS runners replaced by the self-hosted Mac (#1577, #1962).
-- Harness changes are judged on speed, rework and spend; a lever unmoved after two reads is reverted (#1897, #1898). Dropped 2026-11-24 (#2959): no read was ever recorded.
+- Harness changes are judged on speed, rework and spend; a lever unmoved after two reads is reverted (#1897, #1898). The scheduled reads and the revert rule were dropped on 2026-11-24 (#2959), since no read was ever recorded.
 - Components: one spec per component in the repo, pictures from snapshot tests, a check in just check; the design page is a view (#2603).
 - August 2026 audit of the restored builder: fix and trim first, then the tone of voice doc and one copy sweep (#1344, #1359).
 - September 2026 audit: silent data loss first, then wrong on screen, then drag (#1967).
