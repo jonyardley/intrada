@@ -18,14 +18,14 @@ struct ClickLimitsTests {
       TempoBand(unit: 4, min: 50, max: 150), TempoBand(unit: 8, min: 100, max: 300),
     ]
     limits.clickBars = [
-      ClickBarOption(
-        beats: 5, groups: nil,
-        presets: [ClickPresetOption(preset: .everyBeat, sounding: 0b11111)], opening: 0b11111),
-      ClickBarOption(
+      .fixture(
+        beats: 5, presets: [ClickPresetOption(preset: .everyBeat, sounding: 0b11111)],
+        opening: 0b11111),
+      .fixture(
         beats: 5, groups: [3, 2],
         presets: [ClickPresetOption(preset: .groupStarts, sounding: 0b01001)], opening: 0b11111),
-      ClickBarOption(beats: 5, groups: [2, 3], presets: [], opening: 0b11111),
-      ClickBarOption(beats: 6, groups: [3, 3], presets: [], opening: 0b111111),
+      .fixture(beats: 5, groups: [2, 3], opening: 0b11111),
+      .fixture(beats: 6, groups: [3, 3], opening: 0b111111),
     ]
     return limits
   }()
