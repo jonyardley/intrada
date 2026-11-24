@@ -827,10 +827,14 @@ _ios-build-for-testing:
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
+    # Compilation caching (#2926), shared with `scripts/ios-run-sim.sh`.
+    source ../scripts/lib/ios-compile-cache.sh
+    ios_compile_cache_args
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
-        COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+        COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO \
+        ${IOS_COMPILE_CACHE_ARGS[@]+"${IOS_COMPILE_CACHE_ARGS[@]}"}
     # Swift Testing runs the unit tests in parallel inside one process, still on
     # one simulator (#2741). Set here because XcodeGen writes only on or off for
     # a target, and on would also clone simulators for the XCTest classes.

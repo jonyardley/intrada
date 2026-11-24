@@ -50,8 +50,6 @@
 
 - 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives (seen again 1).
 - 2026-11-12, #2801: in auto mode, the rtk hook (this machine only) rewrites some commands after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it (seen again 1).
-- 2026-11-13, #2806: a fake gh that only writes its message to standard error hides how the real one fails; a failed `gh api` read prints the JSON body on standard output with no newline and the "gh:" message joined on, so run one real failing read before writing the fake.
-- 2026-11-13, #2847: a self-test fixture passed with the code it tests removed, because the check refused it for another reason; remove each piece of a new check in turn and watch its own case fail.
 - 2026-11-13, #2847: a session parked on a permission prompt for `rm -r` on a scratch folder; make a fresh `mktemp -d` folder per run and leave it for the job's own cleanup.
 - 2026-11-13, #2847: `sed -E` on macOS rejected a backslash-heavy mutation and wrote an empty script, so the self-test's failure looked like a caught mutant; swap literal text with perl's `\Q...\E` and diff before running.
 - 2026-11-14, #2866: lowering an agent's effort pin makes `guard-spawn.sh` refuse every spawn above it, so a pin that is lifted on some diffs needs an `effort-ceiling:` beside it, or the lift is blocked.
@@ -78,3 +76,5 @@
 - 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).
 - 2026-11-24, #2921: the handover brief gave its own order and said to stop at the draft, and the session followed it over the ship route, so the pull request opened with no lessons, no review comment, no template headings and no closing line; read the ship route before opening a pull request, whatever the brief says (issue #2955).
 - 2026-11-24, #2921: the agent guide says merging needs a code owner's approval, but main's protection has asked for none since 2026-11-20; read the protection with `gh api` before trusting a doc line about it (issue #2955).
+- 2026-11-24, #2926: xcodebuild accepts an unknown build setting override without a word, and the compilation cache path setting is in no Xcode settings list; prove an override took by its effect (the cache folder filling), never by a clean exit.
+- 2026-11-24, #2926: the guard refuses `xcodebuild -version` even though it builds nothing; read the installed version from Xcode's Info.plist with `plutil -p` instead.

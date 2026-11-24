@@ -28,13 +28,24 @@ jobs:
           set -euo pipefail
           test -n "${RUNNER_WORKSPACE:-}"
           df -h /System/Volumes/Data | tail -1
-          du -sh "$RUNNER_WORKSPACE"/*/ios/build "$RUNNER_WORKSPACE"/*/target 2>/dev/null || true
+          du -sh "$RUNNER_WORKSPACE"/*/ios/build "$RUNNER_WORKSPACE"/*/target "$RUNNER_WORKSPACE"/*/.xcode-cache 2>/dev/null || true
       - name: Drop xcodebuild logs
         run: |
           set -euo pipefail
           test -n "${RUNNER_WORKSPACE:-}"
           rm -rf "$RUNNER_WORKSPACE"/*/ios/build/dd/Logs
           rm -rf "$RUNNER_WORKSPACE"/*/ios/build/dd-release/Logs
+      # The compilation cache (#2926) is one content-addressed store, so it goes
+      # whole once past 10 GB rather than file by file; the next build refills it.
+      - name: Drop an oversized Xcode compilation cache
+        run: |
+          set -euo pipefail
+          test -n "${RUNNER_WORKSPACE:-}"
+          for dir in "$RUNNER_WORKSPACE"/*/.xcode-cache; do
+            [ -d "$dir" ] || continue
+            kb="$(du -sk "$dir" | cut -f1)"
+            [ "$kb" -le $((10 * 1024 * 1024)) ] || rm -rf "$dir"
+          done
       # Only removes devices whose runtime is already gone, so it cannot take
       # the gate's device while the iOS 26.5 runtime is still installed. If an
       # Xcode update drops that runtime this would take it too, but the gate's
