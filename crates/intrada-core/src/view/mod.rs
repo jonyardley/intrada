@@ -113,7 +113,11 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .entries
                 .iter()
                 // Decided 2026-10-04 (#2249, spec): an offer only while nothing is planned.
-                .filter(|entry| entry.plan.variation_ids.is_empty() && entry.plan.key.is_none())
+                .filter(|entry| {
+                    entry.plan.variation_ids.is_empty()
+                        && entry.plan.key
+                            == crate::domain::session::opening_way(model, &entry.plan.item_id).key
+                })
                 .filter_map(|entry| {
                     let way = crate::domain::session::last_time(model, &entry.plan.item_id)?;
                     Some(crate::view::session::last_time_view(entry, way, &labels))
@@ -173,9 +177,10 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 &model.practice_defaults,
             );
             // Offered only before the musician has chosen a way (#2249).
+            let opening = crate::domain::session::opening_way(model, &current_entry.plan.item_id);
             let played_plain = current_entry
                 .open_play()
-                .is_some_and(|p| p.is_played(&crate::domain::session::PlayWay::default()));
+                .is_some_and(|p| p.is_played(&opening));
             view.record.last_time =
                 crate::domain::session::last_time(model, &current_entry.plan.item_id)
                     .filter(|_| played_plain && active.reflection.is_none())

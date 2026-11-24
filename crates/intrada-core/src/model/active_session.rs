@@ -74,6 +74,9 @@ pub struct ActiveSessionView {
     pub entries: Vec<SetlistEntryView>,
     /// How the open play is being played, so the player can show it (#2246).
     pub current_key: Option<Key>,
+    /// The key chip's rows: one is shown as its name, two or more as a chip
+    /// (#2788); empty when the item keeps no key.
+    pub current_key_choices: Vec<KeyChoiceView>,
     pub current_variation_ids: Vec<String>,
     /// The open play's label; `None` for the whole item, plain.
     pub current_play_label: Option<String>,

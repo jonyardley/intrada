@@ -712,7 +712,7 @@ mod summary;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use building::last_time;
+pub(crate) use building::{last_time, opening_way};
 pub use record::Away;
 pub(crate) use record::*;
 pub(crate) use saved::{forget_restored_delete, undo_offer};

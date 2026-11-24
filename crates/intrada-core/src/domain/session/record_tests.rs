@@ -651,7 +651,7 @@ fn adding_a_piece_brings_its_linked_exercises() {
 }
 
 #[test]
-fn the_key_picker_offers_the_written_key_then_the_pieces_own() {
+fn the_key_picker_names_the_written_key_then_the_pieces_own() {
     let (m, id) = building_clair(false);
 
     let view = building_view(&m);
@@ -668,7 +668,7 @@ fn the_key_picker_offers_the_written_key_then_the_pieces_own() {
     assert_eq!(
         labels,
         [
-            ("Written key", Some("D♭ major")),
+            ("D♭ major", Some("Written key")),
             ("D major", None),
             ("C major", None)
         ]
@@ -753,7 +753,7 @@ fn the_finish_sheet_offers_the_keys_to_confirm() {
 
     let finish = active_view(&m).record.finish.expect("the sheet");
     let keys: Vec<&str> = finish.keys.iter().map(|k| k.label.as_str()).collect();
-    assert_eq!(keys, ["Written key", "D major", "C major"]);
+    assert_eq!(keys, ["D♭ major", "D major", "C major"]);
 }
 
 #[test]
@@ -1073,7 +1073,7 @@ fn a_finish_row_keeps_a_key_the_piece_no_longer_keeps() {
     assert_eq!(row.label, "G major");
     let finish = active_view(&m).record.finish.expect("the sheet");
     let keys: Vec<&str> = finish.keys.iter().map(|k| k.label.as_str()).collect();
-    assert_eq!(keys, ["Written key", "D major", "C major", "G major"]);
+    assert_eq!(keys, ["D♭ major", "D major", "C major", "G major"]);
 }
 
 #[test]
@@ -1184,28 +1184,24 @@ fn the_key_row_names_a_planned_key_outside_the_pieces_own() {
     assert_eq!(keys.current_label, "G major");
     assert_eq!(keys.current, key("G major"));
     let labels: Vec<&str> = keys.keys.iter().map(|k| k.label.as_str()).collect();
-    assert_eq!(labels, ["Written key", "D major", "C major", "G major"]);
+    assert_eq!(labels, ["D♭ major", "D major", "C major", "G major"]);
 }
 
 #[test]
-fn the_key_row_shows_for_a_planned_key_on_a_piece_that_keeps_none() {
+fn a_planned_key_alone_on_a_piece_that_keeps_none_is_no_choice() {
     let mut m = building(&["p"]);
-    let id = entry_id(&m, 0);
     if let SessionStatus::Building(b) = &mut m.session_status {
         b.entries[0].plan.key = key("G major");
     }
 
-    let view = building_view(&m);
-    let keys = view
-        .entry_keys
-        .iter()
-        .find(|k| k.entry_id == id)
-        .expect("a way back to the written key");
-    assert_eq!(keys.current_label, "G major");
+    assert!(
+        building_view(&m).entry_keys.is_empty(),
+        "no written key to go back to (#2788)"
+    );
 }
 
 #[test]
-fn the_key_row_reads_written_key_when_nothing_is_planned() {
+fn the_key_row_names_the_written_key_when_nothing_is_planned() {
     let (m, id) = building_clair(false);
     let view = building_view(&m);
     let keys = view
@@ -1213,7 +1209,7 @@ fn the_key_row_reads_written_key_when_nothing_is_planned() {
         .iter()
         .find(|k| k.entry_id == id)
         .expect("clair keeps keys");
-    assert_eq!(keys.current_label, "Written key");
+    assert_eq!(keys.current_label, "D♭ major");
     assert_eq!(keys.current, None);
 }
 
@@ -1263,7 +1259,7 @@ fn enharmonic_keys_are_listed_once() {
         .map(|k| k.label)
         .collect();
 
-    assert_eq!(labels, ["Written key", "F\u{266f} major"]);
+    assert_eq!(labels, ["F\u{266f} major"]);
 }
 
 #[test]
@@ -1409,4 +1405,204 @@ fn one_submit_writes_the_note_and_the_way() {
         "the way changed by hand"
     );
     assert_eq!(entry.notes.as_deref(), Some("rushed in bar 12"));
+}
+
+/// Kept in G and A, with no written key.
+fn keeping_g_and_a(m: &mut Model) {
+    let mut items: Vec<Item> = m.items.iter().cloned().collect();
+    let p = items.iter_mut().find(|i| i.id == "p").expect("p");
+    p.keys = vec![key("G major").expect("key"), key("A major").expect("key")];
+    m.items = items.into();
+}
+
+fn labels_of(keys: &[crate::model::KeyChoiceView]) -> Vec<(&str, Option<&str>)> {
+    keys.iter()
+        .map(|k| (k.label.as_str(), k.caption.as_deref()))
+        .collect()
+}
+
+#[test]
+fn a_piece_with_no_written_key_lists_only_its_keys() {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    let p = m.items.iter().find(|i| i.id == "p").expect("p");
+
+    let keys = crate::view::session::key_choices(p, &[]);
+
+    assert_eq!(labels_of(&keys), [("G major", None), ("A major", None)]);
+    assert!(keys.iter().all(|k| k.key.is_some()));
+}
+
+#[test]
+fn the_written_key_is_listed_once_when_the_pieces_keys_hold_it() {
+    let (mut m, _) = building_clair(false);
+    clair_mut(&mut m)
+        .keys
+        .push(key("C sharp major").expect("key"));
+    let clair = m.items.iter().find(|i| i.id == "clair").expect("clair");
+
+    let keys = crate::view::session::key_choices(clair, &[]);
+
+    assert_eq!(
+        labels_of(&keys),
+        [
+            ("D♭ major", Some("Written key")),
+            ("D major", None),
+            ("C major", None)
+        ]
+    );
+}
+
+#[test]
+fn a_new_plan_starts_on_the_written_key() {
+    let (m, _) = building_clair(false);
+
+    assert_eq!(entries(&m)[0].plan.key, None);
+}
+
+#[test]
+fn a_new_plan_with_no_written_key_starts_on_the_first_key() {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    assert_eq!(entries(&m)[0].plan.key, key("G major"));
+    let id = entry_id(&m, 0);
+    assert_eq!(
+        building_view(&m)
+            .entry_keys
+            .iter()
+            .find(|k| k.entry_id == id)
+            .expect("two keys")
+            .current_label,
+        "G major"
+    );
+
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    assert_eq!(active_view(&m).current_key, key("G major"));
+}
+
+#[test]
+fn last_time_is_still_offered_over_the_first_key() {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    let mut saved = saved_session_playing("p", PlayWay::default(), t(-100_000));
+    saved.entries[0].plays[0].key = key("A major");
+    m.sessions = vec![saved].into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    assert_eq!(building_view(&m).last_times[0].label, "Last time: A major");
+
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    let offer = active_view(&m).record.last_time.expect("offered in G");
+    assert_eq!(offer.key, key("A major"));
+}
+
+#[test]
+fn last_time_in_the_first_key_plainly_offers_nothing() {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    let mut saved = saved_session_playing("p", PlayWay::default(), t(-100_000));
+    saved.entries[0].plays[0].key = key("G major");
+    m.sessions = vec![saved].into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+
+    assert!(building_view(&m).last_times.is_empty());
+}
+
+#[test]
+fn the_practice_screen_offers_the_pieces_keys() {
+    let (mut m, _) = building_clair(false);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    assert_eq!(
+        labels_of(&active_view(&m).current_key_choices),
+        [
+            ("D♭ major", Some("Written key")),
+            ("D major", None),
+            ("C major", None)
+        ]
+    );
+}
+
+fn switch(
+    m: &mut Model,
+    entry_id: &str,
+    key: Option<crate::domain::key::Key>,
+    variation_ids: Vec<String>,
+    at: i64,
+) {
+    send(
+        m,
+        SessionEvent::SwitchPlay {
+            entry_id: entry_id.to_string(),
+            key,
+            variation_ids,
+            now: t(at),
+            reading: TempoReading::silent(),
+        },
+    );
+}
+
+#[test]
+fn a_key_picked_while_practising_keeps_the_current_variations() {
+    let (mut m, id) = building_clair(false);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    switch(&mut m, &id, None, vec!["v-dot".to_string()], 30);
+    let view = active_view(&m);
+    let d = view.current_key_choices[1].key;
+
+    switch(&mut m, &id, d, view.current_variation_ids, 60);
+
+    let view = active_view(&m);
+    assert_eq!(view.current_key, key("D major"));
+    assert_eq!(view.current_variation_ids, ["v-dot"]);
+    assert_eq!(entries(&m)[0].plays.len(), 3);
+}
+
+#[test]
+fn a_piece_with_one_key_offers_one_row() {
+    let mut m = model();
+    let mut items: Vec<Item> = m.items.iter().cloned().collect();
+    items.iter_mut().find(|i| i.id == "p").expect("p").key = key("E minor");
+    m.items = items.into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    assert_eq!(
+        labels_of(&active_view(&m).current_key_choices),
+        [("E minor", Some("Written key"))]
+    );
+}
+
+#[test]
+fn a_piece_that_keeps_no_key_offers_none() {
+    let mut m = building(&["q"]);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    assert!(active_view(&m).current_key_choices.is_empty());
 }

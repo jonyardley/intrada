@@ -257,15 +257,17 @@ pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -
     }
 }
 
-/// The written key first, then the item's own, skipping one that repeats it,
-/// then any of `also` the list does not hold in either spelling.
+/// The written key first, when the item has one, then the item's own,
+/// skipping one that repeats it, then any of `also` the list does not hold in
+/// either spelling. Every row leads with a key name (#2788).
 pub fn key_choices(item: &Item, also: &[Key]) -> Vec<KeyChoiceView> {
-    let written = KeyChoiceView {
+    let written = item.key.map(|written| KeyChoiceView {
         key: None,
-        label: "Written key".to_string(),
-        caption: item.key.as_ref().map(Key::label),
-    };
-    let mut choices: Vec<KeyChoiceView> = std::iter::once(written)
+        label: written.label(),
+        caption: Some("Written key".to_string()),
+    });
+    let mut choices: Vec<KeyChoiceView> = written
+        .into_iter()
         .chain(
             item.keys
                 .iter()
@@ -306,8 +308,7 @@ fn spelt_as(item: &Item, choices: &[KeyChoiceView], key: Option<Key>) -> Option<
     )
 }
 
-/// The builder's Key row: listed while there is a key besides the written
-/// one, so a key from last time can be set back to the written one.
+/// The builder's Key row: listed while there are two keys to choose from.
 pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysView> {
     let keys = key_choices(item, entry.plan.key.as_slice());
     if keys.len() < 2 {
@@ -317,7 +318,7 @@ pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysVie
     let current_label = keys
         .iter()
         .find(|k| k.key == current)
-        .map_or_else(|| "Written key".to_string(), |k| k.label.clone());
+        .map_or_else(|| "No key".to_string(), |k| k.label.clone());
     Some(EntryKeysView {
         entry_id: entry.id.clone(),
         keys,
@@ -592,6 +593,10 @@ pub fn build_active_session_view(
             .map(|e| entry_to_view(e, labels))
             .collect(),
         current_key: open.and_then(|p| p.key),
+        current_key_choices: item_index
+            .get(current.plan.item_id.as_str())
+            .map(|item| key_choices(item, open.and_then(|p| p.key).as_slice()))
+            .unwrap_or_default(),
         current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
         current_play_label: open.and_then(|p| labels.play(p)),
         current_planned_duration_secs: current.plan.duration_secs,
