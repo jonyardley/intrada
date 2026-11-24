@@ -143,17 +143,17 @@ Check a cache rule by listing the refs that wrote its entries, never by reading
 the workflow: `save-if` is a rust-cache input, not an `actions/cache` one, which
 silently ignores it.
 
-Writing a workflow for the self-hosted Mac:
+Writing a CI workflow:
 
 - **Escape a comma as `%2C`** in a workflow command property value, or the
   annotation title stops at the comma; assert the escaped string in the test
   (#2876).
-- **A scheduled job shares the gate's warm workspace**, so a default checkout
-  would wipe `target/`. Fetch only what it needs into a subfolder with
-  `clean: false` (#2876).
+- **On the self-hosted Mac, a scheduled job shares the gate's warm
+  workspace**, so a default checkout would wipe `target/`. Fetch only what it
+  needs into a subfolder with `clean: false` (#2876).
 - **A cache saved by a tag run is visible to that tag alone**, so the next tag
-  restores only what main saved. Warm a tag-only workflow's caches from a
-  dispatch on main (#2917).
+  restores only what a run on main saved. Warm a tag-only workflow's caches
+  from a dispatch on main (#2917).
 
 ## The self-hosted iOS runner
 
