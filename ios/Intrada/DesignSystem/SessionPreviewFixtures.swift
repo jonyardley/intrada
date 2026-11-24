@@ -677,7 +677,8 @@
   }
 
   extension ClickBarOption {
-    /// Preview and test fixture: a bar of four with no presets unless given (#2921).
+    /// Preview and test fixture. A new core field costs one edit here rather
+    /// than one per call site (#2921).
     static func fixture(
       beats: UInt8 = 4, groups: [UInt8]? = nil, presets: [ClickPresetOption] = [],
       opening: UInt16 = 0b1111
