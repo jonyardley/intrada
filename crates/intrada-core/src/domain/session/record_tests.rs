@@ -1606,3 +1606,49 @@ fn a_piece_that_keeps_no_key_offers_none() {
 
     assert!(active_view(&m).current_key_choices.is_empty());
 }
+
+#[test]
+fn the_key_chip_names_the_open_key_as_the_piece_spells_it() {
+    let (mut m, id) = building_clair(false);
+    clair_mut(&mut m)
+        .keys
+        .push(key("G flat major").expect("key"));
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    assert_eq!(
+        active_view(&m).current_key_label.as_deref(),
+        Some("D♭ major")
+    );
+
+    switch(&mut m, &id, key("F sharp major"), vec![], 60);
+
+    let view = active_view(&m);
+    assert_eq!(view.current_key, key("G flat major"));
+    assert_eq!(view.current_key_label.as_deref(), Some("G\u{266d} major"));
+}
+
+#[test]
+fn the_key_chip_names_no_key_a_piece_with_no_written_key_does_not_keep() {
+    let mut m = model();
+    keeping_g_and_a(&mut m);
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    let id = entry_id(&m, 0);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    switch(&mut m, &id, None, vec!["v-dot".to_string()], 60);
+
+    assert_eq!(active_view(&m).current_key_label, None);
+}
+
+#[test]
+fn the_practice_view_with_its_key_choices_round_trips() {
+    let (mut m, _) = building_clair(false);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    crate::domain::types::assert_round_trips(active_view(&m));
+}

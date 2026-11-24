@@ -549,6 +549,18 @@ pub fn build_active_session_view(
     let safe_index = active.current_index.min(active.entries.len() - 1);
     let current = active.current_entry();
     let open = current.open_play();
+    let open_key = open.and_then(|p| p.key);
+    let (current_key, current_key_choices) =
+        item_index
+            .get(current.plan.item_id.as_str())
+            .map_or((open_key, Vec::new()), |item| {
+                let choices = key_choices(item, open_key.as_slice());
+                (spelt_as(item, &choices, open_key), choices)
+            });
+    let current_key_label = current_key_choices
+        .iter()
+        .find(|c| c.key == current_key)
+        .map(|c| c.label.clone());
 
     // Breadcrumb only applies to a related exercise practiced inside a block,
     // not the anchor piece itself.
@@ -592,11 +604,9 @@ pub fn build_active_session_view(
             .iter()
             .map(|e| entry_to_view(e, labels))
             .collect(),
-        current_key: open.and_then(|p| p.key),
-        current_key_choices: item_index
-            .get(current.plan.item_id.as_str())
-            .map(|item| key_choices(item, open.and_then(|p| p.key).as_slice()))
-            .unwrap_or_default(),
+        current_key,
+        current_key_choices,
+        current_key_label,
         current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
         current_play_label: open.and_then(|p| labels.play(p)),
         current_planned_duration_secs: current.plan.duration_secs,
