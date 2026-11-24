@@ -8,7 +8,9 @@
 - A lesson is one line: the date, the issue, then what to do differently and
   why. **What to look for**, one of each kind the session has: a mistake or
   correction; a slow or costly step, read from the session's row in
-  `just usage 1 --quality`; and a tool, recipe or doc that misled.
+  `just usage 1 --quality`; and a tool, recipe or doc that misled. A
+  subagent has no row of its own there, since its cost counts in its lead's
+  session, so it names its slow step from its own run or says it has none.
 - A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
   not added again: its line ends "(seen again N)", counting up, and an
   archived one is copied back here with its count raised above the
@@ -32,7 +34,6 @@
 - 2026-11-18, #2793: deleting whole snapshot classes by guess missed two split view references that also showed the changed words; grep every snapshot test file for each changed view, split views included, before deleting references (issue #2971).
 - 2026-11-20, #2931: a session without the Xcode tools cannot render a SwiftUI preview; a sketch gets its picture from one snapshot test and `just ios-snapshots-record <Class>`, about 70 seconds cold and 20 warm (issue #2971).
 - 2026-11-20, #2917: a cache saved by a tag run is visible to that tag alone, so the next tag restores only what a run on main saved; warm a tag-only workflow's caches from a main dispatch (issue #2972).
-- 2026-11-20, #2936: a union merge of the lessons file kept both versions of an edited rule line above the list, and the lessons check reads only the list, so the doubled line passed; read the rules after any merge that touched them (issue #2943).
 - 2026-11-24, #2926: xcodebuild accepts an unknown build setting override without a word, and the compilation cache path setting is in no Xcode settings list; prove an override took by its effect (the cache folder filling), never by a clean exit (issue #2971).
 - 2026-11-24, #2747: `just handover` run in a merged branch's worktree told the next session to carry on in that worktree; write the opener for a new issue from fresh main, never from the old branch (issue #2969).
 - 2026-11-24, #2747: `gh issue view N --comments` prints only the comments, so on an issue with none it printed nothing and exited cleanly; read the body with `gh issue view N` as well (issue #2969).
