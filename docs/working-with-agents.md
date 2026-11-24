@@ -187,6 +187,12 @@ say what a human must check by hand. "All green" never means only
 without making it fail. Delete any scratch simulator you made when done. If
 CI is green, local pty errors were host-only.
 
+**Red main is fixed or switched off the same day.** The alert on the
+`ci-red-main` issue names the failing job and step. Fix it, or, when a step
+that runs only on main is itself broken, switch it off in a PR that day
+(`if: false` with the issue number beside it) and open an issue to switch it
+back on. Red left standing hides the next real break (#2747).
+
 ## 8. Measure
 
 | You are | Do |
