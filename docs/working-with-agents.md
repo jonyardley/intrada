@@ -35,7 +35,7 @@ branch (#1702).
 | About to edit anything | `just worktree-new <name>` from the main checkout, then the session that does the work starts inside the worktree with the command it prints, `cd <worktree> && claude` |
 | Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. Make the worktree first and paste the opener into a session started inside it, not in the main checkout |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
-| Spawning a subagent | One that edits gets its own worktree (Claude Code's, under `.claude/worktrees`) or works in yours; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861) |
+| Spawning a subagent | One that edits gets its own worktree (Claude Code's, under `.claude/worktrees`) or works in yours; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861); launch it inside that worktree, since one launched in the main checkout can neither write nor move itself in (#2967) |
 | Your PR has merged | `just worktree-done` inside the worktree, then end the session |
 
 Every session or helper agent that edits works in its own worktree (#1837,
