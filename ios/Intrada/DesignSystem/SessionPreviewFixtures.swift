@@ -744,6 +744,27 @@
       return active
     }
 
+    /// One key is no choice, so it reads as its name rather than a chip (#2788).
+    static var previewActiveOneKey: ActiveSessionView {
+      var active = previewActive
+      active.currentKeyChoices = Array(FinishSheetView.previewWayChoices.keys.prefix(1))
+      active.currentKeyLabel = "D\u{266d} major"
+      return active
+    }
+
+    /// Both chips and the "Last time" offer on one row, the tightest the
+    /// header gets (#2788).
+    static var previewActiveKeysVariationsLastTime: ActiveSessionView {
+      var active = previewActiveVariations
+      active.currentKeyChoices = FinishSheetView.previewWayChoices.keys
+      active.currentKey = Key(letter: .g, accidental: .natural, mode: .major)
+      active.currentKeyLabel = "G major"
+      active.record.lastTime = LastTimeView(
+        entryId: "entry-0", variationIds: ["variation-c"],
+        label: "Last time: D major · C", key: Key(letter: .d, accidental: .natural, mode: .major))
+      return active
+    }
+
     static var previewActiveLastTime: ActiveSessionView {
       var active = previewActive
       active.record.lastTime = LastTimeView(

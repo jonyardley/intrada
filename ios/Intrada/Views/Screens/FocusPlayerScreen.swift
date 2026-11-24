@@ -253,12 +253,19 @@ struct FocusPlayerScreen: View {
 
   // ── The key and variation being practised right now (#1739 decision 6, #2788) ──
 
-  /// Side by side only when both show, so an empty row adds no spacing.
+  /// Side by side only when both show, so an empty row adds no spacing; long
+  /// labels stack rather than squeeze.
   @ViewBuilder private func wayChips(_ active: ActiveSessionView) -> some View {
     if active.currentKeyLabel != nil && !active.currentVariations.isEmpty {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        keyChip(active)
-        variationChip(active)
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: IntradaSpacing.controlGap) {
+          keyChip(active)
+          variationChip(active)
+        }
+        VStack(spacing: IntradaSpacing.controlGap) {
+          keyChip(active)
+          variationChip(active)
+        }
       }
     } else {
       keyChip(active)
