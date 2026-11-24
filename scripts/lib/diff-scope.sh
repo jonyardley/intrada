@@ -38,16 +38,27 @@ diff_scope_select_checks() {
   fi
 }
 
-# The review route for this branch, by docs/working-with-agents.md section 6
+# A path the review route reads as agent instructions; pr-ready shares it (#2955).
+diff_scope_is_agents() {
+  case "$1" in
+    .claude/*.md | */.claude/*.md | CLAUDE.md | */CLAUDE.md | AGENTS.md | */AGENTS.md | \
+      docs/working-with-agents.md | docs/how-the-work-runs.md) return 0 ;;
+  esac
+  return 1
+}
+
+# The review route for this branch, by the intrada-shipping skill
 # (#2922); an empty, unreadable or unknown diff is reviewed.
 diff_scope_review_route() {
   local paths p kind=none bridge
   paths=$(diff_scope_paths | grep -v '^$') || paths=""
   [ -n "$paths" ] || kind=code
   while IFS= read -r p; do
+    if diff_scope_is_agents "$p"; then
+      [ "$kind" = code ] || kind=agents
+      continue
+    fi
     case "$p" in
-      .claude/*.md | */.claude/*.md | CLAUDE.md | */CLAUDE.md | AGENTS.md | */AGENTS.md | \
-        docs/working-with-agents.md | docs/how-the-work-runs.md) [ "$kind" = code ] || kind=agents ;;
       .claude/* | */.claude/*) kind=code ;;
       docs/* | specs/* | design/*.md | README.md) ;;
       *) kind=code ;;

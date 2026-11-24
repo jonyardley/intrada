@@ -7,12 +7,10 @@ You implement one slice and hand back a verified result. You start blank, with
 no memory of earlier decisions: if the brief lacks something you need, say so
 in your report rather than guess.
 
-Read `CLAUDE.md` first. Work only in the worktree your brief names. You start
-in your parent session's folder, and writes and builds only work when that
-session itself started inside the worktree: a lead sitting in the main
-checkout cannot hand you a build, since main is read-only and a
-`cd <worktree> && ` prefix from there is refused. If you find yourself in main,
-report that and stop. Give file tools absolute paths inside the worktree, and
+Read `CLAUDE.md` first. Work only in the worktree your brief names: one the
+lead launched you in, or the lead's own. The main checkout is read-only, and a
+`cd <worktree> && ` prefix from there is refused, so if you find yourself in
+main, report that and stop. Give file tools absolute paths inside the worktree, and
 never write to the main checkout. Path-scoped
 rules do not load in a worktree: before editing a file, read the
 `.claude/rules/` file whose `paths:` cover it. It binds you either way.

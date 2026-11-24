@@ -5,7 +5,9 @@
 # 2026-09-11 duplicate (#1694) happened, and the claim step alone cannot
 # catch that.
 #
-# Called via `just pr-open <title> <body> [extra gh pr create flags]`.
+# Called via `just pr-open <title> <body> [extra gh pr create flags]`;
+# `--review-file <path>` posts the self-review as the first comment, which
+# `just pr-ready` looks for.
 
 set -euo pipefail
 
@@ -17,7 +19,22 @@ repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 branch="$(git rev-parse --abbrev-ref HEAD)"
 
 title=""
-args=("$@")
+review_file=""
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --review-file)
+      [ -n "${2:-}" ] || { echo "✗ --review-file needs a path." >&2 && exit 1; }
+      review_file="$2" && shift
+      ;;
+    *) args+=("$1") ;;
+  esac
+  shift
+done
+if [ -n "$review_file" ] && [ ! -s "$review_file" ]; then
+  echo "✗ no review summary at $review_file." >&2
+  exit 1
+fi
 for i in "${!args[@]}"; do
   case "${args[$i]}" in
     --title | -t)
@@ -62,14 +79,8 @@ fi
 
 prose="$(printf '%s\n' "$body" | perl -0pe 's/<!--.*?-->//gs; s/^## Checklist.*//ms')"
 body_words="$(printf '%s' "$prose" | wc -w | tr -d ' ')"
-if [ "$body_words" -gt 350 ] && [ -z "${SKIP_BODY_CHECK:-}" ] &&
-  ! printf '%s' "$prose" | perl -0ne '
-    while (/^## (?:Where this could bite|What changed where)[^\n]*\n?(.*?)(?=^##|\z)/msg) {
-      $found = 1 if $1 =~ /\S/;
-    }
-    exit($found ? 0 : 1)'; then
-  echo "✗ the body runs $body_words words; a Tier 1 or 2 body is at most 350 before the checklist." >&2
-  echo "  Cut it, or add the Tier 3 sections if the work is Tier 3 or sensitive; SKIP_BODY_CHECK=1 for a justified case." >&2
+if [ "$body_words" -gt 350 ] && [ -z "${SKIP_BODY_CHECK:-}" ]; then
+  echo "✗ the body runs $body_words words; at most 350 before the checklist. Cut it, or SKIP_BODY_CHECK=1 for a justified case." >&2
   exit 1
 fi
 
@@ -101,4 +112,6 @@ done
 # Drafts until reviewed and green (Jon's rule); `gh pr ready` lifts it.
 # Always appended last, so no title, body or earlier flag can turn it off.
 args+=(--draft)
-gh pr create "${args[@]}"
+url="$(gh pr create "${args[@]}")"
+echo "$url"
+[ -z "$review_file" ] || gh pr comment "$url" --body-file "$review_file"

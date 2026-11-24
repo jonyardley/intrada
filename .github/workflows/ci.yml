@@ -786,7 +786,7 @@ jobs:
       - name: Haptics go through the helper
         run: bash scripts/check-haptics.sh
       # Every session start prints the lessons file, so its cap makes the
-      # monthly prune happen (#2801); a union merge can keep a lesson twice or
+      # archiving happen (#2801); a union merge can keep a lesson twice or
       # bring an archived one back (#2937).
       - name: The lessons file holds at most 30 lessons, none repeated or archived
         run: bash scripts/check-lessons.sh
@@ -833,6 +833,8 @@ jobs:
         run: bash scripts/tests/claim-issue-test.sh
       - name: just pr-open still refuses an unclaimed issue
         run: bash scripts/tests/pr-open-test.sh
+      - name: just pr-ready still refuses an unfinished PR
+        run: bash scripts/tests/pr-ready-test.sh
       - name: just issue-open still refuses an unlabelled issue
         run: bash scripts/tests/issue-open-test.sh
       - name: just issue still prints only the owner's comments

@@ -1,158 +1,133 @@
 ---
 name: intrada-shipping
-description: How a PR or issue ships in intrada: the pre-push gate and self-review order, draft until reviewed, Codecov expectations, the deferred-issue protocol, and the PR and issue body templates. Read before opening or updating any PR or writing an issue.
+description: The route from finished code to merge in intrada, in order (gates, review, draft, CI, retro, ready, the merge wait), with the PR, issue and plan comment templates. Read before opening or updating any PR or writing an issue.
 ---
 
-## The pre-push gate
+## The route
 
-**Every non-trivial PR goes through `/ship`**, which owns the order. Review
-runs before the push, because a review left until after it gets skipped
-(#1550).
+Every PR follows these steps in order, whatever order a brief gives (#2921).
+Each spawn names its model and effort from the role table in
+`~/.claude/CLAUDE.md`; rounds, and who fixes findings, follow the global
+review rule there.
 
-- **Who reviews.** `just review-route` says, by the table in
-  `docs/working-with-agents.md` section 6: `reviewer` on code or tests, Tier 1
-  included (#1665), briefed with the worktree and the issue; `/code-review`
-  inline on agent instructions (markdown under `.claude/`, `CLAUDE.md`, the
-  two agent docs); none on documentation only. Spawn it at the model and
-  effort the role table in `~/.claude/CLAUDE.md` gives (Subagents, review and
-  lane size); `guard-spawn.sh` brings a spawn with no model named, on Fable,
-  or above medium effort to Jon as a permission prompt.
-- **A new or reshaped bridge type ships with a `LiveBridge` test**
-  (`LibraryBridgeTests`, `SessionBridgeTests` or `VariationPlayBridgeTests`):
-  a Rust round trip cannot see Rust and Swift disagree about the wire (#846,
-  #1953); the reviewer blocks a bridge diff without one.
-  `scripts/check-bridge-tests.sh` checks that a test names each new
-  type or ViewModel field (#2101); it cannot read the assertion, so the
-  reviewer does.
-- **The lead posts the review.** The reviewer reports and yields
-  (`.claude/agents/reviewer.md`); the lead posts its summary verbatim at PR
-  creation, naming the agent, and writes the body and deferred issues while
-  it runs.
-- **Open through `just pr-open "Title (#N)" "Body"`**, never a bare
-  `gh pr create`: it always opens a draft, and refuses an issue number with
-  no claim naming this branch (#1702). Once the review is posted, its blockers fixed, the deferred
-  issues open and every check green on the last commit, `just pr-ready PR
-  ISSUE` marks it ready and moves the board (#1659). `Closes #N` in the body closes the issue on merge.
+1. **Gates**, through `test-runner`: `just pre-review`, plus `just ios-test`
+   when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
+   class the diff adds or edits; CI runs the full UI tier (#2114). Stop at the
+   first failure.
+2. **Review** before the push, because one left until after gets skipped
+   (#1550). `just review-route` decides: `reviewer` on code or tests, Tier 1
+   included, briefed with the worktree's absolute path and the issue; a second
+   `reviewer` paired from the core diff on a sensitive diff, and on auth, which
+   is judged by hand; `/code-review` inline on agent instructions, saying
+   "comment-policy violations are Blockers"; none on documentation only. A fix
+   touching `ios/` reruns `just ios-test` and the UI class it touched (#1884).
+   A new or reshaped bridge type ships with a `LiveBridge` test (#846, #1953);
+   `scripts/check-bridge-tests.sh` checks one names it (#2101), and the
+   reviewer reads the assertion.
+3. **Out-of-scope findings** are fixed here, or listed under "Not fixed" in
+   the review comment with one line of why. Only one with horizon now or next
+   becomes an issue, through `just issue-open` and `just epic-add EPIC N`. The
+   review comment ends `Deferred items tracked: #N` or `none`.
+4. **Open** a draft with `just pr-open`, never a bare `gh pr create`, with the
+   body below; the review summary goes on verbatim as the first comment,
+   naming the agent.
+5. **Watch CI** to a conclusion in the same turn and read the PR's
+   mergeability. Reproduce a red UI test with `just ios-test-ui-class`. Compare
+   Codecov's patch comment with the body's Coverage line; an unexpected gap
+   gets a test or a PR comment.
+6. **Retro**, once CI is green and every finding is fixed or answered: two or
+   three lessons, one per kind `docs/lessons.md` names, each given an outcome
+   (below), committed and pushed. Wait for the checks on that commit.
+7. **Ready**: `just pr-ready <pr> <issue>` refuses until the route is done. A
+   screen change also waits for the owner's yes on its pictures.
+8. **The merge wait**, in the background: poll every three minutes for up to
+   an hour, `for i in $(seq 20); do s=$(gh pr view PR --json state -q
+   .state); [ "$s" != OPEN ] && break; sleep 180; done; echo "$s"`
+   (`gh event listen` fails with HTTP 403 on this account). Merged: write the
+   handover for the next issue from the main checkout (`just handover N`
+   reads the current branch), with any lesson learned after ready for the
+   next retro, then `just worktree-done`. Closed unmerged: stop and say so.
+   Timed out: read the PR state first on the owner's next message. Never ask
+   the owner to say merged.
+
+**Retro outcomes** (#2934). After checking for a repeat as the lessons header
+says, each lesson gets one of two outcomes:
+
+- **Fixed here**: a prose change of about 30 lines or fewer to the doc, rule,
+  skill, agent brief or command that would have prevented it, in its own
+  commit, named on the body's Process fixes line. The lesson goes straight to
+  the archive with "fix:" and the file in front.
+- **Issue** under the harness epic #1983: anything bigger, and any change to a
+  script, recipe, hook, settings, CI workflow, `CLAUDE.md`, app code,
+  frontmatter or a sensitive surface path. The lesson stays under Lessons
+  ending "(issue #N)" while the issue is open.
 
 ## Verifying a change on the simulator
 
-Every feature ships in one PR, core commits first, because a
-merged core with no caller is shell-dead (#1374). On the sensitive surfaces
-`reviewer` reads the core commits alone before the screens are added.
+Every feature ships in one PR, core commits first: a merged core with no
+caller is shell-dead (#1374). On the sensitive surfaces `reviewer` reads the
+core commits alone before the screens are added.
 
-Drive a UI or interaction change on iPhone (`just ios-run`, then the
-runtime tools) and name in **What I checked**
-what you drove and saw: a snapshot proves a frame renders, not that a tap
-works or a rejected write restores the old value.
+Drive a UI change on iPhone (`just ios-run`, then the runtime tools) and say
+in What I checked what you drove and saw: a snapshot proves a frame renders,
+not that a tap works. `needs-device` is only for what a simulator cannot do
+(camera, haptics, some gestures, background audio, Live Activities), and
+names what a person does by hand.
 
-`needs-device` is only for what a simulator cannot do: camera, haptics,
-gestures a synthetic touch cannot reproduce, background audio, Live
-Activities. Its **What I checked** names exactly what a person does by hand.
-It is never a way to skip driving the app.
-
-**Eyes before ready.** A screen change opens as a draft with iPhone before
-and after images and the line "Waiting for Jon's word on the
-screenshot". It goes ready only after Jon's yes, when that line becomes "Jon
-approved the screenshot on YYYY-MM-DD"; a no is a push to the open PR
-(#1891). Run `just pr-visuals` after the push (#1631): its image URLs pin the
-pushed commit, so an earlier run points at a commit GitHub has never seen.
-
-## Codecov (Tier 2+)
-
-The PR's **Coverage** line names expected gaps before CI finishes (70% patch
-target, informational; `ios/` ignored). After CI, compare the patch-coverage
-comment with it. An unexpected gap gets a test or a PR comment before ready.
-
-## Deferred issues
-
-Every deferred or out-of-scope item becomes an issue before the self-review
-comment is posted. Open it with `just issue-open`, which refuses one without
-a horizon and a kind label;
-a PR description is not tracking. The comment ends `Deferred items tracked:
-#N, #M` or `none, all flagged items addressed inline`. A deferred issue joins
-its epic with `just epic-add EPIC N`; a genuine one-off stays single
-(`docs/how-the-work-runs.md`, Epics).
-
-## Retro
-
-Before the gates, the session records two or three lessons in
-`docs/lessons.md` or its archive, so they ride in the first push and the next session reads
-them at its start (#2801). A repeat marks the old line rather than adding one,
-so the file keeps what recurs; a kept lesson seen again three times becomes a
-rule only with the owner's yes.
-
-The same retro acts on each lesson while the session still remembers it
-(#2934): a small prose fix lands in this PR in its own commit, so it can be
-reverted alone, and merging the PR is the owner's yes; anything else becomes
-an issue. Which files count is in the header of `docs/lessons.md`, the one
-place it is written. Waiting
-for three repeats let the same mistake cost several sessions first.
+**Eyes before ready.** A screen change carries iPhone before and after images
+from `just pr-visuals`, run after the push since its URLs pin the pushed
+commit (#1631), and the line "Waiting for the owner's word on the
+screenshot", which becomes "Approved on YYYY-MM-DD" on a yes; a no is a push
+to the open PR (#1891).
 
 ## PR bodies and issues
 
-Both are read cold, months later. The headings in
+Both are read cold, months later; the headings in
 `.github/pull_request_template.md` and `.github/ISSUE_TEMPLATE/issue.md` are
 fixed.
 
-0. **Look at**: one line above the headings naming the decision or risk Jon
-   should judge. Under it, **Process fixes**: each retro fix, with the
-   lesson it answers, or "none".
-1. **What this fixes**: what the affected person notices, in the first
-   sentence (the musician, or Jon or an agent for tooling, saying what they
-   hit rather than that no musician is affected), then one sentence
-   on why this approach over the obvious other. No paths, symbols or code; a
-   `just` recipe once, when it is the outcome.
-2. **Where this could bite** (Tier 3 and sensitive surfaces only): one
-   present-tense paragraph per residual risk, ending in its issue or
-   "deliberate, not tracked"; a risk an earlier PR stated gets its number.
-   Name the fault class, never the branch's history. Never spell out an
-   exploitable gap in auth, tokens or user data; say one exists and route the
-   detail to Jon.
-3. **What it looks like**: the `just pr-visuals` output; deleted when no
-   screen changed.
-4. **What I checked**: the evidence each check produced. "Gates green" is one
-   line with counts; the check that could have failed earns the space.
-   Reviewer findings and branch fixes go in the self-review comment.
-5. **What changed where** (Tier 3 and sensitive surfaces only): at most five
-   files worth opening first, each with why; identifiers welcome.
+- **Look at**: one line naming the decision or risk the owner should judge;
+  on Tier 3 or a sensitive surface, each residual risk ending in its issue or
+  "deliberate, not tracked", never spelling out an exploitable gap. Under it,
+  **Process fixes**: each retro fix with its lesson, or "none".
+- **What this fixes**: what the affected person notices, in the first
+  sentence, then one sentence on why this approach over the obvious other. No
+  paths, symbols or code.
+- **What I checked**: the evidence each check produced, the screen pictures
+  included; "gates green" is one line with counts, and the check that could
+  have failed earns the space. Coverage names the expected gaps (Tier 2 and
+  up). Reviewer findings go in the review comment.
 
-A Tier 1 or 2 body runs at most 350 words before the checklist, comments not
-counted; `just pr-open` enforces it (`SKIP_BODY_CHECK=1` for a justified
-case) and warns on a sentence over 25 words. In a longer Tier 3 or sensitive
-body, each extra paragraph is a shipped risk or a check that could have
-failed. Checklist lines that do not apply are deleted.
+A Tier 1 or 2 body runs at most 350 words before the checklist; `just
+pr-open` enforces it (`SKIP_BODY_CHECK=1` for a justified case). Checklist
+lines that do not apply are deleted.
 
 Issues: what you would notice, why it matters, what to do, done looks like,
-where it lives. A bug gives the steps (the tap path, for a screen), what was
-expected and what happened. It names the build and the
-device. Logs and measurements go last.
+where it lives. A bug gives the steps, what was expected and what happened,
+the build and the device; logs and measurements go last.
 
 ## Plan comments
 
 A Tier 2 or 3 plan goes on the issue before the first commit, about 150
-words, and Jon approves it before the build. A Tier 2 issue that is the next
-child of an epic whose body names it posts its plan and starts, and Jon reads
-the plan with the PR, unless it is on the sensitive surfaces or names a
-choice he has not made. The build and the reviewer read it.
+words, and the owner approves it before the build. A Tier 2 issue that is the
+next child of an epic whose body names it posts its plan and starts, unless
+it is on the sensitive surfaces or names a choice the owner has not made.
 
 ```markdown
-**Done looks like**: two or three checks, as the musician or Jon sees them.
+**Done looks like**: two or three checks, as the musician or the owner sees them.
 **Time budget**: one session, or two; past it, stop and re-plan.
 **Decisions taken**: each choice, with the option rejected and why.
 **Files**: the files and lines it touches, core and `ios/`.
 **Tests**: what proves it, and the line a deletion should break.
-**Sketch**: for a new screen, the SwiftUI sketch page and Jon's word on it, or why none is needed.
+**Sketch**: for a new screen, the SwiftUI sketch page and the owner's word on it, or why none is needed.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.
 **Routing**: the epic from `just claim`, sensitive surfaces or not, and any
 parallel stream.
 ```
 
-Routing follows `docs/working-with-agents.md`. A plan needing more than two
-sessions, or well past 150 words, is Tier 3.
-
-A term outside the glossary (`docs/reference.md`) is said plainly or added.
-An internal name ("Phase R", "T22", "the lane") carries the document it
-resolves in on first use. **Tier** means ceremony level; the test gates are
-"the fast tier" and "the full tier". No tick marks, symbols or emoji, except
-the harness's attribution footer.
+A plan needing more than two sessions, or well past 150 words, is Tier 3. A
+term outside the glossary (`docs/reference.md`) is said plainly or added; an
+internal name carries the document it resolves in on first use. **Tier**
+means ceremony level; the test gates are "the fast tier" and "the full tier".
+No tick marks, symbols or emoji, except the harness's attribution footer.

@@ -1,8 +1,8 @@
 # Worktrees
 
-Every session that edits works in its own checkout. The rule: **at most one
-session mutates the tracked files, index and HEAD of one working tree at a
-time** (#1741). Reading is never banned.
+Every session or helper agent that edits works in its own checkout. The
+rule: **at most one session mutates the tracked files, index and HEAD of one
+working tree at a time** (#1741). Reading is never banned.
 
 ## Making one
 
@@ -44,8 +44,13 @@ remove`, and a forced removal do not: they remove what they are given, and
 `just worktree-rm` also cleans the simulator. The guard refuses the usual
 removal commands when they name another live session's worktree; some unusual
 command shapes are known limits it does not catch, and the protection that
-holds is the merge lock on GitHub. Claude Code's own subagent worktrees stay in
-`.claude/worktrees`.
+holds is the merge lock on GitHub. A lead may launch helper agents that each
+work in their own worktree, which Claude Code makes under `.claude/worktrees`.
+
+A branch stays checked out in the worktree that built it, so a later helper
+on the same branch runs `git switch --detach origin/<branch>`, commits there
+and pushes with `git push origin HEAD:<branch>` (#2955). `just pr-open` reads
+the branch name, so it runs from the builder's worktree, not a detached one.
 
 ## Three places, one rule each
 
@@ -54,9 +59,9 @@ Once the repo has a linked worktree, as intrada always does:
 - **The main checkout.** Any number of sessions can sit here, but its working
   tree is read-only: the shell may only look (the list below) and file tools
   cannot write, so main stays the clean base. Writes outside every checkout,
-  such as the scratchpad, still pass. To build, a session starts inside its
-  worktree with `cd <worktree> && claude`; a `cd <worktree> && ` prefix from
-  main is refused for writes, and reads pass.
+  such as the scratchpad, still pass. To build, start a session in the
+  worktree (`cd <worktree> && claude`) or launch a helper agent in its own; a
+  `cd <worktree> && ` prefix from main is refused for writes, and reads pass.
 - **Your own worktree.** The first write claims it, and everything works.
 - **Someone else's worktree.** Reads pass. Builds are denied with the writes,
   because two builds share one `target/` and one simulator.
@@ -133,8 +138,7 @@ design.
 The guard follows a literal `cd` or `pushd`, and a literal `git -C <path>` for
 that one part; a subshell's `cd` ends with the subshell. A `cd` it cannot
 follow (a variable, a substitution, `-`, a folder that does not exist yet)
-makes the rest of the command read-only. From main, a prefix such as
-`cd <worktree> && ` is refused for writes; reads pass.
+makes the rest of the command read-only.
 
 The guarantee is on the file tools. Shell coverage is best effort, and the
 guard is a convenience: the merge lock on GitHub is what holds. Known limits,

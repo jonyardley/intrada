@@ -1,56 +1,31 @@
 # Lessons
 
 > What sessions learned, so the next one does not relearn it (#2801). Every
-> session start prints the lessons below. Each pull request's `/ship` retro
-> records two or three lessons: a fixed one goes straight to the archive, the
-> rest go under Lessons, newest last.
+> session start prints the lessons below. The retro that writes them, and
+> what each lesson's outcome is, is step 6 of the route in the
+> [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
 
-- A lesson is one line: the date, the issue, then what to do
-  differently and why.
-- **What to look for**, one lesson of each kind where the session has one: a
-  mistake or correction; a slow or costly step, read from the session's row
-  in `just usage 1 --quality` (peak context and cost); and a tool, recipe or
-  doc that misled.
-- **Before adding**, search this file and
-  [`lessons-archive.md`](lessons-archive.md). A lesson already there is not
-  added again: its line ends "(seen again N)", counting up, and an archived
-  one is copied back here with its count raised above the archive's.
-- **Acting on a lesson** (#2934), at the same retro, each lesson gets one
-  outcome:
-  - **Fixed here**: a prose change of about 30 lines or fewer to the doc,
-    rule, skill, agent brief or command that would have prevented it, in its
-    own commit in the same PR, named on the PR body's "Process fixes" line.
-    Merging that PR is the owner's yes. The lesson goes straight to the
-    archive with "fix:" and the changed file in front, never under Lessons.
-  - **Issue**: anything bigger, and any change to a script, recipe, hook,
-    settings file, CI workflow, `CLAUDE.md`, app code, a file's frontmatter
-    (guards and loaders read it), `.claude/rules/sensitive-surfaces.md` or a
-    path it lists, gets an issue. The lesson stays here ending "(issue #N)"
-    while the issue is open.
-  - **Kept**: no clear fix, so it stays here for the monthly prune.
-  A fixed lesson that comes back is copied back here with "(seen again N)":
-  the fix did not hold.
+- A lesson is one line: the date, the issue, then what to do differently and
+  why. **What to look for**, one of each kind the session has: a mistake or
+  correction; a slow or costly step, read from the session's row in
+  `just usage 1 --quality`; and a tool, recipe or doc that misled.
+- A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
+  not added again: its line ends "(seen again N)", counting up, and an
+  archived one is copied back here with its count raised above the
+  archive's. A fixed lesson that comes back means the fix did not hold.
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
-  the limit first archives any "(issue #N)" lesson whose issue has closed,
-  with "issue:" in front, then the oldest with no "seen again" and no open
-  issue.
-- **Monthly prune**: the session doing the first Monday usage read of each
-  month puts any lesson seen again three times to the owner as a rule, and
-  archives what is stale or done, closed-issue lessons included. A kept
-  lesson becomes a rule only with the owner's yes, and then moves to the
-  archive with "rule:" and the rule's file in front.
+  the limit archives any "(issue #N)" lesson whose issue has closed, with
+  "issue:" in front, then the oldest with no "seen again" and no open issue.
 - The archive is never printed at session start and nothing is deleted from
-  it.
-- A worktree prints its own copy, so one behind main misses newer lessons.
-- A local merge of main keeps both sides' lessons on its own (#2937), and the
-  lessons check refuses a line kept twice, bumped on two branches, or brought
-  back from the archive.
+  it. A worktree prints its own copy, so one behind main misses newer lessons.
+- A local merge of main keeps both sides' lessons (#2937), and the lessons
+  check refuses a line kept twice, bumped on two branches, or brought back
+  from the archive.
 
 ## Lessons
 
 - 2026-11-12, #2801: `just claim` refuses in the main checkout, so make the worktree first and claim from it, whatever order the session's brief gives (seen again 1).
 - 2026-11-12, #2801: in auto mode, the rtk hook (this machine only) rewrites some commands after review, so the first try is refused; resend the rewritten command exactly as the refusal quotes it (seen again 1).
-- 2026-11-13, #2847: a session parked on a permission prompt for `rm -r` on a scratch folder; make a fresh `mktemp -d` folder per run and leave it for the job's own cleanup.
 - 2026-11-13, #2847: `sed -E` on macOS rejected a backslash-heavy mutation and wrote an empty script, so the self-test's failure looked like a caught mutant; swap literal text with perl's `\Q...\E` and diff before running.
 - 2026-11-14, #2866: lowering an agent's effort pin makes `guard-spawn.sh` refuse every spawn above it, so a pin that is lifted on some diffs needs an `effort-ceiling:` beside it, or the lift is blocked.
 - 2026-11-14, #2866: a guard mutation that removes a line can stay green because the line it guards is shadowed (the first frontmatter match wins); give each mutation a fixture where only that line decides the result.
@@ -78,3 +53,4 @@
 - 2026-11-24, #2921: the agent guide says merging needs a code owner's approval, but main's protection has asked for none since 2026-11-20; read the protection with `gh api` before trusting a doc line about it (issue #2955).
 - 2026-11-24, #2926: xcodebuild accepts an unknown build setting override without a word, and the compilation cache path setting is in no Xcode settings list; prove an override took by its effect (the cache folder filling), never by a clean exit.
 - 2026-11-24, #2926: the guard refuses `xcodebuild -version` even though it builds nothing; read the installed version from Xcode's Info.plist with `plutil -p` instead.
+- 2026-11-24, #2955: a reviewer launched from the main checkout could not run the self-tests, since the main checkout guard refuses running scripts there, so both reviews left the mutation claims unverified; a reviewer that must run tests needs its own worktree (issue #2960).
