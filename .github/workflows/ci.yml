@@ -893,9 +893,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # Reads the run while it is still going, so only jobs already failed show.
+          # Reads the run while it is still going: every job in needs has finished,
+          # so only jobs outside it (such as the comment density and dash checks)
+          # can still be running and so be missing from the list.
           failed=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json jobs \
-            --jq '.jobs[] | select(.conclusion == "failure") | "- \(.name): \([.steps[] | select(.conclusion == "failure") | .name] | join(", ") | if . == "" then "no step named" else . end)"' \
+            --jq '.jobs[] | select(.conclusion == "failure") | "- \(.name): \([(.steps // [])[] | select(.conclusion == "failure") | .name] | join(", ") | if . == "" then "no failed step listed" else . end)"' \
             || echo "- could not read the failed jobs")
           detail="$(printf '%s\n\n%s\n\nFix it or switch the step off the same day (docs/working-with-agents.md, Ship).' "$RUN_URL" "$failed")"
           existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-red-main --state open --json number --jq '.[0].number // empty')

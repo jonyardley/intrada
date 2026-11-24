@@ -34,7 +34,7 @@ elif cmd == "list" and args[0] == "runtimes":
     print(json.dumps({"runtimes": load("runtimes.json")}))
 elif cmd == "create":
     if os.environ.get("STUB_FAIL_CREATE"):
-        sys.exit(1)
+        sys.exit("stub simctl: create refused")
     devices = load("devices.json")
     udid = "created-" + args[2].rsplit(".", 1)[-1]
     devices.setdefault(args[2], []).append({"name": args[0], "udid": udid})
@@ -129,6 +129,7 @@ export STUB_FAIL_CREATE=1
 expect "a run whose create fails fails" false run create-fails
 unset STUB_FAIL_CREATE
 expect "a failed create says none could be made" true grep -q "none could be made" "$tmp/stderr"
+expect "a failed create shows simctl's own error" true grep -q "stub simctl: create refused" "$tmp/stderr"
 expect "a failed create launches nothing" false grep -q "^launch " "$XCRUN_LOG"
 
 echo "ios-run-sim-test: $pass passed, $fail failed"

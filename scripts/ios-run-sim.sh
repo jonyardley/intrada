@@ -41,7 +41,7 @@ ios = [r for r in json.load(sys.stdin)['runtimes'] if r.get('platform') == 'iOS'
 ios.sort(key=lambda r: [int(p) for p in r['version'].split('.')])
 print(ios[-1]['identifier'] if ios else '')
 ")
-    if [ -z "$RUNTIME" ] || ! UDID=$(xcrun simctl create "$SIM_DEVICE" "$SIM_DEVICE" "$RUNTIME" 2>/dev/null); then
+    if [ -z "$RUNTIME" ] || ! UDID=$(xcrun simctl create "$SIM_DEVICE" "$SIM_DEVICE" "$RUNTIME"); then
         echo "✗ No $SIM_DEVICE simulator, and none could be made (Xcode → Settings → Platforms → iOS)" >&2
         exit 1
     fi
