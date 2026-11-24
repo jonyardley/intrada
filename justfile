@@ -103,6 +103,7 @@ hygiene:
         "pr-ready-test:bash scripts/tests/pr-ready-test.sh"
         "issue-open-test:bash scripts/tests/issue-open-test.sh"
         "issue-read-test:bash scripts/tests/issue-read-test.sh"
+        "subagent-start-test:bash scripts/tests/subagent-start-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"

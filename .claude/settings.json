@@ -158,6 +158,16 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/subagent-start.sh 2>/dev/null || true"
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {

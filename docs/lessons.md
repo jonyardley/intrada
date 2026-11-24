@@ -31,4 +31,3 @@
 
 ## Lessons
 
-- 2026-11-24, #2747: the worktree guard refused compound commands, a loop, and one naming a `.github` path that ran no git; split them into plain separate commands (issue #2976) (seen again 2).
