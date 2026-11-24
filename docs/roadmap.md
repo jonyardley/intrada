@@ -72,8 +72,9 @@ on.
    redesigned around them (#1976, #1369, #1728).
 5. **v0.25.0 Every tab in daily use**: a written bar per tab, met (#2578), fed
    by three new musicians trying the first run (#2120), the welcome's next pass
-   (#2296) and example content (#2115), with the player basics (#1000, #1002)
-   and Library housekeeping (#45, #1811).
+   (#2296) and example content (#2115), with the player basics (#1000, #1002),
+   Library housekeeping (#45, #1811) and finding a jazz standard by title
+   when adding a piece (#2723).
 6. **v0.26.0 Sync and safe keeping**: iCloud sync between iPhone and iPad
    (#2353) on the settled record, and export and restore (#2624).
 7. **v0.27.0 Release candidate**: a build a tester can trust on the App Store
