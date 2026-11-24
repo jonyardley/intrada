@@ -12,8 +12,7 @@
 - A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
   not added again: its line ends "(seen again N)", counting up, and an
   archived one is copied back here with its count raised above the
-  archive's. A fixed lesson that comes back means the fix did not hold. One
-  seen again a third time takes the retro's Issue outcome.
+  archive's. A fixed lesson that comes back means the fix did not hold.
 - **At most 30 lessons**; `just check` refuses more. The session that reaches
   the limit archives any "(issue #N)" lesson whose issue has closed, with
   "issue:" in front, then the oldest with no "seen again" and no open issue.

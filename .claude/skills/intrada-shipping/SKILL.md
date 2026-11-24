@@ -51,7 +51,8 @@ review rule there.
    the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
-says, each lesson gets one of two outcomes:
+says, each lesson gets one of two outcomes; a line that reaches "(seen again
+3)" always takes Issue:
 
 - **Fixed here**: a prose change of about 30 lines or fewer to the doc, rule,
   skill, agent brief or command that would have prevented it, in its own

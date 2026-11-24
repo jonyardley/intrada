@@ -4,8 +4,7 @@
 > lost (#2801). No session start prints this file; search it when a problem
 > looks familiar. The retro and the cap append here, newest
 > last, each line as it stood, with "fix:" and the changed file in front when
-> the retro fixed it (#2934), "issue:" when its issue closed, or "rule:" and the
-> rule's file when it became one.
+> the retro fixed it (#2934), or "issue:" when its issue closed.
 
 ## Archived
 - 2026-11-12, #2801: rebasing a branch of several commits onto a main that changed the same lines conflicts once per commit; squash it to one commit first and resolve once.
