@@ -81,6 +81,9 @@ recipe output) so it names the right move; any doc line comes after (#2967):
 Every feature ships in one PR, core commits first: a merged core with no
 caller is shell-dead (#1374). On the sensitive surfaces `reviewer` reads the
 core commits alone before the screens are added.
+Brief a `task` spawn on a bridge change for the core commits only, then a
+second spawn for the screens: `task` stops after the core and runs no gates
+(`.claude/agents/task.md`), so a whole-stack brief comes back half built (#2788).
 
 Drive a UI change on iPhone (`just ios-run`, then the runtime tools) and say
 in What I checked what you drove and saw: a snapshot proves a frame renders,
@@ -130,7 +133,7 @@ it is on the sensitive surfaces or names a choice the owner has not made.
 ```markdown
 **Done looks like**: two or three checks, as the musician or the owner sees them.
 **Time budget**: one session, or two; past it, stop and re-plan.
-**Decisions taken**: each choice, with the option rejected and why.
+**Decisions taken**: each choice, with the option rejected and why; "storage unchanged" names the writes checked, since a new default is a stored value (#2788).
 **Files**: the files and lines it touches, core and `ios/`.
 **Tests**: what proves it, and the line a deletion should break.
 **Sketch**: for a new screen, the SwiftUI sketch page and the owner's word on it, or why none is needed.
