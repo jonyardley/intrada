@@ -35,14 +35,14 @@ branch (#1702).
 | About to edit anything | `just worktree-new <name>` from the main checkout, then the session that does the work starts inside the worktree with the command it prints, `cd <worktree> && claude` |
 | Handing work to another session | `just handover [N]` prints the opener; add the stream by hand when there is more than one. Make the worktree first and paste the opener into a session started inside it, not in the main checkout |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/` (#1839) |
-| Spawning a subagent | It starts in your folder, so it can build or edit only when your session started inside the worktree; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861) |
+| Spawning a subagent | One that edits gets its own worktree (Claude Code's, under `.claude/worktrees`) or works in yours; name the worktree by absolute path for its reads, or `reviewer` diffs the wrong tree (#1861) |
 | Your PR has merged | `just worktree-done` inside the worktree, then end the session |
 
-Every session that edits starts inside its own worktree (#1837, #2918). The
-main checkout is for status, claims and making worktrees: its working tree is
-read-only, a `cd <worktree> && ` prefix from it is refused for writes while
-reads pass, and `.claude/rules/` files load only when the session's folder is
-the worktree. Worktrees branch from fresh `origin/main` into
+Every session or helper agent that edits works in its own worktree (#1837,
+#2918). The main checkout is for status, claims and making worktrees:
+its working tree is read-only, a `cd <worktree> && ` prefix from it is
+refused for writes while reads pass, and `.claude/rules/` files load only when
+the session's folder is the worktree. Worktrees branch from fresh `origin/main` into
 `../intrada-worktrees`, and the worktree lease still holds each one to one
 session. After its PR merges, the session removes its own worktree and
 simulator with `just worktree-done`, which refuses unless the PR is merged, the
@@ -168,33 +168,16 @@ nothing, so callers stay a grep job. Restart Claude Code after. Installs:
 
 ## 6. Review
 
-| You are | Do |
-|---|---|
-| Any diff | `just review-route` says which row applies; this table is the one place that decides it |
-| Holding a diff that changes code or tests | `just pre-review` first, then `reviewer` over the local diff before the push, briefed with the worktree's absolute path and the issue number |
-| Holding a diff that `just review-route` calls sensitive, or one touching auth | The same `reviewer` at the role table's level for a second reviewer, paired from the core diff |
-| Holding a diff that changes only markdown under `.claude/`, a `CLAUDE.md`, `AGENTS.md`, this file or `docs/how-the-work-runs.md`, with or without documentation | `/code-review` inline; these steer agents, so they are not documentation; say "comment-policy violations are Blockers". Anything else under `.claude/`, such as settings or scripts, is code |
-| Holding a documentation-only diff (`docs/`, `specs/`, markdown under `design/`, the README) | No code review: code review found nothing on these (approved 2026-11-20, this repo only); `just pre-review` still runs |
-
-`reviewer` checks the diff against the plan comment first, reports and
-yields: no GitHub writes, no waiting for a PR number. The lead posts its
-summary verbatim at PR creation, naming the agent.
+Who reviews, and when, is step 2 of the route in the
+[shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
 
 ## 7. Ship
 
-| You are | Do |
-|---|---|
-| About to open or update a PR | `/ship`: two or three lessons recorded in [`lessons.md`](lessons.md) or its archive before the PR first opens, each fixed in the PR, made an issue or kept, then gates, `reviewer`, `just pr-open` as a draft; watch CI to a conclusion and read mergeability |
-| The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone screenshots |
-| Jon, reviewing | Read the body and the self-review; merge when green, his own PRs through the admin bypass, since main needs a code owner's approval nobody else can give (#2855) |
-| The unit has shipped | `just worktree-done` inside the worktree, then end the session |
-| Leaving for over an hour | Finish or `/clear` first: the cache expires and the first turn back re-sends everything at write price (#1842) |
-
-Gates, Codecov, deferred issues and body templates are in
-`.claude/skills/intrada-shipping/SKILL.md`. Stacked PRs go two deep.
-`just pr-open` refuses a Tier 1 or 2 body over 350 words (#2593). `Closes #N`
-closes the issue on merge; close one by hand only when no PR closed it. Update
-`docs/roadmap.md` if a phase changed and `CLAUDE.md` if architecture did.
+The route from finished code to merge, in order, is in the
+[shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
+Stacked PRs go two deep. Leaving for over an hour: finish or `/clear` first,
+since the cache expires and the first turn back re-sends everything at write
+price (#1842).
 
 **Verification.** For UI, drive the simulator and show proof, or
 say what a human must check by hand. "All green" never means only
