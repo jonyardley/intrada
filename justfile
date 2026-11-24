@@ -380,10 +380,12 @@ worktree-new name:
         exit 1
     fi
     # Sessions start inside their worktree (#2918): path-scoped rules load
-    # only there, and nothing needs the `cd <worktree> && ` prefix.
+    # only there, and nothing needs the `cd <worktree> && ` prefix. A session
+    # already running moves in with one tool call instead (#2967).
     echo "✓ worktree $target"
     echo "  Start its session there:"
     echo "  cd $target && claude"
+    echo "  Or move a session already running into it: Claude Code's EnterWorktree tool, path $target"
 
 # Companion to worktree-new: cleans the worktree's throwaway sim (if any),
 # then removes the worktree via git. Run from any checkout; leaves the

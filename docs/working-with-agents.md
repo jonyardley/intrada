@@ -57,8 +57,9 @@ query it there by path for architecture answers, never a full-repo read.
 
 Read `just worktrees` before touching a worktree you did not create: a clean
 tree at main is not evidence it is free. The lease and what the guard allows
-are in [`worktrees.md`](worktrees.md). `EnterWorktree` is banned: the bash guard
-then refuses every git command.
+are in [`worktrees.md`](worktrees.md). `EnterWorktree` with `path` only moves a
+session into a worktree that already exists; make worktrees with
+`just worktree-new` (#2967).
 
 ## 3. Route
 
