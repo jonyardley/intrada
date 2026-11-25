@@ -33,4 +33,3 @@
 
 - fix: .claude/skills/intrada-shipping/SKILL.md, 2026-11-25, #2789: a session started outside the repo has no project agent types, so spawning `reviewer` fails with "agent type not found"; spawn a general-purpose agent told to follow `.claude/agents/reviewer.md`.
 - 2026-11-25, #2754: when an iOS unit test crashes on CI ("signal kill"), the log's "Failing tests:" list is blank; the name is only in the result bundle, so download the `native-ios-selfhosted-xcresult` artifact and read it with `xcrun xcresulttool get test-results summary --path <bundle>` instead of searching the log (issue #2997).
-- 2026-11-25, #2754: main's "Launch on simulator + screenshot" step fails with "Incompatible device" because `scripts/ios-run-sim.sh` makes its iPhone 16 on the newest runtime, which can be a one-device runtime Xcode installs; a pull request's iOS gate skips that step, so a green pull request says nothing about it (issue #2984).
