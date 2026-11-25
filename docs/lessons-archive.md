@@ -82,3 +82,4 @@
 - fix: docs/working-with-agents.md. 2026-11-24, #2788: the handover was pasted while the session that wrote it still held the worktree lease, so the new session waited on the owner; the writing session exits first.
 - fix: docs/working-with-agents.md. 2026-11-25, #2988: `just claim` refused because the open #2989 named this issue in its body as a follow-up it filed; any PR text naming the number reads as a claim, so read the PR and claim by hand.
 - fix: scripts/ios-snapshot-filter.sh. 2026-11-25, #2988: a check that a test name exists in the source passed helpers, commented-out methods and the base class, which still run no test; a pre-check must mirror what the runner accepts, not that the name appears.
+- fix: docs/worktrees.md. 2026-11-25, #2754: `EnterWorktree` will not move a session from one `wt` worktree straight into another; leave with `ExitWorktree` (keep) first, then enter the new one by path.
