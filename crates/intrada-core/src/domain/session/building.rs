@@ -229,7 +229,7 @@ fn last_scores(model: &Model, item_id: &str) -> Vec<(Option<Key>, u8)> {
         .iter()
         .filter(|s| s.entries.iter().any(|e| e.plan.item_id == item_id))
         .collect();
-    sessions.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+    sessions.sort_by_key(|s| std::cmp::Reverse(s.started_at));
     let mut latest: Vec<(Option<Key>, u8)> = Vec::new();
     let plays = sessions.into_iter().flat_map(|s| {
         s.entries
