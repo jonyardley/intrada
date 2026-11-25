@@ -1035,7 +1035,13 @@ _ios-test-without-building filters retry parallel="0":
     run_tests 0 "{{parallel}}" "${flags[@]}" || status=$?
     [ "{{parallel}}" != "1" ] || [ -z "$latest" ] \
         || python3 ../scripts/ios-ui-shards.py record "$latest" "$seconds" || true
-    [ "$status" -ne 0 ] && [ "{{retry}}" = "1" ] && [ -n "$latest" ] || exit "$status"
+    [ "$status" -ne 0 ] && [ -n "$latest" ] || exit "$status"
+    # A run with no rerun still names each failed test with its message: for a
+    # crashed one, xcodebuild's own "Failing tests:" list is blank (#2997).
+    if [ "{{retry}}" != "1" ]; then
+        python3 ../scripts/ios-failed-tests.py "$latest" >/dev/null || true
+        exit "$status"
+    fi
     # xcodebuild's own `-retry-tests-on-failure` reran the whole parallel suite
     # after one flake, adding about 100s to a quarter of CI runs (#2269). More
     # than three failures is a real break, not a flake, so it gets no rerun.

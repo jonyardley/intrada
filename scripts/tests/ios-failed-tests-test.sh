@@ -74,6 +74,16 @@ fixture swift 1 "$(bundle IntradaTests "$(suite Failed PageReaderTests "$swift_t
 expect "a Swift Testing failure reruns with its brackets" \
   "0 -only-testing:IntradaTests/PageReaderTests/reads() " "$(run swift)"
 
+crashed_case='{"nodeType": "Test Case", "result": "Failed", "name": "geometry()",
+  "nodeIdentifier": "PageReaderTests/geometry()",
+  "nodeIdentifierURL": "'$url'/IntradaTests/PageReaderTests/geometry()",
+  "children": [{"nodeType": "Failure Message", "name": "Test crashed with signal kill."}]}'
+fixture crashed 1 "$(bundle IntradaTests "$(suite Failed PageReaderTests "$crashed_case")")"
+expect "a crashed test reruns by name" \
+  "0 -only-testing:IntradaTests/PageReaderTests/geometry() " "$(run crashed)"
+expect "a crashed test is named with its crash text (#2997)" true \
+  "$(grep -A1 'PageReaderTests/geometry()' "$tmp/err" | grep -q 'crashed with signal kill' && echo true || echo false)"
+
 fixture nested 1 "$(bundle IntradaTests "$(suite Failed Outer "$(suite Failed Inner "$nested_case")")")"
 expect "a nested suite keeps its target and every suite" \
   "0 -only-testing:IntradaTests/Outer/Inner/inner() " "$(run nested)"
