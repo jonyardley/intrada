@@ -300,7 +300,7 @@ struct PracticeScreen: View {
     let count = Int(selectedWeek?.practisedDays ?? 0)
     return VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(
-        title: "This week",
+        title: selectedWeek?.title ?? "This week",
         trailing: "\(count) day\(count == 1 ? "" : "s") practised")
       weekStrips
     }

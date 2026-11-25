@@ -99,7 +99,10 @@ names what a person does by hand.
 from `just pr-visuals`, run after the push since its URLs pin the pushed
 commit (#1631), and the line "Waiting for the owner's word on the
 screenshot", which becomes "Approved on YYYY-MM-DD" on a yes; a no is a push
-to the open PR (#1891).
+to the open PR (#1891). A change no snapshot shows has nothing for
+`pr-visuals`: capture the screens with a throwaway UI test, and take the
+"before" app code from `git merge-base origin/main HEAD`, since `origin/main`
+moves under you when another session fetches (#2519).
 
 ## PR bodies and issues
 
