@@ -17,7 +17,6 @@ use crate::domain::session::{handle_session_event, ActiveSession, SessionEvent};
 use crate::domain::types::{LibrarySort, ListQuery};
 use crate::model::{Model, ViewModel};
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
-use crate::recognition::{self, RecognitionOperation, RecognitionOutput};
 use crate::view::library::build_practice_summaries;
 
 /// Root Crux application for the music practice library.
@@ -65,19 +64,6 @@ pub enum Event {
     /// Session write result, kept separate so a failed save reloads sessions (not items).
     SessionStoreWritten(PersistenceOutput),
 
-    // ── On-device recognition ────────────────────────────────────────
-    /// The shell read the page. Carries the `photo_id` it was asked to read, so
-    /// a result can only ever land on the read that asked for it — two scans in
-    /// flight would otherwise show one page beside the other's fields.
-    /// `Failed` is an outcome the form shows, not an error that mutes the
-    /// banner.
-    PhotoRead {
-        photo_id: String,
-        output: RecognitionOutput,
-    },
-    /// The user finished with (or backed out of) the recognised draft.
-    DiscardPhotoDraft,
-
     // ── Appended (#2246) ─────────────────────────────────────────────
     Variation(VariationEvent),
     VariationsStoreLoaded(PersistenceOutput),
@@ -103,10 +89,6 @@ pub enum Effect {
     App(AppEffect),
     /// Local-first persistence (the core's first effect with typed-data output).
     Persistence(PersistenceOperation),
-    /// On-device page recognition. The shell runs the frameworks and returns
-    /// text with geometry; the core decides what it means
-    /// (`specs/piece-from-photo.md` decision 4, #1439).
-    Recognition(RecognitionOperation),
     /// iCloud sync (`specs/icloud-sync.md`); provisional until #2361 reports.
     Sync(crate::sync::SyncOperation),
 }
@@ -352,36 +334,6 @@ impl Intrada {
                 } else {
                     settled
                 }
-            }
-
-            // ── On-device recognition ────────────────────────────────
-            Event::PhotoRead { photo_id, output } => {
-                // Anything but "still reading this exact photo" is a result
-                // nothing is waiting on — a scan the user backed out of, or one
-                // superseded by a later scan. Leave the state untouched: the
-                // read that *is* current must survive its predecessor landing.
-                if model.photo_recognition
-                    != (crate::model::PhotoRecognition::Reading {
-                        photo_id: photo_id.clone(),
-                    })
-                {
-                    return crux_core::render::render();
-                }
-
-                model.photo_recognition = match output {
-                    RecognitionOutput::Page(page) => crate::model::PhotoRecognition::Ready {
-                        photo_id,
-                        draft: recognition::read_fields(&page),
-                    },
-                    RecognitionOutput::Failed => {
-                        crate::model::PhotoRecognition::Failed { photo_id }
-                    }
-                };
-                crux_core::render::render()
-            }
-            Event::DiscardPhotoDraft => {
-                model.photo_recognition = crate::model::PhotoRecognition::Idle;
-                crux_core::render::render()
             }
 
             Event::VariationsStoreLoaded(output) => match output {

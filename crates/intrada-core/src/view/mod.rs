@@ -5,8 +5,7 @@ use crate::domain::key::Key;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::{item_reads_as, last_time, opening_way, PlayWay, SessionStatus};
 use crate::model::{
-    BuildingSetlistView, EntryVariationsView, LimitsView, Model, PhotoRecognitionView,
-    SetlistBlockView, ViewModel,
+    BuildingSetlistView, EntryVariationsView, LimitsView, Model, SetlistBlockView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::{library_count_line, matches_query};
@@ -250,7 +249,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         shows_suggestion_restore: up_next.is_some()
             && matches!(model.session_status, SessionStatus::Idle),
         up_next,
-        photo_recognition: photo_recognition_view(&model.photo_recognition),
         limits: LimitsView::default(),
         visible_ids,
         recently_practised_ids: cached.recently_practised_ids.clone(),
@@ -317,32 +315,6 @@ pub(crate) fn rendered_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -> 
     }
 }
 
-fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecognitionView {
-    use crate::model::{PhotoRecognition, PhotoRecognitionStatus};
-
-    match state {
-        PhotoRecognition::Idle => PhotoRecognitionView::default(),
-        PhotoRecognition::Reading { photo_id } => PhotoRecognitionView {
-            status: PhotoRecognitionStatus::Reading,
-            photo_id: Some(photo_id.clone()),
-            draft: None,
-            read_nothing: false,
-        },
-        PhotoRecognition::Ready { photo_id, draft } => PhotoRecognitionView {
-            status: PhotoRecognitionStatus::Ready,
-            photo_id: Some(photo_id.clone()),
-            draft: Some(draft.clone()),
-            read_nothing: *draft == crate::recognition::PhotoDraft::default(),
-        },
-        PhotoRecognition::Failed { photo_id } => PhotoRecognitionView {
-            status: PhotoRecognitionStatus::Failed,
-            photo_id: Some(photo_id.clone()),
-            draft: None,
-            read_nothing: false,
-        },
-    }
-}
-
 fn live_variation_labels(
     library: &[crate::model::LibraryItemView],
     entry: &crate::domain::session::SetlistEntry,
@@ -373,14 +345,9 @@ fn builder_summary(total: Option<&str>, blocks: &[SetlistBlockView], items: usiz
 
 #[cfg(test)]
 mod tests {
-    use super::photo_recognition_view;
     use crate::app::{Event, Intrada};
     use crate::model::Model;
     use crux_core::App;
-
-    use crate::domain::types::Tempo;
-    use crate::model::PhotoRecognition;
-    use crate::recognition::{DraftSource, PhotoDraft, TempoDraftField, TextDraftField};
 
     #[test]
     fn a_variation_says_which_items_use_it() {
@@ -406,89 +373,5 @@ mod tests {
         assert_eq!(usage(&ids[0]), Some(format!("On {first_title}")));
         assert_eq!(usage(&ids[1]).as_deref(), Some("On 2 items"));
         assert_eq!(usage(&ids[2]), None);
-    }
-
-    fn text(value: &str) -> Option<TextDraftField> {
-        Some(TextDraftField {
-            value: value.to_string(),
-            source: DraftSource::Recognised,
-            confidence: 0.9,
-            weak: false,
-        })
-    }
-
-    fn ready(draft: PhotoDraft) -> PhotoRecognition {
-        PhotoRecognition::Ready {
-            photo_id: "photo".to_string(),
-            draft,
-        }
-    }
-
-    #[test]
-    fn a_finished_read_that_found_nothing_says_so() {
-        let tempo = Some(TempoDraftField {
-            value: Tempo {
-                marking: None,
-                bpm: Some(96),
-            },
-            source: DraftSource::Recognised,
-            confidence: 0.9,
-            weak: false,
-        });
-        let cases: Vec<(PhotoRecognition, bool, &str)> = vec![
-            (ready(PhotoDraft::default()), true, "an empty draft"),
-            (
-                ready(PhotoDraft {
-                    title: text("Autumn Leaves"),
-                    ..Default::default()
-                }),
-                false,
-                "a title alone",
-            ),
-            (
-                ready(PhotoDraft {
-                    composer: text("Kosma"),
-                    ..Default::default()
-                }),
-                false,
-                "a composer alone",
-            ),
-            (
-                ready(PhotoDraft {
-                    tempo,
-                    ..Default::default()
-                }),
-                false,
-                "a tempo alone",
-            ),
-            (
-                ready(PhotoDraft {
-                    chart_text: text("| Cm7 | F7 |"),
-                    ..Default::default()
-                }),
-                false,
-                "a chart alone",
-            ),
-            (PhotoRecognition::Idle, false, "no read"),
-            (
-                PhotoRecognition::Reading {
-                    photo_id: "photo".to_string(),
-                },
-                false,
-                "still reading",
-            ),
-            (
-                PhotoRecognition::Failed {
-                    photo_id: "photo".to_string(),
-                },
-                false,
-                "a failed read is its own state",
-            ),
-        ];
-        for (state, expected, why) in cases {
-            let view = photo_recognition_view(&state);
-            assert_eq!(view.read_nothing, expected, "{why}");
-            crate::domain::types::assert_round_trips(view);
-        }
     }
 }
