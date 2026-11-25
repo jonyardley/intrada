@@ -74,6 +74,16 @@ fixture swift 1 "$(bundle IntradaTests "$(suite Failed PageReaderTests "$swift_t
 expect "a Swift Testing failure reruns with its brackets" \
   "0 -only-testing:IntradaTests/PageReaderTests/reads() " "$(run swift)"
 
+crashed_case='{"nodeType": "Test Case", "result": "Failed", "name": "geometry()",
+  "nodeIdentifier": "PageReaderTests/geometry()",
+  "nodeIdentifierURL": "'$url'/IntradaTests/PageReaderTests/geometry()",
+  "children": [{"nodeType": "Failure Message", "name": "Test crashed with signal kill."}]}'
+fixture crashed 1 "$(bundle IntradaTests "$(suite Failed PageReaderTests "$crashed_case")")"
+expect "a crashed test reruns by name" \
+  "0 -only-testing:IntradaTests/PageReaderTests/geometry() " "$(run crashed)"
+expect "a crashed test is named with its crash text (#2997)" true \
+  "$(grep -q 'crashed with signal kill' <<<"$(grep -A1 'PageReaderTests/geometry()' "$tmp/err")" && echo true || echo false)"
+
 fixture nested 1 "$(bundle IntradaTests "$(suite Failed Outer "$(suite Failed Inner "$nested_case")")")"
 expect "a nested suite keeps its target and every suite" \
   "0 -only-testing:IntradaTests/Outer/Inner/inner() " "$(run nested)"
@@ -105,6 +115,21 @@ expect "a test with no runnable name blocks the whole rerun, not just itself" "1
 
 fixture green 0 "$(bundle IntradaUITests "$(suite Passed PracticeUITests "$passed_case")" | sed 's/"Failed"/"Passed"/')"
 expect "a green bundle lists nothing to rerun" "0 " "$(run green)"
+
+# A run that reruns nothing (#2997): an error annotation titled Failed, no
+# first run warning, and no sentence about a rerun.
+no_rerun() {
+  local status=0
+  FIXTURE="$tmp/$1" GITHUB_ACTIONS=true python3 "$script" --no-rerun bundle >"$tmp/out" 2>"$tmp/err" || status=$?
+  echo "$status"
+}
+yes_no() { if grep -q "$1" <<<"$(cat "$tmp/err")"; then echo true; else echo false; fi; }
+expect "--no-rerun still exits 0 for failures it can name" "0" "$(no_rerun xctest)"
+expect "--no-rerun annotates an error titled Failed" true "$(yes_no '^::error title=Failed::PracticeUITests/testStart()')"
+expect "--no-rerun gives no first run warning" false "$(yes_no 'Failed on the first run')"
+expect "--no-rerun still names the test and its message" true "$(yes_no 'player.options is on screen (line 71)')"
+expect "--no-rerun skips the rerun sentence" false "$(no_rerun refused >/dev/null; yes_no 'none is')"
+expect "--no-rerun still names a failure outside a test" true "$(yes_no 'Application failed preflight checks')"
 
 echo "ios-failed-tests-test: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
