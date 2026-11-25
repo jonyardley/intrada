@@ -20,7 +20,10 @@ review rule there.
    when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
    class the diff adds or edits, and for each class that drives a form the
    diff reshapes (#2993); CI runs the full UI tier (#2114). Stop at the
-   first failure. `test-runner` cannot edit, so the lead runs a mutation
+   first failure. Run clippy and the hygiene checks on their own before the
+   full `just check`, and compile the Swift tests before the full iOS run, so
+   one lint or one bad assertion costs seconds, not a rerun (#3004).
+   `test-runner` cannot edit, so the lead runs a mutation
    check itself (#2519).
 3. **Review** before the push, because one left until after gets skipped
    (#1550). `just review-route` decides: `reviewer` on code or tests, Tier 1
@@ -50,7 +53,9 @@ review rule there.
    mergeability. Reproduce a red UI test with `just ios-test-ui-class`. Compare
    Codecov's patch comment with the body's Coverage line; an unexpected gap
    gets a test or a PR comment.
-7. **Ready**: `just pr-ready <pr> <issue>` refuses until the route is done. A
+7. **Ready**: every PR, however it was opened, runs the retro before ready and
+   is readied only through `just pr-ready <pr> <issue>`, never a bare
+   `gh pr ready` (#3004); it refuses until the route is done. A
    screen change also waits for the owner's yes on its pictures.
 8. **The merge wait**, in the background: poll every three minutes for up to
    an hour, `for i in $(seq 20); do s=$(gh pr view PR --json state -q

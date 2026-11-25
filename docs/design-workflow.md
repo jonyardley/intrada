@@ -51,7 +51,10 @@ design system live in Claude artifacts; the repo stays the source of truth.
    error, the longest content). A canvas drawing hides real sizes: in the
    #2794 trial the real number buttons were 32 points tall, not the 20 drawn,
    and broke the layout the canvas promised. A control the catalogue lacks
-   is not drawn here: it goes through "A new control" (below) first.
+   is not drawn here: it goes through "A new control" (below) first. Keep one
+   design session with the sketch open and redraw with live previews, since a
+   fresh agent per small change rereads the docs and rebuilds the app before
+   drawing anything (#3004); the design reviewer checks each picture as it lands.
 5. **Design review.** A fresh `design-reviewer` agent
    (`.claude/agents/design-reviewer.md`, Opus, medium) that did not draw the
    sketch reviews its screenshots against the brief and the written design
