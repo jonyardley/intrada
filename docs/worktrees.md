@@ -121,7 +121,7 @@ tool that reads and is denied anyway. It allows:
 - read-only `git`, including `git branch` with no name or only listing flags,
   and no `--output` to a file in the checkout; `rtk read`;
 - `just` limited to `worktrees`, `worktree-status`, `status`, `worktree-new`,
-  `handover`, `issue`, `claim`, `ready-queue`, `--list` and a bare `just`,
+  `handover`, `issue`, `claim`, `--list` and a bare `just`,
   never with `--fmt`;
 - `wt` limited to `switch`, `list`, `help`, `config show`, `hook show`,
   `step diff` and `step eval`, plus `--help` and `--version`;
