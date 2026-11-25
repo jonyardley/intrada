@@ -81,8 +81,8 @@ recipe output) so it names the right move; any doc line comes after (#2967):
   ending "(issue #N)" while the issue is open. Its What to do comes from
   rerunning the failing command or reading the saved output, not from memory,
   and Where it lives says when the file is machine-local, outside the repo:
-  #2997 blamed a script that already read crashes, and #3021 a refusal that
-  never fired.
+  #2997 blamed a script that already read crashes, and #3021 a `/dev/null`
+  refusal that never fired.
 
 ## Verifying a change on the simulator
 

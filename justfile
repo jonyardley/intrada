@@ -1039,7 +1039,7 @@ _ios-test-without-building filters retry parallel="0":
     # A run with no rerun still names each failed test with its message: for a
     # crashed one, xcodebuild's own "Failing tests:" list is blank (#2997).
     if [ "{{retry}}" != "1" ]; then
-        python3 ../scripts/ios-failed-tests.py "$latest" >/dev/null || true
+        python3 ../scripts/ios-failed-tests.py --no-rerun "$latest" >/dev/null || true
         exit "$status"
     fi
     # xcodebuild's own `-retry-tests-on-failure` reran the whole parallel suite
