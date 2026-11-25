@@ -6,7 +6,7 @@
 
 A harness change, in the repo or on Jon's machine, adds its row here in the
 same PR. A machine-local change with no PR of its own gets its row in the next
-harness PR. A `/ship` retro fix, which is prose only, is recorded by its
+harness PR. A `/intrada-ship` retro fix, which is prose only, is recorded by its
 "fix:" line in `lessons-archive.md` instead (#2934). Machine-local means a
 file under `~/.claude/` on Jon's machine, dated by the PR that documented it,
 or by the file's own date where no PR did.
@@ -105,3 +105,5 @@ or by the file's own date where no PR did.
 | 2026-11-24 | #2975 (#2967) | Machine-local: the main checkout refusal in `guard-worktree.sh` names Claude Code's `EnterWorktree` with the worktree's path as the way in, and tells a subagent launched there to ask its lead to relaunch it inside the worktree; its battery checks that line on a refused `cd` build, Edit and Write, and refuses a guard copy it cannot run. Repo: `just worktree-new` prints the same call, and the shipping skill's retro outcomes send a lesson seen a second time to an issue that first changes what the session saw when it went wrong. |
 | 2026-11-24 | #2978 (#2943) | The lessons check also refuses a non-blank line kept twice in the rules above the Lessons heading, naming both lines and the text, so a union merge of two edits to one rule line no longer passes |
 | 2026-11-24 | #2979 (#2969) | `just handover` starts the next session from fresh main, with `just worktree-new` and `just claim`, unless the issue is claimed on the current branch and its pull request is not merged; an issue claimed on another branch goes to that branch's worktree; the opener's read shows the body and the owner's comments only |
+| 2026-11-25 | #3014 (#3013) | `/ship` is renamed `/intrada-ship`: Claude Code added a built-in `/ship`, which took the name, so the repo command stopped loading. Current mentions follow; past rows keep the old name |
+| 2026-11-25 | #3024 (#2997, #3021) | `just ios-test` names each failed or crashed test with its message on every failed run, not only on a run that reruns its failures, since a crash leaves xcodebuild's own list blank; a crash case joins `scripts/tests/ios-failed-tests-test.sh`. Machine-local: `guard-worktree.sh` still refuses an inline Python, Ruby or Perl script from main, since it can write, but its refusal now names `gh --jq` and `jq` for a JSON read; a read sent to `/dev/null` already passed. The hint shows only when an inline script is the sole write refused, and keeps the full refusal after it; ten cases join `guard-worktree.test.sh`. On a run with no rerun, the justfile passes `--no-rerun`, which annotates each failure as an error and leaves out the rerun sentence. |

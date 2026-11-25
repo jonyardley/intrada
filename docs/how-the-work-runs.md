@@ -20,7 +20,6 @@ Every issue a person or an agent opens carries a horizon and a kind (`bug`,
 | `security` | Security-relevant |
 | `ios` | Work on the iPhone app |
 | `epic` | A body of work whose issues are its sub-issues ([Epics](#epics)) |
-| `ready` | The owner has approved the plan and, for a new or changed screen, the sketch; an agent may build it. Only the owner adds it; for an epic, it goes on the epic's issues, never the epic itself |
 
 ### Horizons
 
@@ -63,8 +62,10 @@ The [project board](https://github.com/users/jonyardley/projects/2)'s columns
 are workflow states: Backlog, In Progress, In Review and Done. Labels filter.
 **The milestone is the release**: everything meant for the next release carries
 its milestone. A `Priority` field (P0, P1, P2) ranks issues that share a
-horizon. `just status` lists `ready` issues, bar epics, by horizon, then Priority,
-then oldest first; an agent takes the top unclaimed one.
+horizon. `just status` lists open issues, bar epics, by horizon, then Priority,
+then oldest first; an epic's next issue comes first, and the top of this list
+only when no epic has one, or for a one-off. The owner's approval of the plan
+comment is the go.
 
 ## Cutting a release
 

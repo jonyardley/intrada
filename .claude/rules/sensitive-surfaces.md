@@ -22,7 +22,7 @@ or a view type and renames, removes, reorders or retypes nothing. It keeps its
 tier, may be built by `task` or the lead, and ships with its LiveBridge
 round-trip test. Everything else here is lead-only: the `ActiveSession`
 crash-recovery blob, any type under a wire-pinned settings key (library sort,
-profile, practice defaults: bincode on the device, like the blob), store
+profile, practice defaults, first run: bincode on the device, like the blob), store
 migrations, auth, and any bridge change that is not additive.
 
 1. **Lead-only work runs at the session's opening level**, which is the

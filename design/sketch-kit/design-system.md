@@ -16,6 +16,19 @@ Intrada is a practice notebook for musicians, with an iPhone app. This is a publ
 - Draw a list inside a detail card, such as a piece's linked exercises, sections or variations, or the items in a session being built, as rows in that card with a `divider` line (HairlineDivider) between them. A form's fields sit the same way.
 - Inset content `spacing-card` (16) from the card's edge, or `spacing-cardCompact` (12) in a dense list. Space sections `spacing-section` (24) apart and controls `spacing-controlGap` (8).
 
+## Controls
+
+- Draw a stepper and a single button other than the one primary MarkerButton as ink on the card, so it recedes behind the content it changes.
+- A stepper's minus and plus are ink glyphs inside thin circles, stroked one point in `divider`: about 32 points drawn, with a 44 point tap area. The value sits between them in DM Mono.
+- Never put a white box, a filled panel or a sunken strip round a stepper's minus and plus, or round a single button.
+- The catalogue's own looks stay as they are. Choosing one of a few options is SegmentedPills: a white track with a hairline edge, the chosen pill filled in ink. Giving a mark is ScoreSelector, with its ink filled boxes.
+- A text field keeps its white FieldCard or FormField look, so it reads as something you can type into.
+- Split rows with a hairline divider (HairlineDivider); never box them.
+- A stepper reads aloud as one adjustable control.
+- When last time's value is shown beside today's, a word tells them apart as well as `inkSecondary`.
+- A small edit that belongs to the screen underneath, such as a key's tempo and note, opens in a BottomSheet rather than expanding a row in place.
+- Rejected: white boxed buttons on a grey filled panel (#3004, T39 in [the design principles](../../docs/design-principles.md)).
+
 ## Type
 
 Hanken Grotesk for every word; DM Mono only for a value that is a number alone, such as a clock, a duration or a count. Five sizes, and weight and colour carry the rest (T35):

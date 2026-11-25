@@ -66,7 +66,10 @@ review rule there.
    the owner's next message. Never ask the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
-says, each lesson gets one of two outcomes. A lesson seen a second time (its
+says, each lesson gets one of two outcomes, and either one reshapes before it
+adds: if a test or check already caught the mistake, nothing new is written;
+otherwise sharpen, merge or remove an existing line before adding one, so the
+rules stay short enough to be read. A lesson seen a second time (its
 line reaches "(seen again 1)") always takes Issue, and that issue first
 changes what the session saw when it went wrong (the message, refusal or
 recipe output) so it names the right move; any doc line comes after (#2967):
@@ -78,7 +81,11 @@ recipe output) so it names the right move; any doc line comes after (#2967):
 - **Issue** under the harness epic #1983: anything bigger, and any change to a
   script, recipe, hook, settings, CI workflow, `CLAUDE.md`, app code,
   frontmatter or a sensitive surface path. The lesson stays under Lessons
-  ending "(issue #N)" while the issue is open.
+  ending "(issue #N)" while the issue is open. Its What to do comes from
+  rerunning the failing command or reading the saved output, not from memory,
+  and Where it lives says when the file is machine-local, outside the repo:
+  #2997 blamed a script that already read crashes, and #3021 a `/dev/null`
+  refusal that never fired.
 
 ## Verifying a change on the simulator
 

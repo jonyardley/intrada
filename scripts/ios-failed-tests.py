@@ -8,7 +8,10 @@ green retry used to leave nothing to read (#1576).
 
 Prints no flags and exits 1 when the failures are not all accounted for by
 failed test cases (a refused clone fails a class with no case under it): a
-rerun of the cases alone would then forgive the rest."""
+rerun of the cases alone would then forgive the rest.
+
+With `--no-rerun`, for a run that reruns nothing, each failure is annotated as
+an error and the rerun sentence is left out."""
 
 import json
 import os
@@ -62,7 +65,7 @@ def only_testing(case):
     return "-only-testing:" + "/".join(parts[4:])
 
 
-def main(path):
+def main(path, rerun=True):
     cases, stray = [], []
     for root in xcresult("tests", path)["testNodes"]:
         walk(root, cases, stray)
@@ -77,11 +80,14 @@ def main(path):
             print(f"    {message}", file=sys.stderr)
         if annotate:
             body = " / ".join(found).replace("%", "%25").replace("\n", "%0A")
-            print(f"::warning title=Failed on the first run::{case['nodeIdentifier']}: {body}", file=sys.stderr)
+            title = "::warning title=Failed on the first run::" if rerun else "::error title=Failed::"
+            print(f"{title}{case['nodeIdentifier']}: {body}", file=sys.stderr)
     for line in stray:
         print(f"✗ {line}", file=sys.stderr)
 
     if stray or reported != len(cases) or None in flags:
+        if not rerun:
+            return 1
         print(
             f"✗ {reported} reported failed, {len(cases)} failed tests found, {len(stray)} failures "
             "outside a test: not every failure can be rerun, so none is.",
@@ -94,4 +100,7 @@ def main(path):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1]))
+    args = sys.argv[1:]
+    no_rerun = "--no-rerun" in args
+    args = [a for a in args if a != "--no-rerun"]
+    sys.exit(main(args[0], rerun=not no_rerun))

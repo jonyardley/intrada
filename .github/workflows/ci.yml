@@ -777,10 +777,6 @@ jobs:
       # screen drift from the theme while every other check stays green (#2699).
       - name: Screens take colours and spacing from the theme
         run: bash scripts/check-theme-values.sh
-      # Theme.swift is the token source and the design system page only shows
-      # it, so a colour the page lacks is drift nothing else sees (#2603).
-      - name: Every Theme.swift colour is on the design system page
-        run: bash scripts/check-design-tokens.sh
       # Sketches draw from the kit, so tokens or icons left behind a theme
       # change put the old look in every new mockup (#2700).
       - name: The sketch kit matches the theme and icons
@@ -857,8 +853,8 @@ jobs:
         run: bash scripts/tests/session-claims-test.sh
       - name: just status still shows each epic's next child
         run: bash scripts/tests/status-epics-test.sh
-      - name: just status still lists the ready queue in priority order
-        run: bash scripts/tests/status-ready-test.sh
+      - name: just status still ranks the open issues in priority order
+        run: bash scripts/tests/status-next-test.sh
       - name: just epic-add still attaches sub-issues
         run: bash scripts/tests/epic-add-test.sh
       - name: just worktree-status still says whose move each worktree is

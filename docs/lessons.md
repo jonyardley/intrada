@@ -32,4 +32,3 @@
 ## Lessons
 
 - fix: .claude/skills/intrada-shipping/SKILL.md, 2026-11-25, #2789: a session started outside the repo has no project agent types, so spawning `reviewer` fails with "agent type not found"; spawn a general-purpose agent told to follow `.claude/agents/reviewer.md`.
-- 2026-11-25, #2754: when an iOS unit test crashes on CI ("signal kill"), the log's "Failing tests:" list is blank; the name is only in the result bundle, so download the `native-ios-selfhosted-xcresult` artifact and read it with `xcrun xcresulttool get test-results summary --path <bundle>` instead of searching the log (issue #2997).

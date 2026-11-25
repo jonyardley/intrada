@@ -206,7 +206,7 @@ back on. Red left standing hides the next real break (#2747).
 
 | You are | Do |
 |---|---|
-| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed, with the number read once the draft opens, never guessed; a `/ship` retro fix is recorded in the lessons archive instead |
+| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed, with the number read once the draft opens, never guessed; a `/intrada-ship` retro fix is recorded in the lessons archive instead |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |
 | Wanting session costs | `just usage`, or `just usage 14` for a fortnight; it ends with how many fixed lessons came back, the fixes that did not hold (#2968) |
 | Switching a user hook off or on | Delete its line from `hooks` in `~/.claude/settings.json`, leaving the script; restore it from the dated backup in `~/.claude/backups/` (#1990) |
@@ -248,7 +248,6 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | Edit denied in the main checkout | The session is not in its worktree; start one there with `cd <worktree> && claude`; see `worktrees.md` |
 | `just worktree-done` refused | The PR is not merged, the tree has changes, or a commit is not in the merged PR; the message names which |
 | `gh pr merge` or a push to main refused | Merging is Jon's, on GitHub |
-| Adding the `ready` label asks, or is refused | `ready` means Jon approved the plan; only he adds it (#2812) |
 | `xcodebuild` refused | Use the `just` recipe; for the installed version, `-version` is refused too, so read Xcode's Info.plist with `plutil -p` |
 | A worktree session's command refused as too complex | A loop, a compound command, or text that looks like git (a `.github` path) tripped the guard; split it into plain separate commands. A loop over git, such as a mutation run, goes in a scratch script, written before the first try |
 | Waiting on the simulator lock | Another run holds it; it queues |

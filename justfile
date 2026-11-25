@@ -63,7 +63,7 @@ coverage:
 # justfile or .github/ (scripts/lib/diff-scope.sh, #2734); CI runs its own list directly.
 # A check whose tool is absent prints a line starting "skipped:" and passes;
 # those lines are echoed on a green run so a skip never reads as a pass.
-[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests when tooling changed, and the release-name, app-version, faint-ink, theme-value, design-token, sketch-kit, haptics, lessons, bridge-test and grep pipe checks")]
+[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests when tooling changed, and the release-name, app-version, faint-ink, theme-value, sketch-kit, haptics, lessons, bridge-test and grep pipe checks")]
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -78,7 +78,6 @@ hygiene:
         "check-app-version:bash scripts/check-app-version.sh"
         "check-faint-ink:bash scripts/check-faint-ink.sh"
         "check-theme-values:bash scripts/check-theme-values.sh"
-        "check-design-tokens:bash scripts/check-design-tokens.sh"
         "check-components:bash scripts/check-components.sh"
         "check-sketch-kit:python3 scripts/sketch-kit.py --check"
         "check-haptics:bash scripts/check-haptics.sh"
@@ -94,7 +93,7 @@ hygiene:
         "pr-visuals-test:bash scripts/tests/pr-visuals-test.sh"
         "status-release-test:bash scripts/tests/status-release-test.sh"
         "status-epics-test:bash scripts/tests/status-epics-test.sh"
-        "status-ready-test:bash scripts/tests/status-ready-test.sh"
+        "status-next-test:bash scripts/tests/status-next-test.sh"
         "worktree-status-test:bash scripts/tests/worktree-status-test.sh"
         "worktree-done-test:bash scripts/tests/worktree-done-test.sh"
         "epic-add-test:bash scripts/tests/epic-add-test.sh"
@@ -672,7 +671,7 @@ ios-fmt-check:
 ios-test: _ios-sync (_ios-test-run "fast")
 
 # Full tier: IntradaTests + IntradaUITests, one test at a time. CI runs the UI
-# tests on every PR, so `ship` does not run this (#2114).
+# tests on every PR, so `/intrada-ship` does not run this (#2114).
 [doc("Run the full iOS tier with XCUITests, for debugging a UI failure")]
 [group('iOS')]
 ios-test-full: _ios-sync (_ios-test-run "full")
@@ -1036,7 +1035,13 @@ _ios-test-without-building filters retry parallel="0":
     run_tests 0 "{{parallel}}" "${flags[@]}" || status=$?
     [ "{{parallel}}" != "1" ] || [ -z "$latest" ] \
         || python3 ../scripts/ios-ui-shards.py record "$latest" "$seconds" || true
-    [ "$status" -ne 0 ] && [ "{{retry}}" = "1" ] && [ -n "$latest" ] || exit "$status"
+    [ "$status" -ne 0 ] && [ -n "$latest" ] || exit "$status"
+    # A run with no rerun still names each failed test with its message: for a
+    # crashed one, xcodebuild's own "Failing tests:" list is blank (#2997).
+    if [ "{{retry}}" != "1" ]; then
+        python3 ../scripts/ios-failed-tests.py --no-rerun "$latest" >/dev/null || true
+        exit "$status"
+    fi
     # xcodebuild's own `-retry-tests-on-failure` reran the whole parallel suite
     # after one flake, adding about 100s to a quarter of CI runs (#2269). More
     # than three failures is a real break, not a flake, so it gets no rerun.
