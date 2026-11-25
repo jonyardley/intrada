@@ -35,7 +35,7 @@ present, precise, never the thing you are listening to.
 | Surface | Job | Budget |
 |---|---|---|
 | **Chrome and admin** (headers, forms, library, builder, settings) | Name things | Labels, not sentences. A subtitle is facts, not a sales line. |
-| **In session** (live view, player, rep counter) | Get out of the way | Numbers and one-word buttons. Prose only where nothing else works. |
+| **In session** (live view, player, click) | Get out of the way | Numbers and one-word buttons. Prose only where nothing else works. |
 | **Reflective** (session complete, reflection, item history) | Frame the user's own words | One short sentence at most; the user's quote carries the feeling. |
 
 ---

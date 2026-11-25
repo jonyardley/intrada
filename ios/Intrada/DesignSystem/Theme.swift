@@ -212,7 +212,7 @@ enum IntradaSpacing {
 /// Corner-radius tokens. `card` is the rounding every card / inset surface uses.
 enum IntradaRadius {
   static let card: CGFloat = 3
-  /// Interactive control buttons (rep Clean/Missed, etc.).
+  /// Smaller cards and controls (session summary, reflection, feedback, builder).
   static let control: CGFloat = 3
   /// Type badges / small tinted chips.
   static let badge: CGFloat = 3

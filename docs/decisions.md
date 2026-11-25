@@ -37,7 +37,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - Saving a session clears the summary and the crash copy only once the store confirms the write (#974).
 - The profile is device data, never account data: name, instrument, icon and highlighter colour, saved as its own singleton (#1691).
 - First run ticks are worked out from library and history, never stored; only the welcome's dismissal is saved (#2116).
-- The rep target and click start are device defaults the core owns and applies; the shell only saves the blob (#1915).
+- The click start is a device default the core owns and applies; the shell only saves the blob (#1915). The repetition target it once held went with #2791.
 - A preferred length of 10 to 120 minutes lives on the practice defaults; the builder can change it for today only (#1736).
 - Library sort is a saved device setting the core applies; the default is newest first (#848).
 - The core can send a notice as well as an error; notices show as a calm grey banner (#1325).
@@ -50,7 +50,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 
 ## Shells and platform
 
-- The Focus Player is native, with the core owning the clock and rep counting (#932).
+- The Focus Player is native, with the core owning the clock (#932).
 - The click keeps going in the background through a silent audio session, and the timer reads the wall clock (#1399).
 - Lock screen progress uses a Live Activity; the native design replaces the Tauri plugin design (#1600).
 - TestFlight ships via fastlane match and an App Store Connect key, on dispatch or a v tag, never per PR, saving macOS minutes (#784, #984).

@@ -1,6 +1,6 @@
 # Practice defaults: the click start and the session length
 
-> Tier 3 (a new bridge shape and a new saved singleton). Shipped with #1915
+> Tier 3 (it added a bridge shape and a saved singleton). Shipped with #1915
 > and #1736, part of #1974. The repetition target it once held went with
 > #2791 (`simpler-removals.md`). Native iOS only.
 

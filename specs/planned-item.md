@@ -4,7 +4,8 @@
 > retypes fields). Issue #2582, decision 5 of the data model review (#2577,
 > ruled 2026-10-13). One PR across the stack: core commits first, reviewed
 > alone, then the iPhone commits. Nothing changes on screen, and
-> no store migration.
+> no store migration. The focus and repetition target fields it once held
+> went with #2791 (`simpler-removals.md`).
 
 ## Problem
 
@@ -24,11 +25,9 @@ pub struct PlannedItem {
     pub item_id: String,
     pub item_type: ItemKind,
     pub intention: Option<String>,
-    pub focus: Option<IntentionFocus>,
     pub duration_secs: Option<u32>,
     pub group_id: Option<String>,
     pub variation_ids: Vec<String>,
-    pub rep_target: Option<u8>,
     /// `None` is the written key.
     pub key: Option<Key>,
 }

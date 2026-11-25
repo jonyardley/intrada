@@ -1,4 +1,4 @@
-# Practice instruments: the session timer and an honest click
+# Practice instruments: an honest click and the time signature behind it
 
 > Tier 3. Covers #1364 (session timer) and #1499 (which beats the click
 > sounds, and the time signature behind it). Epic #1975. The rep counter
@@ -60,15 +60,14 @@ pub struct ClickState {
 ### 3. Whether the click pattern is recorded alongside the tempo
 
 **Yes.** "120 with the click on 2 and 4" is a different achievement from "120
-straight". `SetlistEntry.click_pattern: Option<ClickState>` is written by the
-same handler that writes `achieved_tempo`, and only when the click was
-sounding.
+straight". `Play.click_pattern: Option<ClickState>` is written by the same
+handler that writes `achieved_tempo`, and only when the click was sounding.
 
 ## The click's band and presets come from the core (#2225)
 
 The tempo band, step and default, the named bars, the groupings and the
-patterns live in `crates/intrada-core/src/domain/metre.rs` and reach both
-shells through `LimitsView`. The band is crotchets 40 to 208, default 96,
+patterns live in `crates/intrada-core/src/domain/metre.rs` and reach the iOS
+app through `LimitsView`. The band is crotchets 40 to 208, default 96,
 step 2, projected per beat unit through `Metre::displayed_bpm`. The beat
 indicator derives the current beat from the same grid the audio uses (T19).
 

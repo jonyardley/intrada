@@ -12,13 +12,14 @@
 ## Shape
 
 An entry holds an ordered list of **plays**. Each play says how the item was
-played (key, variations) and carries the time, tempo and mark. Switching mid item closes the open play and opens another.
+played (key, variations) and carries the time, tempo and mark. Switching mid
+item closes the open play and opens another.
 
 ```text
 Variation { id, label, updated_at, deleted_at }    // shared across the library (#2246)
 Item { …, key, keys: Vec<Key>, variation_ids,
        exercise_links: Vec<ExerciseLink> }
-SetlistEntry { …, plan: PlannedItem, plays: Vec<Play> }  // plan: key, variations
+SetlistEntry { …, plan: PlannedItem, plays: Vec<Play> }  // the plan
 Play { id, key, variation_ids, started_at, seconds, tempo_changes,
        achieved_tempo, click_pattern, score, away: Vec<Away> }
 ```
@@ -58,9 +59,9 @@ Play { id, key, variation_ids, started_at, seconds, tempo_changes,
 - A play's variations must be live on the entry's item.
 - At most `MAX_PLAYS_PER_ENTRY` (24) plays per entry, bounding the blob.
 - `play_id` must belong to the named entry.
-- Every terminal transition drops a play with no score and under
-  five seconds (`MIN_PLAY_SECONDS`). A practised entry always keeps one play, so the shell can
-  never hold a `play_id` the core has just deleted.
+- Every terminal transition drops a play with no score and under five
+  seconds (`MIN_PLAY_SECONDS`). A practised entry always keeps one play, so
+  the shell can never hold a `play_id` the core has just deleted.
 - A skipped entry keeps no plays: the clock ran while the musician decided
   to skip, and time alone does not count.
 
