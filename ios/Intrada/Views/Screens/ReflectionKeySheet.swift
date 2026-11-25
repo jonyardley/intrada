@@ -46,7 +46,9 @@ struct ReflectionKeySheet: View {
       leadingAction: { EmptyView() },
       content: {
         ScrollView {
-          content.padding(IntradaSpacing.card)
+          content
+            .padding(.horizontal, IntradaSpacing.section)
+            .padding(.vertical, IntradaSpacing.card)
             .onGeometryChange(for: CGFloat.self) {
               $0.size.height
             } action: {
@@ -74,9 +76,8 @@ struct ReflectionKeySheet: View {
         PlayWayEditor(row: wayRow, choices: wayChoices, onChange: onWay)
       }
       if let tempoRow, tempo != nil {
-        // Inset to the cards' text, so the label and its value share one edge.
         StepperRow {
-          FieldLabel("Tempo")
+          StepperRowLabel("Tempo reached")
         } stepper: {
           TempoStepper(
             value: tempoBinding, unit: tempoRow.click.metre.unit,
@@ -85,18 +86,21 @@ struct ReflectionKeySheet: View {
           )
           .accessibilityIdentifier("reflection.tempo")
         }
-        .padding(.horizontal, IntradaSpacing.card)
       }
-      FieldCard("Note for \(title)") {
-        TextField("Add a note", text: $note, axis: .vertical)
-          .lineLimit(2...4)
-          .font(IntradaFont.body)
-          .foregroundStyle(IntradaColor.ink)
-          .accessibilityIdentifier("reflection.keyNote")
-          .onChange(of: note) { _, typed in
-            let kept = Self.capped(typed, to: Int(limits.playNoteMaxChars))
-            if kept != typed { note = kept }
-          }
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        SectionTitle("Note · optional")
+        NoteBox {
+          TextField("Add a note", text: $note, axis: .vertical)
+            .lineLimit(2...4)
+            .font(IntradaFont.body)
+            .foregroundStyle(IntradaColor.ink)
+            .accessibilityLabel("Note for \(title)")
+            .accessibilityIdentifier("reflection.keyNote")
+            .onChange(of: note) { _, typed in
+              let kept = Self.capped(typed, to: Int(limits.playNoteMaxChars))
+              if kept != typed { note = kept }
+            }
+        }
       }
     }
   }
@@ -137,5 +141,43 @@ struct StepperRow<Leading: View, Stepper: View>: View {
       leading.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
       stepper
     }
+  }
+}
+
+/// What a stepper row sets, with an optional line under it, the same on both
+/// reflection sheets (#3004).
+struct StepperRowLabel: View {
+  let title: String
+  var detail: String?
+
+  init(_ title: String, detail: String? = nil) {
+    self.title = title
+    self.detail = detail
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Text(title)
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.ink)
+      if let detail {
+        Text(detail)
+          .font(IntradaFont.small)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+    }
+    .accessibilityElement(children: .combine)
+  }
+}
+
+/// The white box a reflection note is typed into, under its section title.
+struct NoteBox<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .padding(IntradaSpacing.cardCompact)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .cardSurface(cornerRadius: IntradaRadius.control)
   }
 }

@@ -37,6 +37,8 @@ struct ScoreStepper: View {
           .lineLimit(1)
           .fixedSize()
       }
+      // Keeps a caption that outgrows the column at large text clear of the rings.
+      .padding(.horizontal, IntradaSpacing.controlGap)
       .frame(minWidth: StepperValue.width, minHeight: 44)
       TempoStepButton(systemImage: "plus", label: "Higher", isEnabled: canRaise) {
         onChange(stepped(by: 1))

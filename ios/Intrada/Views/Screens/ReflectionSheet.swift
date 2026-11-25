@@ -183,17 +183,17 @@ struct ReflectionSheet: View {
         }
 
         sectionTitle("Reflection · optional").padding(.top, IntradaSpacing.section)
-        HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
-          TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
-            .lineLimit(3...5)
-            .font(IntradaFont.body)
-            .foregroundStyle(IntradaColor.ink)
-            .accessibilityIdentifier("reflection.note")
-          SpeechInputButton(text: $note)
-            .accessibilityIdentifier("reflection.speak")
+        NoteBox {
+          HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
+            TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
+              .lineLimit(3...5)
+              .font(IntradaFont.body)
+              .foregroundStyle(IntradaColor.ink)
+              .accessibilityIdentifier("reflection.note")
+            SpeechInputButton(text: $note)
+              .accessibilityIdentifier("reflection.speak")
+          }
         }
-        .padding(IntradaSpacing.cardCompact)
-        .cardSurface(cornerRadius: IntradaRadius.control)
         .padding(.top, IntradaSpacing.controlGap)
 
         if let refusal {
@@ -271,14 +271,14 @@ struct ReflectionSheet: View {
   private func singlePlayRows(_ play: ReflectionPlay, _ row: ReflectionTempoView) -> some View {
     VStack(alignment: .leading, spacing: 0) {
       StepperRow {
-        rowLabel("Confidence", detail: nil)
+        StepperRowLabel("Confidence")
       } stepper: {
         scoreStepper(play, row, label: "Score for \(singlePlayTitle(play))")
       }
       .padding(.bottom, IntradaSpacing.controlGap)
       HairlineDivider()
       StepperRow {
-        rowLabel("Tempo reached", detail: tempoTarget.map { "target \($0)" })
+        StepperRowLabel("Tempo reached", detail: tempoTarget.map { "target \($0)" })
       } stepper: {
         TempoStepper(
           value: tempoBinding(for: play.id), unit: row.click.metre.unit,
@@ -288,20 +288,6 @@ struct ReflectionSheet: View {
       }
       .padding(.top, IntradaSpacing.controlGap)
     }
-  }
-
-  private func rowLabel(_ title: String, detail: String?) -> some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Text(title)
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.ink)
-      if let detail {
-        Text(detail)
-          .font(IntradaFont.small)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-    }
-    .accessibilityElement(children: .combine)
   }
 
   @ViewBuilder private func keyRow(_ play: ReflectionPlay) -> some View {
