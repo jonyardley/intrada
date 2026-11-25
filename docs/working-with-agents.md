@@ -164,7 +164,7 @@ Context length sets the bill (#1985, #1849).
   and have research agents mark observed against inferred.
 - **Build what was asked.** An option the owner did not ask for turns a
   clear ask into a decision; offer the alternative in one line, never as a
-  drawn option (#3004).
+  separate option (#3004).
 - **A fan-out, a Workflow or a full-repo scan** is costed before it runs, and
   only when Jon asked.
 - **Before editing a shared script**, check `just status` for in-flight work
