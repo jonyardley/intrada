@@ -366,6 +366,70 @@ fn start_building_from_suggestion_round_trips_on_ffi_bincode_wire() {
     ));
 }
 
+// ── The countdown clock (#2789) ──────────────────────────────────
+
+fn start_with_length(length_mins: Option<u16>, now: DateTime<Utc>) -> Model {
+    let mut m = model_with_library();
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    update(
+        &mut m,
+        Event::Session(SessionEvent::SetSessionLength { length_mins }),
+    );
+    update(
+        &mut m,
+        Event::Session(SessionEvent::AddToSetlist {
+            item_id: "piece-1".to_string(),
+        }),
+    );
+    update(&mut m, Event::Session(SessionEvent::StartSession { now }));
+    m
+}
+
+#[test]
+fn starting_a_timed_session_carries_todays_length() {
+    let m = start_with_length(Some(30), Utc::now());
+    let SessionStatus::Active(ref active) = m.session_status else {
+        panic!("expected Active");
+    };
+    assert_eq!(active.length_mins, Some(30));
+}
+
+#[test]
+fn a_timed_session_ends_at_its_start_plus_the_length() {
+    let now = Utc::now();
+    let m = start_with_length(Some(30), now);
+    let view = Intrada.view(&m).active_session.expect("active view");
+    assert_eq!(
+        view.ends_at,
+        Some((now + chrono::Duration::minutes(30)).to_rfc3339())
+    );
+}
+
+#[test]
+fn the_end_instant_round_trips_on_ffi_bincode_wire() {
+    let m = start_with_length(Some(30), Utc::now());
+    let view = Intrada.view(&m).active_session.expect("active view");
+    assert!(view.ends_at.is_some());
+    crate::domain::types::assert_round_trips(view);
+}
+
+#[test]
+fn a_session_with_no_length_has_no_end() {
+    let m = start_with_length(None, Utc::now());
+    let view = Intrada.view(&m).active_session.expect("active view");
+    assert_eq!(view.ends_at, None);
+}
+
+#[test]
+fn the_one_tap_start_carries_the_planned_length() {
+    let mut m = plan_model();
+    one_tap(&mut m);
+    let SessionStatus::Active(ref active) = m.session_status else {
+        panic!("expected Active");
+    };
+    assert_eq!(active.length_mins, Some(25));
+}
+
 // ── Today's plan and the one-tap start (#57) ─────────────────────
 
 /// The pinned anchor's block (15 minutes, never practised) and piece-R's
@@ -2373,6 +2437,7 @@ fn test_recover_session() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        length_mins: None,
     };
 
     update(
@@ -2409,6 +2474,7 @@ fn test_recover_session_reanchors_current_item_timer() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
+        length_mins: None,
     };
 
     update(
@@ -2454,6 +2520,7 @@ fn a_corrupt_play_time_in_the_saved_copy_resumes_from_now() {
                 current_item_started_at: now,
                 session_started_at: now,
                 reflection: None,
+                length_mins: None,
             },
             now,
         }),
@@ -2488,6 +2555,7 @@ fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
+        length_mins: None,
     };
 
     update(
@@ -2557,6 +2625,7 @@ fn test_recover_session_reanchors_only_the_current_entry_play() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
+        length_mins: None,
     };
 
     update(
@@ -2594,6 +2663,7 @@ fn test_recover_session_when_not_idle() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        length_mins: None,
     };
 
     update(
@@ -2621,6 +2691,7 @@ fn test_recover_session_refuses_empty_setlist_and_clears_blob() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        length_mins: None,
     };
 
     let app = Intrada;
@@ -5035,6 +5106,7 @@ fn pinned_active_session() -> ActiveSession {
                 }],
             },
         }),
+        length_mins: Some(30),
     }
 }
 
@@ -5057,10 +5129,10 @@ const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "2d30335430393a30303a30305aa800010107080103000000000000000302022900010000000000",
     "0000070000000000000065322d706c617906060000000000000073746561647901000000000000",
     "00070000000000000065322d706c61799600000100000000000000070000000000000065322d70",
-    "6c6179010100000000000000010000000001000000000000000300000000000000762d31",
+    "6c6179010100000000000000010000000001000000000000000300000000000000762d31011e00",
 );
 
-const PINNED_BLOB_VERSION: u32 = 11;
+const PINNED_BLOB_VERSION: u32 = 12;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump

@@ -397,7 +397,7 @@ pub struct ClickState {
 pub struct BuildingSession {
     pub entries: Vec<SetlistEntry>,
     /// Today's length, copied from the preference when the build starts and
-    /// never carried onto `ActiveSession` (#1736).
+    /// carried onto `ActiveSession` for the countdown (#2789, reversing #1736).
     pub length_mins: Option<u16>,
 }
 
@@ -413,17 +413,19 @@ pub struct ActiveSession {
     pub session_started_at: DateTime<Utc>,
     /// `Some` while the item-complete sheet is open on the current entry.
     pub reflection: Option<ReflectionDraft>,
+    /// Today's length; the clock counts down from it and `None` counts up (#2789).
+    pub length_mins: Option<u16>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 10;
+const RETIRED_BLOB_VERSION_MAX: u32 = 11;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 10 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 11;
+    /// 11 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 12;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
