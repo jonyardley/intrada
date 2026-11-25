@@ -49,8 +49,10 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Sync
 
 - Code, comments and tests: `.claude/rules/code-and-tests.md`, loaded on `crates/` and `ios/`
   files; offline-first, UI, quality bars and silent-failure surfaces: the
-  other `.claude/rules/`. They do not load in a worktree: read them by hand before
-  editing. Every rule binds either way.
+  other `.claude/rules/`. They load when a session whose folder is the worktree
+  opens a matching file with the Read tool, and usually for its helpers. A session in
+  main reading a worktree's files gets none, no helper can count on them, and a shell
+  read loads none: then read them by hand. Every rule binds either way.
 - Review, model, effort and lane size: `~/.claude/CLAUDE.md`, "Subagents, review and lane
   size" and "Speed and reliability"; here only the local detail.
 - Claim, worktree, tiers, plan comments and routing (unplanned work: discuss first):

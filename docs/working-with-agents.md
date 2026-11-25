@@ -42,7 +42,10 @@ Every session or helper agent that edits works in its own worktree (#1837,
 #2918). The main checkout is for status, claims and making worktrees:
 its working tree is read-only, a `cd <worktree> && ` prefix from it is
 refused for writes while reads pass, and `.claude/rules/` files load only when
-the session's folder is the worktree. A session started in the main checkout
+the session's folder is the worktree and it opens a matching file with the Read
+tool, never through the shell. A helper launched from such a session usually
+gets them the same way, and one launched by a lead in main often does not, so
+no helper counts on them. When rules do not load, read the rule file by hand. A session started in the main checkout
 moves into an existing worktree with Claude Code's `EnterWorktree` tool and
 the worktree's path, with no restart; `just worktree-new` makes one (#2967).
 Plain git commands pass there, though Claude Code may refuse a compound one
@@ -237,7 +240,7 @@ lists each removed line in the PR with its new home, or says it is dropped.
 
 | Symptom | Cause, and what to do |
 |---|---|
-| A rule did not load | `paths:` rules fire on Read only, and only when the session started inside the worktree; `/context` shows what loaded |
+| A rule did not load | `paths:` rules fire on Read only, and only when the session's folder is the worktree, started there or moved in with `EnterWorktree`; a helper usually gets them the same way, less often when its lead sits in main, so no helper counts on them; read the rule file by hand, and `/context` shows what loaded |
 | A skill will not resolve | Skills load at session start; restart |
 | A hook change did nothing | `CLAUDE_CONFIG_DIR` points elsewhere (#1857) |
 | `just check` says already green | The stamp matches HEAD; delete it |
