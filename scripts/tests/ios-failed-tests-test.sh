@@ -82,7 +82,7 @@ fixture crashed 1 "$(bundle IntradaTests "$(suite Failed PageReaderTests "$crash
 expect "a crashed test reruns by name" \
   "0 -only-testing:IntradaTests/PageReaderTests/geometry() " "$(run crashed)"
 expect "a crashed test is named with its crash text (#2997)" true \
-  "$(grep -A1 'PageReaderTests/geometry()' "$tmp/err" | grep -q 'crashed with signal kill' && echo true || echo false)"
+  "$(grep -q 'crashed with signal kill' <<<"$(grep -A1 'PageReaderTests/geometry()' "$tmp/err")" && echo true || echo false)"
 
 fixture nested 1 "$(bundle IntradaTests "$(suite Failed Outer "$(suite Failed Inner "$nested_case")")")"
 expect "a nested suite keeps its target and every suite" \
