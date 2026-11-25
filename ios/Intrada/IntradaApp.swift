@@ -65,17 +65,8 @@ struct IntradaApp: App {
 
   var body: some Scene {
     WindowGroup {
-      #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--sketch-score-keys") {
-          ScoreKeysSketchHost()
-        } else {
-          RootView()
-            .environment(store)
-        }
-      #else
-        RootView()
-          .environment(store)
-      #endif
+      RootView()
+        .environment(store)
     }
   }
 }
