@@ -2,7 +2,7 @@
 
 > Tier 3 spec. Issue [#1082]. The suggestion is the Practice hero
 > (design-principles T15). Design: the UpNextHero page in
-> [`design/components`](../design/components/UpNextHero/README.md).
+> [`design/components/UpNextHero`](../design/components/UpNextHero/README.md).
 
 [#1082]: https://github.com/jonyardley/intrada/issues/1082
 

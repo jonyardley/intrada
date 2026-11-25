@@ -64,24 +64,26 @@ Run this after any merge that changes a component page, `Theme.swift`, the
 kit's icon drawables or the sketch kit. The design system is published from `main`
 and never edited by hand in Claude Design outside a refresh. A rehearsal
 before merge reads the branch in place of `main`: use `HEAD` where step 3 says
-`origin/main`, and stop before step 5.
+`origin/main`, and stop before step 5. Before planning design system work,
+list the live artifact's files, so it is never taken for unpublished.
 
 1. **Use the committed kit.** The refresh publishes the `design/sketch-kit/`
    files as committed on `main`; nothing is regenerated. `just check` already
    fails a branch whose kit is stale, so those files match the code.
 2. **Read the live copy.** Use the Artifact tool's `read` on the
    [design system](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs), list
-   its files (with `scope` set to `files`), then `read` `project/design-system.json`. A publish to an artifact this session
-   has not read is refused.
+   its files (with `scope` set to `files`), then `read`
+   `project/design-system.json`. A publish to an artifact this session has
+   not read is refused.
 3. **Find what changed.** Run `git fetch origin`, then `git diff --stat
    <commit>..origin/main -- design/ ios/Intrada/Resources/Fonts/
    ios/IntradaTests/__Snapshots__/`, where
    `<commit>` is the hash written after `main@` in `lastChange.via` in
    `project/design-system.json`. With no hash there, refresh every file
-   below. `design/explorations/` and every other file under `design/` that step 4 does not name, such as
-   `design/sketch-kit/README.md`, `icons/` and `token-notes.json`, are never
-   published. Step 4 copies only the changed files; `read` the live copy of each
-   one you will replace.
+   below. `design/explorations/` and every other file under `design/` that
+   step 4 does not name, such as `design/sketch-kit/README.md`, `icons/` and
+   `token-notes.json`, are never published. Step 4 copies only the changed
+   files; `read` the live copy of each one you will replace.
 4. **Copy into one folder** in your scratchpad, at the design system's paths:
    - `design/components/<Name>/README.md` to `project/components/<Name>/README.md`,
      reshaped. Drop the front matter. Turn each relative link into a GitHub

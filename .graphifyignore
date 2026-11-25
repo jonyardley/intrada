@@ -5,9 +5,8 @@
 # Vendored / minified JS
 support.js
 
-# Design-system exports (large generated HTML) + image assets
+# Design-system exports (large generated HTML)
 *.dc.html
-design/assets/
 
 # Images (snapshot test references, icons): no semantic value in the graph,
 # and each image costs its own vision-extraction agent
