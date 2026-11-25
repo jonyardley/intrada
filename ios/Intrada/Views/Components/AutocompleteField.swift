@@ -10,7 +10,6 @@ struct AutocompleteField: View {
   var placeholder: String = ""
   var suggestions: [String]
   var autocapitalization: TextInputAutocapitalization = .words
-  var readWeakly: Bool?
   var faulted: Bool = false
   var identifier: String?
 
@@ -34,9 +33,6 @@ struct AutocompleteField: View {
           .focused($focused)
           .accessibilityIdentifier(identifier ?? label)
           .accessibilityHint(hint)
-        if let readWeakly {
-          FieldMark(weak: readWeakly)
-        }
       }
       .padding(.vertical, 10)
       .padding(.horizontal, IntradaSpacing.card)
@@ -58,9 +54,7 @@ struct AutocompleteField: View {
   }
 
   private var hint: String {
-    [FaultMark.spoken(faulted), FieldMark.spoken(readWeakly)]
-      .filter { !$0.isEmpty }
-      .joined(separator: ". ")
+    FaultMark.spoken(faulted)
   }
 
   private func suggestionList(_ matches: [String]) -> some View {

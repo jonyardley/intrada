@@ -134,8 +134,7 @@ final class ComponentSnapshotTests: SnapshotTestCase {
         systemImage: "books.vertical",
         message: "Pieces and exercises will live here.",
         actions: [
-          .init(title: "Add piece or exercise", identifier: "library.empty.add") {},
-          .init(title: "Scan a page", identifier: "library.empty.scan") {},
+          .init(title: "Add piece or exercise", identifier: "library.empty.add") {}
         ])
     }
     assertSnapshot(of: host(placeholder), as: config)

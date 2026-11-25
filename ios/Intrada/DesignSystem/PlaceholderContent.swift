@@ -7,7 +7,7 @@ struct PlaceholderAction {
 }
 
 /// A centred "nothing here yet" body: tinted glyph, one line of muted copy, and
-/// the buttons that fill the screen. The first is the marker; any after it are plain.
+/// a marker button for each way to fill the screen.
 struct PlaceholderContent: View {
   let systemImage: String
   let message: String
@@ -40,21 +40,9 @@ struct PlaceholderContent: View {
       .accessibilityLabel(message)
       if !actions.isEmpty {
         VStack(spacing: IntradaSpacing.cardCompact) {
-          ForEach(Array(actions.enumerated()), id: \.element.identifier) { index, action in
-            if index == 0 {
-              MarkerButton(action.title, action: action.action)
-                .accessibilityIdentifier(action.identifier)
-            } else {
-              Button(action: action.action) {
-                Text(action.title)
-                  .font(IntradaFont.bodyMedium)
-                  .foregroundStyle(IntradaColor.accent)
-                  .frame(maxWidth: .infinity, minHeight: 44)
-                  .contentShape(Rectangle())
-              }
-              .buttonStyle(.plain)
+          ForEach(actions, id: \.identifier) { action in
+            MarkerButton(action.title, action: action.action)
               .accessibilityIdentifier(action.identifier)
-            }
           }
         }
       }
@@ -81,8 +69,7 @@ struct PlaceholderContent: View {
         systemImage: "books.vertical",
         message: "Pieces and exercises will live here.",
         actions: [
-          .init(title: "Add piece or exercise", identifier: "preview.add") {},
-          .init(title: "Scan a page", identifier: "preview.scan") {},
+          .init(title: "Add piece or exercise", identifier: "preview.add") {}
         ])
     }
   }

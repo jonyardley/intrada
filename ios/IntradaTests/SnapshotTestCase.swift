@@ -15,7 +15,6 @@ final class SnapshotStubBridge: CoreBridge {
     return []
   }
   func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] { [] }
-  func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] { [] }
   func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
   func view() throws -> ViewModel {
     if let nextViewModel { return try nextViewModel() }

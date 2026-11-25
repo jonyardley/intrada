@@ -5,7 +5,6 @@
 # until the entry is lowered or removed.
 # Each line: path, the text matched, how many times, the issue; tab separated.
 
-ios/Intrada/DesignSystem/FieldMark.swift	spacing: 5	1	#2706
 ios/Intrada/DesignSystem/GlobalBanner.swift	.padding(.vertical, 10)	1	#2706
 ios/Intrada/DesignSystem/PlaceholderContent.swift	.padding(32)	1	#2706
 ios/Intrada/DesignSystem/ScreenScaffold.swift	minLength: 12	1	#2706
@@ -72,9 +71,6 @@ ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift	.padding(.leading, 20)	1
 ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift	.padding(.vertical, 2)	1	#2706
 ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Components/ScaffoldPreviewSheet.swift	spacing: 6	2	#2706
-ios/Intrada/Views/Components/ScanPageEntry.swift	.padding(.vertical, 10)	1	#2706
-ios/Intrada/Views/Components/ScanPageEntry.swift	spacing: 10	1	#2706
-ios/Intrada/Views/Components/ScanPageEntry.swift	spacing: 2	1	#2706
 ios/Intrada/Views/Components/ScoreRing.swift	spacing: 16	1	#2706
 ios/Intrada/Views/Components/ScoreSelector.swift	spacing: 24	1	#2706
 ios/Intrada/Views/Components/ScoreSelector.swift	spacing: 4	1	#2706

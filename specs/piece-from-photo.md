@@ -6,7 +6,9 @@
 > and #2025.
 >
 > **Four phases.** A, B and C shipped (#1443, #1449, #1455, #1457, #1469,
-> #1476). **D is unstarted.**
+> #1476). **Reading the page was removed in #2792**: it failed too often to be
+> trusted. The score photo on a piece (decisions 1 and 2) stays; the reading,
+> the recognition effect and phase D are void.
 
 [#1355]: https://github.com/jonyardley/intrada/issues/1355
 [#1387]: https://github.com/jonyardley/intrada/issues/1387

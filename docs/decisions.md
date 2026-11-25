@@ -44,8 +44,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - Derived views are cached per change and the library crosses the bridge once per render (#1998).
 - A list load that lands after a newer edit is dropped, so a reload never overwrites it (#2067).
 - Exercises from a chord chart are a pure function of chart and key, linked the normal way; read the changes only, never melodies (#1107).
-- Photo recognition is an effect; the model may choose but never invent, and fills a form the musician reviews (#1439, #1436, #1437).
-- A rescan fills only empty fields or ones still holding an earlier read, never typed text (#2229).
+- Reading a piece's details from a photo was removed: it failed too often to be trusted. Score photos stay (#2792).
 - The click sounds only the beats the metre and chosen pattern say, so it never misstates the tempo (#1499).
 
 ## Shells and platform

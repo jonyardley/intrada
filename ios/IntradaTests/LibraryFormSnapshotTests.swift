@@ -81,48 +81,6 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(LibraryAddScreen(previewForm: form)), as: tallFormConfig)
   }
 
-  /// #1436: the composer was read weakly, so its mark's glyph is dimmed
-  /// (#1458: the label itself stays at `inkSecondary`), and a pixel diff can
-  /// hold that.
-  func testLibraryAddScreenReadFromAPhoto() {
-    assertSnapshot(of: host(addForm(from: .readPage)), as: config)
-  }
-
-  /// The mark clears on the keystroke, not on submit: the composer is the
-  /// user's from the moment they correct it.
-  func testLibraryAddScreenAfterEditingAReadField() {
-    let form = ItemFormModel(kind: .piece)
-    form.fill(from: .readPage)
-    form.composer = "Joseph Kosma"
-    assertSnapshot(of: host(addForm(form)), as: config)
-  }
-
-  /// A read that failed, or one the device could not run, must not render
-  /// identically to one that worked.
-  func testScanPageEntryStates() {
-    let stub = UIGraphicsImageRenderer(size: CGSize(width: 60, height: 80)).image { context in
-      UIColor(IntradaColor.surfaceSunken).setFill()
-      context.fill(CGRect(origin: .zero, size: CGSize(width: 60, height: 80)))
-    }
-    let states: [(PhotoRecognitionStatus, Bool)] = [
-      (.idle, false), (.reading, false), (.ready, false), (.ready, true),
-      (.failed, false),
-    ]
-    let stack = VStack(spacing: IntradaSpacing.card) {
-      ForEach(Array(states.enumerated()), id: \.offset) { _, state in
-        ScanPageEntry(
-          photoId: state.0 == .idle ? nil : "01JB0000000000000000000000",
-          status: state.0, readNothing: state.1, onCaptured: { _ in },
-          loadImage: { _ in stub })
-      }
-    }
-    .padding(IntradaSpacing.card)
-    .frame(width: 390)
-    .background(PaperBackground())
-
-    assertSnapshot(of: stack, as: .image(layout: .sizeThatFits))
-  }
-
   /// #1595: the row the refused save named wears the wash and a danger bar in
   /// place of its kind bar, and only that row does.
   func testDraftItemRowAtFault() {
@@ -145,12 +103,12 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
   func testStagedChartCardAtFault() {
     let card = VStack(spacing: IntradaSpacing.card) {
       StagedChartCard(
-        text: "| Dm7 | G7 | Hxyz | Cmaj7 |", readWeakly: nil, faulted: true,
+        text: "| Dm7 | G7 | Hxyz | Cmaj7 |", faulted: true,
         faultedBarNumber: 3, onEdit: {}
       )
       .cardSurface()
       StagedChartCard(
-        text: "| Dm7 | G7 | Cmaj7 | A7alt |", readWeakly: nil, onEdit: {}
+        text: "| Dm7 | G7 | Cmaj7 | A7alt |", onEdit: {}
       )
       .cardSurface()
     }
@@ -175,19 +133,6 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     .background(PaperBackground())
 
     assertSnapshot(of: rows, as: .image(layout: .sizeThatFits))
-  }
-
-  private func addForm(from draft: PhotoDraft) -> some View {
-    let form = ItemFormModel(kind: .piece)
-    form.fill(from: draft)
-    return addForm(form)
-  }
-
-  private func addForm(_ form: ItemFormModel) -> some View {
-    ItemFormScaffold(
-      form: form, title: "New Piece", confirmLabel: "Add", composerSuggestions: [],
-      tagSuggestions: []
-    ) {}
   }
 
   func testLibraryEditScreen() {

@@ -119,13 +119,6 @@ pub enum ItemEvent {
     ClearPhoto {
         id: String,
     },
-    /// Read a photo the shell has already written to disk into a draft the
-    /// user confirms. Takes only the `photo_id`, not an item id: on Add there
-    /// is no item to name yet, and the draft is what fills the form
-    /// (#1446).
-    ReadPhoto {
-        photo_id: String,
-    },
     /// Set or clear the item's time signature. Kept out of `Update` for the
     /// same reason as `SetPhoto`. A charted piece's beat split is derived
     /// again from the new metre.
@@ -338,7 +331,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::Delete { id } => edit::delete(model, id),
         ItemEvent::SetPhoto { id, photo_id } => photo::set_photo(model, id, Some(photo_id)),
         ItemEvent::ClearPhoto { id } => photo::set_photo(model, id, None),
-        ItemEvent::ReadPhoto { photo_id } => photo::read_photo(model, photo_id),
         ItemEvent::SetMetre { id, metre } => metre::set_metre(model, id, metre),
         ItemEvent::SetChordChart {
             piece_id,
