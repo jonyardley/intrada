@@ -61,7 +61,7 @@ enum IntradaColor {
   static let exerciseBadgeFg = ink
 
   // ── Engaging-refresh tokens ──
-  /// Mastery gains, clean reps, trending-up. Reserved from `danger` (destructive).
+  /// Mastery gains, trending-up. Reserved from `danger` (destructive).
   static let success = Color(hex: 0x4C6B3F)
   /// Mastery is monochrome ink: the *count* carries meaning (colour-blind
   /// safe); never recolour a meter/dial by level.

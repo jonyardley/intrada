@@ -19,8 +19,8 @@ The specs that remain:
 - [`one-tap-start.md`](one-tap-start.md): today's plan in one tap
 - [`piece-from-photo.md`](piece-from-photo.md): a piece from a photo of the page
 - [`planned-item.md`](planned-item.md): one planned-item shape for sessions, routines and the week
-- [`practice-defaults.md`](practice-defaults.md): default rep target and click start
-- [`practice-instruments.md`](practice-instruments.md): timer, rep counter and click
+- [`practice-defaults.md`](practice-defaults.md): default click start and session length
+- [`practice-instruments.md`](practice-instruments.md): session timer and click
 - [`priority-items.md`](priority-items.md): priority items in place of goals
 - [`session-delete.md`](session-delete.md): deleting a saved session
 - [`simpler-removals.md`](simpler-removals.md): removing focus, repetitions and the Add detail choices

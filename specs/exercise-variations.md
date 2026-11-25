@@ -5,26 +5,22 @@
 > cites "#1739 decision N" and "#1761 rule N" by the numbers below. Earlier
 > decisions that still hold are in [`decisions.md`](../docs/decisions.md).
 >
-> **Language.** On screen a variation is a "variation", never a step (#1733),
-> and a repetition is a "repetition", never a pass (#1735).
+> **Language.** On screen a variation is a "variation", never a step (#1733).
 
 [#1739]: https://github.com/jonyardley/intrada/issues/1739
 
 ## Shape
 
 An entry holds an ordered list of **plays**. Each play says how the item was
-played (key, variations) and carries the time, repetitions, tempo and
-mark. Switching mid item closes the open play and opens another.
+played (key, variations) and carries the time, tempo and mark. Switching mid item closes the open play and opens another.
 
 ```text
 Variation { id, label, updated_at, deleted_at }    // shared across the library (#2246)
 Item { …, key, keys: Vec<Key>, variation_ids,
        exercise_links: Vec<ExerciseLink> }
-SetlistEntry { …, planned_key, planned_variation_ids, planned_rep_target,
-               plays: Vec<Play> }
-Play { id, key, variation_ids, started_at, seconds, rep_target,
-       rep_count, rep_history, tempo_changes, achieved_tempo, click_pattern, score,
-       away: Vec<Away> }
+SetlistEntry { …, plan: PlannedItem, plays: Vec<Play> }  // plan: key, variations
+Play { id, key, variation_ids, started_at, seconds, tempo_changes,
+       achieved_tempo, click_pattern, score, away: Vec<Away> }
 ```
 
 ## Key decisions (#1739)
@@ -36,8 +32,8 @@ Play { id, key, variation_ids, started_at, seconds, rep_target,
 3. **Every practised entry has at least one play, including pieces.** An item
    with nothing to choose gets one plain play. An entry never practised has
    zero plays.
-4. **The per-play fields leave the entry.** Score, repetitions, tempo and click
-   pattern live on the play only. The entry keeps the plan.
+4. **The per-play fields leave the entry.** Score, tempo and click pattern
+   live on the play only. The entry keeps the plan.
 5. **The plan stays on the entry.** The Building phase's choice is a plan;
    `StartSession` seeds the first play from it.
 6. **Switching is explicit, never inferred.** `SwitchPlay` (Active only) closes
@@ -53,7 +49,7 @@ Play { id, key, variation_ids, started_at, seconds, rep_target,
    that carry a score, rounded to nearest, `None` when none do. History per
    variation reads the plays, never the summary. It is never stored.
 10. **The item-complete sheet is a row per play, and the mark is the only
-    tap.** Time and repetitions are prefilled from what was measured.
+    tap.** Time is prefilled from what was measured.
 
 [#1501]: https://github.com/jonyardley/intrada/issues/1501
 
@@ -62,10 +58,11 @@ Play { id, key, variation_ids, started_at, seconds, rep_target,
 - A play's variations must be live on the entry's item.
 - At most `MAX_PLAYS_PER_ENTRY` (24) plays per entry, bounding the blob.
 - `play_id` must belong to the named entry.
-- Every terminal transition drops a play with no score, no repetitions and
-  under five seconds. A practised entry always keeps one play, so the shell can
+- Every terminal transition drops a play with no score and under
+  five seconds (`MIN_PLAY_SECONDS`). A practised entry always keeps one play, so the shell can
   never hold a `play_id` the core has just deleted.
-- A skipped entry keeps only the plays that banked a mark or a repetition.
+- A skipped entry keeps no plays: the clock ran while the musician decided
+  to skip, and time alone does not count.
 
 ## A tempo is stamped as its play closes (#1761)
 
@@ -88,7 +85,7 @@ closing play from it.
    `None` clears both fields.
 6. **The sheet's rows** count in the unit of the click that stamped them,
    from `tempo_display`, so the shell never converts a tempo.
-7. **A skip stamps nothing and keeps no tempo**; the repetitions stay.
+7. **A skip stamps nothing and keeps no tempo**.
 8. **`FinishSession` is gone**; `NextItem` on the last item finishes.
 
 ## Keys
