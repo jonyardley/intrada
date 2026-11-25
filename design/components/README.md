@@ -41,6 +41,7 @@ not exist. Rows without a link are still to be written.
 | [ScoreSelector](ScoreSelector/README.md) | Giving an item, a play or a session its mark |
 | [ScoreStepper](ScoreStepper/README.md) | Nudging a key's score from last time, with minus and plus |
 | [TempoStepper](TempoStepper/README.md) | Setting a tempo by nudging or typing it |
+| [ReflectionKeySheet](ReflectionKeySheet/README.md) | One key's tempo and note after an item, opened from its name |
 | [LibraryItemCard](LibraryItemCard/README.md) | A piece or exercise in a list, with its mark |
 | [MasteryDeltaToast](MasteryDeltaToast/README.md) | The celebration banner for the biggest rise in a mark |
 | [SessionCard](SessionCard/README.md) | One past practice session, with its time, items and what was played |
