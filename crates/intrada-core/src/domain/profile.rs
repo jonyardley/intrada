@@ -240,7 +240,7 @@ pub fn build_profile_view(
     draft: Option<&Profile>,
     local_hour: u32,
 ) -> ProfileView {
-    let icons = draft_view(profile);
+    let icons = icon_view(profile);
     ProfileView {
         name: profile.name.clone(),
         instrument: profile.instrument.clone(),
@@ -250,11 +250,11 @@ pub fn build_profile_view(
         colour: profile.colour,
         greeting: greeting(&profile.name, local_hour),
         instrument_names: INSTRUMENT_NAMES.iter().map(|n| n.to_string()).collect(),
-        draft: draft.map(draft_view),
+        draft: draft.map(icon_view),
     }
 }
 
-fn draft_view(profile: &Profile) -> ProfileDraftView {
+fn icon_view(profile: &Profile) -> ProfileDraftView {
     let suggested_icon = suggest_icon(&profile.instrument);
     ProfileDraftView {
         suggested_icon,

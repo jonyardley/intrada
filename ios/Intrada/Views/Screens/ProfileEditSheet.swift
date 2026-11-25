@@ -70,6 +70,17 @@ struct ProfileEditSheet: View {
     // follows once the core has accepted the save.
     .marker(colour)
     .onAppear(perform: load)
+    .onChange(of: instrument) { sendDraft() }
+    .onChange(of: iconChoice) { sendDraft() }
+    .onDisappear { store.send(.profile(.draftEnded)) }
+  }
+
+  private var draft: Profile {
+    Profile(name: name, instrument: instrument, iconChoice: iconChoice, colour: colour)
+  }
+
+  private func sendDraft() {
+    store.send(.profile(.draft(draft)))
   }
 
   private func load() {
@@ -78,16 +89,23 @@ struct ProfileEditSheet: View {
     instrument = profile.instrument
     iconChoice = profile.iconChosen ? profile.icon : nil
     colour = profile.colour
+    sendDraft()
   }
 
-  private var shownIcon: InstrumentIcon {
-    iconChoice ?? profile?.suggestedIcon ?? .other
+  // Until the core has the draft, the saved profile's icon stands in.
+  private var icons: ProfileDraftView {
+    if let draft = profile?.draft { return draft }
+    guard let profile else {
+      return ProfileDraftView(suggestedIcon: .other, icon: .other, iconChosen: false)
+    }
+    return ProfileDraftView(
+      suggestedIcon: profile.suggestedIcon, icon: profile.icon, iconChosen: profile.iconChosen)
   }
 
   private var iconCaption: String {
-    if iconChoice != nil { return "Chosen by you" }
-    if let suggested = profile?.suggestedIcon, suggested != .other {
-      return "Matches \(suggested.tileLabel.lowercased())"
+    if icons.iconChosen { return "Chosen by you" }
+    if icons.suggestedIcon != .other {
+      return "Matches \(icons.suggestedIcon.tileLabel.lowercased())"
     }
     return "No match"
   }
@@ -100,7 +118,7 @@ struct ProfileEditSheet: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.cardCompact))
       : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
     return layout {
-      ProfileBadge(icon: shownIcon)
+      ProfileBadge(icon: icons.icon)
       VStack(alignment: .leading, spacing: 3) {
         FieldLabel("Icon")
         Text(iconCaption)
@@ -140,9 +158,7 @@ struct ProfileEditSheet: View {
   private func save() {
     formError = nil
     faultedField = nil
-    let profile = Profile(
-      name: name, instrument: instrument, iconChoice: iconChoice, colour: colour)
-    if let refusal = store.saveProfile(profile) {
+    if let refusal = store.saveProfile(draft) {
       faultedField = refusal.field
       withAnimation { formError = refusal.message }
     } else {

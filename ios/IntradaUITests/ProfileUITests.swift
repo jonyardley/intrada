@@ -112,6 +112,8 @@ final class ProfileUITests: XCTestCase {
     XCTAssertTrue(cello.waitForExistence(timeout: 5), "the cello tile under Matches cello")
     cello.tap()
     app.control("sheet.done", spoken: "Done").tap()
+    XCTAssertTrue(
+      app.staticTexts["Chosen by you"].waitForExistence(timeout: 5), "the pick reads as one")
     app.control("profileEdit.save", spoken: "Save").tap()
     XCTAssertTrue(app.staticTexts["Violin"].waitForExistence(timeout: 5), "the new instrument")
 
@@ -119,6 +121,14 @@ final class ProfileUITests: XCTestCase {
     XCTAssertTrue(
       app.staticTexts["Chosen by you"].waitForExistence(timeout: 5),
       "the cello pick was kept, not dropped for the violin's match")
+
+    // Picking the match reads as following the instrument before Save.
+    app.control("profileEdit.changeIcon", spoken: "Change icon").tap()
+    app.row("iconPicker.tile", spokenContaining: "Violin").tap()
+    app.control("sheet.done", spoken: "Done").tap()
+    XCTAssertTrue(
+      app.staticTexts["Matches violin"].waitForExistence(timeout: 5),
+      "the caption follows the core's rule at once")
   }
 
   /// The practice defaults the musician sets on the Profile screen are still
