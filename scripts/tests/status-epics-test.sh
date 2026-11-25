@@ -26,8 +26,8 @@ done
 body='[]'
 case "$1 ${2:-}" in
   "api graphql")
-    # The ready queue has its own read and its own self-test.
-    if [[ "$*" == *'labels: ["ready"]'* ]]; then
+    # The next-up list has its own read and its own self-test.
+    if [[ "$*" == *'issues(states: OPEN'* ]]; then
       body='{"data":{"repository":{"issues":{"nodes":[]}}}}'
       [ -n "$jq_expr" ] && printf '%s' "$body" | jq -r "$jq_expr" || printf '%s' "$body"
       exit 0

@@ -19,14 +19,15 @@ for tool in gh jq; do
   }
 done
 
-# The ready queue (#2800). A claimed issue is left out: CLAIMED or IN FLIGHT
-# already shows it. An epic is left out too: it is approved through its
-# issues, not built (#2808). Order: horizon, the board's Priority, then oldest.
-ready_limit=50
-ready_query='query($owner: String!, $name: String!, $limit: Int!) {
+# Next up: every open issue, ranked (#3016). Claimed ones are left out, as
+# CLAIMED or IN FLIGHT shows them; so are epics, built through their issues
+# (#2808). Every page is read so the ranking is complete; the top few print.
+next_shown=10
+next_query='query($owner: String!, $name: String!, $endCursor: String) {
   repository(owner: $owner, name: $name) {
-    issues(labels: ["ready"], states: OPEN, first: $limit,
+    issues(states: OPEN, first: 100, after: $endCursor,
            orderBy: {field: CREATED_AT, direction: ASC}) {
+      pageInfo { hasNextPage endCursor }
       nodes {
         number title
         labels(first: 30) { nodes { name } }
@@ -40,11 +41,11 @@ ready_query='query($owner: String!, $name: String!, $limit: Int!) {
     }
   }
 }'
-ready_order='
-  .[0] as $ready | [.[1][].number] as $flying |
+next_order='
+  .[0] as $open | [.[1][].number] as $flying |
   {"horizon:now": 0, "horizon:next": 1, "horizon:later": 2} as $horizons |
   {"P0": 0, "P1": 1, "P2": 2} as $priorities |
-  $ready | map(select([.number] | inside($flying) | not)
+  $open | map(select([.number] | inside($flying) | not)
     | select([(.labels.nodes // [])[].name] | index("epic") | not)
     | ([(.labels.nodes // [])[].name | select(startswith("horizon:"))] | first) as $h
     | ([(.projectItems.nodes // [])[] | select(.project.number == 2) | .priority.name
@@ -103,12 +104,14 @@ if ! epics=$(gh api graphql -f query="$epics_query" -f owner="${repo%%/*}" \
   epics='[]'
 fi
 
-ready_error=""
-if ! ready=$(gh api graphql -f query="$ready_query" -f owner="${repo%%/*}" \
-  -f name="${repo#*/}" -F limit="$ready_limit" --jq '.data.repository.issues.nodes' 2>&1); then
-  ready_error=$(gh_reason "$ready")
-  ready='[]'
+# --paginate prints one array per page; they are joined into one.
+next_error=""
+if ! open_issues=$(gh api graphql --paginate -f query="$next_query" -f owner="${repo%%/*}" \
+  -f name="${repo#*/}" --jq '.data.repository.issues.nodes' 2>&1); then
+  next_error=$(gh_reason "$open_issues")
+  open_issues='[]'
 fi
+open_issues=$(printf '%s' "$open_issues" | jq -s 'add // []')
 
 last_tag=""
 tags_error=""
@@ -206,7 +209,9 @@ epic_lines=$(printf '%s\n%s' "$epics" "$claimed" | jq -rs '
      end)
 ')
 
-ready_lines=$(printf '%s\n%s' "$ready" "$claimed" | jq -rs "$ready_order"' | .[] |
+next_ranked=$(printf '%s\n%s' "$open_issues" "$claimed" | jq -s "$next_order")
+next_total=$(printf '%s' "$next_ranked" | jq 'length')
+next_lines=$(printf '%s' "$next_ranked" | jq -r ".[:$next_shown]"' | .[] |
   "- #\(.number) \(.title)\n    "
   + (if .h then (.h | ltrimstr("horizon:")) else "no horizon" end)
   + ", " + (.p // "no priority")
@@ -277,16 +282,17 @@ capped "$epics" "$epics_limit"
 echo "    Pick the next slice from an epic. An open issue under none is a"
 echo "    one-off, or a sign a new epic is due (how-the-work-runs.md, Epics)."
 
-section "READY (the owner's sign-off, top first)" "$ready_lines"
+section "NEXT UP (open issues, unclaimed, top first)" "$next_lines"
 echo
-if [ -n "$ready_error" ]; then
+if [ -n "$next_error" ]; then
   echo "    GitHub did not answer, so this section is not an answer either:"
-  echo "    $ready_error"
+  echo "    $next_error"
 fi
-capped "$ready" "$ready_limit"
-echo "    Only the owner adds the ready label: the plan, and any sketch, are approved."
-echo "    Order: horizon, then the board's Priority, then oldest first. Build from"
-echo "    here first; an epic's next child waits until the owner marks it ready."
+if [ "$next_total" -gt "$next_shown" ]; then
+  echo "    (showing the top $next_shown of $next_total)"
+fi
+echo "    Order: horizon, then the board's Priority, then oldest first."
+echo "    For when no epic has a next issue, or for a one-off."
 
 section "IN FLIGHT (open PRs)" "$pr_lines"
 capped "$open_prs" "$open_limit"
