@@ -52,6 +52,34 @@ pub fn live_with_label<'a>(library: &'a [Variation], label: &str) -> Option<&'a 
         .find(|v| v.deleted_at.is_none() && v.label.to_lowercase() == wanted)
 }
 
+/// The variations sheet's find field (#2754): ids whose label holds the
+/// typed text anywhere, case ignored; blank text finds nothing.
+pub fn ids_matching<'a>(options: &'a [(String, String)], query: &str) -> Vec<&'a str> {
+    let wanted = query.trim().to_lowercase();
+    if wanted.is_empty() {
+        return Vec::new();
+    }
+    options
+        .iter()
+        .filter(|(_, label)| label.to_lowercase().contains(&wanted))
+        .map(|(id, _)| id.as_str())
+        .collect()
+}
+
+/// The typed text as a new label, trimmed, unless a taken label already
+/// holds it with case ignored (#2754).
+pub fn addable_label<S: AsRef<str>>(query: &str, taken: &[S]) -> Option<String> {
+    let text = query.trim();
+    if text.is_empty() {
+        return None;
+    }
+    let wanted = text.to_lowercase();
+    if taken.iter().any(|t| t.as_ref().to_lowercase() == wanted) {
+        return None;
+    }
+    Some(text.to_string())
+}
+
 pub fn is_live(library: &[Variation], id: &str) -> bool {
     library.iter().any(|v| v.id == id && v.deleted_at.is_none())
 }
@@ -87,6 +115,51 @@ pub fn ids_for_labels(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn options() -> Vec<(String, String)> {
+        [
+            ("v1", "Hands separately"),
+            ("v2", "Dotted rhythms"),
+            ("v3", "Left hand alone, eyes closed"),
+        ]
+        .iter()
+        .map(|(id, label)| ((*id).to_string(), (*label).to_string()))
+        .collect()
+    }
+
+    #[test]
+    fn finding_matches_any_part_of_a_label_ignoring_case_and_spaces_round_it() {
+        let options = options();
+        for (query, ids) in [
+            ("left hand", vec!["v3"]),
+            ("  HANDS ", vec!["v1"]),
+            ("hand", vec!["v1", "v3"]),
+            ("", vec![]),
+            ("   ", vec![]),
+            ("trill", vec![]),
+        ] {
+            assert_eq!(ids_matching(&options, query), ids, "query {query:?}");
+        }
+    }
+
+    #[test]
+    fn typed_text_is_addable_only_when_no_taken_label_holds_it() {
+        let taken = ["Hands separately", "Dotted rhythms", "Slow"];
+        for (query, expected) in [
+            ("Left hand", Some("Left hand")),
+            ("  Slow practice ", Some("Slow practice")),
+            ("dotted rhythms", None),
+            ("SLOW", None),
+            ("", None),
+            ("   ", None),
+        ] {
+            assert_eq!(
+                addable_label(query, &taken).as_deref(),
+                expected,
+                "query {query:?}"
+            );
+        }
+    }
 
     fn row(id: &str, label: &str) -> Variation {
         Variation {

@@ -171,7 +171,33 @@ pub struct LibrarySort {
     pub direction: SortDirection,
 }
 
+impl SortField {
+    /// Newest first for dates, A to Z for titles (#2754).
+    #[must_use]
+    pub const fn natural_direction(self) -> SortDirection {
+        match self {
+            Self::DateAdded | Self::LastPracticed => SortDirection::Descending,
+            Self::Title => SortDirection::Ascending,
+        }
+    }
+}
+
 impl LibrarySort {
+    /// A tap on the active field flips it; a tap on another field switches to
+    /// that field's natural direction (#2754).
+    #[must_use]
+    pub fn selecting(self, field: SortField) -> Self {
+        let direction = if field == self.field {
+            match self.direction {
+                SortDirection::Ascending => SortDirection::Descending,
+                SortDirection::Descending => SortDirection::Ascending,
+            }
+        } else {
+            field.natural_direction()
+        };
+        Self { field, direction }
+    }
+
     /// The blob is positional bincode; the shell names its storage key by
     /// this number, so a shape change bumps it here and nowhere else (#2089).
     pub const BLOB_VERSION: u32 = 1;
@@ -203,6 +229,67 @@ mod tests {
         let sort = LibrarySort::default();
         assert_eq!(sort.field, SortField::DateAdded);
         assert_eq!(sort.direction, SortDirection::Descending);
+    }
+
+    #[test]
+    fn natural_direction_is_newest_first_for_dates_and_a_to_z_for_titles() {
+        assert_eq!(
+            SortField::DateAdded.natural_direction(),
+            SortDirection::Descending
+        );
+        assert_eq!(
+            SortField::LastPracticed.natural_direction(),
+            SortDirection::Descending
+        );
+        assert_eq!(
+            SortField::Title.natural_direction(),
+            SortDirection::Ascending
+        );
+    }
+
+    #[test]
+    fn tapping_the_active_field_flips_and_flipping_twice_returns() {
+        let descending = LibrarySort {
+            field: SortField::DateAdded,
+            direction: SortDirection::Descending,
+        };
+        let flipped = descending.selecting(SortField::DateAdded);
+        assert_eq!(
+            flipped,
+            LibrarySort {
+                field: SortField::DateAdded,
+                direction: SortDirection::Ascending,
+            }
+        );
+        assert_eq!(flipped.selecting(SortField::DateAdded), descending);
+    }
+
+    #[test]
+    fn switching_field_takes_its_natural_direction_whatever_came_before() {
+        let ascending_dates = LibrarySort {
+            field: SortField::DateAdded,
+            direction: SortDirection::Ascending,
+        };
+        for (field, direction) in [
+            (SortField::LastPracticed, SortDirection::Descending),
+            (SortField::Title, SortDirection::Ascending),
+        ] {
+            assert_eq!(
+                ascending_dates.selecting(field),
+                LibrarySort { field, direction }
+            );
+        }
+        let titles = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        assert_eq!(
+            titles.selecting(SortField::DateAdded),
+            LibrarySort {
+                field: SortField::DateAdded,
+                direction: SortDirection::Descending,
+            }
+        );
     }
 
     // ── Wire ──

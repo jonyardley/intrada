@@ -23,7 +23,7 @@ extension Array where Element == LibraryItemView {
 }
 
 extension LibrarySort {
-  fileprivate var pickerSortArg: PickerSortArg {
+  var pickerSortArg: PickerSortArg {
     let field: PickerSortField =
       switch self.field {
       case .dateAdded: .dateAdded

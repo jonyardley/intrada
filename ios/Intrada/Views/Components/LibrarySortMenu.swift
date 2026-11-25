@@ -1,9 +1,9 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
-/// Display wrapper over the core `SortField` — owns the menu labels and the
-/// natural default direction when switching *to* a field (a shell concern,
-/// like `LibraryFilter` wraps `ItemKind`).
+/// Display wrapper over the core `SortField`: owns the menu labels, like
+/// `LibraryFilter` wraps `ItemKind`.
 enum LibrarySortField: CaseIterable, Identifiable {
   case dateAdded, lastPracticed, title
 
@@ -33,24 +33,34 @@ enum LibrarySortField: CaseIterable, Identifiable {
     }
   }
 
-  /// Direction applied when the user switches to this field.
-  var naturalDefault: SortDirection {
+  fileprivate var pickerSortField: PickerSortField {
     switch self {
-    case .dateAdded, .lastPracticed: .descending
-    case .title: .ascending
+    case .dateAdded: .dateAdded
+    case .lastPracticed: .lastPracticed
+    case .title: .title
     }
   }
 }
 
 extension LibrarySort {
-  /// The sort to apply when the user taps `field` in the menu: flip direction
-  /// if it's already the active field, else switch to it at its natural default.
+  /// The core decides the direction (#2754).
   static func selecting(_ field: LibrarySortField, from current: LibrarySort) -> LibrarySort {
-    guard field.core == current.field else {
-      return LibrarySort(field: field.core, direction: field.naturalDefault)
-    }
-    let flipped: SortDirection = current.direction == .ascending ? .descending : .ascending
-    return LibrarySort(field: current.field, direction: flipped)
+    LibrarySort(librarySortSelecting(current: current.pickerSortArg, field: field.pickerSortField))
+  }
+
+  init(_ arg: PickerSortArg) {
+    let field: SortField =
+      switch arg.field {
+      case .dateAdded: .dateAdded
+      case .lastPracticed: .lastPracticed
+      case .title: .title
+      }
+    let direction: SortDirection =
+      switch arg.direction {
+      case .ascending: .ascending
+      case .descending: .descending
+      }
+    self.init(field: field, direction: direction)
   }
 }
 

@@ -1,4 +1,5 @@
 import Foundation
+import IntradaCoreFFI
 import SharedTypes
 
 /// What the variations sheet has ticked before Done (#2247): library rows by
@@ -32,25 +33,17 @@ struct VariationChoice: Equatable {
     }
   }
 
+  /// The core matches and dedupes labels (#2754).
   static func matches(_ query: String, in library: [VariationOptionView]) -> [VariationOptionView] {
-    let text = trimmed(query)
-    guard !text.isEmpty else { return [] }
-    return library.filter { $0.label.localizedCaseInsensitiveContains(text) }
+    let ids = variationMatches(
+      query: query, options: library.map { VariationLabelArg(id: $0.id, label: $0.label) })
+    let byId = Dictionary(library.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    return ids.compactMap { byId[$0] }
   }
 
   /// The typed text as a new variation, unless the library or this sheet
   /// already holds that label.
   func addable(_ query: String, in library: [VariationOptionView]) -> String? {
-    let text = Self.trimmed(query)
-    guard !text.isEmpty else { return nil }
-    let taken = library.map(\.label) + newLabels
-    guard !taken.contains(where: { $0.caseInsensitiveCompare(text) == .orderedSame }) else {
-      return nil
-    }
-    return text
-  }
-
-  private static func trimmed(_ text: String) -> String {
-    text.trimmingCharacters(in: .whitespacesAndNewlines)
+    variationAddable(query: query, taken: library.map(\.label) + newLabels)
   }
 }

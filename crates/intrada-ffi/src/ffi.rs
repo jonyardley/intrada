@@ -265,6 +265,22 @@ impl From<PickerSortArg> for LibrarySort {
     }
 }
 
+impl From<LibrarySort> for PickerSortArg {
+    fn from(sort: LibrarySort) -> Self {
+        Self {
+            field: sort.field.into(),
+            direction: sort.direction.into(),
+        }
+    }
+}
+
+/// Serves both sort menus, the Library's and the picker sheet's own (#2754).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn library_sort_selecting(current: PickerSortArg, field: PickerSortField) -> PickerSortArg {
+    LibrarySort::from(current).selecting(field.into()).into()
+}
+
 /// The picker sheet's own sort and search (#1653): a plain call, not an
 /// `Event` round trip, since it runs on every keystroke and must not disturb
 /// the Library screen's own `ListQuery` state. See
@@ -481,6 +497,31 @@ pub fn form_suggestions(
     already_chosen: Vec<String>,
 ) -> Vec<String> {
     intrada_core::validation::form_suggestions(&pool, &typed, &already_chosen)
+}
+
+// ── Variations sheet ──
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone)]
+pub struct VariationLabelArg {
+    pub id: String,
+    pub label: String,
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn variation_matches(query: String, options: Vec<VariationLabelArg>) -> Vec<String> {
+    let options: Vec<(String, String)> = options.into_iter().map(|o| (o.id, o.label)).collect();
+    intrada_core::domain::variation::ids_matching(&options, &query)
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn variation_addable(query: String, taken: Vec<String>) -> Option<String> {
+    intrada_core::domain::variation::addable_label(&query, &taken)
 }
 
 // ── Filling the form from a read ──
@@ -1024,6 +1065,43 @@ mod tests {
                 text: "♩ = 66".to_string(),
                 spoken: "66 beats per minute".to_string(),
             }
+        );
+    }
+
+    #[test]
+    fn library_sort_selecting_carries_the_cores_flip_across() {
+        let current = PickerSortArg {
+            field: PickerSortField::Title,
+            direction: PickerSortDirection::Ascending,
+        };
+        let flipped = library_sort_selecting(current, PickerSortField::Title);
+        assert_eq!(flipped.field, PickerSortField::Title);
+        assert_eq!(flipped.direction, PickerSortDirection::Descending);
+        let switched = library_sort_selecting(current, PickerSortField::LastPracticed);
+        assert_eq!(switched.field, PickerSortField::LastPracticed);
+        assert_eq!(switched.direction, PickerSortDirection::Descending);
+    }
+
+    #[test]
+    fn variation_calls_carry_the_cores_matching_across() {
+        let options = vec![
+            VariationLabelArg {
+                id: "v1".into(),
+                label: "Hands separately".into(),
+            },
+            VariationLabelArg {
+                id: "v2".into(),
+                label: "Dotted rhythms".into(),
+            },
+        ];
+        assert_eq!(variation_matches(" HANDS ".into(), options), vec!["v1"]);
+        assert_eq!(
+            variation_addable(" Slow ".into(), vec!["Dotted rhythms".into()]),
+            Some("Slow".to_string())
+        );
+        assert_eq!(
+            variation_addable("dotted RHYTHMS".into(), vec!["Dotted rhythms".into()]),
+            None
         );
     }
 
