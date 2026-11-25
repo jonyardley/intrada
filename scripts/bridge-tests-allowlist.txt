@@ -25,7 +25,6 @@ NeglectedItem
 PickerVariationView
 PieceRefView
 PracticeDayView
-Profile
 ProfileEvent
 ProfileField
 ProfileView
@@ -50,7 +49,6 @@ ViewModel.activeSort
 ViewModel.availableComposers
 ViewModel.availableTags
 ViewModel.lastPractised
-ViewModel.profile
 
 # Once named only by the Android round trip tests, which left with the Android
 # app (#2924). A Swift LiveBridge test takes each off this list.

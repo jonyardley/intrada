@@ -70,6 +70,17 @@ struct ProfileEditSheet: View {
     // follows once the core has accepted the save.
     .marker(colour)
     .onAppear(perform: load)
+    .onChange(of: instrument) { sendDraft() }
+    .onChange(of: iconChoice) { sendDraft() }
+    .onDisappear { store.send(.profile(.draftEnded)) }
+  }
+
+  private var draft: Profile {
+    Profile(name: name, instrument: instrument, iconChoice: iconChoice, colour: colour)
+  }
+
+  private func sendDraft() {
+    store.send(.profile(.draft(draft)))
   }
 
   private func load() {
@@ -78,21 +89,15 @@ struct ProfileEditSheet: View {
     instrument = profile.instrument
     iconChoice = profile.iconChosen ? profile.icon : nil
     colour = profile.colour
+    sendDraft()
   }
 
+  // Until the core has the draft, the saved profile's icon stands in (#2519).
   private var shownIcon: InstrumentIcon {
-    iconChoice ?? profile?.suggestedIcon ?? .other
+    profile?.draftIcon ?? profile?.icon ?? .other
   }
 
-  private var iconCaption: String {
-    if iconChoice != nil { return "Chosen by you" }
-    if let suggested = profile?.suggestedIcon, suggested != .other {
-      return "Matches \(suggested.tileLabel.lowercased())"
-    }
-    return "No match"
-  }
-
-  // Stacked at accessibility sizes so the caption keeps whole words and the button its label (#2126).
+  // Stacked at accessibility sizes so the label and the button keep whole words (#2126).
   private var iconCard: some View {
     let stacked = dynamicTypeSize.isAccessibilitySize
     let layout: AnyLayout =
@@ -101,12 +106,7 @@ struct ProfileEditSheet: View {
       : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
     return layout {
       ProfileBadge(icon: shownIcon)
-      VStack(alignment: .leading, spacing: 3) {
-        FieldLabel("Icon")
-        Text(iconCaption)
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
+      FieldLabel("Icon")
       if !stacked {
         Spacer(minLength: IntradaSpacing.controlGap)
       }
@@ -140,9 +140,7 @@ struct ProfileEditSheet: View {
   private func save() {
     formError = nil
     faultedField = nil
-    let profile = Profile(
-      name: name, instrument: instrument, iconChoice: iconChoice, colour: colour)
-    if let refusal = store.saveProfile(profile) {
+    if let refusal = store.saveProfile(draft) {
       faultedField = refusal.field
       withAnimation { formError = refusal.message }
     } else {

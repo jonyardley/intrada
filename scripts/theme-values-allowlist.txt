@@ -120,7 +120,6 @@ ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift	.padding(.top, 2)	3	
 ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift	spacing: 2	1	#2706
 ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Screens/PracticeSessionDetailScreen.swift	spacing: 4	2	#2706
-ios/Intrada/Views/Screens/ProfileEditSheet.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Screens/ProfileScreen.swift	.padding(.horizontal, 4)	1	#2706
 ios/Intrada/Views/Screens/ProfileScreen.swift	spacing: 4	1	#2706
 ios/Intrada/Views/Screens/ReflectionSheet.swift	spacing: 2	1	#2706

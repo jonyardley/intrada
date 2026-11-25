@@ -245,7 +245,11 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         notice_seq: model.notice_seq,
         analytics: cached.analytics.clone(),
         last_practised: cached.last_practised.clone(),
-        profile: build_profile_view(&model.profile, clock.hour_of(now)),
+        profile: build_profile_view(
+            &model.profile,
+            model.profile_draft.as_ref(),
+            clock.hour_of(now),
+        ),
         shows_suggestion_restore: up_next.is_some()
             && matches!(model.session_status, SessionStatus::Idle),
         up_next,

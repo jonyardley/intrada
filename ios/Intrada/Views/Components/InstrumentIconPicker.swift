@@ -2,8 +2,8 @@ import SharedTypes
 import SwiftUI
 
 /// The second sheet from the profile's edit card: the instrument's match
-/// first, then every icon. Picking the match clears the choice, so the icon
-/// follows the instrument again; any other pins it (#1692).
+/// first, then every icon. The pick goes to the core as tapped; the core drops
+/// one that matches the instrument being saved, so the icon follows it (#2519).
 struct InstrumentIconPicker: View {
   let suggested: InstrumentIcon
   @Binding var choice: InstrumentIcon?
@@ -47,7 +47,7 @@ struct InstrumentIconPicker: View {
   private func tile(_ icon: InstrumentIcon) -> some View {
     let selected = icon == shown
     return Button {
-      choice = icon == suggested ? nil : icon
+      choice = icon
       Haptic.selection.play()
     } label: {
       tileLayout {
@@ -74,6 +74,7 @@ struct InstrumentIconPicker: View {
     .buttonStyle(.plain)
     .accessibilityLabel(icon.accessibilityLabel)
     .accessibilityAddTraits(selected ? .isSelected : [])
+    .accessibilityIdentifier("iconPicker.tile")
   }
 
   // One tile per row at accessibility sizes, glyph beside the name, so every name shows in full (#2127).

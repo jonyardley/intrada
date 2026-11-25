@@ -74,6 +74,8 @@ pub struct Model {
     pub practice_summaries: Tracked<HashMap<String, ItemPracticeSummary>>,
     /// Device data, not account data (#1691).
     pub profile: Profile,
+    /// The profile edit sheet's unsaved values; never stored (#2519).
+    pub profile_draft: Option<Profile>,
     /// Device data, like the profile (#1915).
     pub practice_defaults: PracticeDefaults,
     /// Device data, never synced (#2116).
