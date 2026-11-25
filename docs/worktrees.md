@@ -17,7 +17,9 @@ directly: `ExitWorktree` with keep first, then `EnterWorktree` by path.
 Worktrunk's machine-local config
 (`~/.config/worktrunk/config.toml`) does the rest:
 
-- **Where.** `../intrada-worktrees/<name>`, beside the main checkout.
+- **Where.** `.claude/worktrees/<name>` inside the main checkout, gitignored:
+  Claude Code asks before every move into a worktree outside that folder.
+  Older ones finish in `../intrada-worktrees/`; the recipes ask git, so both work.
 - **Warm caches.** A `pre-start` hook runs `wt step copy-ignored`, which
   reflinks the gitignored files the main checkout's `.worktreeinclude` names
   (`ios/generated/`, `ios/build/spm/`, `.env`, `.claude/settings.local.json`)

@@ -339,7 +339,7 @@ check-all: check ios-test
 
 # New worktree branched from fresh origin/main, a thin wrapper for
 # worktrunk's `wt switch --create`. Worktrunk's user config sets the path
-# (`../intrada-worktrees/<name>`), reflinks what `.worktreeinclude` names
+# (`.claude/worktrees/<name>`, docs/worktrees.md), reflinks what `.worktreeinclude` names
 # from the main checkout (ios/generated and the Swift packages, never the
 # build folders, #2191), and opens a cmux workspace there. This keeps only
 # what is intrada's own: the name rule and the simulator-name collision check
@@ -351,26 +351,24 @@ worktree-new name:
     #!/usr/bin/env bash
     set -euo pipefail
     # Directory and sim-name slug both derive from the raw name (matching
-    # _ios-test-sim-name's basename-of-checkout basis), so a slash or shell
-    # metacharacter would either nest the worktree under a subdirectory the
-    # collision scan below can't see, or break out of the surrounding quotes.
+    # _ios-test-sim-name's basename-of-checkout basis), so a slash would give
+    # a sim name the collision scan below cannot match, and a shell
+    # metacharacter would break out of the surrounding quotes.
     if ! printf '%s' "{{name}}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$'; then
-        echo "✗ '{{name}}' must be alphanumeric plus '_'/'-' (no slashes) — worktree root stays flat." >&2
+        echo "✗ '{{name}}' must be letters, digits, '_' or '-', with no slashes." >&2
         exit 1
     fi
     command -v wt >/dev/null || { echo "✗ worktrunk (wt) is not installed: brew install worktrunk" >&2; exit 1; }
 
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
-    worktree_root="$(dirname "$main_root")/$(basename "$main_root")-worktrees"
     slug="$(printf '%s' "{{name}}" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
-    for dir in "$worktree_root"/*/; do
-        [ -d "$dir" ] || continue
+    while IFS= read -r dir; do
         other="$(basename "$dir" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
         if [ "$other" = "$slug" ]; then
-            echo "✗ $(basename "$dir") already sanitises to sim name '$slug' — pick a different name (see docs/ios-testing.md § worktrees)." >&2
+            echo "✗ $(basename "$dir") already sanitises to sim name '$slug', so pick a different name (see docs/ios-testing.md, worktrees)." >&2
             exit 1
         fi
-    done
+    done < <(./scripts/worktree-path.sh)
 
     git fetch origin
     wt -C "$main_root" switch --create "{{name}}" --base origin/main
@@ -395,12 +393,8 @@ worktree-new name:
 worktree-rm name:
     #!/usr/bin/env bash
     set -euo pipefail
-    main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
-    worktree_root="$(dirname "$main_root")/$(basename "$main_root")-worktrees"
-    target="$worktree_root/{{name}}"
-    if [ -d "$target" ]; then
-        (cd "$target" && just ios-test-sim-clean) || true
-    fi
+    target="$(./scripts/worktree-path.sh "{{name}}")"
+    (cd "$target" && just ios-test-sim-clean) || true
     git worktree remove "$target"
     echo "✓ removed worktree $target"
 

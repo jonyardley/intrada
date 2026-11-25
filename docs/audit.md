@@ -206,7 +206,7 @@ Say "run the audit workflow" (the opt-in) with these arguments:
 
 ```json
 {
-  "worktree": "/Users/jonyardley/Dev/intrada-worktrees/audit-2026-12",
+  "worktree": "/Users/jonyardley/Dev/intrada/.claude/worktrees/audit-2026-12",
   "commit": "abc1234",
   "date": "2026-12-01",
   "sweep": "docs/audit-metrics/2026-12-01.json",
