@@ -23,7 +23,7 @@ Hanken Grotesk for every word; DM Mono only for a value that is a number alone, 
 | Size | Styles | For |
 |---|---|---|
 | 30 | `pageTitle` | The page title |
-| 20 | `title` | A hero or the key picker |
+| 20 | `title`, `figureLarge` | A hero or the key picker, a number that leads its row |
 | 17 | `cardTitle`, `body`, `bodyMedium` | Card titles, body, fields and values, emphasis |
 | 15 | `label`, `secondary`, `figure`, `button`, `segment` | Labels, secondary lines, figures, buttons, pills |
 | 13 | `small`, `smallMedium`, `badge` | Tabs, badges and chips |
@@ -52,6 +52,8 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 | Actions | MarkerButton | The one call to action on a screen, in the musician's highlighter |
 | Actions | SegmentedPills | Choosing one of two to five options in place |
 | Actions | ScoreSelector | Giving an item, a play or a session its mark |
+| Actions | ScoreStepper | Nudging a key's score from last time, with minus and plus |
+| Actions | TempoStepper | Setting a tempo by nudging or typing it |
 | Actions | WeekStrip | Picking a day of the week on the Practice home |
 | Actions | AddRowButton | The full-width row that adds something to a list |
 | Text and labels | SectionHeader | A section's title with an optional action |

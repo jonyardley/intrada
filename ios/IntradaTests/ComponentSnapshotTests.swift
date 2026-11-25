@@ -373,6 +373,42 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(selectors), as: config)
   }
 
+  func testScoreStepper() {
+    let states: [(Int, ScoreStepper.Origin)] = [
+      (4, .lastTime), (5, .today), (6, .suggested), (10, .today),
+    ]
+    let steppers = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        ForEach(Array(states.enumerated()), id: \.offset) { _, state in
+          ScoreStepper(
+            score: state.0, origin: state.1, range: LimitsView.preview.scoreRange,
+            accessibilityLabel: "Score for D major"
+          ) { _ in }
+        }
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(steppers), as: config)
+  }
+
+  func testTempoStepper() {
+    let limits = LimitsView.preview
+    let band = limits.clickBand(unit: 4)
+    let steppers = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        TempoStepper(value: .constant(88), step: limits.clickStep, band: band)
+        TempoStepper(
+          value: .constant(168), unit: 8, step: limits.clickStep,
+          band: limits.clickBand(unit: 8))
+        TempoStepper(value: .constant(band.upperBound), step: limits.clickStep, band: band)
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(steppers), as: config)
+  }
+
   func testLibraryItemCard() {
     var priority = LibraryItemView.previewPiece
     priority.priority = true
