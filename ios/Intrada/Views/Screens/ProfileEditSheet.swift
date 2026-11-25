@@ -97,7 +97,7 @@ struct ProfileEditSheet: View {
     profile?.draftIcon ?? profile?.icon ?? .other
   }
 
-  // Stacked at accessibility sizes so the button keeps its label (#2126).
+  // Stacked at accessibility sizes so the label and the button keep whole words (#2126).
   private var iconCard: some View {
     let stacked = dynamicTypeSize.isAccessibilitySize
     let layout: AnyLayout =
@@ -106,9 +106,7 @@ struct ProfileEditSheet: View {
       : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
     return layout {
       ProfileBadge(icon: shownIcon)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Icon, \(shownIcon.accessibilityLabel)")
-        .accessibilityAddTraits(.isImage)
+      FieldLabel("Icon")
       if !stacked {
         Spacer(minLength: IntradaSpacing.controlGap)
       }
