@@ -456,3 +456,17 @@ on them. The kit draws cards with the lift (T24) and the
 tab bar as it looks on a phone. Rejected: a full web kit of every component,
 checked against the code (too much to keep true for one person), and Figma (a
 second source and a cost).
+
+### T40: A score left unchanged keeps last time's, taken as agreement
+
+**DECIDED 2026-11-25 (#3004).** Each key on the item-complete sheet starts on
+last time's score for that key. If the musician saves without changing it, that
+score is saved for today, read as them agreeing with it, so nobody has to tap
+the number to keep it. A key never scored before starts on a suggested score
+(the item's other keys averaged, else 5) and keeps none unless it is changed.
+Time against each key is logged either way.
+
+This differs from T16 on purpose. A tempo is recorded only when it was measured,
+because a stepper the musician left alone says nothing about the speed played.
+A score is the musician's own judgement, and seeing last time's and leaving it
+is a judgement too.
