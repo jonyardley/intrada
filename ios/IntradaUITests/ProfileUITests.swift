@@ -84,6 +84,43 @@ final class ProfileUITests: XCTestCase {
       app.staticTexts["All icons"].waitForExistence(timeout: 5), "the icon picker opens")
   }
 
+  /// Picking the old instrument's icon while changing instrument keeps the
+  /// pick, rather than letting the icon follow the new instrument (#2519).
+  func testPickingTheOldInstrumentsIconKeepsItAfterAChange() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--disable-animations", "--reset-profile", "--skip-welcome"]
+    app.launch()
+
+    app.tabBars.buttons["Practice"].tap()
+    app.control("practice.profile", spoken: "Profile", timeout: 10).tap()
+    let edit = app.control("profile.edit", spoken: "Edit")
+    edit.tap()
+    let instrument = app.element("profileEdit.instrument")
+    XCTAssertTrue(instrument.waitForExistence(timeout: 5), "the instrument field")
+    instrument.tap()
+    instrument.typeText("Cello")
+    app.control("profileEdit.save", spoken: "Save").tap()
+    XCTAssertTrue(app.staticTexts["Cello"].waitForExistence(timeout: 5), "the saved instrument")
+
+    edit.tap()
+    XCTAssertTrue(instrument.waitForExistence(timeout: 5))
+    instrument.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    instrument.typeText(
+      String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Cello".count) + "Violin")
+    app.control("profileEdit.changeIcon", spoken: "Change icon").tap()
+    let cello = app.row("iconPicker.tile", spokenContaining: "Cello")
+    XCTAssertTrue(cello.waitForExistence(timeout: 5), "the cello tile under Matches cello")
+    cello.tap()
+    app.control("sheet.done", spoken: "Done").tap()
+    app.control("profileEdit.save", spoken: "Save").tap()
+    XCTAssertTrue(app.staticTexts["Violin"].waitForExistence(timeout: 5), "the new instrument")
+
+    edit.tap()
+    XCTAssertTrue(
+      app.staticTexts["Chosen by you"].waitForExistence(timeout: 5),
+      "the cello pick was kept, not dropped for the violin's match")
+  }
+
   /// The practice defaults the musician sets on the Profile screen are still
   /// there after a relaunch (#1915).
   func testPracticeDefaultsSurviveARelaunch() {

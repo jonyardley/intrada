@@ -405,6 +405,31 @@ mod tests {
     }
 
     #[test]
+    fn a_pick_of_the_old_instruments_icon_survives_a_change_of_instrument() {
+        let mut model = Model::default();
+        let _ = save(
+            &mut model,
+            Profile {
+                instrument: "Cello".to_string(),
+                ..fixture()
+            },
+        );
+        let mut cmd = save(
+            &mut model,
+            Profile {
+                instrument: "Violin".to_string(),
+                icon_choice: Some(InstrumentIcon::Cello),
+                ..fixture()
+            },
+        );
+        assert_eq!(model.profile.icon_choice, Some(InstrumentIcon::Cello));
+        assert_eq!(
+            emits_save(&mut cmd).map(|p| p.icon_choice),
+            Some(Some(InstrumentIcon::Cello))
+        );
+    }
+
+    #[test]
     fn the_icon_counts_as_chosen_only_when_it_differs_from_the_suggestion() {
         let chosen = |instrument: &str, icon_choice| {
             build_profile_view(
