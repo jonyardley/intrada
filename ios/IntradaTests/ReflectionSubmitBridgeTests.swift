@@ -135,7 +135,7 @@ struct ReflectionSubmitBridgeTests {
             marks: [], note: "", tempos: [], ways: [],
             notes: [DraftNote(playId: playId, note: String(repeating: "a", count: 501))]))))
 
-    #expect(try bridge.rendered().error == "Note must not exceed 500 characters")
+    #expect(try bridge.rendered().error == "Keep the note under 500 characters.")
     #expect(try bridge.rendered().activeSession?.reflection != nil, "the sheet stays up")
   }
 
@@ -154,7 +154,7 @@ struct ReflectionSubmitBridgeTests {
             notes: [DraftNote(playId: playId, note: String(repeating: "a", count: limit + 1))]))))
 
     #expect(limit == 500)
-    #expect(try bridge.rendered().error == "Note must not exceed 500 characters")
+    #expect(try bridge.rendered().error == "Keep the note under 500 characters.")
     let draft = try #require(try bridge.rendered().activeSession?.reflection?.answers)
     #expect(draft.marks == [DraftMark(playId: playId, score: 8)])
     #expect(draft.notes.isEmpty)

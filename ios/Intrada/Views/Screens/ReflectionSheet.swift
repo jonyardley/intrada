@@ -177,16 +177,11 @@ struct ReflectionSheet: View {
         } else if let only = plays.first {
           // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
           sectionTitle("Confidence").padding(.top, IntradaSpacing.section)
-          ScoreSelector(
-            score: mark(for: only.id), range: limits.scoreRange,
-            accessibilityLabel: "Confidence for \(itemTitle)"
-          ) { next in
-            setMark(next, for: only.id)
-          }
-          .accessibilityIdentifier("reflection.mark")
-          .padding(.top, IntradaSpacing.controlGap)
-
           if let row = tempoRow(for: only.id) {
+            scoreStepper(only, row, label: "Score for \(singlePlayTitle(only))")
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.top, IntradaSpacing.controlGap)
+
             SectionTitle(singlePlayTempoHeading)
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.top, IntradaSpacing.card)
@@ -300,14 +295,7 @@ struct ReflectionSheet: View {
         .accessibilityIdentifier("reflection.key")
 
         if let row = tempoRow(for: play.id) {
-          ScoreStepper(
-            score: marks[play.id] ?? Int(row.startScore), origin: origin(play, row),
-            range: limits.scoreRange, accessibilityLabel: "Score for \(rowTitle(play))"
-          ) { next in
-            marks[play.id] = next
-            draft()
-          }
-          .accessibilityIdentifier("reflection.mark")
+          scoreStepper(play, row, label: "Score for \(rowTitle(play))")
         }
       }
     } else {
@@ -412,15 +400,22 @@ struct ReflectionSheet: View {
     tempoTarget.map { "Tempo reached · target \($0)" } ?? "Tempo reached"
   }
 
-  /// The score the core will save: the one chosen, else the one it starts on (#3004).
-  private func mark(for playId: String) -> Int {
-    if let chosen = marks[playId], chosen != 0 { return chosen }
-    return tempoRow(for: playId).map { Int($0.startScore) } ?? 0
+  /// Untouched, it shows the score the core will save (#3004).
+  private func scoreStepper(
+    _ play: ReflectionPlay, _ row: ReflectionTempoView, label: String
+  ) -> some View {
+    ScoreStepper(
+      score: marks[play.id] ?? Int(row.startScore), origin: origin(play, row),
+      range: limits.scoreRange, accessibilityLabel: label
+    ) { next in
+      marks[play.id] = next
+      draft()
+    }
+    .accessibilityIdentifier("reflection.mark")
   }
 
-  private func setMark(_ next: UInt8?, for playId: String) {
-    marks[playId] = next.map(Int.init) ?? 0
-    draft()
+  private func singlePlayTitle(_ play: ReflectionPlay) -> String {
+    finishRow(play).map { "\(itemTitle), \($0.label)" } ?? itemTitle
   }
 
   private func tempoRow(for playId: String) -> ReflectionTempoView? {

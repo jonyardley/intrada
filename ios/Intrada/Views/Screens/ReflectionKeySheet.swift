@@ -2,10 +2,8 @@ import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
-/// One key's tempo and note on the item-complete sheet, opened from its name
-/// (#3004). Tempo and note go to the core on Done, and the sheet closes only
-/// once the core keeps them; a change of key or variation goes to the core at
-/// once, as its choices read back from the core's row (#2249).
+/// One key's tempo and note, opened from its name; Done closes it only once the
+/// core keeps them (#3004). A change of key or variation goes at once (#2249).
 struct ReflectionKeySheet: View {
   let title: String
   let tempoRow: ReflectionTempoView?

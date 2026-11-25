@@ -35,12 +35,13 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(selectors), as: config)
   }
 
+  /// One play scores with the same stepper as several, here on last time's score (#3004).
   func testReflectionSheet() {
     let sheet = ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
-        tempoRows: [.preview("p1")],
+        tempoRows: [.preview("p1", lastScore: 7, startScore: 7)],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
@@ -125,7 +126,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       title: "D major", tempoRow: row, limits: .preview, tempo: TrackedTempo(row: row),
       note: "Stumbles at the top on the way down.",
       wayRow: nil, wayChoices: PlayWayChoices(keys: [], variations: [], planned: nil),
-      refusal: "Note must not exceed 500 characters",
+      refusal: "Keep the note under 500 characters.",
       onWay: { _ in }, onDone: { _, _ in nil })
     assertSnapshot(of: host(sheet), as: config)
   }
