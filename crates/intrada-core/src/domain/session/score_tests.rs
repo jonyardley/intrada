@@ -193,7 +193,7 @@ fn each_key_starts_from_its_last_score_else_the_others_averaged_else_five() {
             start: 8,
         },
         Case {
-            name: "a variation in G is not plain G, but counts towards the suggestion",
+            name: "a variation in G is not plain G, and is left out of the suggestion",
             history: vec![saved(
                 "p",
                 vec![Play {
@@ -203,7 +203,7 @@ fn each_key_starts_from_its_last_score_else_the_others_averaged_else_five() {
                 t(-100),
             )],
             last: None,
-            start: 4,
+            start: 5,
         },
         Case {
             name: "another item's scores are not this one's",
@@ -311,20 +311,70 @@ fn last_score_matches_the_key_and_the_variations_together() {
 }
 
 #[test]
-fn each_way_counts_once_in_the_suggestion() {
-    let mut m = model_with(None);
-    m.sessions = vec![saved(
-        "p",
-        vec![
-            played_way(&plain("A major"), 2),
-            played_way(&with_variations("A major", &["v-dot"]), 8),
-            played_way(&plain("D major"), 8),
-        ],
-        t(-100),
-    )]
-    .into();
-
-    assert_eq!(start_score(&m, "p", &plain("G major")), 6);
+fn the_suggestion_averages_the_other_keys_only() {
+    struct Case {
+        name: &'static str,
+        scored: Vec<(PlayWay, u8)>,
+        asked: PlayWay,
+        start: u8,
+    }
+    let cases = [
+        Case {
+            name: "two other keys",
+            scored: vec![(plain("A major"), 2), (plain("D major"), 8)],
+            asked: plain("G major"),
+            start: 5,
+        },
+        Case {
+            name: "a variation's score is left out",
+            scored: vec![
+                (plain("A major"), 2),
+                (with_variations("A major", &["v-dot"]), 9),
+                (plain("D major"), 9),
+            ],
+            asked: plain("G major"),
+            start: 6,
+        },
+        Case {
+            name: "only variations scored falls back to the middle",
+            scored: vec![(with_variations("A major", &["v-dot"]), 9)],
+            asked: plain("G major"),
+            start: 5,
+        },
+        Case {
+            name: "a new variation reads the plain keys",
+            scored: vec![
+                (plain("G major"), 8),
+                (with_variations("D major", &["v-dot"]), 2),
+            ],
+            asked: with_variations("G major", &["v-legato"]),
+            start: 8,
+        },
+        Case {
+            name: "a way scored before keeps its own score",
+            scored: vec![
+                (with_variations("G major", &["v-dot"]), 9),
+                (plain("A major"), 2),
+            ],
+            asked: with_variations("G major", &["v-dot"]),
+            start: 9,
+        },
+    ];
+    for case in cases {
+        let mut m = model_with(None);
+        let plays = case
+            .scored
+            .iter()
+            .map(|(way, score)| played_way(way, *score))
+            .collect();
+        m.sessions = vec![saved("p", plays, t(-100))].into();
+        assert_eq!(
+            start_score(&m, "p", &case.asked),
+            case.start,
+            "{}",
+            case.name
+        );
+    }
 }
 
 #[test]
@@ -659,7 +709,7 @@ fn a_note_too_long_refuses_the_submit() {
     assert!(
         m.last_error
             .as_deref()
-            .is_some_and(|e| e.contains("Note must not exceed")),
+            .is_some_and(|e| e.contains("Keep the note under 500 characters.")),
         "the note's own refusal"
     );
     assert_eq!(finished_play(&m).note, None);
@@ -770,7 +820,7 @@ fn a_draft_note_too_long_is_refused_but_the_rest_of_the_draft_records() {
     assert!(m
         .last_error
         .as_deref()
-        .is_some_and(|e| e.contains("Note must not exceed")));
+        .is_some_and(|e| e.contains("Keep the note under 500 characters.")));
     let answers = &active(&m).reflection.as_ref().expect("draft").answers;
     assert_eq!(answers.notes[0].note, "steady", "the last good note stays");
     assert_eq!(answers.marks[0].score, 8, "the mark sent with it records");
@@ -802,6 +852,33 @@ fn a_draft_after_a_refused_note_still_records() {
     let answers = &active(&m).reflection.as_ref().expect("draft").answers;
     assert_eq!(answers.notes[0].note, "thumb under");
     assert_eq!(answers.marks[0].score, 3);
+}
+
+#[test]
+fn a_draft_the_core_does_not_keep_is_refused_aloud() {
+    let (mut m, play_id) = sheet_open_in_g(vec![]);
+    send(
+        &mut m,
+        SessionEvent::UpdateReflectionDraft {
+            answers: noted(&play_id, "steady"),
+        },
+    );
+    let errors_before = m.error_seq;
+
+    send(
+        &mut m,
+        SessionEvent::UpdateReflectionDraft {
+            answers: noted("not-a-play", "rushed"),
+        },
+    );
+
+    assert_eq!(m.error_seq, errors_before + 1);
+    assert_eq!(
+        m.last_error.as_deref(),
+        Some("Couldn't save the reflection.")
+    );
+    let answers = &active(&m).reflection.as_ref().expect("draft").answers;
+    assert_eq!(answers.notes[0].note, "steady", "the kept draft stays");
 }
 
 #[test]

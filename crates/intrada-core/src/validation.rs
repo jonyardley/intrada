@@ -263,7 +263,7 @@ pub fn validate_play_note(note: &str) -> Result<(), LibraryError> {
     if exceeds_chars(note, MAX_PLAY_NOTE) {
         return Err(LibraryError::Validation {
             field: "note".to_string(),
-            message: format!("Note must not exceed {MAX_PLAY_NOTE} characters"),
+            message: format!("Keep the note under {MAX_PLAY_NOTE} characters."),
         });
     }
     Ok(())

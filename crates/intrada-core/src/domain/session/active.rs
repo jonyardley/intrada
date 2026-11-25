@@ -291,10 +291,12 @@ pub(super) fn update_reflection_draft(
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     }
-    if active.reflection.is_none()
-        || !draft_answers_valid(entry, &answers)
-        || !draft_ways_valid(entry, &answers.ways, model)
-    {
+    if active.reflection.is_none() {
+        return crux_core::render::render();
+    }
+    // The key sheet closes only on a draft the core kept (#3004).
+    if !draft_answers_valid(entry, &answers) || !draft_ways_valid(entry, &answers.ways, model) {
+        model.raise_error(REFLECTION_REFUSED);
         return crux_core::render::render();
     }
     answers.ways.retain(|row| {
@@ -323,9 +325,8 @@ pub(super) fn update_reflection_draft(
     persist
 }
 
-/// A key's note over the limit keeps that key's last good note, so the rest of
-/// the draft still reaches crash recovery; the refusal comes back for the key
-/// sheet to show (#3004).
+/// A note over the limit keeps that key's last good one, so the rest of the
+/// draft still reaches crash recovery (#3004).
 fn keep_last_good_notes(answers: &mut ReflectionAnswers, drafted: &[DraftNote]) -> Option<String> {
     let mut refusal = None;
     answers.notes = std::mem::take(&mut answers.notes)

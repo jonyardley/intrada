@@ -6636,6 +6636,7 @@ fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
     ];
 
     for (case, answers) in cases {
+        model.last_error = None;
         let saves = write_draft(&mut model, answers);
         assert_eq!(
             draft(&model).map(|d| &d.answers),
@@ -6643,9 +6644,10 @@ fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
             "{case}: the last good draft stands"
         );
         assert!(saves.is_empty(), "{case}: nothing saved");
-        assert!(
-            model.last_error.is_none(),
-            "{case}: no banner behind the sheet"
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("Couldn't save the reflection."),
+            "{case}: refused aloud, so the key sheet stays open (#3004)"
         );
     }
 }

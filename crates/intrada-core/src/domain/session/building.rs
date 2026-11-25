@@ -267,8 +267,8 @@ pub(crate) fn last_score(model: &Model, item_id: &str, way: &PlayWay) -> Option<
 
 pub(crate) const DEFAULT_START_SCORE: u8 = 5;
 
-/// Last time's score this way, else the item's other ways' last scores
-/// averaged, else the middle of the scale.
+/// Last time's score this way, else the item's other keys' last plain scores
+/// averaged (variations left out, decided on #3004), else the middle.
 pub(crate) fn start_score(model: &Model, item_id: &str, way: &PlayWay) -> u8 {
     let scores = last_scores(model, item_id);
     let way = score_way(model, item_id, way);
@@ -276,7 +276,14 @@ pub(crate) fn start_score(model: &Model, item_id: &str, way: &PlayWay) -> u8 {
         .iter()
         .find(|(w, _)| w.is_same_way(&way))
         .map(|(_, score)| *score)
-        .or_else(|| rounded_mean(scores.iter().map(|(_, score)| *score)))
+        .or_else(|| {
+            rounded_mean(
+                scores
+                    .iter()
+                    .filter(|(w, _)| w.variation_ids.is_empty())
+                    .map(|(_, score)| *score),
+            )
+        })
         .unwrap_or(DEFAULT_START_SCORE)
 }
 

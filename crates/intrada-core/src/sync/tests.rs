@@ -402,6 +402,29 @@ fn a_piece_from_before_its_later_fields_still_decodes() {
 }
 
 #[test]
+fn a_session_from_before_play_notes_still_decodes() {
+    let older = PINNED_SESSION.replace(r#","note":"thumb under""#, "");
+    assert_ne!(older, PINNED_SESSION, "the note was taken out");
+    let record = Synced::Session {
+        session: Box::new(full_session()),
+        updated_at: at(0),
+        deleted_at: None,
+    }
+    .record()
+    .expect("encodes");
+    let record = SyncRecord {
+        body: older.into_bytes(),
+        ..record
+    };
+    let Synced::Session { session, .. } = Synced::decode(&record).expect("decodes") else {
+        panic!("a session record decodes to a session");
+    };
+    let mut expected = full_session();
+    expected.entries[0].plays[0].note = None;
+    assert_eq!(*session, expected);
+}
+
+#[test]
 fn the_bridge_shapes_round_trip_on_the_ffi_wire() {
     use crate::domain::types::assert_round_trips;
     let r = record(0, true, "{}");
