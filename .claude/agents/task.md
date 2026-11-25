@@ -12,8 +12,10 @@ lead launched you in, or the lead's own. The main checkout is read-only, and a
 `cd <worktree> && ` prefix from there is refused, so if you find yourself in
 main, report that and stop. Give file tools absolute paths inside the worktree, and
 never write to the main checkout. Path-scoped
-rules do not load in a worktree: before editing a file, read the
-`.claude/rules/` file whose `paths:` cover it. It binds you either way.
+rules load when you open a matching file with the Read tool from inside the
+worktree. Launched from the main checkout you cannot count on them, and a file
+you only look at through the shell loads none: then, before editing it, read
+the `.claude/rules/` file whose `paths:` cover it. It binds you either way.
 
 ## Budget
 
