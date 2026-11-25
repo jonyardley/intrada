@@ -413,6 +413,49 @@ fn an_untouched_key_changed_on_the_sheet_keeps_that_keys_score() {
 }
 
 #[test]
+fn a_stray_play_dropped_at_close_gets_no_kept_score() {
+    let mut m = model_with(None);
+    m.sessions = scored_in_g_and_a().into();
+    send(&mut m, SessionEvent::StartBuilding);
+    for item_id in ["p", "q"] {
+        send(
+            &mut m,
+            SessionEvent::AddToSetlist {
+                item_id: item_id.to_string(),
+            },
+        );
+    }
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    let entry_id = active(&m).entries[0].id.clone();
+    send(
+        &mut m,
+        SessionEvent::SwitchPlay {
+            entry_id,
+            key: key("A major"),
+            variation_ids: vec![],
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(302),
+            reading: TempoReading::silent(),
+        },
+    );
+    let errors_before = m.error_seq;
+
+    submit(&mut m, ReflectionAnswers::default());
+
+    assert_eq!(m.error_seq, errors_before);
+    assert_eq!(active(&m).current_index, 1);
+    let plays = &active(&m).entries[0].plays;
+    assert_eq!(plays.len(), 1, "the stray play is dropped");
+    assert_eq!(plays[0].score, Some(7));
+}
+
+#[test]
 fn a_skipped_sheet_writes_no_score() {
     let (mut m, _) = sheet_open_in_g(scored_in_g_and_a());
 
