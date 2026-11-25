@@ -104,22 +104,11 @@ final class Store {
         handleAppEffect(appEffect)
       case .persistence(let operation):
         enqueueDiskJob(operation, id: request.id)
-      case .recognition(let operation):
-        Task { await self.handleRecognition(operation, id: request.id) }
       case .sync:
         // FIXME(#2355): the sync engine carries these to iCloud.
         break
       }
     }
-  }
-
-  private func handleRecognition(_ operation: RecognitionOperation, id: UInt32) async {
-    let output: RecognitionOutput
-    switch operation {
-    case .readPage(let photoId):
-      output = await PageReader.read(photoId: photoId)
-    }
-    process(bridged { try bridge.resolve(id, recognitionOutput: output) } ?? [])
   }
 
   /// One job at a time, in the order the core asked: a load sent after a save

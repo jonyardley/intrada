@@ -131,13 +131,9 @@ struct PracticeScreen: View {
     .navigationDestination(isPresented: $showingProfile) {
       ProfileScreen()
     }
-    .sheet(isPresented: $addingItem, onDismiss: discardPhotoDraft) {
+    .sheet(isPresented: $addingItem) {
       LibraryAddScreen().environment(store)
     }
-  }
-
-  private func discardPhotoDraft() {
-    store.send(.discardPhotoDraft)
   }
 
   private var buildingBinding: Binding<Bool> {

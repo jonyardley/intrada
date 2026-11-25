@@ -40,9 +40,7 @@ extension View {
   }
 }
 
-/// The capture half of a photo surface, shared by `PhotoCard` (the photo on a
-/// piece) and `ScanPageEntry` (the photo the add form is read from), which
-/// otherwise duplicate every step of it.
+/// The capture half of `PhotoCard`, the photo on a piece.
 @MainActor
 struct PhotoCaptureSources {
   let onCaptured: (String) -> Void

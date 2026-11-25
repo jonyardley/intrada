@@ -238,28 +238,6 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertNil(refused.items.first { $0.title == "Etude" }, "nothing written")
   }
 
-  /// The draft crosses as Swift's own bincode (#2229): a Rust round trip cannot
-  /// see Swift and Rust disagreeing about `PhotoDraft`'s bytes.
-  func testFillFormFromReadDecodesTheDraftSwiftSerialised() throws {
-    let fields: [FormFieldNow] = [
-      FormFieldNow(field: .title, text: "The name I gave it", holdsRead: false),
-      FormFieldNow(field: .composer, text: "", holdsRead: false),
-      FormFieldNow(field: .marking, text: "", holdsRead: false),
-      FormFieldNow(field: .bpm, text: "", holdsRead: false),
-    ]
-
-    let fills = try fillFormFromRead(
-      draft: Data(PhotoDraft.readPage.bincodeSerialize()), fields: fields)
-
-    XCTAssertEqual(
-      fills,
-      [
-        FormFieldFill(field: .composer, value: "Joseph Kosmo", weak: true),
-        FormFieldFill(field: .marking, value: "Moderato", weak: false),
-        FormFieldFill(field: .bpm, value: "120", weak: false),
-      ])
-  }
-
   /// The edit form's one save against the real core (#2228): the fields, the
   /// kept variation and a typed label all land, and the key is set while the
   /// variations change.
@@ -370,51 +348,6 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertNil(
       try bridge.rendered().items.first { $0.id == id }?.photoId,
       "an absent Option must decode as absent, not as the previous value")
-  }
-
-  /// Every recognition type is new on the bincode wire, and `f32` is a new
-  /// scalar on it. A stub bridge cannot catch a wire break (#846), so this
-  /// drives the whole round trip: the effect out, a `RecognitionOutput` built
-  /// in Swift back in, and the draft the form will read out of the projection.
-  func testRealBridgeReadPhotoFillsTheDraft() throws {
-    let bridge = RowsBridge()
-    _ = try bridge.update(.startApp)
-    let photoId = Ulid.generate()
-
-    let requests = try bridge.update(.item(.readPhoto(photoId: photoId)))
-    let request = try XCTUnwrap(
-      requests.first { if case .recognition = $0.effect { return true } else { return false } },
-      "readPhoto should emit a Recognition effect")
-    guard case .recognition(.readPage(let asked)) = request.effect else {
-      return XCTFail("expected readPage, got \(request.effect)")
-    }
-    XCTAssertEqual(asked, photoId, "the core names the file the shell just wrote")
-
-    _ = try bridge.resolve(
-      request.id,
-      recognitionOutput: .page(
-        PageReading(
-          lines: [
-            RecognisedLine(
-              text: "Autumn Leaves", x: 0.1, y: 0.08, width: 0.8, height: 0.09, confidence: 0.93),
-            RecognisedLine(
-              text: "Music by Joseph Kosma", x: 0.1, y: 0.18, width: 0.8, height: 0.03,
-              confidence: 0.4),
-          ],
-          suggested: nil)))
-
-    let recognition = try bridge.rendered().photoRecognition
-    XCTAssertEqual(recognition.status, .ready)
-    XCTAssertEqual(recognition.photoId, photoId)
-    let draft = try XCTUnwrap(recognition.draft)
-    XCTAssertEqual(draft.title?.value, "Autumn Leaves")
-    XCTAssertEqual(draft.composer?.value, "Joseph Kosma")
-    XCTAssertEqual(draft.title?.source, .recognised)
-    XCTAssertEqual(
-      try XCTUnwrap(draft.title?.confidence), Float(0.93), accuracy: 0.0001,
-      "an f32 has to survive the wire, not arrive as a rounded or byte-swapped number")
-    XCTAssertFalse(draft.title?.weak ?? true, "the title was read cleanly")
-    XCTAssertTrue(draft.composer?.weak ?? false, "the credit was read weakly")
   }
 
   /// `CreateItem` gained a field, and it is the field that stops the user

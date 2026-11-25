@@ -81,8 +81,7 @@ struct PlaceholderContent: View {
         systemImage: "books.vertical",
         message: "Pieces and exercises will live here.",
         actions: [
-          .init(title: "Add piece or exercise", identifier: "preview.add") {},
-          .init(title: "Scan a page", identifier: "preview.scan") {},
+          .init(title: "Add piece or exercise", identifier: "preview.add") {}
         ])
     }
   }

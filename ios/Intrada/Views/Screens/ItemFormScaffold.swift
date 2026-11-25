@@ -5,7 +5,7 @@ import SwiftUI
 /// confirm/cancel toolbar and the error-reconcile flow. `send` dispatches the
 /// add/update event; the scaffold owns the "don't celebrate until the core
 /// confirms" handling so both screens behave identically.
-struct ItemFormScaffold<Header: View, Sections: View>: View {
+struct ItemFormScaffold<Sections: View>: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -15,17 +15,12 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
   let confirmLabel: String
   let composerSuggestions: [String]
   let tagSuggestions: [String]
-  /// Sits above the fields. The add screen puts the scan entry here rather than
-  /// as a row inside the form: once a page is read it is not a field beside
-  /// title and composer, it is what fills them (#1446).
-  @ViewBuilder var header: () -> Header
   @ViewBuilder var sections: () -> Sections
   let send: () -> Void
 
   init(
     form: ItemFormModel, title: String, confirmLabel: String, composerSuggestions: [String],
     tagSuggestions: [String],
-    @ViewBuilder header: @escaping () -> Header = { EmptyView() },
     @ViewBuilder sections: @escaping () -> Sections = { EmptyView() },
     send: @escaping () -> Void
   ) {
@@ -34,7 +29,6 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
     self.confirmLabel = confirmLabel
     self.composerSuggestions = composerSuggestions
     self.tagSuggestions = tagSuggestions
-    self.header = header
     self.sections = sections
     self.send = send
   }
@@ -53,21 +47,19 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
           ScrollViewReader { proxy in
             ScrollView {
               VStack(spacing: IntradaSpacing.card) {
-                header()
-
                 KindSegment(selection: $form.kind)
 
                 VStack(spacing: 0) {
                   FormField(
                     label: "Title", text: $form.title, placeholder: "Required",
-                    readWeakly: form.readFrom[.title], faulted: form.faults(.title),
+                    faulted: form.faults(.title),
                     identifier: "itemForm.title"
                   )
                   .id(FormAnchor.field(.title))
                   HairlineDivider()
                   AutocompleteField(
                     label: "Composer", text: $form.composer, suggestions: composerSuggestions,
-                    readWeakly: form.readFrom[.composer], faulted: form.faults(.composer),
+                    faulted: form.faults(.composer),
                     identifier: "itemForm.composer"
                   )
                   .id(FormAnchor.field(.composer))
@@ -85,11 +77,11 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
                 VStack(spacing: 0) {
                   FormField(
                     label: "Tempo marking", text: $form.marking, placeholder: "e.g. Allegro",
-                    readWeakly: form.readFrom[.marking], faulted: form.faults(.tempo))
+                    faulted: form.faults(.tempo))
                   HairlineDivider()
                   FormField(
                     label: "Beats per minute", text: $form.bpm, keyboard: .numberPad,
-                    readWeakly: form.readFrom[.bpm], faulted: form.faults(.tempo),
+                    faulted: form.faults(.tempo),
                     identifier: "itemForm.bpm")
                 }
                 .cardSurface()
