@@ -85,7 +85,8 @@ wt unpushed-1007 && commit unpushed-1007 pushed
 pushed_oid="$(head_of unpushed-1007)"
 commit unpushed-1007 "not pushed"
 wt closed-1008 && commit closed-1008 work
-wt atmain
+# Nested in the main checkout, where worktrunk puts new worktrees (#3028).
+git worktree add -q -b atmain "$tmp/main/.claude/worktrees/atmain" main
 git worktree add -q --detach "$tmp/detached-1010" main
 wt extended-1011 && commit extended-1011 merged
 merged_oid="$(head_of extended-1011)"
@@ -258,12 +259,38 @@ out="$(WORKTREE_LEASE="$tmp/missing" "$script")"
 check "$out" "says sessions are unknown without the lease script" "no worktree-lease.sh"
 check "$(row "$out" held-1005)" "falls back to the PR without the lease" "an agent: CI running"
 
+# ── worktree-path.sh finds a worktree in either folder (#3028) ──────────────
+
+paths="$(bash "$root/scripts/worktree-path.sh")"
+check "$paths" "lists a sibling worktree" "$tmp/draft-1002"
+check "$paths" "lists a worktree nested in the main checkout" "$tmp/main/.claude/worktrees/atmain"
+check "$(bash "$root/scripts/worktree-path.sh" atmain)" "finds a nested worktree by name" "$tmp/main/.claude/worktrees/atmain"
+check "$(bash "$root/scripts/worktree-path.sh" nopr)" "finds a sibling worktree by name" "$tmp/nopr"
+miss="$(bash "$root/scripts/worktree-path.sh" absent 2>&1 || echo "exit $?")"
+check "$miss" "refuses a name with no worktree" "exit 1"
+miss="$(bash "$root/scripts/worktree-path.sh" main 2>&1 || echo "exit $?")"
+check "$miss" "never names the main checkout" "exit 1"
+empty="$(bash "$root/scripts/worktree-path.sh" "" 2>&1 || echo "exit $?")"
+check "$empty" "refuses an empty name" "the worktree name is empty"
+check "$empty" "and fails" "exit 1"
+refute "$empty" "lists nothing for an empty name" "$tmp/draft-1002"
+git worktree add -q --detach "$tmp/main/.claude/worktrees/agent-abc123" main
+agent="$(bash "$root/scripts/worktree-path.sh" agent-abc123 2>&1 || echo "exit $?")"
+check "$agent" "refuses Claude Code's own agent worktrees" "Claude Code's own agent worktrees"
+check "$agent" "and fails" "exit 1"
+git worktree remove "$tmp/main/.claude/worktrees/agent-abc123"
+git worktree add -q --detach "$tmp/main/.claude/worktrees/nopr" main
+twice="$(bash "$root/scripts/worktree-path.sh" nopr 2>&1 || echo "exit $?")"
+check "$twice" "refuses a name in both folders" "more than one worktree named nopr"
+check "$twice" "and fails" "exit 1"
+git worktree remove "$tmp/main/.claude/worktrees/nopr"
+
 # ── No worktrees at all ─────────────────────────────────────────────────────
 
 git init -q -b main "$tmp/lonely"
 git -C "$tmp/lonely" commit -q --allow-empty -m base
 out="$(cd "$tmp/lonely" && "$script")"
-check "$out" "says there are none, and makes no GitHub call" "No worktrees beside the main checkout."
+check "$out" "says there are none, and makes no GitHub call" "No worktrees other than the main checkout."
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

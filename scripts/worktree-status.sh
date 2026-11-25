@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Print every worktree beside the main checkout with its issue, its PR, CI on
+# Print every worktree other than the main checkout with its issue, its PR, CI on
 # the PR's last commit, review state, local state and whose move it is (#2783).
 #
 # Reports only: it never removes, fetches or writes anything. GitHub is read in
@@ -36,7 +36,7 @@ done < <(git worktree list --porcelain | awk -v s="$sep" '
   END { for (i = 2; i <= n; i++) print path[i] s branch[i] }')
 
 if [ "${#paths[@]}" -eq 0 ]; then
-  echo "No worktrees beside the main checkout."
+  echo "No worktrees other than the main checkout."
   exit 0
 fi
 

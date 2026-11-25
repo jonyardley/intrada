@@ -339,7 +339,7 @@ check-all: check ios-test
 
 # New worktree branched from fresh origin/main, a thin wrapper for
 # worktrunk's `wt switch --create`. Worktrunk's user config sets the path
-# (`../intrada-worktrees/<name>`), reflinks what `.worktreeinclude` names
+# (`.claude/worktrees/<name>`, docs/worktrees.md), reflinks what `.worktreeinclude` names
 # from the main checkout (ios/generated and the Swift packages, never the
 # build folders, #2191), and opens a cmux workspace there. This keeps only
 # what is intrada's own: the name rule and the simulator-name collision check
@@ -350,27 +350,28 @@ check-all: check ios-test
 worktree-new name:
     #!/usr/bin/env bash
     set -euo pipefail
-    # Directory and sim-name slug both derive from the raw name (matching
-    # _ios-test-sim-name's basename-of-checkout basis), so a slash or shell
-    # metacharacter would either nest the worktree under a subdirectory the
-    # collision scan below can't see, or break out of the surrounding quotes.
+    # No slashes: worktree-rm finds a worktree by its folder name, which a name
+    # with a slash never equals. No shell metacharacters: they would break out
+    # of the surrounding quotes.
     if ! printf '%s' "{{name}}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$'; then
-        echo "✗ '{{name}}' must be alphanumeric plus '_'/'-' (no slashes) — worktree root stays flat." >&2
+        echo "✗ '{{name}}' must be letters, digits, '_' or '-', with no slashes." >&2
         exit 1
     fi
+    # agent- names belong to Claude Code's own worktrees, which worktree-rm refuses.
+    case "{{name}}" in agent-*) echo "✗ names starting 'agent-' are kept for Claude Code's own worktrees." >&2; exit 1 ;; esac
     command -v wt >/dev/null || { echo "✗ worktrunk (wt) is not installed: brew install worktrunk" >&2; exit 1; }
 
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
-    worktree_root="$(dirname "$main_root")/$(basename "$main_root")-worktrees"
     slug="$(printf '%s' "{{name}}" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
-    for dir in "$worktree_root"/*/; do
-        [ -d "$dir" ] || continue
+    # Captured first so a failing script stops here rather than skipping the check.
+    paths="$(./scripts/worktree-path.sh)"
+    while IFS= read -r dir; do
         other="$(basename "$dir" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
         if [ "$other" = "$slug" ]; then
-            echo "✗ $(basename "$dir") already sanitises to sim name '$slug' — pick a different name (see docs/ios-testing.md § worktrees)." >&2
+            echo "✗ $(basename "$dir") already sanitises to sim name '$slug', so pick a different name (see docs/ios-testing.md, worktrees)." >&2
             exit 1
         fi
-    done
+    done <<<"$paths"
 
     git fetch origin
     wt -C "$main_root" switch --create "{{name}}" --base origin/main
@@ -395,12 +396,8 @@ worktree-new name:
 worktree-rm name:
     #!/usr/bin/env bash
     set -euo pipefail
-    main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
-    worktree_root="$(dirname "$main_root")/$(basename "$main_root")-worktrees"
-    target="$worktree_root/{{name}}"
-    if [ -d "$target" ]; then
-        (cd "$target" && just ios-test-sim-clean) || true
-    fi
+    target="$(./scripts/worktree-path.sh "{{name}}")"
+    (cd "$target" && just ios-test-sim-clean) || true
     git worktree remove "$target"
     echo "✓ removed worktree $target"
 
