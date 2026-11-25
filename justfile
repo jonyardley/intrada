@@ -672,7 +672,7 @@ ios-fmt-check:
 ios-test: _ios-sync (_ios-test-run "fast")
 
 # Full tier: IntradaTests + IntradaUITests, one test at a time. CI runs the UI
-# tests on every PR, so `ship` does not run this (#2114).
+# tests on every PR, so `/intrada-ship` does not run this (#2114).
 [doc("Run the full iOS tier with XCUITests, for debugging a UI failure")]
 [group('iOS')]
 ios-test-full: _ios-sync (_ios-test-run "full")
