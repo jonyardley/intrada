@@ -2,8 +2,9 @@ import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
-/// Stepper (not a numeric field, to avoid a keyboard mid-sheet) for logging
-/// achieved tempo on the hand-off reflection sheet.
+/// A tempo nudged with the ring buttons, held to repeat, or typed. A typed
+/// number is kept as a draft and clamped to the band when typing ends, so
+/// typing 96 does not snap at the 9.
 struct TempoStepper: View {
   @Binding var value: Int
   var unit: UInt8 = 4
@@ -11,19 +12,31 @@ struct TempoStepper: View {
   let band: ClosedRange<Int>
   var accessibilityLabel: String = "Achieved tempo"
 
+  @State private var draft = ""
+  @FocusState private var typing: Bool
+
   var body: some View {
-    HStack(spacing: IntradaSpacing.controlGap) {
-      TempoStepButton(systemImage: "minus", label: "Slower") {
-        value = stepped(by: -step)
+    HStack(spacing: 0) {
+      TempoStepButton(
+        systemImage: "minus", label: "Slower", isEnabled: value > band.lowerBound,
+        repeatsWhileHeld: true
+      ) { nudge(by: -step) }
+      HStack(spacing: IntradaSpacing.segmentGap) {
+        Text(prefix)
+          .font(IntradaFont.figure)
+          .foregroundStyle(IntradaColor.inkSecondary)
+        TextField("", text: typedText)
+          .keyboardType(.numberPad)
+          .font(IntradaFont.figure)
+          .foregroundStyle(IntradaColor.ink)
+          .focused($typing)
+          .fixedSize()
       }
-      Text(words.text)
-        .font(IntradaFont.scoreNumeral(24))
-        .monospacedDigit()
-        .foregroundStyle(IntradaColor.ink)
-        .frame(maxWidth: .infinity)
-      TempoStepButton(systemImage: "plus", label: "Faster") {
-        value = stepped(by: step)
-      }
+      .frame(minWidth: 64, minHeight: 44)
+      TempoStepButton(
+        systemImage: "plus", label: "Faster", isEnabled: value < band.upperBound,
+        repeatsWhileHeld: true
+      ) { nudge(by: step) }
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
@@ -35,12 +48,49 @@ struct TempoStepper: View {
       default: break
       }
     }
+    .onChange(of: typing) { _, now in
+      if now { draft = "\(value)" } else { commit() }
+    }
+    .toolbar {
+      if typing {
+        ToolbarItemGroup(placement: .keyboard) {
+          Spacer()
+          Button("Done") { typing = false }
+        }
+      }
+    }
+  }
+
+  private var typedText: Binding<String> {
+    Binding(get: { typing ? draft : "\(value)" }, set: { draft = $0 })
   }
 
   private var words: TempoWords { clickTempoWords(bpm: UInt16(clamping: value), unit: unit) }
 
-  private func stepped(by delta: Int) -> Int {
-    min(band.upperBound, max(band.lowerBound, value + delta))
+  /// The core's readout without its number, "♩ =" or "♪ =", beside the typed value.
+  private var prefix: String {
+    let number = String(value)
+    guard words.text.hasSuffix(number) else { return words.text }
+    return String(words.text.dropLast(number.count)).trimmingCharacters(in: .whitespaces)
+  }
+
+  private func nudge(by delta: Int) {
+    if typing {
+      commit()
+      typing = false
+    }
+    value = stepped(by: delta)
+  }
+
+  private func commit() {
+    if let typed = Int(draft) { value = clamped(typed) }
+    draft = "\(value)"
+  }
+
+  private func stepped(by delta: Int) -> Int { clamped(value + delta) }
+
+  private func clamped(_ tempo: Int) -> Int {
+    min(band.upperBound, max(band.lowerBound, tempo))
   }
 }
 

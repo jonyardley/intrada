@@ -102,6 +102,7 @@
     "label": "Names a section, a field or a toggle, above what it names, in inkSecondary, sentence case.",
     "secondary": "Secondary lines, with even-width figures.",
     "figure": "A value that is only a number: a clock, a duration, a count.",
+    "figureLarge": "A number that leads its row, such as the score on a score stepper.",
     "button": "Button labels.",
     "segment": "Segmented pill labels.",
     "small": "Tabs, badges and chips.",
