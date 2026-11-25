@@ -20,10 +20,7 @@ review rule there.
    when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
    class the diff adds or edits, and for each class that drives a form the
    diff reshapes (#2993); CI runs the full UI tier (#2114). Stop at the
-   first failure. Run clippy and the hygiene checks on their own before the
-   full `just check`, and compile the Swift tests before the full iOS run, so
-   one lint or one bad assertion costs seconds, not a rerun (#3004).
-   `test-runner` cannot edit, so the lead runs a mutation
+   first failure. `test-runner` cannot edit, so the lead runs a mutation
    check itself (#2519).
 3. **Review** before the push, because one left until after gets skipped
    (#1550). `just review-route` decides: `reviewer` on code or tests, Tier 1
