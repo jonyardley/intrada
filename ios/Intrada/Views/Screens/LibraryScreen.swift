@@ -2,14 +2,9 @@ import SharedTypes
 import SwiftUI
 
 struct LibraryScreen: View {
-  private enum AddRoute: Identifiable {
-    case form, scan
-    var id: Self { self }
-  }
-
   @Environment(Store.self) private var store
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var adding: AddRoute?
+  @State private var adding = false
   // iPad split mode: when set, rows select into the shared binding (detail pane)
   // instead of pushing a stack. nil on compact — the unchanged push navigation.
   private var selection: Binding<String?>? = nil
@@ -42,14 +37,9 @@ struct LibraryScreen: View {
         content
       }
     }
-    // The read belongs to the sheet. `onDismiss`, not the add screen's own
-    // `onDisappear`, which the scanner's full-screen cover also triggers.
-    .sheet(item: $adding, onDismiss: { store.send(.discardPhotoDraft) }) { route in
-      LibraryAddScreen(
-        defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece,
-        opensCamera: route == .scan
-      )
-      .environment(store)
+    .sheet(isPresented: $adding) {
+      LibraryAddScreen(defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece)
+        .environment(store)
     }
     // Key on the id (not the value) so an edit — which changes the item's hash —
     // doesn't break the pushed destination; the detail re-reads the fresh item.
@@ -67,10 +57,7 @@ struct LibraryScreen: View {
         systemImage: "books.vertical",
         message: "Pieces and exercises will live here.",
         actions: [
-          .init(title: "Add piece or exercise", identifier: "library.empty.add") { add() },
-          .init(title: "Scan a page", identifier: "library.empty.scan") {
-            add(opensCamera: true)
-          },
+          .init(title: "Add piece or exercise", identifier: "library.empty.add") { add() }
         ])
     } else if rows.isEmpty {
       PlaceholderContent(
@@ -127,8 +114,8 @@ struct LibraryScreen: View {
     }
   }
 
-  private func add(opensCamera: Bool = false) {
-    adding = opensCamera ? .scan : .form
+  private func add() {
+    adding = true
   }
 
   // Read the item fresh at tap time — a render-captured value can go stale.

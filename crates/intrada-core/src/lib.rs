@@ -6,7 +6,6 @@ pub mod model;
 pub mod persistence;
 pub mod practice_weeks;
 pub(crate) mod priorities;
-pub mod recognition;
 pub(crate) mod sample;
 pub(crate) mod staleness;
 pub mod stored_session;
@@ -29,15 +28,10 @@ pub use domain::types::{
 pub use error::LibraryError;
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LimitsView,
-    Model, PhotoRecognition, PhotoRecognitionStatus, PhotoRecognitionView, PracticeSessionView,
-    ScoreHistoryEntry, SetlistEntryView, SummaryView, TempoTrendPoint, TempoTrendView, ViewModel,
+    Model, PracticeSessionView, ScoreHistoryEntry, SetlistEntryView, SummaryView, TempoTrendPoint,
+    TempoTrendView, ViewModel,
 };
 pub use persistence::{PersistenceOperation, PersistenceOutput};
-pub use recognition::{
-    fill_form, read_fields, DraftSource, FieldFill, FieldNow, PageReading, PhotoDraft, ReadField,
-    RecognisedLine, RecognitionOperation, RecognitionOutput, SuggestedFields, TempoDraftField,
-    TextDraftField, LOW_CONFIDENCE,
-};
 pub use validation::{
     MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING, MAX_TITLE,
     MIN_ACHIEVED_TEMPO, MIN_BPM,

@@ -27,7 +27,6 @@ Fills an empty screen or list with what belongs there and the one thing to do ne
 
 - **Message only:** use for no matches and in pickers.
 - **With one action:** use where there is one clear next step, such as "Build a session".
-- **With two actions:** use where there are two ways to begin, such as the empty Library's "Add piece or exercise" and "Scan a page".
 - **Faint glyph** (`glyphTint`): use for a resting state that asks for nothing, such as the iPad split's empty detail column, in `inkFainter`.
 
 ## Behaviour
@@ -63,7 +62,6 @@ PlaceholderContent(
   message: "Pieces and exercises will live here.",
   actions: [
     .init(title: "Add piece or exercise", identifier: "library.empty.add") { add() },
-    .init(title: "Scan a page", identifier: "library.empty.scan") { add(opensCamera: true) },
   ])
 ```
 

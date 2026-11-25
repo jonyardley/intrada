@@ -15,65 +15,26 @@ final class ItemFormModel {
   /// Bumped by every refusal, so pressing Add twice on the same fault scrolls
   /// back to it: the target itself is unchanged, and nothing would fire on it.
   private(set) var faultSeq = 0
-  /// The page the fields were read off, carried onto the piece the form
-  /// creates so it is not photographed a second time (#1436).
-  var photoId: String?
-
-  /// Which fields still hold what the photo was read into, and whether that
-  /// read was weak. Typing takes a field off: it is the user's from that
-  /// keystroke on, so it must stop claiming to be the page's.
-  private(set) var readFrom: [FormReadField: Bool] = [:]
-
-  // Written through `edited` so the mark clears on the keystroke, not on
-  // submit; `fill(from:)` sets the storage directly.
-  var title: String {
-    get { storedTitle }
-    set {
-      storedTitle = newValue
-      edited(.title)
-    }
+  var title = "" {
+    didSet { cleared(.title) }
   }
-  var composer: String {
-    get { storedComposer }
-    set {
-      storedComposer = newValue
-      edited(.composer)
-    }
+  var composer = "" {
+    didSet { cleared(.composer) }
   }
-  var marking: String {
-    get { storedMarking }
-    set {
-      storedMarking = newValue
-      edited(.marking)
-    }
+  var marking = "" {
+    didSet { cleared(.tempo) }
   }
-  var bpm: String {
-    get { storedBpm }
-    set {
-      storedBpm = newValue
-      edited(.bpm)
-    }
+  var bpm = "" {
+    didSet { cleared(.tempo) }
   }
-  var chartText: String {
-    get { storedChart }
-    set {
-      storedChart = newValue
-      edited(.chart)
-    }
+  var chartText = "" {
+    didSet { if faultsChart { errorTarget = nil } }
   }
-  var notes: String {
-    get { storedNotes }
-    set {
-      storedNotes = newValue
-      cleared(.notes)
-    }
+  var notes = "" {
+    didSet { cleared(.notes) }
   }
-  var tags: [String] {
-    get { storedTags }
-    set {
-      storedTags = newValue
-      cleared(.tags)
-    }
+  var tags: [String] = [] {
+    didSet { cleared(.tags) }
   }
 
   /// Removing or re-choosing a row rewrites the list the core numbered, so a
@@ -89,68 +50,21 @@ final class ItemFormModel {
     didSet { cleared(.variations) }
   }
 
-  private var storedTitle = ""
-  private var storedComposer = ""
-  private var storedMarking = ""
-  private var storedBpm = ""
-  private var storedChart = ""
-  private var storedNotes = ""
-  private var storedTags: [String] = []
-
   init(kind: ItemKind = .piece) {
     self.kind = kind
   }
 
   init(item: LibraryItemView) {
     kind = item.itemType
-    storedTitle = item.title
-    storedComposer = item.subtitle
-    storedTags = item.tags
+    title = item.title
+    composer = item.subtitle
+    tags = item.tags
     key = item.key
-    storedMarking = item.tempoMarking ?? ""
-    storedBpm = item.tempoBpm.map(String.init) ?? ""
-    storedNotes = item.notes ?? ""
+    marking = item.tempoMarking ?? ""
+    bpm = item.tempoBpm.map(String.init) ?? ""
+    notes = item.notes ?? ""
     variations = item.variations.map {
       VariationRow(variantId: $0.id, label: $0.label, hasMarks: !$0.scoreHistory.isEmpty)
-    }
-  }
-
-  /// The core picks the fields (#2229); a failed call is a wire break (#846).
-  /// Nothing here is saved; pressing Add is what writes.
-  func fill(from draft: PhotoDraft) {
-    let fields = [
-      FormFieldNow(field: .title, text: storedTitle, holdsRead: readFrom[.title] != nil),
-      FormFieldNow(field: .composer, text: storedComposer, holdsRead: readFrom[.composer] != nil),
-      FormFieldNow(field: .marking, text: storedMarking, holdsRead: readFrom[.marking] != nil),
-      FormFieldNow(field: .bpm, text: storedBpm, holdsRead: readFrom[.bpm] != nil),
-      FormFieldNow(field: .chart, text: storedChart, holdsRead: readFrom[.chart] != nil),
-    ]
-    let fills: [FormFieldFill]
-    do {
-      fills = try fillFormFromRead(draft: Data(draft.bincodeSerialize()), fields: fields)
-    } catch {
-      report(error, "bridge")
-      return
-    }
-    for fill in fills {
-      switch fill.field {
-      case .title: storedTitle = fill.value
-      case .composer: storedComposer = fill.value
-      case .marking: storedMarking = fill.value
-      case .bpm: storedBpm = fill.value
-      case .chart: storedChart = fill.value
-      }
-      readFrom[fill.field] = fill.weak
-    }
-  }
-
-  private func edited(_ field: FormReadField) {
-    readFrom[field] = nil
-    switch field {
-    case .title: cleared(.title)
-    case .composer: cleared(.composer)
-    case .marking, .bpm: cleared(.tempo)
-    case .chart: if faultsChart { errorTarget = nil }
     }
   }
 
@@ -222,7 +136,7 @@ final class ItemFormModel {
       tempo: typedTempo(),
       notes: emptyToNil(notes),
       tags: tags,
-      photoId: photoId,
+      photoId: nil,
       variationLabels: typedLabels)
   }
 

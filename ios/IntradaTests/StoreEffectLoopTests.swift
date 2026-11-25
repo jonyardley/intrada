@@ -136,22 +136,6 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(items.isEmpty, "fresh in-memory store has no rows")
   }
 
-  /// The shell's whole job on this effect: run Vision, hand the core back a
-  /// `RecognitionOutput`, decide nothing. An id with no bytes behind it is
-  /// `Failed`, never a page of no lines (which the core would read as a blank).
-  func testRecognitionResolvesFailedForAPhotoThatIsNotOnDisk() async {
-    let bridge = FakeBridge()
-    bridge.updateHandler = { _ in
-      [Request(id: 11, effect: .recognition(.readPage(photoId: Ulid.generate())))]
-    }
-    let store = Store(bridge: bridge)
-
-    await whenResolved(bridge) { store.send(.setQuery(nil)) }
-
-    XCTAssertEqual(bridge.recognitionResolved.first?.id, 11)
-    XCTAssertEqual(bridge.recognitionResolved.first?.output, .failed)
-  }
-
   func testPersistenceWriteFailureResolvesFailed() async {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -682,7 +666,7 @@ final class StoreEffectLoopTests: XCTestCase {
   // ── Helpers ────────────────────────────────────────────────────────────
 
   /// Resume on the bridge's `resolve` callback, not a wall-clock `fulfillment`:
-  /// a loaded CI runner starves the detached recognition Task and a tight
+  /// a loaded CI runner starves the detached disk job and a tight
   /// ceiling flakes (#956, #861). The 30s net is a backstop, not the happy path.
   private func whenResolved(
     _ bridge: FakeBridge, _ action: () -> Void,
@@ -724,7 +708,6 @@ final class FakeBridge: CoreBridge {
 
   private(set) var events: [Event] = []
   private(set) var persistenceResolved: [(id: UInt32, output: PersistenceOutput)] = []
-  private(set) var recognitionResolved: [(id: UInt32, output: RecognitionOutput)] = []
   private(set) var emptyResolved: [UInt32] = []
   private(set) var viewCallCount = 0
 
@@ -738,12 +721,6 @@ final class FakeBridge: CoreBridge {
     persistenceResolved.append((id, persistenceOutput))
     onResolve?()
     return resolveHandler(id)
-  }
-
-  func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] {
-    recognitionResolved.append((id, recognitionOutput))
-    onResolve?()
-    return []
   }
 
   func resolveEmpty(_ id: UInt32) throws -> [Request] {

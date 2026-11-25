@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    ActiveSessionView, BuildingSetlistView, FormErrorTarget, PhotoRecognitionView, SummaryView,
-    VariationOptionView,
+    ActiveSessionView, BuildingSetlistView, FormErrorTarget, SummaryView, VariationOptionView,
 };
 use crate::analytics::{AnalyticsView, LastPractisedView};
 use crate::domain::first_run::FirstRunView;
@@ -48,8 +47,6 @@ pub struct ViewModel {
     /// Today's plan on the Practice tab (#1082, #57). `None` whenever
     /// nothing qualifies: it suggests, it never gates.
     pub up_next: Option<SuggestedPlan>,
-    /// What the last photographed page was read into, for the confirm surface.
-    pub photo_recognition: PhotoRecognitionView,
     pub limits: LimitsView,
     /// Ids of the rows `active_query` leaves showing, in sort order.
     pub visible_ids: Vec<String>,

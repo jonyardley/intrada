@@ -9,7 +9,6 @@ ChartChord
 ChartSection
 ChordChart
 ChordQuality
-DraftSource
 EntryVariationsView
 FormErrorField
 FormErrorTarget
@@ -23,15 +22,12 @@ LibrarySort
 LimitsView
 ListQuery
 NeglectedItem
-PhotoRecognitionStatus
-PhotoRecognitionView
 PickerVariationView
 PieceRefView
 PracticeDayView
 ProfileEvent
 ProfileField
 ProfileView
-RecognitionOperation
 ReflectionDraft
 ReflectionView
 ScaffoldKind
@@ -42,13 +38,10 @@ ScoreHistoryEntry
 SessionsData
 SortDirection
 SortField
-SuggestedFields
 SuggestedItem
 SummaryView
-TempoDraftField
 TempoTrendPoint
 TempoTrendView
-TextDraftField
 VariationCoverageView
 WeeklySummary
 ViewModel.activeQuery

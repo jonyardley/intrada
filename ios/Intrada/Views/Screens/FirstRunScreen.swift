@@ -304,7 +304,7 @@ private struct FirstPieceStep: View {
   @State private var adding: Adding?
 
   enum Adding: Identifiable {
-    case scan, piece, exercise
+    case piece, exercise
     var id: Self { self }
   }
 
@@ -323,12 +323,6 @@ private struct FirstPieceStep: View {
               .foregroundStyle(IntradaColor.inkSecondary)
           }
           VStack(spacing: 0) {
-            FirstPieceRow(
-              systemImage: "doc.viewfinder", title: "Scan a page",
-              line: "Title, composer and tempo, read off the page",
-              identifier: "firstRun.scan"
-            ) { adding = .scan }
-            HairlineDivider()
             FirstPieceRow(
               systemImage: "music.note", title: "Add a piece",
               line: "Fill in the title and composer yourself",
@@ -349,17 +343,13 @@ private struct FirstPieceStep: View {
         .padding(.vertical, IntradaSpacing.card)
     }
     .padding(.horizontal, IntradaSpacing.card)
-    // A page read but not added would otherwise fill the next add form.
     .sheet(item: $adding, onDismiss: addingEnded) { kind in
-      LibraryAddScreen(
-        defaultKind: kind == .exercise ? .exercise : .piece, opensCamera: kind == .scan
-      )
-      .environment(store)
+      LibraryAddScreen(defaultKind: kind == .exercise ? .exercise : .piece)
+        .environment(store)
     }
   }
 
   private func addingEnded() {
-    store.send(.discardPhotoDraft)
     if store.viewModel?.firstRun.added == true { onFinish(true) }
   }
 }

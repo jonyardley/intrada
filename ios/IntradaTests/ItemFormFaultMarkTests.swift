@@ -50,6 +50,24 @@ struct ItemFormFaultMarkTests {
     #expect(form.errorTarget == nil)
   }
 
+  @Test func typingInTheTempoMarkingClearsATempoMark() {
+    let form = marked(.piece(field: .tempo))
+    #expect(form.faults(.tempo))
+
+    form.marking = "Allegro"
+
+    #expect(form.errorTarget == nil)
+  }
+
+  @Test func typingTheBeatsPerMinuteClearsATempoMark() {
+    let form = marked(.piece(field: .tempo))
+    #expect(form.faults(.tempo))
+
+    form.bpm = "120"
+
+    #expect(form.errorTarget == nil)
+  }
+
   @Test func writingNotesClearsANotesMark() {
     let form = marked(.piece(field: .notes))
     #expect(form.faults(.notes))

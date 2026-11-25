@@ -36,15 +36,6 @@ and tags (`ios/Intrada/Views/Screens/ItemFormModel.swift`), and sends
 `LibraryDetailScreen`; related exercises live behind the picker and the
 write-your-own action on the same screen.
 
-There is a sharper version of the same gap in the photo path.
-`PhotoDraft.chart_text` exists in the core, survives the substring clamp, and
-round-trips across the bridge with `"F7 | Bb7"` as its pinned fixture
-(`crates/intrada-core/src/domain/recognition.rs:87`, `:249`). `LibraryAddScreen`
-reads it to decide whether the page read nothing. The form has nowhere to put
-it, so a chart read off a page would be dropped on the floor. Phase D of
-[`piece-from-photo.md`](piece-from-photo.md) fills that field; this spec builds
-the half that catches it.
-
 ## What is already built
 
 Named so this does not get re-derived, and because it changes the size of the

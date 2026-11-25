@@ -11,11 +11,8 @@ struct LibraryAddScreen: View {
   @State private var expandsExercises = false
   @State private var editingChart = false
   @State private var choosingExercises = false
-  private var opensCamera = false
-
-  init(defaultKind: ItemKind = .piece, opensCamera: Bool = false) {
+  init(defaultKind: ItemKind = .piece) {
     _form = State(initialValue: ItemFormModel(kind: defaultKind))
-    self.opensCamera = opensCamera
   }
 
   #if DEBUG
@@ -37,14 +34,6 @@ struct LibraryAddScreen: View {
       confirmLabel: "Add",
       composerSuggestions: store.viewModel?.availableComposers ?? [],
       tagSuggestions: store.viewModel?.availableTags ?? [],
-      header: {
-        ScanPageEntry(
-          photoId: recognition?.photoId,
-          status: recognition?.status ?? .idle,
-          readNothing: recognition?.readNothing ?? false,
-          onCaptured: { store.send(.item(.readPhoto(photoId: $0))) },
-          opensCamera: opensCamera)
-      },
       sections: {
         if showsSections {
           chartSection
@@ -64,13 +53,6 @@ struct LibraryAddScreen: View {
       form.chartText = ""
       form.stagedExercises = []
       expandsExercises = false
-    }
-    // Keyed on the projection, not the draft: re-picking the same library file
-    // reads to an equal `PhotoDraft`, so a rescan would silently do nothing.
-    .onChange(of: recognition) { _, next in
-      form.photoId = next?.photoId
-      guard let draft = next?.draft else { return }
-      form.fill(from: draft)
     }
     .sheet(isPresented: $editingChart) {
       ChordChartEditSheet(
@@ -100,7 +82,7 @@ struct LibraryAddScreen: View {
         .cardSurface()
     } else {
       StagedChartCard(
-        text: form.chartText, readWeakly: form.readFrom[.chart], faulted: form.faultsChart,
+        text: form.chartText, faulted: form.faultsChart,
         faultedBarNumber: form.faultedBarNumber,
         onEdit: { editingChart = true }
       )
@@ -193,8 +175,6 @@ struct LibraryAddScreen: View {
       store.send(.item(.add(form.createInput())))
     }
   }
-
-  private var recognition: PhotoRecognitionView? { store.viewModel?.photoRecognition }
 }
 
 #if DEBUG

@@ -20,7 +20,9 @@ final class LibraryAddExerciseUITests: XCTestCase {
     let title = app.element("itemForm.title")
     XCTAssertTrue(title.waitForExistence(timeout: 5), "the title field")
     title.tap()
-    title.typeText("Nocturne in E flat")
+    // Return drops the keyboard: with no scan card above the fields (#2792), the
+    // form fits on screen, so the row under the keyboard cannot be scrolled to.
+    title.typeText("Nocturne in E flat\n")
 
     app.control("itemForm.relatedExercises", spoken: "Related exercises").tap()
     app.control("itemForm.addExercise", spoken: "Add an exercise for this piece").tap()

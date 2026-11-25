@@ -8,9 +8,6 @@ struct FormField: View {
   var axis: Axis = .horizontal
   var keyboard: UIKeyboardType = .default
   var autocapitalization: TextInputAutocapitalization = .sentences
-  /// Non-nil while the value is what a photographed page was read into, `true`
-  /// when that read was weak (#1436).
-  var readWeakly: Bool?
   var faulted: Bool = false
   var identifier: String = ""
   /// A line under the value saying what the field takes.
@@ -31,9 +28,6 @@ struct FormField: View {
           .font(IntradaFont.small)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
-      if let readWeakly {
-        FieldMark(weak: readWeakly)
-      }
     }
     .padding(.vertical, 10)
     .padding(.horizontal, IntradaSpacing.card)
@@ -42,8 +36,6 @@ struct FormField: View {
   }
 
   private var hint: String {
-    [FaultMark.spoken(faulted), FieldMark.spoken(readWeakly)]
-      .filter { !$0.isEmpty }
-      .joined(separator: ". ")
+    FaultMark.spoken(faulted)
   }
 }
