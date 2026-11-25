@@ -23,7 +23,6 @@ the bridge skews silently.
 | Settings and crash blob | `UserDefaults`, bincode bytes | `SharedPreferences`, the same bytes as Base64, same keys and key-bump rule (#1345) |
 | Metronome | `AVAudioEngine` host-time grid | `AudioTrack`, clicks at sample positions |
 | Page OCR | Apple Vision | ML Kit, split into `RecognisedLine`s |
-| Page suggestions | `PageSuggester` on FoundationModels | None until one is chosen (Open questions) |
 | Wake lock | `ScreenWakeLock` | `FLAG_KEEP_SCREEN_ON` on the player |
 | Crash reporting | Sentry | Sentry's Android SDK; a tagged Play build uploads native symbols (#2517) |
 | Camera | `PageCamera` | CameraX plus the system Photo Picker |
