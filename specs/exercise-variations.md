@@ -19,7 +19,7 @@ item closes the open play and opens another.
 Variation { id, label, updated_at, deleted_at }    // shared across the library (#2246)
 Item { …, key, keys: Vec<Key>, variation_ids,
        exercise_links: Vec<ExerciseLink> }
-SetlistEntry { …, plan: PlannedItem, plays: Vec<Play> }  // the plan
+SetlistEntry { …, plan: PlannedItem, plays: Vec<Play> }
 Play { id, key, variation_ids, started_at, seconds, tempo_changes,
        achieved_tempo, click_pattern, score, away: Vec<Away> }
 ```

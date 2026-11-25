@@ -4,8 +4,8 @@
 > retypes fields). Issue #2582, decision 5 of the data model review (#2577,
 > ruled 2026-10-13). One PR across the stack: core commits first, reviewed
 > alone, then the iPhone commits. Nothing changes on screen, and
-> no store migration. The focus and repetition target fields it once held
-> went with #2791 (`simpler-removals.md`).
+> no store migration. The focus, repetition target, "Aim met?" and Add
+> detail fields it once held went with #2791 (`simpler-removals.md`).
 
 ## Problem
 
@@ -49,10 +49,6 @@ pub struct SetlistEntry {
     pub status: EntryStatus,
     pub notes: Option<String>,
     pub plays: Vec<Play>,
-    pub intention_met: Option<IntentionMet>,
-    pub felt: Option<Felt>,
-    pub got_in_the_way: Vec<Obstacle>,
-    pub note_points: Vec<NotePoint>,
 }
 ```
 
@@ -64,7 +60,7 @@ What stays on the entry, and why:
 | `item_title` | a copy taken on the day, which #2583 replaces with the live name |
 | `position` | the slot in the list; a list of plans is ordered by itself |
 | `duration_secs`, `status`, `plays` | what happened |
-| `notes`, `intention_met`, `felt`, `got_in_the_way`, `note_points` | the answers after playing |
+| `notes` | the answer after playing |
 
 `item_type` moves with `item_id`: a plan that names an item says what kind it
 is, so a routine can be shown before the library loads.
