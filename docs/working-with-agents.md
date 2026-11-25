@@ -252,7 +252,7 @@ lists each removed line in the PR with its new home, or says it is dropped.
 | A worktree session's command refused as too complex | A loop, a compound command, or text that looks like git (a `.github` path) tripped the guard; split it into plain separate commands. A loop over git, such as a mutation run, goes in a scratch script, written before the first try |
 | Waiting on the simulator lock | Another run holds it; it queues |
 | A dash on a changed line | Fix the line |
-| `just claim` refused | The issue is taken or has two merged PRs (#1890): pick another, finish that PR, or rethink the approach |
+| `just claim` refused | The issue is taken or has two merged PRs (#1890): pick another, finish that PR, or rethink the approach. An open PR that only names it as a follow-up it filed is not a claim: read that PR, then post the claim comment and add the `in-flight` label by hand (#2988) |
 | XCUITests fail, `SBMainWorkspace` busy | A simulator booted outside the recipes; ask before shutting it |
 | First CI run cancelled or stale | `gh pr create --label` races itself; label later, or hand Jon `gh run rerun --failed` |
 | Interrupted mid-tool | Retry another way and keep working |
