@@ -32,3 +32,4 @@
 ## Lessons
 
 - fix: .claude/skills/intrada-shipping/SKILL.md, 2026-11-25, #2789: a session started outside the repo has no project agent types, so spawning `reviewer` fails with "agent type not found"; spawn a general-purpose agent told to follow `.claude/agents/reviewer.md`.
+- 2026-11-25, #3004: the lead readied #3019 and #3026 with a bare `gh pr ready`, so the retro never ran until the owner asked; ready only through `just pr-ready`, which refuses a branch with no lessons commit, since prose cannot stop the bare command (issue #3033).
