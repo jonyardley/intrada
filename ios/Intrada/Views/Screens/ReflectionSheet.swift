@@ -244,7 +244,7 @@ struct ReflectionSheet: View {
         marks[play.id].map { DraftMark(playId: play.id, score: UInt8(clamping: $0)) }
       },
       note: note,
-      tempos: TrackedTempo.handSet(tempoRows, tracked: tempos), ways: ways)
+      tempos: TrackedTempo.handSet(tempoRows, tracked: tempos), ways: ways, notes: [])
   }
 
   private func draft() {

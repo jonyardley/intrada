@@ -13,7 +13,7 @@ struct ReflectionTempoRowsTests {
   private func row(tempo: UInt16, setByHand: Bool) -> ReflectionTempoView {
     ReflectionTempoView(
       playId: "p1", tempo: tempo, click: quavers, band: TempoBand(unit: 8, min: 40, max: 400),
-      setByHand: setByHand)
+      setByHand: setByHand, lastScore: nil, startScore: 5)
   }
 
   @Test(

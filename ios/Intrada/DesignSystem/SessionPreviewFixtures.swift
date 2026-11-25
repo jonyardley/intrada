@@ -635,16 +635,16 @@
         unit: click.metre.unit, min: UInt16(range.lowerBound), max: UInt16(range.upperBound))
       return ReflectionTempoView(
         playId: playId, tempo: tempo ?? limits.clickTempoDefault, click: click, band: band,
-        setByHand: false)
+        setByHand: false, lastScore: nil, startScore: 5)
     }
   }
 
   extension ReflectionAnswers {
     static func preview(
       marks: [DraftMark] = [], note: String = "", tempos: [DraftTempo] = [],
-      ways: [DraftWay] = []
+      ways: [DraftWay] = [], notes: [DraftNote] = []
     ) -> ReflectionAnswers {
-      ReflectionAnswers(marks: marks, note: note, tempos: tempos, ways: ways)
+      ReflectionAnswers(marks: marks, note: note, tempos: tempos, ways: ways, notes: notes)
     }
   }
 

@@ -270,7 +270,7 @@
                 id: "re1-p1", key: nil, variationIds: [],
                 startedAt: "2026-06-16T08:59:00Z", seconds: 180, tempoChanges: [],
                 achievedTempo: nil, clickPattern: nil,
-                score: nil, away: [])
+                score: nil, away: [], note: nil)
             ]),
           SetlistEntry(
             id: "re2",

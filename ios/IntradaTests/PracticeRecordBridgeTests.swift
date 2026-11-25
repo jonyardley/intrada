@@ -123,7 +123,8 @@ final class PracticeRecordBridgeTests: XCTestCase {
       .session(
         .submitReflection(
           nextItemStartedAt: at(301),
-          answers: ReflectionAnswers(marks: [], note: "steady", tempos: [], ways: [way]))))
+          answers: ReflectionAnswers(
+            marks: [], note: "steady", tempos: [], ways: [way], notes: []))))
 
     XCTAssertNil(try bridge.rendered().error)
     let entry = try XCTUnwrap(try bridge.rendered().summary?.entries.first { $0.id == entryId })
@@ -142,7 +143,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
       away: [
         Away(leftAt: at(60), backAt: at(420), leftOut: true),
         Away(leftAt: at(500), backAt: at(530), leftOut: false),
-      ])
+      ], note: "thumb under")
     let plan = PlannedItem(
       itemId: "i1", itemType: .exercise, intention: "A at 84", durationSecs: 1200,
       groupId: "block-1", variationIds: ["v-a", "v-b"],

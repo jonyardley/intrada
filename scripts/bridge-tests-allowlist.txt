@@ -65,7 +65,6 @@ Letter
 Modality
 PersistenceOperation
 PracticeDefaultsEvent
-PracticeSession
 RecordKind
 SessionEvent
 StoredPracticeSession
