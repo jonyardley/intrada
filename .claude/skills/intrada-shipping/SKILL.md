@@ -66,7 +66,10 @@ review rule there.
    the owner's next message. Never ask the owner to say merged.
 
 **Retro outcomes** (#2934). After checking for a repeat as the lessons header
-says, each lesson gets one of two outcomes. A lesson seen a second time (its
+says, each lesson gets one of two outcomes, and either one reshapes before it
+adds: if a test or check already caught the mistake, nothing new is written;
+otherwise sharpen, merge or remove an existing line before adding one, so the
+rules stay short enough to be read. A lesson seen a second time (its
 line reaches "(seen again 1)") always takes Issue, and that issue first
 changes what the session saw when it went wrong (the message, refusal or
 recipe output) so it names the right move; any doc line comes after (#2967):
