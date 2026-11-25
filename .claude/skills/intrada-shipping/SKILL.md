@@ -19,7 +19,8 @@ review rule there.
 2. **Gates**, through `test-runner`: `just pre-review`, plus `just ios-test`
    when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
    class the diff adds or edits; CI runs the full UI tier (#2114). Stop at the
-   first failure.
+   first failure. `test-runner` cannot edit, so the lead runs a mutation
+   check itself (#2519).
 3. **Review** before the push, because one left until after gets skipped
    (#1550). `just review-route` decides: `reviewer` on code or tests, Tier 1
    included, launched from the builder's worktree so it can run tests (#2960),
