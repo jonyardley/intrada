@@ -90,6 +90,9 @@ struct ReflectionSheet: View {
   /// The answers so far, for the crash-recovery copy (#2137): a mark or tempo at
   /// once, the note after a pause in typing or on leaving the app.
   let onDraft: (ReflectionAnswers) -> Void
+  /// A key sheet's Done: the draft with that key's tempo and note, answered
+  /// with the core's refusal or `nil` once it keeps them (#3004).
+  let onKeyDraft: (ReflectionAnswers) -> String?
 
   @State private var marks: [String: Int]
   @State private var note: String
@@ -114,7 +117,8 @@ struct ReflectionSheet: View {
     seed: ReflectionAnswers? = nil,
     onSave: @escaping (ReflectionAnswers) -> Void,
     onSkip: @escaping () -> Void,
-    onDraft: @escaping (ReflectionAnswers) -> Void = { _ in }
+    onDraft: @escaping (ReflectionAnswers) -> Void = { _ in },
+    onKeyDraft: @escaping (ReflectionAnswers) -> String? = { _ in nil }
   ) {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
@@ -129,6 +133,7 @@ struct ReflectionSheet: View {
     self.onSave = onSave
     self.onSkip = onSkip
     self.onDraft = onDraft
+    self.onKeyDraft = onKeyDraft
     _marks = State(
       initialValue: Dictionary(
         (seed?.marks ?? []).map { ($0.playId, Int($0.score)) },
@@ -245,7 +250,9 @@ struct ReflectionSheet: View {
     }
   }
 
-  private var answers: ReflectionAnswers {
+  private var answers: ReflectionAnswers { answers(notes: notes) }
+
+  private func answers(notes: [String: String]) -> ReflectionAnswers {
     ReflectionAnswers(
       marks: plays.compactMap { play in
         marks[play.id].map { DraftMark(playId: play.id, score: UInt8(clamping: $0)) }
@@ -371,8 +378,13 @@ struct ReflectionSheet: View {
       },
       onDone: { tempo, note in
         if let tempo, tempo.userSet { tempos[play.id] = tempo }
-        notes[play.id] = note
-        draft()
+        var proposed = notes
+        proposed[play.id] = note
+        let candidate = answers(notes: proposed)
+        if let refusal = onKeyDraft(candidate) { return refusal }
+        notes = proposed
+        draftedNote = candidate.note
+        return nil
       })
   }
 
@@ -400,7 +412,11 @@ struct ReflectionSheet: View {
     tempoTarget.map { "Tempo reached · target \($0)" } ?? "Tempo reached"
   }
 
-  private func mark(for playId: String) -> Int { marks[playId] ?? 0 }
+  /// The score the core will save: the one chosen, else the one it starts on (#3004).
+  private func mark(for playId: String) -> Int {
+    if let chosen = marks[playId], chosen != 0 { return chosen }
+    return tempoRow(for: playId).map { Int($0.startScore) } ?? 0
+  }
 
   private func setMark(_ next: UInt8?, for playId: String) {
     marks[playId] = next.map(Int.init) ?? 0

@@ -139,6 +139,41 @@ struct ReflectionSubmitBridgeTests {
     #expect(try bridge.rendered().activeSession?.reflection != nil, "the sheet stays up")
   }
 
+  /// A key sheet's Done with an over-long note: the refusal comes back, and the
+  /// rest of the draft still reaches crash recovery (#3004).
+  @Test func anOverLongKeyNoteInTheDraftIsRefusedButTheMarkIsKept() throws {
+    let bridge = RowsBridge()
+    let playId = try sheetOpen(bridge)
+    let limit = Int(try bridge.rendered().limits.playNoteMaxChars)
+
+    _ = try bridge.update(
+      .session(
+        .updateReflectionDraft(
+          answers: ReflectionAnswers(
+            marks: [DraftMark(playId: playId, score: 8)], note: "", tempos: [], ways: [],
+            notes: [DraftNote(playId: playId, note: String(repeating: "a", count: limit + 1))]))))
+
+    #expect(limit == 500)
+    #expect(try bridge.rendered().error == "Note must not exceed 500 characters")
+    let draft = try #require(try bridge.rendered().activeSession?.reflection?.answers)
+    #expect(draft.marks == [DraftMark(playId: playId, score: 8)])
+    #expect(draft.notes.isEmpty)
+  }
+
+  /// A key never scored and left untouched saves the score it suggested (decided 2026-11-25).
+  @Test func anUntouchedKeyNeverScoredSavesItsSuggestedScore() throws {
+    let bridge = RowsBridge()
+    _ = try sheetOpen(bridge)
+
+    _ = try bridge.update(
+      .session(
+        .submitReflection(
+          nextItemStartedAt: "2026-09-21T10:05:30Z",
+          answers: ReflectionAnswers(marks: [], note: "", tempos: [], ways: [], notes: []))))
+
+    #expect(try bridge.rendered().summary?.entries.first?.plays.last?.score == 5)
+  }
+
   @Test func theOpenSheetCarriesEachRowsSeededTempo() throws {
     let bridge = RowsBridge()
     let playId = try sheetOpen(

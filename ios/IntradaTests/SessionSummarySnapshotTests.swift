@@ -114,7 +114,19 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       title: "D major", tempoRow: row, limits: .preview, tempo: TrackedTempo(row: row),
       note: "Stumbles at the top on the way down.",
       wayRow: nil, wayChoices: PlayWayChoices(keys: [], variations: [], planned: nil),
-      onWay: { _ in }, onDone: { _, _ in })
+      onWay: { _ in }, onDone: { _, _ in nil })
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  /// The core's refusal stays on the key's own sheet, naming the key (#3004).
+  func testReflectionKeySheetRefusingANote() {
+    let row = ReflectionTempoView.preview("p3", tempo: 88)
+    let sheet = ReflectionKeySheet(
+      title: "D major", tempoRow: row, limits: .preview, tempo: TrackedTempo(row: row),
+      note: "Stumbles at the top on the way down.",
+      wayRow: nil, wayChoices: PlayWayChoices(keys: [], variations: [], planned: nil),
+      refusal: "Note must not exceed 500 characters",
+      onWay: { _ in }, onDone: { _, _ in nil })
     assertSnapshot(of: host(sheet), as: config)
   }
 
@@ -221,7 +233,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
           PickerVariationView(id: "v-dot", label: "Dotted rhythms", caption: ""),
         ],
         planned: "D major"),
-      onWay: { _ in }, onDone: { _, _ in })
+      onWay: { _ in }, onDone: { _, _ in nil })
     assertSnapshot(of: host(sheet), as: config)
   }
 }
