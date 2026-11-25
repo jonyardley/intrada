@@ -5,7 +5,7 @@ import SwiftUI
 /// way out (design-principles T19). Store-free so it can be exercised at the
 /// sizes that break it; the screen supplies its own options menu.
 struct SessionOrientationBand<Menu: View>: View {
-  let sessionElapsed: Int?
+  let session: SessionReading?
   let positionLabel: String
   let types: [ItemKind]
   let filled: Int
@@ -19,7 +19,7 @@ struct SessionOrientationBand<Menu: View>: View {
   var body: some View {
     VStack(spacing: 12) {
       HStack(spacing: IntradaSpacing.controlGap) {
-        elapsed
+        clock
           .frame(minWidth: Self.slot, alignment: .leading)
         Text(positionLabel)
           .font(IntradaFont.badge)
@@ -36,16 +36,16 @@ struct SessionOrientationBand<Menu: View>: View {
     }
   }
 
-  @ViewBuilder private var elapsed: some View {
-    if let sessionElapsed {
-      Text(SessionClock.clockDisplay(sessionElapsed))
+  @ViewBuilder private var clock: some View {
+    if let session {
+      Text(session.display)
         .font(IntradaFont.figure)
         .monospacedDigit()
         .lineLimit(1)
         .minimumScaleFactor(0.7)
         .foregroundStyle(IntradaColor.inkSecondary)
-        .accessibilityLabel("Session so far")
-        .accessibilityValue(SessionClock.clockDisplay(sessionElapsed))
+        .accessibilityLabel(session.spokenLabel)
+        .accessibilityValue(session.spokenValue)
     }
   }
 }

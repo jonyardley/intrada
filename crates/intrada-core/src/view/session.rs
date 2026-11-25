@@ -608,6 +608,9 @@ pub fn build_active_session_view(
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
+        ends_at: active.length_mins.map(|mins| {
+            (active.session_started_at + chrono::Duration::minutes(i64::from(mins))).to_rfc3339()
+        }),
         current_item_started_at: shown_item_start(active).to_rfc3339(),
         entries: active
             .entries
@@ -1210,6 +1213,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         assert_eq!(
             build_active_session_view(
@@ -1265,6 +1269,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = |active: &ActiveSession| {
             build_active_session_view(
@@ -1337,6 +1342,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let sounding = |index: usize, click: ClickStart| {
             let at = ActiveSession {
@@ -1373,6 +1379,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let defaults = PracticeDefaults {
             click: ClickStart::TwoAndFour,
@@ -1394,6 +1401,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1417,6 +1425,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1439,6 +1448,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1465,6 +1475,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1495,6 +1506,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1521,6 +1533,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1544,6 +1557,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let item = Item {
             id: "i1".to_string(),
@@ -1623,6 +1637,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1648,6 +1663,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let item1 = Item {
             notes: Some("Watch the thumb crossing".to_string()),
@@ -1680,6 +1696,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let item = make_item("i1", "Scale", ItemKind::Exercise);
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
@@ -1705,6 +1722,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         }
     }
 
@@ -2078,6 +2096,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            length_mins: None,
         };
         let player = build_active_session_view(
             &active,

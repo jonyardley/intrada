@@ -65,6 +65,9 @@ pub struct ActiveSessionView {
     pub current_position: usize,
     pub total_items: usize,
     pub started_at: String,
+    /// When today's length runs out (RFC3339 UTC); the shell counts down to it
+    /// and shows time over past it. `None` when no length was chosen (#2789).
+    pub ends_at: Option<String>,
     /// Wall-clock anchor (RFC3339 UTC) for the *current item*. Resets to
     /// "now" on each item advance (Next / Skip). The shell derives the
     /// per-item elapsed timer from `Utc::now() - current_item_started_at`

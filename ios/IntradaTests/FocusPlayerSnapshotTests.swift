@@ -202,9 +202,9 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
   // Band-level rather than full-screen: what can regress is the slot clipping a
   // long clock, and a component reference costs a few KB against 300k+ for the
   // player's radial gradient (snapshot hygiene).
-  private func orientationBand(elapsed: Int) -> some View {
+  private func orientationBand(_ session: SessionReading) -> some View {
     SessionOrientationBand(
-      sessionElapsed: elapsed, positionLabel: "Focus · 3 of 5",
+      session: session, positionLabel: "Focus · 3 of 5",
       types: [.exercise, .exercise, .exercise, .piece, .exercise], filled: 3,
       menu: { Image(systemName: "ellipsis").frame(width: 28, height: 28) }
     )
@@ -214,7 +214,17 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
   }
 
   func testOrientationBandLongSession() {
-    assertSnapshot(of: orientationBand(elapsed: 3732), as: .image(precision: 0.99))
+    assertSnapshot(of: orientationBand(.elapsed(3732)), as: .image(precision: 0.99))
+  }
+
+  // A 30 minute session, a minute and a half in: the clock counts down (#2789).
+  func testOrientationBandCountsDownTheSessionLength() {
+    assertSnapshot(of: orientationBand(.remaining(1710)), as: .image(precision: 0.99))
+  }
+
+  // Past the length the clock reads time over and the session carries on (#2789).
+  func testOrientationBandShowsTimeOver() {
+    assertSnapshot(of: orientationBand(.remaining(-135)), as: .image(precision: 0.99))
   }
 
   func testFocusPlayerLastTimeOffer() {

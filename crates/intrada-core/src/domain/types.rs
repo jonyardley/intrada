@@ -565,6 +565,7 @@ mod tests {
                 current_item_started_at: anchor,
                 session_started_at: anchor,
                 reflection: None,
+                length_mins: None,
             },
             now: anchor,
         });

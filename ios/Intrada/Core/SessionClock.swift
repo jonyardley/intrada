@@ -19,7 +19,7 @@ enum SessionClock {
     stoppedAt.flatMap(parseRFC3339) ?? reference
   }
 
-  /// `MM:SS` (or `H:MM:SS` past an hour) for the live count-up timer. Negative
+  /// `MM:SS` (or `H:MM:SS` past an hour) for the live timers. Negative
   /// inputs clamp to zero.
   static func clockDisplay(_ seconds: Int) -> String {
     let total = max(0, seconds)
@@ -29,6 +29,18 @@ enum SessionClock {
     return hours > 0
       ? String(format: "%d:%02d:%02d", hours, minutes, secs)
       : String(format: "%02d:%02d", minutes, secs)
+  }
+
+  /// The session clock at `date`: counting down to `endsAt` when today has a
+  /// length, else counting up from `startedAt` (#2789). `nil` when the anchor
+  /// it needs cannot be parsed.
+  static func sessionReading(startedAt: String, endsAt: String?, at date: Date)
+    -> SessionReading?
+  {
+    if let endsAt {
+      return parseRFC3339(endsAt).map { .remaining(Int($0.timeIntervalSince(date))) }
+    }
+    return parseRFC3339(startedAt).map { .elapsed(Int(date.timeIntervalSince($0))) }
   }
 
   /// Parse a core-emitted RFC3339 timestamp, tolerant of chrono's >3-digit
@@ -67,5 +79,35 @@ enum SessionClock {
     let digits = string[fractionStart..<fractionEnd]
     guard digits.count > 3 else { return nil }
     return String(string[..<fractionStart]) + digits.prefix(3) + string[fractionEnd...]
+  }
+}
+
+/// What the player's session clock shows: time so far with no length chosen,
+/// else time left, which goes negative once the length has run out (#2789).
+enum SessionReading: Equatable {
+  case elapsed(Int)
+  case remaining(Int)
+
+  /// `30:00` counting down, `+02:15` once over, `04:12` counting up.
+  var display: String {
+    switch self {
+    case .elapsed(let seconds): SessionClock.clockDisplay(seconds)
+    case .remaining(let seconds) where seconds < 0: "+" + SessionClock.clockDisplay(-seconds)
+    case .remaining(let seconds): SessionClock.clockDisplay(seconds)
+    }
+  }
+
+  var spokenLabel: String {
+    switch self {
+    case .elapsed: "Session so far"
+    case .remaining(let seconds) where seconds < 0: "Over by"
+    case .remaining: "Time left"
+    }
+  }
+
+  var spokenValue: String {
+    switch self {
+    case .elapsed(let seconds), .remaining(let seconds): SessionClock.clockDisplay(abs(seconds))
+    }
   }
 }

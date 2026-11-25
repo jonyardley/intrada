@@ -361,6 +361,7 @@ fn every_field_set() -> ActiveSession {
                 ..ReflectionAnswers::default()
             },
         }),
+        length_mins: Some(30),
     }
 }
 

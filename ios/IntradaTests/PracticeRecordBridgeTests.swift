@@ -152,7 +152,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
       status: .notAttempted, notes: "bars 12-14 rough", plays: [play])
     let blob = ActiveSession(
       id: "resumed", entries: [entry], currentIndex: 0, currentItemStartedAt: at(0),
-      sessionStartedAt: at(0), reflection: nil)
+      sessionStartedAt: at(0), reflection: nil, lengthMins: nil)
     XCTAssertEqual(
       try ActiveSession.bincodeDeserialize(input: try blob.bincodeSerialize()), blob,
       "the Swift decoder reads what the Swift encoder wrote")

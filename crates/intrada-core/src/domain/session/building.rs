@@ -700,6 +700,7 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        length_mins: building.length_mins,
     };
 
     if let Some(entry) = active.entries.first_mut() {

@@ -60,4 +60,46 @@ final class SessionClockTests: XCTestCase {
   func testNowRoundTrips() {
     assertSameSecond(SessionClock.parseRFC3339(SessionClock.nowRFC3339(expected)), "now round-trip")
   }
+
+  // ── The countdown (#2789) ──
+
+  func testATimedSessionCountsDownToItsEnd() {
+    let reading = SessionClock.sessionReading(
+      startedAt: "2026-06-05T14:00:00Z", endsAt: "2026-06-05T14:30:00Z", at: expected)
+    XCTAssertEqual(reading, .remaining(0))
+    XCTAssertEqual(
+      SessionClock.sessionReading(
+        startedAt: "2026-06-05T14:00:00Z", endsAt: "2026-06-05T14:30:00Z",
+        at: expected.addingTimeInterval(-1800)),
+      .remaining(1800))
+  }
+
+  func testPastTheEndTheClockReadsTimeOver() {
+    let reading = SessionClock.sessionReading(
+      startedAt: "2026-06-05T14:00:00Z", endsAt: "2026-06-05T14:30:00Z",
+      at: expected.addingTimeInterval(135))
+    XCTAssertEqual(reading, .remaining(-135))
+    XCTAssertEqual(reading?.display, "+02:15")
+    XCTAssertEqual(reading?.spokenLabel, "Over by")
+    XCTAssertEqual(reading?.spokenValue, "02:15")
+  }
+
+  func testTimeLeftReadsAsAPlainClock() {
+    let reading = SessionReading.remaining(1800)
+    XCTAssertEqual(reading.display, "30:00")
+    XCTAssertEqual(reading.spokenLabel, "Time left")
+  }
+
+  func testWithNoLengthTheClockCountsUpAsBefore() {
+    let reading = SessionClock.sessionReading(
+      startedAt: "2026-06-05T14:25:48Z", endsAt: nil, at: expected)
+    XCTAssertEqual(reading, .elapsed(252))
+    XCTAssertEqual(reading?.display, "04:12")
+    XCTAssertEqual(reading?.spokenLabel, "Session so far")
+  }
+
+  func testAnUnreadableEndShowsNoClock() {
+    XCTAssertNil(
+      SessionClock.sessionReading(startedAt: "2026-06-05T14:00:00Z", endsAt: "soon", at: expected))
+  }
 }

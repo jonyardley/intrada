@@ -435,7 +435,7 @@
     static func fixture(
       currentItemTitle: String = "Clair de Lune", currentItemType: ItemKind = .piece,
       currentPosition: UInt64 = 0, totalItems: UInt64 = 1,
-      startedAt: String = ActiveSessionView.previewSessionStartedAt,
+      startedAt: String = ActiveSessionView.previewSessionStartedAt, endsAt: String? = nil,
       currentItemStartedAt: String = ActiveSessionView.previewStartedAt,
       entries: [SetlistEntryView] = [], currentKey: Key? = nil,
       currentKeyChoices: [KeyChoiceView] = [], currentKeyLabel: String? = nil,
@@ -453,7 +453,8 @@
       ActiveSessionView(
         currentItemTitle: currentItemTitle, currentItemType: currentItemType,
         currentPosition: currentPosition, totalItems: totalItems, startedAt: startedAt,
-        currentItemStartedAt: currentItemStartedAt, entries: entries, currentKey: currentKey,
+        endsAt: endsAt, currentItemStartedAt: currentItemStartedAt, entries: entries,
+        currentKey: currentKey,
         currentKeyChoices: currentKeyChoices, currentKeyLabel: currentKeyLabel,
         currentVariationIds: currentVariationIds, currentPlayLabel: currentPlayLabel,
         currentPlannedDurationSecs: currentPlannedDurationSecs, nextItemTitle: nextItemTitle,

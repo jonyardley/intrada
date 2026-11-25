@@ -4545,6 +4545,7 @@ mod tests {
                     current_item_started_at: chrono::Utc::now(),
                     session_started_at: chrono::Utc::now(),
                     reflection: None,
+                    length_mins: None,
                 },
             )),
             active_query: Some(ListQuery {
