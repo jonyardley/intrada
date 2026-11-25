@@ -627,7 +627,9 @@
     /// Unstamped crotchets at the click's default unless given a stamp.
     static func preview(
       _ playId: String, tempo: UInt16? = nil,
-      click: ClickState = ClickState(metre: Metre(beats: 4, unit: 4, groups: nil), sounding: 0b1111)
+      click: ClickState = ClickState(
+        metre: Metre(beats: 4, unit: 4, groups: nil), sounding: 0b1111),
+      lastScore: UInt8? = nil, startScore: UInt8 = 5
     ) -> ReflectionTempoView {
       let limits = LimitsView.preview
       let range = limits.clickBand(unit: click.metre.unit)
@@ -635,7 +637,7 @@
         unit: click.metre.unit, min: UInt16(range.lowerBound), max: UInt16(range.upperBound))
       return ReflectionTempoView(
         playId: playId, tempo: tempo ?? limits.clickTempoDefault, click: click, band: band,
-        setByHand: false, lastScore: nil, startScore: 5)
+        setByHand: false, lastScore: lastScore, startScore: startScore)
     }
   }
 

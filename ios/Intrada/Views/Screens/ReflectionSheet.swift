@@ -98,7 +98,9 @@ struct ReflectionSheet: View {
   /// One per row the core gave, so a play with no row has no tempo to send.
   @State private var tempos: [String: TrackedTempo]
   @State private var ways: [DraftWay]
-  @State private var changingPlayId: String?
+  /// Each key's own note, by play (#3004).
+  @State private var notes: [String: String]
+  @State private var editingPlayId: String?
 
   init(
     itemTitle: String, elapsedDisplay: String?, tempoTarget: String?,
@@ -112,8 +114,7 @@ struct ReflectionSheet: View {
     seed: ReflectionAnswers? = nil,
     onSave: @escaping (ReflectionAnswers) -> Void,
     onSkip: @escaping () -> Void,
-    onDraft: @escaping (ReflectionAnswers) -> Void = { _ in },
-    changingPlayId: String? = nil
+    onDraft: @escaping (ReflectionAnswers) -> Void = { _ in }
   ) {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
@@ -139,7 +140,10 @@ struct ReflectionSheet: View {
         tempoRows.map { ($0.playId, TrackedTempo(row: $0)) },
         uniquingKeysWith: { first, _ in first }))
     _ways = State(initialValue: seed?.ways ?? [])
-    _changingPlayId = State(initialValue: changingPlayId)
+    _notes = State(
+      initialValue: Dictionary(
+        (seed?.notes ?? []).map { ($0.playId, $0.note) },
+        uniquingKeysWith: { first, _ in first }))
   }
 
   static func heading(elapsedDisplay: String?) -> String {
@@ -163,8 +167,8 @@ struct ReflectionSheet: View {
         .padding(.top, IntradaSpacing.card)
 
         if plays.count > 1 {
-          sectionTitle("What you played").padding(.top, IntradaSpacing.section)
-          playRows.padding(.top, IntradaSpacing.controlGap)
+          sectionTitle("Confidence").padding(.top, IntradaSpacing.section)
+          keyRows.padding(.top, IntradaSpacing.controlGap)
         } else if let only = plays.first {
           // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
           sectionTitle("Confidence").padding(.top, IntradaSpacing.section)
@@ -236,6 +240,9 @@ struct ReflectionSheet: View {
     .onChange(of: scenePhase) { _, phase in
       if phase != .active { draftNoteIfChanged() }
     }
+    .sheet(item: editingPlay) { play in
+      keySheet(play)
+    }
   }
 
   private var answers: ReflectionAnswers {
@@ -244,7 +251,10 @@ struct ReflectionSheet: View {
         marks[play.id].map { DraftMark(playId: play.id, score: UInt8(clamping: $0)) }
       },
       note: note,
-      tempos: TrackedTempo.handSet(tempoRows, tracked: tempos), ways: ways, notes: [])
+      tempos: TrackedTempo.handSet(tempoRows, tracked: tempos), ways: ways,
+      notes: plays.compactMap { play in
+        notes[play.id].flatMap { $0.isEmpty ? nil : DraftNote(playId: play.id, note: $0) }
+      })
   }
 
   private func draft() {
@@ -257,80 +267,113 @@ struct ReflectionSheet: View {
     if note != draftedNote { draft() }
   }
 
-  private var playRows: some View {
+  private var keyRows: some View {
     VStack(alignment: .leading, spacing: 0) {
       ForEach(Array(plays.enumerated()), id: \.element.id) { index, play in
         if index > 0 { HairlineDivider() }
-        VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-          playHeader(play)
-          if changingPlayId == play.id {
-            if let row = finishRow(play) {
-              PlayWayEditor(row: row, choices: wayChoices) { next in
-                ways = ways.filter { $0.playId != next.playId } + [next]
-                draft()
-              }
-            }
-          }
-          if play.isMarkable {
-            ScoreSelector(
-              score: mark(for: play.id), range: limits.scoreRange,
-              accessibilityLabel: "Confidence for \(rowTitle(play))"
-            ) { next in
-              setMark(next, for: play.id)
-            }
-            .accessibilityIdentifier("reflection.mark")
-            if let row = tempoRow(for: play.id) {
-              TempoStepper(
-                value: tempoBinding(for: play.id), unit: row.click.metre.unit,
-                step: limits.clickStep, band: row.band.range,
-                accessibilityLabel: "Tempo for \(rowTitle(play))"
-              )
-              .accessibilityIdentifier("reflection.tempo")
-            }
-          }
-        }
-        .padding(.vertical, IntradaSpacing.cardCompact)
+        keyRow(play)
+          .padding(.vertical, IntradaSpacing.controlGap)
       }
     }
   }
 
-  @ViewBuilder private func playHeader(_ play: ReflectionPlay) -> some View {
-    let title = rowTitle(play)
-    if finishRow(play)?.canChange != true {
-      HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
-        Text(title)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.ink)
-          .frame(maxWidth: .infinity, alignment: .leading)
-        Text(play.durationDisplay)
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
+  @ViewBuilder private func keyRow(_ play: ReflectionPlay) -> some View {
+    if play.isMarkable {
+      HStack(spacing: IntradaSpacing.cardCompact) {
+        Button {
+          editingPlayId = play.id
+        } label: {
+          keyDetails(play, chevron: true)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(spokenRow(play))
+        .accessibilityHint("Edit tempo and note")
+        .accessibilityIdentifier("reflection.key")
+
+        if let row = tempoRow(for: play.id) {
+          ScoreStepper(
+            score: marks[play.id] ?? Int(row.startScore), origin: origin(play, row),
+            range: limits.scoreRange, accessibilityLabel: "Score for \(rowTitle(play))"
+          ) { next in
+            marks[play.id] = next
+            draft()
+          }
+          .accessibilityIdentifier("reflection.mark")
+        }
       }
     } else {
-      let open = changingPlayId == play.id
-      HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(title)
-            .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.ink)
-            .fixedSize(horizontal: false, vertical: true)
-          Text(play.durationDisplay)
-            .font(IntradaFont.secondary)
+      keyDetails(play, chevron: false)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+  }
+
+  private func keyDetails(_ play: ReflectionPlay, chevron: Bool) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack(spacing: IntradaSpacing.segmentGap) {
+        Text(rowTitle(play))
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.ink)
+          .fixedSize(horizontal: false, vertical: true)
+        if chevron {
+          Image(systemName: "chevron.right")
+            .iconSize(.caption, weight: .semibold)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        Button(open ? "Done" : "Change") {
-          withAnimation { changingPlayId = open ? nil : play.id }
-        }
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.inkSecondary)
-        .frame(minHeight: 44)
-        .accessibilityLabel(
-          open ? "Done changing \(title)" : "Change what you played on \(title)"
-        )
-        .accessibilityIdentifier("reflection.changeWay")
+      }
+      Text(
+        [play.durationDisplay, tempoWords(play)?.text].compactMap { $0 }.joined(separator: " · ")
+      )
+      .font(IntradaFont.small)
+      .foregroundStyle(IntradaColor.inkSecondary)
+      if let note = notes[play.id], !note.isEmpty {
+        Text(note)
+          .font(IntradaFont.small)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .lineLimit(1)
       }
     }
+  }
+
+  private func tempoWords(_ play: ReflectionPlay) -> TempoWords? {
+    guard let row = tempoRow(for: play.id), let tempo = tempos[play.id] else { return nil }
+    return clickTempoWords(bpm: UInt16(clamping: tempo.bpm), unit: row.click.metre.unit)
+  }
+
+  private func spokenRow(_ play: ReflectionPlay) -> String {
+    var parts = [rowTitle(play), play.durationDisplay, tempoWords(play)?.spoken].compactMap { $0 }
+    if let note = notes[play.id], !note.isEmpty { parts.append("note: \(note)") }
+    return parts.joined(separator: ", ")
+  }
+
+  private func origin(_ play: ReflectionPlay, _ row: ReflectionTempoView) -> ScoreStepper.Origin {
+    if marks[play.id] != nil { return .today }
+    return row.lastScore == nil ? .suggested : .lastTime
+  }
+
+  private var editingPlay: Binding<ReflectionPlay?> {
+    Binding(
+      get: { plays.first { $0.id == editingPlayId && $0.isMarkable } },
+      set: { editingPlayId = $0?.id })
+  }
+
+  private func keySheet(_ play: ReflectionPlay) -> some View {
+    let wayRow = finishRow(play).flatMap { $0.canChange ? $0 : nil }
+    return ReflectionKeySheet(
+      title: rowTitle(play), tempoRow: tempoRow(for: play.id), limits: limits,
+      tempo: tempos[play.id], note: notes[play.id] ?? "",
+      wayRow: wayRow, wayChoices: wayChoices,
+      onWay: { next in
+        ways = ways.filter { $0.playId != next.playId } + [next]
+        draft()
+      },
+      onDone: { tempo, note in
+        if let tempo, tempo.userSet { tempos[play.id] = tempo }
+        notes[play.id] = note
+        draft()
+      })
   }
 
   private var wayChoices: PlayWayChoices {

@@ -42,6 +42,7 @@ struct ScoreStepper: View {
         onChange(stepped(by: 1))
       }
     }
+    .fixedSize()
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
     .accessibilityValue(spokenValue)

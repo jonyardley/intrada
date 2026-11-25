@@ -1,9 +1,9 @@
 import XCTest
 
 /// Drives the player's variation picker against the real bridge (#1739): the
-/// item-complete sheet offers a mark per variation, proved through
-/// `ScoreSelector`'s coordinate-based pill taps, which only a real rendered
-/// view can exercise. "Major Scales" is the seeded exercise whose one
+/// item-complete sheet offers a score per variation, each a `ScoreStepper`
+/// whose rings sit behind one accessibility element, so only a real rendered
+/// view can tap them. "Major Scales" is the seeded exercise whose one
 /// variation is "Hands separately" (`sample.rs`); its keys start at C major,
 /// so a play opens in C major with no variation (#2788).
 ///
@@ -55,10 +55,17 @@ final class VariationPickerUITests: XCTestCase {
     usleep(5_500_000)
   }
 
-  private func tapPill(_ selector: XCUIElement, _ value: Int) {
-    selector.coordinate(
-      withNormalizedOffset: CGVector(dx: (Double(value) - 0.5) / 10, dy: 0.5)
-    ).tap()
+  /// Minus and plus are 44 points each side of a 64 point number.
+  private func tapRing(_ stepper: XCUIElement, raise: Bool) {
+    stepper.coordinate(
+      withNormalizedOffset: CGVector(dx: raise ? 130.0 / 152 : 22.0 / 152, dy: 0.5)
+    )
+    .tap()
+  }
+
+  /// The stepper reads "5, last time": the score comes first.
+  private func score(_ stepper: XCUIElement) -> Int {
+    Int((stepper.value as? String)?.split(separator: ",").first ?? "") ?? 0
   }
 
   func testTheItemCompleteSheetOffersAMarkPerVariation() {
@@ -72,19 +79,20 @@ final class VariationPickerUITests: XCTestCase {
 
     app.control("player.advance", spoken: "Finish session").tap()
 
-    let markPlain = app.mark("reflection.mark", "Confidence for C major")
+    let markPlain = app.mark("reflection.mark", "Score for C major")
     XCTAssertTrue(
       markPlain.waitForExistence(timeout: 10), "the plain stretch has its own mark")
-    let markHands = app.mark("reflection.mark", "Confidence for C major \u{00B7} Hands separately")
+    let markHands = app.mark("reflection.mark", "Score for C major \u{00B7} Hands separately")
     XCTAssertTrue(markHands.exists, "and so does the stretch hands separately")
 
-    // Two different marks, so one write cannot satisfy both, then save: the
-    // sheet's marks only reach the core once the item is completed, which is
-    // the path a "Skip" test never covers. ScoreSelector hides its ten
-    // pills behind one accessibility element, so the taps go by position:
-    // pill N's centre sits at (N - 0.5) / 10 across the row.
-    tapPill(markPlain, 7)
-    tapPill(markHands, 3)
+    // One raised and one lowered from the same start, so one write cannot
+    // satisfy both, then save: the sheet's marks only reach the core once the
+    // item is completed, which is the path a "Skip" test never covers.
+    tapRing(markPlain, raise: true)
+    tapRing(markHands, raise: false)
+    let plain = score(markPlain)
+    let hands = score(markHands)
+    XCTAssertNotEqual(plain, hands, "the two stretches hold different scores")
 
     app.control("reflection.save", spoken: "Save & continue").tap()
 
@@ -94,12 +102,12 @@ final class VariationPickerUITests: XCTestCase {
     XCTAssertTrue(
       summaryPlain.waitForExistence(timeout: 10), "the summary marks each variation separately")
     XCTAssertEqual(
-      summaryPlain.value as? String, "7 of 10", "the plain play kept the seven it was given")
+      summaryPlain.value as? String, "\(plain) of 10", "the plain play kept the score it was given")
     XCTAssertEqual(
       app.mark("summary.mark", "Confidence for Major Scales, C major \u{00B7} Hands separately")
         .value as? String,
-      "3 of 10",
-      "and hands separately kept its three rather than seven")
+      "\(hands) of 10",
+      "and hands separately kept its own rather than the plain one's")
 
     app.discardSummary()
   }
@@ -108,7 +116,7 @@ final class VariationPickerUITests: XCTestCase {
 extension XCUIApplication {
   /// Each play's mark shares one identifier, so its spoken label is the whole match.
   fileprivate func mark(_ identifier: String, _ label: String) -> XCUIElement {
-    otherElements.matching(
+    descendants(matching: .any).matching(
       NSPredicate(format: "identifier == %@ AND label == %@", identifier, label)
     ).firstMatch
   }

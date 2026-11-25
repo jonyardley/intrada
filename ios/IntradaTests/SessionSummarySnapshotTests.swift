@@ -62,20 +62,59 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  /// Each key starts on last time's score or a changed one, with a note under D major (#3004).
   func testReflectionSheetWithThreeVariations() {
     let sheet = ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
-        itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
-        tempoRows: [.preview("p1"), .preview("p2"), .preview("p3")],
+        itemTitle: "Major scales", elapsedDisplay: "11:20", tempoTarget: nil,
+        tempoRows: [
+          .preview("p1", tempo: 96, lastScore: 4, startScore: 4),
+          .preview("p2", tempo: 92, lastScore: 5, startScore: 5),
+          .preview("p3", tempo: 88, lastScore: 3, startScore: 3),
+        ],
         plays: [
-          .preview("p1", "C major", "4:10"),
-          .preview("p2", "G major", "3:20"),
-          .preview("p3", "D major", "5:10"),
+          .preview("p1", "C major", "3:05"),
+          .preview("p2", "G major", "4:10"),
+          .preview("p3", "D major", "4:05"),
+        ],
+        limits: .preview,
+        seed: ReflectionAnswers.preview(
+          marks: [DraftMark(playId: "p1", score: 5)],
+          notes: [DraftNote(playId: "p3", note: "Stumbles at the top on the way down.")]),
+        onSave: { _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  /// A key never scored starts on the core's suggestion, beside one scored before (#3004).
+  func testReflectionSheetWithANeverScoredKey() {
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Major scales", elapsedDisplay: "8:00", tempoTarget: nil,
+        tempoRows: [
+          .preview("p1", lastScore: 6, startScore: 6),
+          .preview("p2", lastScore: nil, startScore: 6),
+        ],
+        plays: [
+          .preview("p1", "C major", "4:00"),
+          .preview("p2", "F\u{266f} major", "4:00"),
         ],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  /// A key's tempo and note, opened from its name (#3004).
+  func testReflectionKeySheet() {
+    let row = ReflectionTempoView.preview("p3", tempo: 88)
+    let sheet = ReflectionKeySheet(
+      title: "D major", tempoRow: row, limits: .preview, tempo: TrackedTempo(row: row),
+      note: "Stumbles at the top on the way down.",
+      wayRow: nil, wayChoices: PlayWayChoices(keys: [], variations: [], planned: nil),
+      onWay: { _ in }, onDone: { _, _ in })
     assertSnapshot(of: host(sheet), as: config)
   }
 
@@ -168,29 +207,21 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
-  // The first row open, its key changed from D major to G major (#2249).
+  // A key's sheet, its key changed from D major to G major (#2249).
   func testReflectionSheetChangingWhatWasPlayed() {
-    assertSnapshot(of: host(wayChangeSheet), as: config)
-  }
-
-  private var wayChangeSheet: some View {
-    let g = Key(letter: .g, accidental: .natural, mode: .major)
-    let inD = ReflectionPlay.preview("p1", "D major", "8:10")
-    let plain = ReflectionPlay.preview("p2", "No variation", "3:50")
-    return ZStack(alignment: .bottom) {
-      PaperBackground()
-      ReflectionSheet(
-        itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
-        tempoRows: [.preview("p1"), .preview("p2")],
-        plays: [inD, plain], limits: .preview, finish: .previewWayChoices,
+    let finish = FinishSheetView.previewWayChoices
+    let row = ReflectionTempoView.preview("p1")
+    let sheet = ReflectionKeySheet(
+      title: "G major", tempoRow: row, limits: .preview, tempo: TrackedTempo(row: row), note: "",
+      wayRow: finish.rows.first,
+      wayChoices: PlayWayChoices(
+        keys: finish.keys,
         variations: [
           PickerVariationView(id: "v-hs", label: "Hands separately", caption: ""),
           PickerVariationView(id: "v-dot", label: "Dotted rhythms", caption: ""),
         ],
-        plannedLabel: "D major",
-        seed: ReflectionAnswers.preview(
-          ways: [DraftWay(playId: "p1", key: g, variationIds: [])]),
-        onSave: { _ in }, onSkip: {}, changingPlayId: "p1")
-    }
+        planned: "D major"),
+      onWay: { _ in }, onDone: { _, _ in })
+    assertSnapshot(of: host(sheet), as: config)
   }
 }
