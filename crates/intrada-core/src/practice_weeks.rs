@@ -18,7 +18,8 @@ pub struct PracticeWeekView {
     pub practised_days: usize,
     /// Index into `days` of the day the week shows when it comes into view.
     pub opening_day: usize,
-    /// `This week`, `Last week`, otherwise `Week of 9 November` (#1377).
+    /// `This week`, `Last week`, otherwise `Week of 9 November`, with the year
+    /// when not this year (#1377).
     pub title: String,
 }
 
