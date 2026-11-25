@@ -357,6 +357,8 @@ worktree-new name:
         echo "✗ '{{name}}' must be letters, digits, '_' or '-', with no slashes." >&2
         exit 1
     fi
+    # agent- names belong to Claude Code's own worktrees, which worktree-rm refuses.
+    case "{{name}}" in agent-*) echo "✗ names starting 'agent-' are kept for Claude Code's own worktrees." >&2; exit 1 ;; esac
     command -v wt >/dev/null || { echo "✗ worktrunk (wt) is not installed: brew install worktrunk" >&2; exit 1; }
 
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
