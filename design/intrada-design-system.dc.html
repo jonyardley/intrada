@@ -27,9 +27,6 @@
     --iconInk: #3B2A1E;
     --danger: #9C4A3A;
     --success: #4C6B3F;
-    --repCleanBg: #EDF1EA;
-    --repCleanBorder: #D3DDCC;
-    --repMissedFg: #756A5C;
     --track: #EDE8DC;
     --pieceBadgeBg: #CBD6E0;
     --exerciseBadgeBg: #DCD3C0;
@@ -163,7 +160,7 @@
         <tr><td><div class="namecell"><span class="chip" style="background:#F3EFE8;"></span><code>tabBarFill</code></div></td><td class="meta">#F3EFE8</td><td>Tab bar</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#ECE6DA;"></span><code>hairline</code></div></td><td class="meta">#ECE6DA</td><td>Card edge, 1pt divider</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#DDD7CA;"></span><code>divider</code></div></td><td class="meta">#DDD7CA</td><td>Stronger divider</td></tr>
-        <tr><td><div class="namecell"><span class="chip" style="background:var(--cardFill);border:2px solid #DDD7CA;border-radius:50%;"></span><code>slotOutline</code></div></td><td class="meta">#DDD7CA</td><td>Empty rep slot ring, missed button border</td></tr>
+        <tr><td><div class="namecell"><span class="chip" style="background:var(--cardFill);border:2px solid #DDD7CA;border-radius:50%;"></span><code>slotOutline</code></div></td><td class="meta">#DDD7CA</td><td>Empty ring on the score selector and click bar, and the dashed card edge on the practice screen</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:var(--cardFill);border:1.5px dashed #C9BFB0;"></span><code>addDashOutline</code></div></td><td class="meta">#C9BFB0</td><td>Dashed outline on "+ Add" rows</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#1A1917;"></span><code>viewerBackdrop</code></div></td><td class="meta">#1A1917</td><td>Full-screen photo viewer ground</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:linear-gradient(rgba(0,0,0,0.2),rgba(0,0,0,0.2)),var(--paperTop);"></span><code>sheetScrim</code></div></td><td class="meta">black at 20%</td><td>Dimmed ground behind a sheet</td></tr>
@@ -189,9 +186,7 @@
         <tr><td><div class="namecell"><span class="chip" style="background:rgba(156,74,58,0.10);"></span><code>dangerWash</code></div></td><td class="meta">danger at 10%</td><td>Wash on a field a banner points at</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:rgba(156,74,58,0.12);"></span><code>dangerBanner</code></div></td><td class="meta">danger at 12%</td><td>Error banner ground</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:var(--cardFill);border:2px solid rgba(156,74,58,0.25);"></span><code>dangerEdge</code></div></td><td class="meta">danger at 25%</td><td>Edge on a faulted field</td></tr>
-        <tr><td><div class="namecell"><span class="chip" style="background:#4C6B3F;"></span><code>success</code></div></td><td class="meta">#4C6B3F</td><td>Clean reps, gains</td></tr>
-        <tr><td><div class="namecell"><span class="chip" style="background:#EDF1EA;border:2px solid #D3DDCC;"></span><code>repCleanBg / repCleanBorder</code></div></td><td class="meta">#EDF1EA / #D3DDCC</td><td>Clean rep chip</td></tr>
-        <tr><td><div class="namecell"><span class="chip" style="background:#F3EFE8;color:#756A5C;display:flex;align-items:center;justify-content:center;font-weight:600;">Aa</span><code>repMissedFg / repMissedBg</code></div></td><td class="meta">#756A5C / #F3EFE8</td><td>Missed rep: taupe, never red</td></tr>
+        <tr><td><div class="namecell"><span class="chip" style="background:#4C6B3F;"></span><code>success</code></div></td><td class="meta">#4C6B3F</td><td>Mastery gains</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#EDE8DC;"></span><code>masteryTrack, dialTrack, timerTrack, consistencyTrack</code></div></td><td class="meta">#EDE8DC</td><td>Empty track under rings and bars</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#2A2725;"></span><code>masteryFill</code></div></td><td class="meta">= ink</td><td>Mastery is monochrome; never recolour by level</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#CBD6E0;"></span><code>pieceBadgeBg</code></div></td><td class="meta">#CBD6E0</td><td>Piece tag and card bar (blue-grey), ink text</td></tr>
@@ -419,7 +414,6 @@
         <tr><td><code>MasteryHeroCard</code></td><td></td></tr>
         <tr><td><code>ConsistencyBars</code></td><td></td></tr>
         <tr><td><code>WeekStrip</code></td><td></td></tr>
-        <tr><td><code>RepCounter</code></td><td>"Got it" <span class="sym">checkmark</span> · missed <span class="sym">xmark</span></td></tr>
         <tr><td><code>TransportButton</code></td><td><span class="sym">play.fill</span> <span class="sym">forward.end</span></td></tr>
         <tr><td><code>UpNextHero</code></td><td></td></tr>
         <tr><td><code>SessionCard</code></td><td></td></tr>
@@ -442,20 +436,6 @@
           <div style="height:1px;background:var(--hairline);margin:16px 0;"></div>
           <button class="btn">Start session</button>
           <div class="meta" style="margin-top:12px;">.cardSurface() · TypeBadge · HairlineDivider · button</div>
-        </div>
-
-        <div class="card pad">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <span style="width:36px;height:36px;border-radius:50%;background:var(--repCleanBg);border:1.5px solid var(--repCleanBorder);"></span>
-            <span style="width:36px;height:36px;border-radius:50%;background:var(--repCleanBg);border:1.5px solid var(--repCleanBorder);"></span>
-            <span style="width:36px;height:36px;border-radius:50%;background:var(--surfaceSunken);border:1.5px solid var(--divider);"></span>
-            <span style="width:36px;height:36px;border-radius:50%;background:var(--cardFill);border:1.5px solid var(--divider);"></span>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:16px;">
-            <button class="btn">Got it</button>
-            <button class="btn" style="background:var(--cardFill);border:1px solid var(--divider);box-shadow:none;color:var(--repMissedFg);">Missed</button>
-          </div>
-          <div class="meta" style="margin-top:12px;">RepCounter · clean, missed, empty slots</div>
         </div>
 
         <div class="card pad">

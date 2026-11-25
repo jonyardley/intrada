@@ -4,7 +4,9 @@ Specs for work not yet built, and shipped ones kept until the issue that cites
 them closes. A spec rides with its first pull request and is otherwise deleted
 once the screens ship; settled decisions move to
 [`docs/decisions.md`](../docs/decisions.md). A `<spec>/design/` folder goes
-once the snapshots cover its screens, even while its spec stays. Direction is in [`docs/roadmap.md`](../docs/roadmap.md).
+once the snapshots cover its screens, even while its spec stays. A pull
+request that removes a feature searches `specs/` and `design/` for its names
+and edits or retires what it finds in the same PR (#2852). Direction is in [`docs/roadmap.md`](../docs/roadmap.md).
 
 The specs that remain:
 
@@ -19,8 +21,8 @@ The specs that remain:
 - [`one-tap-start.md`](one-tap-start.md): today's plan in one tap
 - [`piece-from-photo.md`](piece-from-photo.md): the score photo on a piece; reading the page was removed (#2792)
 - [`planned-item.md`](planned-item.md): one planned-item shape for sessions, routines and the week
-- [`practice-defaults.md`](practice-defaults.md): default rep target and click start
-- [`practice-instruments.md`](practice-instruments.md): timer, rep counter and click
+- [`practice-defaults.md`](practice-defaults.md): default click start and session length
+- [`practice-instruments.md`](practice-instruments.md): the click and the time signature
 - [`priority-items.md`](priority-items.md): priority items in place of goals
 - [`session-delete.md`](session-delete.md): deleting a saved session
 - [`simpler-removals.md`](simpler-removals.md): removing focus, repetitions and the Add detail choices

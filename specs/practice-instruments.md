@@ -1,8 +1,8 @@
-# Practice instruments: the session timer, the rep counter, and an honest click
+# Practice instruments: an honest click and the time signature behind it
 
-> Tier 3. Covers #1364 (session timer), #1367 (rep counter) and #1499 (which
-> beats the click sounds, and the time signature behind it). Epic #1975.
-> Design: [`practice-instruments/design/focus-player-instruments.dc.html`](practice-instruments/design/focus-player-instruments.dc.html).
+> Tier 3. Covers #1364 (session timer) and #1499 (which beats the click
+> sounds, and the time signature behind it). Epic #1975. The rep counter
+> (#1367) went with #2791 (`simpler-removals.md`).
 > Rulings: design-principles **T19**.
 
 ## The rule
@@ -60,29 +60,16 @@ pub struct ClickState {
 ### 3. Whether the click pattern is recorded alongside the tempo
 
 **Yes.** "120 with the click on 2 and 4" is a different achievement from "120
-straight". `SetlistEntry.click_pattern: Option<ClickState>` is written by the
-same handler that writes `achieved_tempo`, and only when the click was
-sounding.
-
-## The rep counter
-
-The counter is always on screen and can be ignored. A target is written when
-the counter is first used, never at session start, so an untouched entry
-records nothing. `DEFAULT_REP_TARGET` is 10; the `3...10` stepper lets a
-musician ask for fewer. Each tap is timestamped (`RepEvent`).
+straight". `Play.click_pattern: Option<ClickState>` is written by the same
+handler that writes `achieved_tempo`, and only when the click was sounding.
 
 ## The click's band and presets come from the core (#2225)
 
 The tempo band, step and default, the named bars, the groupings and the
-patterns live in `crates/intrada-core/src/domain/metre.rs` and reach both
-shells through `LimitsView`. The band is crotchets 40 to 208, default 96,
+patterns live in `crates/intrada-core/src/domain/metre.rs` and reach the iOS
+app through `LimitsView`. The band is crotchets 40 to 208, default 96,
 step 2, projected per beat unit through `Metre::displayed_bpm`. The beat
 indicator derives the current beat from the same grid the audio uses (T19).
-
-## Copy
-
-`Repetitions`, `Got it`, `Not quite` (#1938). `Not quite right` at
-accessibility sizes, where the pair stacks.
 
 ## Open questions
 
