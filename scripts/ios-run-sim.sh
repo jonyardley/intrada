@@ -34,13 +34,24 @@ cands = [
 ]
 print(max(cands)[1] if cands else '')
 " "$SIM_DEVICE")
+# Only a runtime that supports SIM_DEVICE will do: Xcode 27.2 adds a runtime
+# for one new iPhone alone, with the same version as the general one, and a
+# create on it fails as "Incompatible device" (#2984). The pinned CI runtime,
+# SELFHOSTED_IOS_RUNTIME, wins when set and installed; otherwise the newest.
 if [ -z "$UDID" ]; then
     RUNTIME=$(xcrun simctl list runtimes available --json | python3 -c "
 import json, sys
-ios = [r for r in json.load(sys.stdin)['runtimes'] if r.get('platform') == 'iOS']
-ios.sort(key=lambda r: [int(p) for p in r['version'].split('.')])
+want, pin = sys.argv[1], sys.argv[2]
+ios = [
+    r for r in json.load(sys.stdin)['runtimes']
+    if r.get('platform') == 'iOS'
+    and any(d.get('name') == want for d in r.get('supportedDeviceTypes', []))
+]
+pinned = [r for r in ios if pin and r['version'] == pin]
+ios = pinned or ios
+ios.sort(key=lambda r: ([int(p) for p in r['version'].split('.')], r['identifier']))
 print(ios[-1]['identifier'] if ios else '')
-")
+" "$SIM_DEVICE" "${SELFHOSTED_IOS_RUNTIME:-}")
     if [ -z "$RUNTIME" ] || ! UDID=$(xcrun simctl create "$SIM_DEVICE" "$SIM_DEVICE" "$RUNTIME"); then
         echo "✗ No $SIM_DEVICE simulator, and none could be made (Xcode → Settings → Platforms → iOS)" >&2
         exit 1
