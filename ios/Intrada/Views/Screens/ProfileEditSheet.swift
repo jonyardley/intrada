@@ -92,7 +92,7 @@ struct ProfileEditSheet: View {
     sendDraft()
   }
 
-  // Until the core has the draft, the saved profile's icon stands in.
+  // Until the core has the draft, the saved profile's icon stands in (#2519).
   private var icons: ProfileDraftView {
     if let draft = profile?.draft { return draft }
     guard let profile else {

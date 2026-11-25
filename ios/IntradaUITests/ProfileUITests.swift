@@ -127,6 +127,9 @@ final class ProfileUITests: XCTestCase {
     app.row("iconPicker.tile", spokenContaining: "Violin").tap()
     app.control("sheet.done", spoken: "Done").tap()
     XCTAssertTrue(
+      app.staticTexts["All icons"].waitForNonExistence(timeout: 5), "the picker has closed")
+    XCTAssertFalse(app.staticTexts["Chosen by you"].exists, "the match is not a pick")
+    XCTAssertTrue(
       app.staticTexts["Matches violin"].waitForExistence(timeout: 5),
       "the caption follows the core's rule at once")
   }
