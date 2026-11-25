@@ -13,9 +13,9 @@ regenerating bindings when the core changed.
 - `just ios-test-class <Class>`: one unit or snapshot class, or a Swift Testing
   suite by its type name, for checking a change in seconds; a name that
   matches nothing fails.
-- `just ios-test-ui-class <Class>`: one UI class, what `/ship` runs for each
+- `just ios-test-ui-class <Class>`: one UI class, what `/intrada-ship` runs for each
   class the diff touches.
-- `just ios-test-full`: every XCUITest, about five minutes; not in `/ship`,
+- `just ios-test-full`: every XCUITest, about five minutes; not in `/intrada-ship`,
   since CI runs them on every PR (#2114).
 
 ### Xcode's tool server (driving the running app)

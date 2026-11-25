@@ -57,7 +57,7 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Sync
   [`docs/working-with-agents.md`](docs/working-with-agents.md); epics:
   [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md#epics).
 - Decisions whose records were removed: [`docs/decisions.md`](docs/decisions.md).
-- Shipping: `/ship` and the `intrada-shipping` skill; more than one session: the
+- Shipping: `/intrada-ship` and the `intrada-shipping` skill; more than one session: the
   `intrada-parallel-streams` skill.
 - Writing: British English, no dashes, plain language, in PR bodies, issues,
   comments and every technical or design document, checked or not ([`docs/style-guide.md`](docs/style-guide.md),

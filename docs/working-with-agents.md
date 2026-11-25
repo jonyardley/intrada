@@ -206,7 +206,7 @@ back on. Red left standing hides the next real break (#2747).
 
 | You are | Do |
 |---|---|
-| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed, with the number read once the draft opens, never guessed; a `/ship` retro fix is recorded in the lessons archive instead |
+| Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed, with the number read once the draft opens, never guessed; a `/intrada-ship` retro fix is recorded in the lessons archive instead |
 | Correcting a rule that failed | Edit that rule; never add a second beside it |
 | Wanting session costs | `just usage`, or `just usage 14` for a fortnight; it ends with how many fixed lessons came back, the fixes that did not hold (#2968) |
 | Switching a user hook off or on | Delete its line from `hooks` in `~/.claude/settings.json`, leaving the script; restore it from the dated backup in `~/.claude/backups/` (#1990) |

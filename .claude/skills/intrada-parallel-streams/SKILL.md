@@ -63,4 +63,4 @@ Event, Effect and ViewModel shape before wiring either side.
 
 ## Definition of done, before requesting review
 
-`/ship`, the `intrada-shipping` skill and the PR template checklist hold it.
+`/intrada-ship`, the `intrada-shipping` skill and the PR template checklist hold it.
