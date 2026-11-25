@@ -14,6 +14,18 @@ cat >"$tmp/FocusPlayerSnapshotTests.swift" <<'SWIFT'
 final class FocusPlayerSnapshotTests: SnapshotTestCase {
   func testPlaying() {}
   func testPlayingOnIPad() {}
+  // func testRetired() {}
+  private func orientationBand() {}
+}
+SWIFT
+cat >"$tmp/SnapshotTestCase.swift" <<'SWIFT'
+class SnapshotTestCase: XCTestCase {
+  func assertSnapshot() {}
+}
+SWIFT
+cat >"$tmp/ActorSnapshotTests.swift" <<'SWIFT'
+@MainActor final class ActorSnapshotTests: SnapshotTestCase {
+  @MainActor func testOnMain() async {}
 }
 SWIFT
 cat >"$tmp/LibrarySnapshotTests.swift" <<'SWIFT'
@@ -59,6 +71,14 @@ expect "an unknown class fails" 1 "$(run PracticeSnapshotTests)"
 expect "a partial class name fails" 1 "$(run FocusPlayer)"
 expect "a method on the wrong class fails" 1 "$(run LibrarySnapshotTests/testPlaying)"
 expect "an empty filter fails" 1 "$(run '')"
+expect "a class after an attribute passes" 0 "$(run ActorSnapshotTests)"
+expect "a method after an attribute passes" 0 "$(run ActorSnapshotTests/testOnMain)"
+
+expect "a helper method not named test fails" 1 "$(run FocusPlayerSnapshotTests/orientationBand)"
+expect "a commented-out test method fails" 1 "$(run FocusPlayerSnapshotTests/testRetired)"
+expect "a class with no test methods fails" 1 "$(run SnapshotTestCase)"
+expect "a trailing slash fails" 1 "$(run FocusPlayerSnapshotTests/)"
+expect "a leading slash fails" 1 "$(run /FocusPlayerSnapshotTests)"
 expect "a target, class and method fails" 1 "$(run IntradaTests/FocusPlayerSnapshotTests/testPlaying)"
 
 echo "ios-snapshot-filter-test: $pass passed, $fail failed"

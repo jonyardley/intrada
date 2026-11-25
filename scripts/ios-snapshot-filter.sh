@@ -28,14 +28,25 @@ method=""
 [ "$class" = "$filter" ] || method="${filter#*/}"
 case "$class$method" in *[!A-Za-z0-9_]*) reject ;; esac
 
+# Declarations may carry modifiers or attributes such as `@MainActor` on the
+# same line. Anchoring at the line start keeps a commented-out `// func` from
+# counting.
+mods='^[[:space:]]*((@[A-Za-z0-9_]+|final|public|open|internal|override|nonisolated) )*'
+
+# XCTest runs only methods named `test...`, so a helper name would match a
+# declaration yet run nothing.
+case "$method" in "" | test*) ;; *) reject ;; esac
+
 # Methods can sit in an extension in another file, so every file naming the
 # class counts.
-files="$(grep -rlE "^[[:space:]]*(final |public |open |internal )*(class|extension) ${class}([^A-Za-z0-9_]|$)" \
+files="$(grep -rlE "${mods}(class|extension) ${class}([^A-Za-z0-9_]|$)" \
   --include='*.swift' "$dir" 2>/dev/null || true)"
-declared="$(grep -lE "^[[:space:]]*(final |public |open |internal )*class ${class}([^A-Za-z0-9_]|$)" \
+declared="$(grep -lE "${mods}class ${class}([^A-Za-z0-9_]|$)" \
   $files /dev/null 2>/dev/null || true)"
 [ -n "$declared" ] || reject
-[ -n "$method" ] || exit 0
-if ! grep -lE "func ${method}\(" $files /dev/null >/dev/null 2>&1; then
+# A bare class still runs nothing without a test of its own, as with a shared
+# base class such as SnapshotTestCase.
+wanted="${method:-test[A-Za-z0-9_]*}"
+if ! grep -lE "${mods}func ${wanted}\(" $files /dev/null >/dev/null 2>&1; then
   reject
 fi
