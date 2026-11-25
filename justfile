@@ -350,10 +350,9 @@ check-all: check ios-test
 worktree-new name:
     #!/usr/bin/env bash
     set -euo pipefail
-    # Directory and sim-name slug both derive from the raw name (matching
-    # _ios-test-sim-name's basename-of-checkout basis), so a slash would give
-    # a sim name the collision scan below cannot match, and a shell
-    # metacharacter would break out of the surrounding quotes.
+    # No slashes: worktree-rm finds a worktree by its folder name, which a name
+    # with a slash never equals. No shell metacharacters: they would break out
+    # of the surrounding quotes.
     if ! printf '%s' "{{name}}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$'; then
         echo "✗ '{{name}}' must be letters, digits, '_' or '-', with no slashes." >&2
         exit 1
@@ -362,13 +361,15 @@ worktree-new name:
 
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
     slug="$(printf '%s' "{{name}}" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
+    # Captured first so a failing script stops here rather than skipping the check.
+    paths="$(./scripts/worktree-path.sh)"
     while IFS= read -r dir; do
         other="$(basename "$dir" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
         if [ "$other" = "$slug" ]; then
             echo "✗ $(basename "$dir") already sanitises to sim name '$slug', so pick a different name (see docs/ios-testing.md, worktrees)." >&2
             exit 1
         fi
-    done < <(./scripts/worktree-path.sh)
+    done <<<"$paths"
 
     git fetch origin
     wt -C "$main_root" switch --create "{{name}}" --base origin/main

@@ -8,7 +8,18 @@
 
 set -euo pipefail
 
+if [ $# -gt 0 ] && [ -z "$1" ]; then
+  echo "✗ the worktree name is empty; give a name, or none to list every worktree" >&2
+  exit 1
+fi
 name="${1:-}"
+case "$name" in
+  agent-*)
+    # Claude Code makes and removes these under .claude/worktrees itself.
+    echo "✗ $name is one of Claude Code's own agent worktrees; Claude Code removes those itself" >&2
+    exit 1
+    ;;
+esac
 paths=()
 first=1
 while IFS= read -r p; do
