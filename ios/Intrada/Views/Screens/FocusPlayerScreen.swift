@@ -125,7 +125,7 @@ struct FocusPlayerScreen: View {
     .padding(.top, IntradaSpacing.card)
   }
 
-  // ── Top: session elapsed + position label + progress + options menu ──
+  // ── Top: session clock + position label + progress + options menu ──
 
   @ViewBuilder private func topChrome(_ active: ActiveSessionView) -> some View {
     let start = SessionClock.parseRFC3339(active.startedAt)
@@ -134,18 +134,22 @@ struct FocusPlayerScreen: View {
       // every body evaluation, so the two timers drift out of step on a screen
       // whose brief is to sit still.
       TimelineView(.periodic(from: start, by: 1)) { context in
-        band(active, elapsed: Int(context.date.timeIntervalSince(start)))
+        band(active, session: reading(active, at: context.date))
       }
     } else {
       // A session total nobody can vouch for is worse than none: an unparsable
       // anchor would otherwise count up from screen appearance and read as fact.
-      band(active, elapsed: start.map { Int((referenceDate ?? .now).timeIntervalSince($0)) })
+      band(active, session: reading(active, at: referenceDate ?? .now))
     }
   }
 
-  private func band(_ active: ActiveSessionView, elapsed: Int?) -> some View {
+  private func reading(_ active: ActiveSessionView, at date: Date) -> SessionReading? {
+    SessionClock.sessionReading(startedAt: active.startedAt, endsAt: active.endsAt, at: date)
+  }
+
+  private func band(_ active: ActiveSessionView, session: SessionReading?) -> some View {
     SessionOrientationBand(
-      sessionElapsed: elapsed,
+      session: session,
       positionLabel: positionLabel(active),
       types: active.entries.map(\.itemType),
       filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)),

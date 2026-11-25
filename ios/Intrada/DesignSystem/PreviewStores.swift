@@ -283,7 +283,7 @@
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
-        reflection: nil)
+        reflection: nil, lengthMins: nil)
       return store
     }
 

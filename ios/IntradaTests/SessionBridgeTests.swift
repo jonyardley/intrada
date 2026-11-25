@@ -249,6 +249,27 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(try bridge.rendered().practiceDefaults.sessionLengthMins, 25)
   }
 
+  func testRealBridgeATimedSessionSendsItsEnd() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.setSessionLength(lengthMins: 30)))
+    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+    _ = try bridge.update(.session(.startSession(now: "2026-10-02T09:00:00Z")))
+
+    let active = try XCTUnwrap(try bridge.rendered().activeSession)
+    let start = try XCTUnwrap(SessionClock.parseRFC3339(active.startedAt))
+    let end = try XCTUnwrap(active.endsAt.flatMap(SessionClock.parseRFC3339))
+    XCTAssertEqual(end.timeIntervalSince(start), 1800)
+  }
+
   /// Answers the session write the way the store does, so the core commits the
   /// practice, clears the recovery copy and closes the summary (#974).
   private func acknowledgeSave(_ bridge: RowsBridge, _ requests: [Request]) throws {
@@ -635,7 +656,7 @@ final class SessionBridgeTests: XCTestCase {
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
       currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
-      reflection: nil)
+      reflection: nil, lengthMins: nil)
     _ = try bridge.update(.session(.recoverSession(session: blob, now: "2026-06-16T11:00:00Z")))
     let recovered = try bridge.rendered()
     XCTAssertEqual(recovered.activeSession?.currentItemTitle, "Recovered Scales")
