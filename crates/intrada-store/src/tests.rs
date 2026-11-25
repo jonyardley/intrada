@@ -1363,6 +1363,30 @@ fn an_unknown_chart_key_mode_survives_a_save_that_leaves_the_key_alone() {
 }
 
 #[test]
+fn a_chart_key_with_no_mode_reads_back_with_no_mode() {
+    let mut store = Store::in_memory().expect("opens");
+    let mut item = fixture();
+    let no_mode = Some(key(Letter::D, Accidental::Natural, None));
+    item.chord_chart.as_mut().expect("a chart").key = no_mode;
+    store.save(&item);
+    assert_eq!(stored_chart(&store)["modality"], "");
+
+    let answer = store.handle(&PersistenceOperation::LoadItems);
+    let PersistenceOutput::Items(items) = answer.output else {
+        panic!("items")
+    };
+    assert_eq!(items[0].chord_chart.as_ref().and_then(|c| c.key), no_mode);
+    assert_eq!(answer.unreadable, Vec::<String>::new());
+
+    store.save(&items[0]);
+    assert_eq!(
+        stored_chart(&store)["modality"],
+        "",
+        "a second save keeps it"
+    );
+}
+
+#[test]
 fn an_unknown_mode_in_the_key_list_survives_a_save_that_leaves_the_list_alone() {
     let stored = r#"[{"key":"D","modality":"dorian"}]"#;
     let mut store = with_stored("tags, keys", &format!("'[]', '{stored}'"));

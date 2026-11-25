@@ -13,7 +13,7 @@ enforce loses its prose in the same change.
 | You are | Do |
 |---|---|
 | Jon, picking the next unit | `just status` in the main checkout, not a session; open a session there with the epic's next child and one sentence |
-| Starting a unit of work | Make the worktree first, then `just claim N` from inside it, since the main checkout refuses it. It refuses, naming the other branch, when the issue is claimed or an open PR references it; otherwise it labels the issue and moves the board to In progress |
+| Starting a unit of work | Make the worktree first, then `just claim N` from inside it, since the main checkout refuses it. It refuses, naming the other branch, when the issue is claimed or an open PR references it; otherwise it labels the issue and moves the board to In progress. Read the `intrada-shipping` skill next, before any code: its plan comment comes before the first commit and its retro before the gates (#2709) |
 | Asked "what's next" or "what can run in parallel" | Answer from `just status` and the session-start claims list, with no further reads (#1836) |
 | Jon, losing track of the worktrees | `just worktree-status`: whose move each one is, and how many are safe to remove (#2783) |
 | About to start a third fix on one issue | Stop: two corrections on one point mean asking whether the approach is wrong, and `just claim` refuses a third claim at two merged PRs titled with the issue (#1890, #2593) |
