@@ -94,15 +94,15 @@ fn week_view(
         practised_days: days.iter().filter(|d| !d.session_ids.is_empty()).count(),
         opening_day: opening_day(&days),
         days,
-        title: week_title(monday, this_monday),
+        title: week_title(monday, this_monday, today),
     }
 }
 
-fn week_title(monday: NaiveDate, this_monday: NaiveDate) -> String {
+fn week_title(monday: NaiveDate, this_monday: NaiveDate, today: NaiveDate) -> String {
     match (this_monday - monday).num_weeks() {
         0 => "This week".to_string(),
         1 => "Last week".to_string(),
-        _ if monday.year() == this_monday.year() => monday.format("Week of %-d %B").to_string(),
+        _ if monday.year() == today.year() => monday.format("Week of %-d %B").to_string(),
         _ => monday.format("Week of %-d %B %Y").to_string(),
     }
 }
@@ -464,6 +464,16 @@ mod tests {
             title("2025-12-30"),
             "Week of 29 December 2025",
             "a week that starts in another year names it"
+        );
+
+        let new_year = compute_practice_weeks(
+            &sessions_on(&[day(2025, 12, 15)]),
+            clock(day(2026, 1, 2), 0),
+        );
+        assert_eq!(
+            week_containing(&new_year, "2025-12-15").title,
+            "Week of 15 December 2025",
+            "the year is today's, not this week's Monday's"
         );
     }
 
