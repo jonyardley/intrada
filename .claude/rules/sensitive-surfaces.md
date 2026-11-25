@@ -22,7 +22,7 @@ or a view type and renames, removes, reorders or retypes nothing. It keeps its
 tier, may be built by `task` or the lead, and ships with its LiveBridge
 round-trip test. Everything else here is lead-only: the `ActiveSession`
 crash-recovery blob, any type under a wire-pinned settings key (library sort,
-profile, practice defaults: bincode on the device, like the blob), store
+profile, practice defaults, first run: bincode on the device, like the blob), store
 migrations, auth, and any bridge change that is not additive.
 
 1. **Lead-only work runs at the session's opening level**, which is the
@@ -65,22 +65,29 @@ each place below that the change reaches:
 
 - **Store codec**: `StoredPlay`, `stored_play` and the reader's `plays` and
   `play`, which also build a `Play` from a legacy row, in
-  `crates/intrada-core/src/stored_session.rs`. A session is one JSON blob in
-  `crates/intrada-store/src/sessions.rs`, so a new play field needs no SQL
-  migration; a new column does (`.claude/rules/offline-first.md`).
+  `crates/intrada-core/src/stored_session.rs`. Plays live inside the session
+  row's JSON `entries` column (`crates/intrada-store/src/sessions.rs`), so a
+  new play field needs no migration; a new session-level field is a real
+  column and does (`.claude/rules/offline-first.md`).
 - **Sync body pin**: `record_bodies_are_pinned`, `PINNED_SESSION` and
   `full_session()` in `crates/intrada-core/src/sync/tests.rs`.
-- **Wire pins**: the blob pin above; `every_stored_enum_text_is_pinned` in
+- **Wire pins**: `active_session_blob_wire_is_pinned` in
+  `crates/intrada-core/src/domain/session/tests.rs`, bumping
+  `ActiveSession::BLOB_VERSION` first (the `domain/session/` hazard above);
+  `every_stored_enum_text_is_pinned` in
   `crates/intrada-core/src/stored_session/tests.rs`; the settings blob pins in
   `domain/types.rs`, `practice_defaults.rs`, `profile.rs` and `first_run.rs`.
 - **Bridge tests allowlist**: `scripts/bridge-tests-allowlist.txt`, checked by
   `just check`. A new bridged type needs a `LiveBridge` test naming it or a
   line there; the line comes off when the type gets its first test.
 - **Rust construction sites**: `crates/intrada-store/src/tests.rs` and
-  `crates/intrada-core/src/sample.rs` build `Play` in full; new tests use
-  `Play::fixture()` with struct update.
+  `crates/intrada-core/src/sample.rs` build `Play` in full. New intrada-core
+  tests use `Play::fixture()` with struct update; it is `#[cfg(test)]
+  pub(crate)`, so other crates cannot reach it.
 - **Swift construction sites**: tests and previews calling a generated type's
   memberwise init, such as `ios/Intrada/DesignSystem/PreviewStores.swift` and
-  files in `ios/IntradaTests`; grep `TypeName(` across `ios/Intrada` and
-  `ios/IntradaTests`. Shared fixtures live in
-  `ios/Intrada/DesignSystem/SessionPreviewFixtures.swift`.
+  files in `ios/IntradaTests`. Find them with the LSP's find references, or a
+  word-boundary search such as `\bPlay\(` plus `.init(` calls, across
+  `ios/Intrada` and `ios/IntradaTests`. Shared fixtures live in
+  `ios/Intrada/DesignSystem/SessionPreviewFixtures.swift` and
+  `LibraryPreviewFixtures.swift`.
