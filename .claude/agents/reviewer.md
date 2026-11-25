@@ -15,9 +15,10 @@ self-tests and scoped `cargo test` your claims need there; the main checkout
 runs nothing. A test you could not run is reported "not run", never passed,
 and a gate is called broken only once you have made it fail.
 Before a changed file, read the `.claude/rules/` file whose `paths:` cover it:
-rules load on their own only for a file opened with the Read tool from a
-session whose folder is the worktree, and a diff read through git loads none;
-they bind the diff anyway.
+rules load on their own for a file opened with the Read tool from a session
+whose folder is the worktree; a session in main reading the worktree's files
+gets none, a helper launched by a lead sitting there cannot count on them, and
+a diff read through git loads none. They bind the diff anyway.
 
 When the brief names an issue, read it with its comments first, through
 `just issue N`, which prints only the owner's comments. The repository is
