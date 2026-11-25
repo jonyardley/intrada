@@ -3,7 +3,8 @@ import Testing
 
 @testable import Intrada
 
-/// The variations sheet's ticks (#2247); finding and adding are core rules (#2754).
+/// The variations sheet's ticks (#2247); finding and adding are core rules
+/// (#2754), so only the sheet's own typed labels feeding the add check stay here.
 struct VariationChoiceTests {
   private static var library: [VariationOptionView] {
     [
@@ -32,5 +33,12 @@ struct VariationChoiceTests {
     choice.toggleNew("Slow")
     #expect(choice.newLabels.isEmpty)
     #expect(choice.ids == ["v2"])
+  }
+
+  @Test("a label already typed in this sheet is not offered twice")
+  func addableOnce() {
+    var choice = VariationChoice(ids: [])
+    choice.toggleNew("Slow")
+    #expect(choice.addable("slow", in: Self.library) == nil)
   }
 }
