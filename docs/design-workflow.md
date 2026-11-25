@@ -6,12 +6,6 @@ design reviewer, signed off by Jon on that sketch, and built from it.
 After merge, the design system is refreshed from the repo. Canvases and the
 design system live in Claude artifacts; the repo stays the source of truth.
 
-Until #2637 lands (due before 14 December 2026, when standalone
-claude.ai/design closes), the old design system page stays in `design/` only
-so `scripts/check-design-tokens.sh` can read it. Nothing else here uses it,
-but that check compares each colour in `Theme.swift` with the page, so a
-changed colour is changed by hand there too, or `just check` fails.
-
 ## Who owns what
 
 | Thing | Lives in | Why there |
@@ -103,25 +97,26 @@ Run this after any merge that changes a component page, `Theme.swift`, the
 kit's icon drawables or the sketch kit. The design system is published from `main`
 and never edited by hand in Claude Design outside a refresh. A rehearsal
 before merge reads the branch in place of `main`: use `HEAD` where step 3 says
-`origin/main`, and stop before step 5.
+`origin/main`, and stop before step 5. Before planning design system work,
+list the live artifact's files, so it is never taken for unpublished.
 
 1. **Use the committed kit.** The refresh publishes the `design/sketch-kit/`
    files as committed on `main`; nothing is regenerated. `just check` already
    fails a branch whose kit is stale, so those files match the code.
 2. **Read the live copy.** Use the Artifact tool's `read` on the
    [design system](https://claude.ai/artifact/BRrktWYfTdnpj8sREEBsSs), list
-   its files (with `scope` set to `files`), then `read` `project/design-system.json`. A publish to an artifact this session
-   has not read is refused.
+   its files (with `scope` set to `files`), then `read`
+   `project/design-system.json`. A publish to an artifact this session has
+   not read is refused.
 3. **Find what changed.** Run `git fetch origin`, then `git diff --stat
    <commit>..origin/main -- design/ ios/Intrada/Resources/Fonts/
    ios/IntradaTests/__Snapshots__/`, where
    `<commit>` is the hash written after `main@` in `lastChange.via` in
    `project/design-system.json`. With no hash there, refresh every file
-   below. `design/intrada-design-system.dc.html`, `design/explorations/` and
-   every other file under `design/` that step 4 does not name, such as
-   `design/sketch-kit/README.md`, `icons/` and `token-notes.json`, are never
-   published. Step 4 copies only the changed files; `read` the live copy of each
-   one you will replace.
+   below. `design/explorations/` and every other file under `design/` that
+   step 4 does not name, such as `design/sketch-kit/README.md`, `icons/` and
+   `token-notes.json`, are never published. Step 4 copies only the changed
+   files; `read` the live copy of each one you will replace.
 4. **Copy into one folder** in your scratchpad, at the design system's paths:
    - `design/components/<Name>/README.md` to `project/components/<Name>/README.md`,
      reshaped. Drop the front matter. Turn each relative link into a GitHub
@@ -201,19 +196,13 @@ and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
    note in `token-notes.json` if the note is no longer true.
 2. **The kit.** Run `just sketch-kit`, which rewrites `tokens.json` and
    `tokens.css`.
-3. **The old page.** A colour also changes by hand in
-   `design/intrada-design-system.dc.html`, until #2637: its hex and every
-   `rgba()` made from it. The standalone `design/intrada-design-system.html`
-   is left alone; nothing reads it. A removal that must reach it decodes its
-   template string as JSON, edits it, and re-encodes it without ASCII escapes
-   and with `</` written `<\u002F`, which leaves the rest byte for byte (#2852).
-4. **Snapshots.** Even a small shift fails every snapshot that shows the
+3. **Snapshots.** Even a small shift fails every snapshot that shows the
    colour: a slightly deeper `danger` failed 6 on iPhone
    (#2772).
    Run `just ios-test`, re-record each failing
    class with `just ios-snapshots-record <Class>`,
    then look at each new picture.
-5. **`just check`**, then the refresh after merge.
+4. **`just check`**, then the refresh after merge.
 
 A change to one of the kit's five components
 changes its web copy in `design/sketch-kit/components/` in the same PR.
