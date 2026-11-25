@@ -50,9 +50,7 @@ review rule there.
    mergeability. Reproduce a red UI test with `just ios-test-ui-class`. Compare
    Codecov's patch comment with the body's Coverage line; an unexpected gap
    gets a test or a PR comment.
-7. **Ready**: every PR, however it was opened, runs the retro before ready and
-   is readied only through `just pr-ready <pr> <issue>`, never a bare
-   `gh pr ready` (#3004); it refuses until the route is done. A
+7. **Ready**: `just pr-ready <pr> <issue>` refuses until the route is done. A
    screen change also waits for the owner's yes on its pictures.
 8. **The merge wait**, in the background: poll every three minutes for up to
    an hour, `for i in $(seq 20); do s=$(gh pr view PR --json state -q
