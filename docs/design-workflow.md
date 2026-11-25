@@ -169,7 +169,9 @@ and a run of `just sketch-kit`. A changed token runs in this order, in one PR:
 3. **The old page.** A colour also changes by hand in
    `design/intrada-design-system.dc.html`, until #2637: its hex and every
    `rgba()` made from it. The standalone `design/intrada-design-system.html`
-   is left alone; nothing reads it.
+   is left alone; nothing reads it. A removal that must reach it decodes its
+   template string as JSON, edits it, and re-encodes it without ASCII escapes
+   and with `</` written `<\u002F`, which leaves the rest byte for byte (#2852).
 4. **Snapshots.** Even a small shift fails every snapshot that shows the
    colour: a slightly deeper `danger` failed 6 on iPhone
    (#2772).

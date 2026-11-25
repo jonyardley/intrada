@@ -78,7 +78,7 @@ routine stays short (#760).
 
 ### T2: Mid-session configurability vs "the app disappears during practice"
 
-**DECIDED 2026-05-31.** Mid-session editing of duration, reps and focus stays
+**DECIDED 2026-05-31.** Mid-session editing of duration stays
 **one layer down**, revealed by a deliberate gesture, never persistent chrome.
 The default live-session screen stays bare. Config is reachable, not resident.
 
@@ -218,13 +218,11 @@ play closed. Anything else is a default, and a default is not data.
 
 **DECIDED 2026-09-02 (#1364, #1367, #1499;
 [`specs/practice-instruments.md`](../specs/practice-instruments.md)).** Partly
-reverses T14. Counting passes is practising, not configuration; metre, pattern
-and target stay one or two layers down.
+reverses T14. Metre and pattern stay one or two layers down. The pass counter
+it made resident went with #2791.
 
 - **Screen budget.** The session timer sits in the top band as orientation,
-  labelled apart from the item timer. **The pass counter is resident and
-  ignorable**: untouched, it records nothing. The ring shrinks to about 200pt,
-  the price of the resident counter.
+  labelled apart from the item timer.
 - **A pattern never divides the tempo.** The grid keeps its rate; the pattern
   gates which beats sound.
 - **The row never implies every beat.** Pattern dots, filled and hollow, never
