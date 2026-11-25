@@ -7,7 +7,6 @@ support.js
 
 # Design-system exports (large generated HTML) + image assets
 *.dc.html
-design/intrada-design-system.html
 design/assets/
 
 # Images (snapshot test references, icons): no semantic value in the graph,
