@@ -268,6 +268,8 @@ pub(crate) fn decode_metre(
 
 /// `key` holds a spelling, as the item's column does, or text the core
 /// could not read, kept until a key is picked; empty is no key.
+/// `modality` is empty for a key with no mode, never absent: older builds
+/// need the field to read the chart at all (#2709).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub(crate) struct StoredChart {
     pub key: String,
@@ -276,6 +278,12 @@ pub(crate) struct StoredChart {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metre: Option<u8>,
     pub sections: Vec<StoredChartSection>,
+}
+
+impl StoredChart {
+    fn mode(&self) -> Option<&str> {
+        Some(self.modality.as_str()).filter(|m| !m.is_empty())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -315,7 +323,7 @@ pub(crate) fn encode_chord_chart(
     let Some(chart) = chart else { return Ok(None) };
     let key = stored
         .filter(|stored| !stored.key.is_empty())
-        .and_then(|stored| kept_key(&stored.key, Some(&stored.modality), chart.key.as_ref()))
+        .and_then(|stored| kept_key(&stored.key, stored.mode(), chart.key.as_ref()))
         .or_else(|| chart.key.as_ref().map(stored_key));
     let unknown_qualities: Vec<&StoredChordSymbol> = stored
         .into_iter()
@@ -327,9 +335,7 @@ pub(crate) fn encode_chord_chart(
         .collect();
     let stored = StoredChart {
         key: key.as_ref().map(|k| k.key.clone()).unwrap_or_default(),
-        modality: key
-            .and_then(|k| k.modality)
-            .unwrap_or_else(|| modality_text(Modality::Major).to_string()),
+        modality: key.and_then(|k| k.modality).unwrap_or_default(),
         metre: None,
         sections: chart
             .sections
@@ -381,7 +387,7 @@ pub(crate) fn decode_chord_chart(
 ) -> Option<ChordChart> {
     let stored: StoredChart = decode_json(json?, "chord_chart", id, unreadable)?;
     Some(ChordChart {
-        key: key(Some(&stored.key), Some(&stored.modality), unreadable),
+        key: key(Some(&stored.key), stored.mode(), unreadable),
         sections: stored
             .sections
             .into_iter()
