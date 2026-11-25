@@ -175,6 +175,34 @@ impl LibrarySort {
     /// The blob is positional bincode; the shell names its storage key by
     /// this number, so a shape change bumps it here and nowhere else (#2089).
     pub const BLOB_VERSION: u32 = 1;
+
+    /// A tap on the active field flips it; any other field opens at its
+    /// natural direction, whatever the current one (#2754).
+    #[must_use]
+    pub fn on_tap(self, field: SortField) -> Self {
+        if field != self.field {
+            return Self {
+                field,
+                direction: field.natural_direction(),
+            };
+        }
+        let direction = match self.direction {
+            SortDirection::Ascending => SortDirection::Descending,
+            SortDirection::Descending => SortDirection::Ascending,
+        };
+        Self { field, direction }
+    }
+}
+
+impl SortField {
+    /// Newest first for dates, A to Z for titles.
+    #[must_use]
+    pub fn natural_direction(self) -> SortDirection {
+        match self {
+            Self::DateAdded | Self::LastPracticed => SortDirection::Descending,
+            Self::Title => SortDirection::Ascending,
+        }
+    }
 }
 
 /// Round-trip through crux's actual FFI format (`BincodeFfiFormat`) — the
@@ -203,6 +231,58 @@ mod tests {
         let sort = LibrarySort::default();
         assert_eq!(sort.field, SortField::DateAdded);
         assert_eq!(sort.direction, SortDirection::Descending);
+    }
+
+    fn sort(field: SortField, direction: SortDirection) -> LibrarySort {
+        LibrarySort { field, direction }
+    }
+
+    #[test]
+    fn natural_direction_is_newest_first_for_dates_and_a_to_z_for_titles() {
+        assert_eq!(
+            SortField::DateAdded.natural_direction(),
+            SortDirection::Descending
+        );
+        assert_eq!(
+            SortField::LastPracticed.natural_direction(),
+            SortDirection::Descending
+        );
+        assert_eq!(
+            SortField::Title.natural_direction(),
+            SortDirection::Ascending
+        );
+    }
+
+    #[test]
+    fn tapping_the_active_field_flips_and_a_second_tap_flips_back() {
+        let newest = sort(SortField::DateAdded, SortDirection::Descending);
+        let flipped = newest.on_tap(SortField::DateAdded);
+        assert_eq!(
+            flipped,
+            sort(SortField::DateAdded, SortDirection::Ascending)
+        );
+        assert_eq!(flipped.on_tap(SortField::DateAdded), newest);
+    }
+
+    #[test]
+    fn tapping_another_field_opens_it_at_its_natural_direction_whatever_the_current_one() {
+        for direction in [SortDirection::Ascending, SortDirection::Descending] {
+            let current = sort(SortField::DateAdded, direction);
+            assert_eq!(
+                current.on_tap(SortField::LastPracticed),
+                sort(SortField::LastPracticed, SortDirection::Descending)
+            );
+            assert_eq!(
+                current.on_tap(SortField::Title),
+                sort(SortField::Title, SortDirection::Ascending)
+            );
+        }
+        for direction in [SortDirection::Ascending, SortDirection::Descending] {
+            assert_eq!(
+                sort(SortField::Title, direction).on_tap(SortField::DateAdded),
+                sort(SortField::DateAdded, SortDirection::Descending)
+            );
+        }
     }
 
     // ── Wire ──

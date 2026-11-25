@@ -82,11 +82,14 @@ run() {
   bash "$script" "$tmp/shot-$1.png" >"$tmp/stdout" 2>"$tmp/stderr"
 }
 
+unset SELFHOSTED_IOS_RUNTIME
+
 rt=com.apple.CoreSimulator.SimRuntime
+i16='"supportedDeviceTypes": [{"name": "iPhone 16"}, {"name": "iPhone Duo"}]'
 runtimes='[
-  {"identifier": "'$rt'.iOS-18-9", "platform": "iOS", "version": "18.9"},
+  {"identifier": "'$rt'.iOS-18-9", "platform": "iOS", "version": "18.9", '"$i16"'},
   {"identifier": "'$rt'.watchOS-27-0", "platform": "watchOS", "version": "27.0"},
-  {"identifier": "'$rt'.iOS-18-10", "platform": "iOS", "version": "18.10"}
+  {"identifier": "'$rt'.iOS-18-10", "platform": "iOS", "version": "18.10", '"$i16"'}
 ]'
 
 # ── An iPhone 16 exists: the newest one wins, never the Duo ──
@@ -112,6 +115,34 @@ expect "an iPhone 16 is created on the newest iOS, not a watchOS" true \
 expect "the created device is launched" true grep -qx "launch created-iOS-18-10 com.intrada.native --seed-sample-data" "$XCRUN_LOG"
 expect "the created device is screenshotted" true test -f "$tmp/shot-duo-only.png"
 expect "the Duo is never launched" false grep -Eq "^(install|launch) duo-" "$XCRUN_LOG"
+
+# ── Two runtimes share a version, one only for a newer iPhone (#2984) ──
+
+split_runtimes='[
+  {"identifier": "'$rt'.iOS-26-5", "platform": "iOS", "version": "26.5", '"$i16"'},
+  {"identifier": "'$rt'.iOS-27-2", "platform": "iOS", "version": "27.2", '"$i16"'},
+  {"identifier": "'$rt'.iOS-27-2-iPhone19-4", "platform": "iOS", "version": "27.2",
+   "supportedDeviceTypes": [{"name": "iPhone 19"}]}
+]'
+fresh split '{}' "$split_runtimes"
+expect "a run with a device-only runtime succeeds" true run split
+expect "the iPhone 16 is made on the general runtime, not the device-only one" true \
+  grep -qx "create iPhone 16 iPhone 16 $rt.iOS-27-2" "$XCRUN_LOG"
+
+# ── The pinned CI runtime wins when it is installed ──
+
+fresh pinned '{}' "$split_runtimes"
+export SELFHOSTED_IOS_RUNTIME=26.5
+expect "a run with a pinned runtime succeeds" true run pinned
+expect "the iPhone 16 is made on the pinned runtime" true \
+  grep -qx "create iPhone 16 iPhone 16 $rt.iOS-26-5" "$XCRUN_LOG"
+
+fresh pin-missing '{}' "$split_runtimes"
+export SELFHOSTED_IOS_RUNTIME=25.0
+expect "a run whose pin is not installed succeeds" true run pin-missing
+expect "a missing pin falls back to the newest that fits" true \
+  grep -qx "create iPhone 16 iPhone 16 $rt.iOS-27-2" "$XCRUN_LOG"
+unset SELFHOSTED_IOS_RUNTIME
 
 # ── Nothing can be made: the run stops and says so ──
 

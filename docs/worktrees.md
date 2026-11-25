@@ -12,7 +12,8 @@ with another worktree's. It ends by printing `cd <worktree> && claude`, the
 command that starts the session inside the new worktree (#2918): the
 `.claude/rules/` files load only there, and every command runs in place. It
 also prints the `EnterWorktree` call that moves a session already running into
-it (#2967).
+it (#2967). A session already in one worktrunk worktree cannot enter another
+directly: `ExitWorktree` with keep first, then `EnterWorktree` by path.
 Worktrunk's machine-local config
 (`~/.config/worktrunk/config.toml`) does the rest:
 

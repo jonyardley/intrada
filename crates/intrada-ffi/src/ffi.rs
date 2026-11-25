@@ -250,7 +250,7 @@ impl From<SortDirection> for PickerSortDirection {
 }
 
 #[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PickerSortArg {
     pub field: PickerSortField,
     pub direction: PickerSortDirection,
@@ -287,6 +287,41 @@ pub fn sort_and_filter_picker_candidates(
         &search,
         &filter.into(),
     )
+}
+
+impl From<LibrarySort> for PickerSortArg {
+    fn from(sort: LibrarySort) -> Self {
+        Self {
+            field: sort.field.into(),
+            direction: sort.direction.into(),
+        }
+    }
+}
+
+/// A plain call so the picker's shell-local sort and the Library screen's
+/// share one rule (#2754).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn library_sort_on_tap(current: PickerSortArg, field: PickerSortField) -> PickerSortArg {
+    LibrarySort::from(current).on_tap(field.into()).into()
+}
+
+// ── Variations sheet ──
+
+/// Positions in `labels`; a plain call since it runs on every keystroke.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn variation_matches(query: String, labels: Vec<String>) -> Vec<u32> {
+    intrada_core::domain::variation::matching_labels(&query, &labels)
+        .into_iter()
+        .filter_map(|index| u32::try_from(index).ok())
+        .collect()
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn variation_addable(query: String, taken: Vec<String>) -> Option<String> {
+    intrada_core::domain::variation::addable_label(&query, &taken)
 }
 
 // ── Key wheel ──
@@ -885,6 +920,35 @@ mod tests {
                 words(&["Scales"])
             ),
             words(&["Schubert"])
+        );
+    }
+
+    #[test]
+    fn library_sort_on_tap_carries_the_cores_rule_across() {
+        let sort = |field, direction| PickerSortArg { field, direction };
+        let newest = sort(PickerSortField::DateAdded, PickerSortDirection::Descending);
+        assert_eq!(
+            library_sort_on_tap(newest, PickerSortField::DateAdded),
+            sort(PickerSortField::DateAdded, PickerSortDirection::Ascending)
+        );
+        assert_eq!(
+            library_sort_on_tap(newest, PickerSortField::Title),
+            sort(PickerSortField::Title, PickerSortDirection::Ascending)
+        );
+    }
+
+    #[test]
+    fn variation_matching_carries_the_cores_rule_across() {
+        let words = |w: &[&str]| w.iter().map(ToString::to_string).collect::<Vec<_>>();
+        let sheet = words(&["Hands separately", "Dotted rhythms", "Left hand alone"]);
+        assert_eq!(variation_matches("HAND".to_string(), sheet.clone()), [0, 2]);
+        assert_eq!(
+            variation_addable(" dotted RHYTHMS".to_string(), sheet.clone()),
+            None
+        );
+        assert_eq!(
+            variation_addable(" Slow ".to_string(), sheet),
+            Some("Slow".to_string())
         );
     }
 }

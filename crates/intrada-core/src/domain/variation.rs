@@ -46,10 +46,42 @@ pub fn seed_if_empty(library: &[Variation]) -> Option<Vec<Variation>> {
 }
 
 pub fn live_with_label<'a>(library: &'a [Variation], label: &str) -> Option<&'a Variation> {
-    let wanted = label.to_lowercase();
+    let wanted = fold(label);
     library
         .iter()
-        .find(|v| v.deleted_at.is_none() && v.label.to_lowercase() == wanted)
+        .find(|v| v.deleted_at.is_none() && fold(&v.label) == wanted)
+}
+
+/// One fold for "same label", so the sheet offers as new exactly what a save
+/// would mint (#2754).
+fn fold(label: &str) -> String {
+    label.to_lowercase()
+}
+
+/// The positions in `labels` holding the typed text anywhere, case ignored;
+/// none for blank text.
+pub fn matching_labels<S: AsRef<str>>(query: &str, labels: &[S]) -> Vec<usize> {
+    let wanted = fold(query.trim());
+    if wanted.is_empty() {
+        return Vec::new();
+    }
+    labels
+        .iter()
+        .enumerate()
+        .filter(|(_, label)| fold(label.as_ref()).contains(&wanted))
+        .map(|(index, _)| index)
+        .collect()
+}
+
+/// The typed text, trimmed, as a new label, unless blank or already in
+/// `taken` whatever its case.
+pub fn addable_label<S: AsRef<str>>(query: &str, taken: &[S]) -> Option<String> {
+    let text = query.trim();
+    let wanted = fold(text);
+    if wanted.is_empty() || taken.iter().any(|t| fold(t.as_ref()) == wanted) {
+        return None;
+    }
+    Some(text.to_string())
 }
 
 pub fn is_live(library: &[Variation], id: &str) -> bool {
@@ -165,6 +197,62 @@ mod tests {
     fn built_in_ids_are_fixed_ulids() {
         for (id, _) in BUILT_INS {
             assert!(id.parse::<ulid::Ulid>().is_ok(), "{id}");
+        }
+    }
+
+    const SHEET: [&str; 3] = [
+        "Hands separately",
+        "Dotted rhythms",
+        "Left hand alone, eyes closed",
+    ];
+
+    #[test]
+    fn matching_finds_any_part_of_a_label_ignoring_case_and_spaces_round_the_text() {
+        for (query, expected) in [
+            ("left hand", vec![2]),
+            ("  HANDS ", vec![0]),
+            ("hand", vec![0, 2]),
+            ("", vec![]),
+            ("   ", vec![]),
+            ("trill", vec![]),
+        ] {
+            assert_eq!(matching_labels(query, &SHEET), expected, "{query:?}");
+        }
+    }
+
+    #[test]
+    fn typed_text_is_addable_only_when_no_label_holds_it_whatever_its_case() {
+        for (query, expected) in [
+            ("Left hand", Some("Left hand")),
+            ("  Slow practice ", Some("Slow practice")),
+            ("dotted rhythms", None),
+            ("DOTTED RHYTHMS ", None),
+            ("", None),
+            ("  ", None),
+        ] {
+            assert_eq!(
+                addable_label(query, &SHEET).as_deref(),
+                expected,
+                "{query:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_label_typed_earlier_in_the_sheet_is_not_addable_twice() {
+        let taken = [SHEET.as_slice(), &["Slow"]].concat();
+        assert_eq!(addable_label("slow", &taken), None);
+        assert_eq!(addable_label("slow", &SHEET).as_deref(), Some("slow"));
+    }
+
+    #[test]
+    fn an_addable_label_is_one_a_save_would_mint_and_a_taken_one_it_would_reuse() {
+        let library = vec![row("v1", "Dotted rhythms")];
+        let labels: Vec<&str> = library.iter().map(|v| v.label.as_str()).collect();
+        for query in ["dotted RHYTHMS", "Slow"] {
+            let offered = addable_label(query, &labels);
+            let (_, minted) = ids_for_labels(&library, &[query.to_string()], Utc::now());
+            assert_eq!(offered.is_some(), !minted.is_empty(), "{query:?}");
         }
     }
 }
