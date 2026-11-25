@@ -47,6 +47,7 @@ never wholesale; XCUITest stays on XCTest.
 - **A parser or validator gets a table test against its consumer** from inputs
   a user would produce (#1256); invented cases agree with your code by
   construction. Fixtures for a many-field type live in one place (Rust
-  `fixture()` with struct update, Swift a fixture enum with default arguments).
+  `fixture()` with struct update, Swift an `extension` with a static
+  `fixture(...)` or `preview(...)` taking default arguments).
 - **Say so in the PR when you skip tests**, in the **Coverage** line the
   shipping skill describes.

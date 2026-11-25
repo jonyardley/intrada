@@ -57,3 +57,30 @@ The hazards, by file:
 - **`crates/intrada-store`.** Testers' notebooks open in it; its migrations
   are recorded in GRDB's `grdb_migrations` table: append-only, per
   `.claude/rules/offline-first.md`.
+
+## Where stored and bridged types are built by hand
+
+Research for a change to a stored or bridged type, and its lane brief, list
+each place below that the change reaches:
+
+- **Store codec**: `StoredPlay`, `stored_play` and the reader's `plays` and
+  `play`, which also build a `Play` from a legacy row, in
+  `crates/intrada-core/src/stored_session.rs`. A session is one JSON blob in
+  `crates/intrada-store/src/sessions.rs`, so a new play field needs no SQL
+  migration; a new column does (`.claude/rules/offline-first.md`).
+- **Sync body pin**: `record_bodies_are_pinned`, `PINNED_SESSION` and
+  `full_session()` in `crates/intrada-core/src/sync/tests.rs`.
+- **Wire pins**: the blob pin above; `every_stored_enum_text_is_pinned` in
+  `crates/intrada-core/src/stored_session/tests.rs`; the settings blob pins in
+  `domain/types.rs`, `practice_defaults.rs`, `profile.rs` and `first_run.rs`.
+- **Bridge tests allowlist**: `scripts/bridge-tests-allowlist.txt`, checked by
+  `just check`. A new bridged type needs a `LiveBridge` test naming it or a
+  line there; the line comes off when the type gets its first test.
+- **Rust construction sites**: `crates/intrada-store/src/tests.rs` and
+  `crates/intrada-core/src/sample.rs` build `Play` in full; new tests use
+  `Play::fixture()` with struct update.
+- **Swift construction sites**: tests and previews calling a generated type's
+  memberwise init, such as `ios/Intrada/DesignSystem/PreviewStores.swift` and
+  files in `ios/IntradaTests`; grep `TypeName(` across `ios/Intrada` and
+  `ios/IntradaTests`. Shared fixtures live in
+  `ios/Intrada/DesignSystem/SessionPreviewFixtures.swift`.
