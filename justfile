@@ -110,6 +110,7 @@ hygiene:
         "ios-sim-device-test:bash scripts/tests/ios-sim-device-test.sh"
         "ios-run-sim-test:bash scripts/tests/ios-run-sim-test.sh"
         "ios-failed-tests-test:bash scripts/tests/ios-failed-tests-test.sh"
+        "ios-snapshot-filter-test:bash scripts/tests/ios-snapshot-filter-test.sh"
         "ios-ui-shards-test:bash scripts/tests/ios-ui-shards-test.sh"
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
@@ -600,7 +601,8 @@ ios-snapshots-optimize:
 # new image. Doing that by hand over the whole suite is the slow part of any UI
 # change — five rounds of it is most of what made #1256 Phase B feel long.
 #
-# `filter` is anything `-only-testing:` accepts, minus the target prefix:
+# `filter` is `Class` or `Class/testMethod`, exact names with no target prefix;
+# anything else fails in seconds rather than after the build (#2988):
 #   just ios-snapshots-record SessionSummarySnapshotTests/testReflectionSheet
 #   just ios-snapshots-record SessionSummarySnapshotTests   # the whole class
 [doc("Re-record the snapshot references matching a test filter, then optimise and check")]
@@ -608,6 +610,7 @@ ios-snapshots-optimize:
 ios-snapshots-record filter: _ios-sync
     #!/usr/bin/env bash
     set -euo pipefail
+    bash scripts/ios-snapshot-filter.sh "{{filter}}"
     snaps=ios/IntradaTests/__Snapshots__
     # A method filter names one reference; a class filter names all of its own.
     # Newline-delimited rather than an array: macOS ships bash 3.2, no mapfile.
