@@ -816,6 +816,10 @@ jobs:
       # a deleted snapshot reference correctly (#1631).
       - name: pr-visuals still classifies each shape correctly
         run: bash scripts/tests/pr-visuals-test.sh
+      # A filter matching no test would build for two minutes and run nothing,
+      # so ios-snapshots-record must keep refusing it up front (#2988).
+      - name: The snapshot record filter still refuses a name matching no test
+        run: bash scripts/tests/ios-snapshot-filter-test.sh
       # ── iOS simulator lock ───────────────────────────────────────────────
       # A crashed holder's lock must read as free, or the idle shutdown timer
       # keeps a sim booted until the next run clears it (#1885).
