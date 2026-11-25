@@ -85,7 +85,6 @@ ios/Intrada/Views/Components/StartHereCard.swift	spacing: 4	1	#2706
 ios/Intrada/Views/Components/TagChipInput.swift	.padding(.vertical, 10)	1	#2706
 ios/Intrada/Views/Components/TagChipInput.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/TagPills.swift	spacing: 6	1	#2706
-ios/Intrada/Views/Components/TempoStepper.swift	spacing: 24	1	#2706
 ios/Intrada/Views/Components/TempoTrend.swift	spacing: 2	1	#2706
 ios/Intrada/Views/Components/TickRow.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Components/TransportButton.swift	spacing: 32	1	#2706

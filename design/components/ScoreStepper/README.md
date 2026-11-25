@@ -1,8 +1,8 @@
 ---
 name: ScoreStepper
 status: stable
-ios_symbol: ScoreStepper
-ios_file: ios/Intrada/Views/Components/ScoreStepper.swift
+ios_symbol: ScoreStepper, TempoStepButton
+ios_file: ios/Intrada/Views/Components/ScoreStepper.swift, ios/Intrada/Views/Components/TempoStepButton.swift
 ios_snapshots: ComponentSnapshotTests/testScoreStepper.1.png
 decisions: T35, T39
 ---
@@ -19,11 +19,12 @@ Nudges a key's score up or down from where it starts, with minus and plus in thi
 
 - Giving a mark from nothing, or the overall session mark: use `ScoreSelector`.
 - Showing a score already given: use `ScoreRing`.
-- A tempo: use `TempoStepper`.
+- A tempo: use `DragValue` (`TempoDrag`).
 
 ## Variants
 
-None. The caller passes the score, where it came from, the range, a spoken label and what to do with the change.
+- **Stepper** (`ScoreStepper`): use for a score. The caller passes the score, where it came from, the range, a spoken label and what to do with the change.
+- **Ring button alone** (`TempoStepButton`): use for minus or plus beside another control, such as the metronome's readout while it sounds. The disabled state is an option on it.
 
 ## Behaviour
 
@@ -34,7 +35,7 @@ None. The caller passes the score, where it came from, the range, a spoken label
 
 ## Content
 
-- The score in DM Mono at 20 points (`IntradaFont.figureLarge`), between the two rings, with one word centred under it in `IntradaFont.small`. The value column is the shared stepper width (`StepperValue.width`), the same as `TempoStepper`'s, so the rings line up down a screen.
+- The score in DM Mono at 20 points (`IntradaFont.figureLarge`), between the two rings, with one word centred under it in `IntradaFont.small`. The value column is the shared stepper width (`StepperValue.width`), so the rings line up down a screen.
 - The word: "last time" for last time's score, "suggested" for a key never scored, "today" once the musician changes it.
 - "last time" and "suggested" draw the number and the word in `inkSecondary`; "today" draws both in `ink`, the word in `smallMedium`. The word tells them apart as well as the colour (T39).
 - Each ring is the shared stepper button: an ink glyph in a 32 point circle stroked one point in `divider`, on no box or fill.
@@ -67,4 +68,4 @@ ScoreStepper(
 
 ## Related
 
-`TempoStepper` shares the ring buttons. `ScoreSelector` gives a mark from nothing. `ScoreRing` shows a score already given.
+The metronome's readout shares the ring buttons; `DragValue` sets a tempo. `ScoreSelector` gives a mark from nothing. `ScoreRing` shows a score already given.

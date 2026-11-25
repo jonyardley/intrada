@@ -25,6 +25,7 @@ Intrada is a practice notebook for musicians, with an iPhone app. This is a publ
 - A text field keeps its white FieldCard or FormField look, so it reads as something you can type into.
 - Split rows with a hairline divider (HairlineDivider); never box them.
 - A stepper reads aloud as one adjustable control.
+- A tempo is a drag value (DragValue): the number in DM Mono with a faint up and down glyph, dragged up or down in steps, typed on a tap. No rings.
 - When last time's value is shown beside today's, a word tells them apart as well as `inkSecondary`.
 - A small edit that belongs to the screen underneath, such as a key's tempo and note, opens in a BottomSheet rather than expanding a row in place.
 - Rejected: white boxed buttons on a grey filled panel (#3004, T39 in [the design principles](../../docs/design-principles.md)).
@@ -67,7 +68,7 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 | Actions | SegmentedPills | Choosing one of two to five options in place |
 | Actions | ScoreSelector | Giving an item, a play or a session its mark |
 | Actions | ScoreStepper | Nudging a key's score from last time, with minus and plus |
-| Actions | TempoStepper | Setting a tempo by nudging or typing it |
+| Actions | DragValue | Setting a tempo or other number by dragging it up or down |
 | Actions | WeekStrip | Picking a day of the week on the Practice home |
 | Actions | AddRowButton | The full-width row that adds something to a list |
 | Text and labels | SectionHeader | A section's title with an optional action |

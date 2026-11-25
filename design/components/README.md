@@ -42,7 +42,7 @@ not exist. Rows without a link are still to be written.
 | [TabBar](TabBar/README.md) | The four tabs along the bottom of the app |
 | [ScoreSelector](ScoreSelector/README.md) | Giving an item, a play or a session its mark |
 | [ScoreStepper](ScoreStepper/README.md) | Nudging a key's score from last time, with minus and plus |
-| [TempoStepper](TempoStepper/README.md) | Setting a tempo by nudging or typing it |
+| [DragValue](DragValue/README.md) | Setting a tempo or other number by dragging it up or down |
 | [ReflectionKeySheet](ReflectionKeySheet/README.md) | One key's tempo and note after an item, opened from its name |
 | [LibraryItemCard](LibraryItemCard/README.md) | A piece or exercise in a list, with its mark |
 | [MasteryDeltaToast](MasteryDeltaToast/README.md) | The celebration banner for the biggest rise in a mark |

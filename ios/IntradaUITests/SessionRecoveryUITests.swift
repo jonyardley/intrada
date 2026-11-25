@@ -62,12 +62,13 @@ final class SessionRecoveryUITests: XCTestCase {
     let setMark = mark.value as? String
     XCTAssertTrue(setMark?.hasSuffix(", today") == true, "the nudge set today's score")
 
-    // The stepper is one element too; Faster is its trailing button.
+    // The tempo is one adjustable element; a drag up raises it.
     let tempo = app.element("reflection.tempo")
     let prefilled = tempo.value as? String
-    tempo.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    let start = tempo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+    start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -40)))
     let setTempo = tempo.value as? String
-    XCTAssertNotEqual(setTempo, prefilled, "Faster moved the tempo")
+    XCTAssertNotEqual(setTempo, prefilled, "a drag up moved the tempo")
 
     // Killed with no note typed, so only the mark's and the tempo's own sends can have saved them.
     app.terminate()

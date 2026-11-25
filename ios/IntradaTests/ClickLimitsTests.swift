@@ -68,10 +68,10 @@ struct ClickLimitsTests {
 /// The drag-to-BPM maths (#1823).
 @MainActor
 struct ClickDragTests {
-  private let points = ClickControl.dragPointsPerStep
+  private let points = DragStep.pointsPerStep
 
   private func bpm(_ translation: CGFloat, anchor: Int = 96) -> Int {
-    ClickControl.bpm(fromDragTranslation: translation, anchor: anchor, step: 2, band: 40...208)
+    DragStep.value(fromDragTranslation: translation, anchor: anchor, step: 2, range: 40...208)
   }
 
   @Test func aDragShorterThanOneStepChangesNothing() {

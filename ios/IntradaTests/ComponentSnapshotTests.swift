@@ -393,17 +393,17 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(steppers), as: config)
   }
 
-  func testTempoStepper() {
+  func testTempoDrag() {
     let limits = LimitsView.preview
     let band = limits.clickBand(unit: 4)
     let steppers = ZStack {
       PaperBackground()
       VStack(spacing: IntradaSpacing.section) {
-        TempoStepper(value: .constant(88), step: limits.clickStep, band: band)
-        TempoStepper(
+        TempoDrag(value: .constant(88), step: limits.clickStep, band: band)
+        TempoDrag(
           value: .constant(168), unit: 8, step: limits.clickStep,
           band: limits.clickBand(unit: 8))
-        TempoStepper(value: .constant(band.upperBound), step: limits.clickStep, band: band)
+        TempoDrag(value: .constant(band.upperBound), step: limits.clickStep, band: band)
       }
       .padding(IntradaSpacing.section)
     }

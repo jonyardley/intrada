@@ -79,12 +79,10 @@ struct ReflectionKeySheet: View {
         StepperRow {
           StepperRowLabel("Tempo reached")
         } stepper: {
-          TempoStepper(
+          TempoDrag(
             value: tempoBinding, unit: tempoRow.click.metre.unit,
             step: limits.clickStep, band: tempoRow.band.range,
-            accessibilityLabel: "Tempo for \(title)"
-          )
-          .accessibilityIdentifier("reflection.tempo")
+            accessibilityLabel: "Tempo for \(title)")
         }
       }
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {

@@ -38,15 +38,4 @@ struct StepperControlTests {
     ) { _ in }
     #expect(stepper.spokenValue == spoken)
   }
-
-  @Test func holdWaitsBeforeTheFirstRepeat() {
-    #expect(HoldRepeat.wait(after: .zero) == HoldRepeat.delay)
-  }
-
-  @Test func holdRepeatsSteadilyThenFasterAfterASecond() {
-    #expect(HoldRepeat.wait(after: .milliseconds(400)) == HoldRepeat.interval)
-    #expect(HoldRepeat.wait(after: .milliseconds(999)) == HoldRepeat.interval)
-    #expect(HoldRepeat.wait(after: .seconds(1)) == HoldRepeat.fastInterval)
-    #expect(HoldRepeat.fastInterval < HoldRepeat.interval)
-  }
 }

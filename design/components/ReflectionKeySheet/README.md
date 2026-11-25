@@ -33,7 +33,7 @@ One key's tempo and note on the item-complete sheet, opened by tapping the key's
 ## Content
 
 - The key's name is the sheet's title.
-- The tempo row: `FieldLabel` "Tempo" leading and a `TempoStepper` trailing, on paper between the cards, inset to the cards' text edge; the cards either side split it off, so no divider. No tempo row when the play has no tempo to correct.
+- The tempo row: "Tempo reached" leading and a `TempoDrag` trailing on the shared right edge. No tempo row when the play has no tempo to correct.
 - The sheet opens at the height of its content and drags up to full height for the keyboard or a long note.
 - The note: a `FieldCard` labelled "Note for D major", placeholder "Add a note", two to four lines in `IntradaFont.body`.
 - The refusal reads "Couldn't keep the note for D major." and then the core's message.
@@ -63,4 +63,4 @@ ReflectionKeySheet(
 
 ## Related
 
-`BottomSheet` is its chrome. `TempoStepper` sets the tempo. `ScoreStepper` scores the key on the row beneath.
+`BottomSheet` is its chrome. `DragValue` (`TempoDrag`) sets the tempo. `ScoreStepper` scores the key on the row beneath.

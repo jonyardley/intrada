@@ -37,16 +37,25 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
 
   /// One play scores with the same stepper as several, here on last time's score (#3004).
   func testReflectionSheet() {
-    let sheet = ZStack(alignment: .bottom) {
+    assertSnapshot(of: host(onePlaySheet(dragScore: false)), as: config)
+  }
+
+  // FIXME(#3004): the two option snapshots and the sheet's dragScore parameter
+  // go once the owner picks the score's control.
+  func testReflectionSheetOptionDragScore() {
+    assertSnapshot(of: host(onePlaySheet(dragScore: true)), as: config)
+  }
+
+  private func onePlaySheet(dragScore: Bool) -> some View {
+    ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
         tempoRows: [.preview("p1", lastScore: 7, startScore: 7)],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,
-        onSave: { _ in }, onSkip: {})
+        onSave: { _ in }, onSkip: {}, dragScore: dragScore)
     }
-    assertSnapshot(of: host(sheet), as: config)
   }
 
   func testReflectionSheetWithTempoTarget() {
@@ -65,7 +74,15 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
 
   /// Each key starts on last time's score or a changed one, with a note under D major (#3004).
   func testReflectionSheetWithThreeVariations() {
-    let sheet = ZStack(alignment: .bottom) {
+    assertSnapshot(of: host(threeVariationsSheet(dragScore: false)), as: config)
+  }
+
+  func testReflectionSheetWithThreeVariationsOptionDragScore() {
+    assertSnapshot(of: host(threeVariationsSheet(dragScore: true)), as: config)
+  }
+
+  private func threeVariationsSheet(dragScore: Bool) -> some View {
+    ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Major scales", elapsedDisplay: "11:20", tempoTarget: nil,
@@ -83,9 +100,8 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         seed: ReflectionAnswers.preview(
           marks: [DraftMark(playId: "p1", score: 5)],
           notes: [DraftNote(playId: "p3", note: "Stumbles at the top on the way down.")]),
-        onSave: { _ in }, onSkip: {})
+        onSave: { _ in }, onSkip: {}, dragScore: dragScore)
     }
-    assertSnapshot(of: host(sheet), as: config)
   }
 
   /// A key never scored starts on the core's suggestion, beside one scored before (#3004).

@@ -606,7 +606,7 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.updateEntryNotes(entryId: entryId, notes: nil)))
     XCTAssertNil(
       try bridge.rendered().summary?.entries.first?.notes, "clearing an entry note round-trips")
-    // Achieved tempo: the hand-off sheet's TempoStepper write, never previously
+    // Achieved tempo: the hand-off sheet's TempoDrag write, never previously
     // sent from Swift (#846). Round-trip set + clear through the live bridge.
     _ = try bridge.update(
       .session(

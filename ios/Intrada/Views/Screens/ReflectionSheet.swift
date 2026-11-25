@@ -93,6 +93,8 @@ struct ReflectionSheet: View {
   /// A key sheet's Done: the draft with that key's tempo and note, answered
   /// with the core's refusal or `nil` once it keeps them (#3004).
   let onKeyDraft: (ReflectionAnswers) -> String?
+  // FIXME(#3004): an option for the owner to compare; goes once the score's control is picked.
+  let dragScore: Bool
 
   @State private var marks: [String: Int]
   @State private var note: String
@@ -118,7 +120,8 @@ struct ReflectionSheet: View {
     onSave: @escaping (ReflectionAnswers) -> Void,
     onSkip: @escaping () -> Void,
     onDraft: @escaping (ReflectionAnswers) -> Void = { _ in },
-    onKeyDraft: @escaping (ReflectionAnswers) -> String? = { _ in nil }
+    onKeyDraft: @escaping (ReflectionAnswers) -> String? = { _ in nil },
+    dragScore: Bool = false
   ) {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
@@ -134,6 +137,7 @@ struct ReflectionSheet: View {
     self.onSkip = onSkip
     self.onDraft = onDraft
     self.onKeyDraft = onKeyDraft
+    self.dragScore = dragScore
     _marks = State(
       initialValue: Dictionary(
         (seed?.marks ?? []).map { ($0.playId, Int($0.score)) },
@@ -280,11 +284,9 @@ struct ReflectionSheet: View {
       StepperRow {
         StepperRowLabel("Tempo reached", detail: tempoTarget.map { "target \($0)" })
       } stepper: {
-        TempoStepper(
+        TempoDrag(
           value: tempoBinding(for: play.id), unit: row.click.metre.unit,
-          step: limits.clickStep, band: row.band.range
-        )
-        .accessibilityIdentifier("reflection.tempo")
+          step: limits.clickStep, band: row.band.range)
       }
       .padding(.top, IntradaSpacing.controlGap)
     }
@@ -408,7 +410,45 @@ struct ReflectionSheet: View {
   }
 
   /// Untouched, it shows the score the core will save (#3004).
-  private func scoreStepper(
+  @ViewBuilder private func scoreStepper(
+    _ play: ReflectionPlay, _ row: ReflectionTempoView, label: String
+  ) -> some View {
+    if dragScore {
+      scoreDrag(play, row, label: label)
+    } else {
+      ringScore(play, row, label: label)
+    }
+  }
+
+  private func scoreDrag(
+    _ play: ReflectionPlay, _ row: ReflectionTempoView, label: String
+  ) -> some View {
+    let origin = origin(play, row)
+    let score = marks[play.id] ?? Int(row.startScore)
+    let tint = origin == .today ? IntradaColor.ink : IntradaColor.inkSecondary
+    return DragValue(
+      value: score, step: 1, range: limits.scoreRange, tap: .action {},
+      accessibilityLabel: label, accessibilityValue: "\(score), \(origin.caption)",
+      accessibilityIdentifier: "reflection.mark",
+      onChange: { next in
+        marks[play.id] = next
+        draft()
+      },
+      readout: { shown, dragging in
+        VStack(spacing: 0) {
+          Text("\(shown)")
+            .font(IntradaFont.figureLarge)
+            .foregroundStyle(dragging ? IntradaColor.accent : tint)
+          Text(origin.caption)
+            .font(origin == .today ? IntradaFont.smallMedium : IntradaFont.small)
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .fixedSize()
+        }
+      })
+  }
+
+  private func ringScore(
     _ play: ReflectionPlay, _ row: ReflectionTempoView, label: String
   ) -> some View {
     ScoreStepper(
@@ -429,7 +469,7 @@ struct ReflectionSheet: View {
     tempoRows.first { $0.playId == playId }
   }
 
-  // TempoStepper only writes on an explicit tap or accessibility adjustment,
+  // TempoDrag only writes on a drag, a typed number or an accessibility adjustment,
   // never on appear, so a write here is the user considering the number (#1420).
   private func tempoBinding(for playId: String) -> Binding<Int> {
     Binding(
