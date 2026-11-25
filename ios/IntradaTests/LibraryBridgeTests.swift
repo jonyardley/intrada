@@ -55,6 +55,7 @@ final class LibraryBridgeTests: XCTestCase {
     let weeks = try bridge.rendered().practiceWeeks
     XCTAssertFalse(weeks.isEmpty, "the week strip should arrive on start")
     XCTAssertTrue(weeks.flatMap(\.days).contains { $0.isToday }, "one day should be today")
+    XCTAssertEqual(weeks.last?.title, "This week", "the core titles each week (#1377)")
   }
 
   /// An item's keys cross the wire as values (#846, #2106): the spelling

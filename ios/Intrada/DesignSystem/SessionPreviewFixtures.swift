@@ -134,7 +134,8 @@
           sessionIds: sessions[date] ?? [])
       }
       return PracticeWeekView(
-        days: days, practisedDays: UInt64(sessions.count), openingDay: openingDay)
+        days: days, practisedDays: UInt64(sessions.count), openingDay: openingDay,
+        title: "This week")
     }
   }
 
