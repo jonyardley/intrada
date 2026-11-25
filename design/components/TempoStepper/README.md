@@ -35,10 +35,10 @@ Sets a tempo: minus and plus in thin rings either side of the number, held to re
 
 ## Content
 
-- The core's readout split in two: the note and equals sign, "♩ =" or "♪ =" by the bar's unit, in `inkSecondary`, then the number in `ink`. Both in DM Mono at 15 points (`IntradaFont.figure`).
+- The core's readout split in two: the note and equals sign, "♩ =" or "♪ =" by the bar's unit, then the number. Both in `ink` in DM Mono at 20 points (`IntradaFont.figureLarge`), as the score stepper's number is, so every stepper value reads the same.
 - Each ring is an ink glyph in a 32 point circle stroked one point in `divider`, on no box or fill (T39). Disabled, the glyph turns `inkFainter` and the ring stays.
 - The band comes from the core per beat unit (`LimitsView.clickBand(unit:)`); the stepper never assumes its ends.
-- The stepper is as wide as its content, about 152 points; the caller places it.
+- The value sits in the shared stepper value column (`StepperValue.width`, at least 88 points, wider only when larger text needs it), so the rings of every stepper on a screen line up. The caller places it, trailing its row.
 - The picture shows a crotchet tempo, a quaver tempo and the top of the band, with plus disabled.
 
 ## Accessibility

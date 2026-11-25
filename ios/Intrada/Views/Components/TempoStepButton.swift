@@ -69,6 +69,12 @@ struct TempoStepButton: View {
   }
 }
 
+/// The least width between a stepper's rings, the same for every stepper, so
+/// the minus and plus line up down a screen; larger text widens it past this.
+enum StepperValue {
+  static let width: CGFloat = 88
+}
+
 /// Hold to repeat: the first repeat waits a moment so a tap stays one step,
 /// then repeats steadily, then faster once held for a second.
 enum HoldRepeat {

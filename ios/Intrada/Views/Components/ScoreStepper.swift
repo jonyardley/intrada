@@ -37,7 +37,7 @@ struct ScoreStepper: View {
           .lineLimit(1)
           .fixedSize()
       }
-      .frame(minWidth: 64, minHeight: 44)
+      .frame(minWidth: StepperValue.width, minHeight: 44)
       TempoStepButton(systemImage: "plus", label: "Higher", isEnabled: canRaise) {
         onChange(stepped(by: 1))
       }

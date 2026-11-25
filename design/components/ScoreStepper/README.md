@@ -34,7 +34,7 @@ None. The caller passes the score, where it came from, the range, a spoken label
 
 ## Content
 
-- The score in DM Mono at 20 points (`IntradaFont.figureLarge`), between the two rings, with one word under it in `IntradaFont.small`.
+- The score in DM Mono at 20 points (`IntradaFont.figureLarge`), between the two rings, with one word centred under it in `IntradaFont.small`. The value column is the shared stepper width (`StepperValue.width`), the same as `TempoStepper`'s, so the rings line up down a screen.
 - The word: "last time" for last time's score, "suggested" for a key never scored, "today" once the musician changes it.
 - "last time" and "suggested" draw the number and the word in `inkSecondary`; "today" draws both in `ink`, the word in `smallMedium`. The word tells them apart as well as the colour (T39).
 - Each ring is the shared stepper button: an ink glyph in a 32 point circle stroked one point in `divider`, on no box or fill.

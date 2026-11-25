@@ -158,7 +158,7 @@ struct ReflectionSheet: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
-        VStack(spacing: 8) {
+        VStack(spacing: IntradaSpacing.controlGap) {
           SectionTitle(Self.heading(elapsedDisplay: elapsedDisplay))
           Text("How did it go?")
             .font(IntradaFont.title).foregroundStyle(IntradaColor.ink)
@@ -171,30 +171,18 @@ struct ReflectionSheet: View {
         .frame(maxWidth: .infinity)
         .padding(.top, IntradaSpacing.card)
 
+        // The centred title block reads as the sheet's bar, as on every BottomSheet.
+        HairlineDivider().padding(.top, IntradaSpacing.section)
+
         if plays.count > 1 {
           sectionTitle("Confidence").padding(.top, IntradaSpacing.section)
           keyRows.padding(.top, IntradaSpacing.controlGap)
-        } else if let only = plays.first {
+        } else if let only = plays.first, let row = tempoRow(for: only.id) {
           // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
-          sectionTitle("Confidence").padding(.top, IntradaSpacing.section)
-          if let row = tempoRow(for: only.id) {
-            scoreStepper(only, row, label: "Score for \(singlePlayTitle(only))")
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.top, IntradaSpacing.controlGap)
-
-            SectionTitle(singlePlayTempoHeading)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.top, IntradaSpacing.card)
-            TempoStepper(
-              value: tempoBinding(for: only.id), unit: row.click.metre.unit,
-              step: limits.clickStep, band: row.band.range
-            )
-            .accessibilityIdentifier("reflection.tempo")
-            .padding(.top, IntradaSpacing.controlGap)
-          }
+          singlePlayRows(only, row).padding(.top, IntradaSpacing.section)
         }
 
-        sectionTitle("Reflection · optional").padding(.top, IntradaSpacing.card)
+        sectionTitle("Reflection · optional").padding(.top, IntradaSpacing.section)
         HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
           TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
             .lineLimit(3...5)
@@ -274,14 +262,51 @@ struct ReflectionSheet: View {
       ForEach(Array(plays.enumerated()), id: \.element.id) { index, play in
         if index > 0 { HairlineDivider() }
         keyRow(play)
-          .padding(.vertical, IntradaSpacing.controlGap)
+          .padding(.top, index > 0 ? IntradaSpacing.controlGap : 0)
+          .padding(.bottom, index < plays.count - 1 ? IntradaSpacing.controlGap : 0)
       }
     }
   }
 
+  private func singlePlayRows(_ play: ReflectionPlay, _ row: ReflectionTempoView) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      StepperRow {
+        rowLabel("Confidence", detail: nil)
+      } stepper: {
+        scoreStepper(play, row, label: "Score for \(singlePlayTitle(play))")
+      }
+      .padding(.bottom, IntradaSpacing.controlGap)
+      HairlineDivider()
+      StepperRow {
+        rowLabel("Tempo reached", detail: tempoTarget.map { "target \($0)" })
+      } stepper: {
+        TempoStepper(
+          value: tempoBinding(for: play.id), unit: row.click.metre.unit,
+          step: limits.clickStep, band: row.band.range
+        )
+        .accessibilityIdentifier("reflection.tempo")
+      }
+      .padding(.top, IntradaSpacing.controlGap)
+    }
+  }
+
+  private func rowLabel(_ title: String, detail: String?) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Text(title)
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.ink)
+      if let detail {
+        Text(detail)
+          .font(IntradaFont.small)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+    }
+    .accessibilityElement(children: .combine)
+  }
+
   @ViewBuilder private func keyRow(_ play: ReflectionPlay) -> some View {
     if play.isMarkable {
-      HStack(spacing: IntradaSpacing.cardCompact) {
+      StepperRow {
         Button {
           editingPlayId = play.id
         } label: {
@@ -293,7 +318,7 @@ struct ReflectionSheet: View {
         .accessibilityLabel(spokenRow(play))
         .accessibilityHint("Edit tempo and note")
         .accessibilityIdentifier("reflection.key")
-
+      } stepper: {
         if let row = tempoRow(for: play.id) {
           scoreStepper(play, row, label: "Score for \(rowTitle(play))")
         }
@@ -394,10 +419,6 @@ struct ReflectionSheet: View {
     active.currentItemTempoBpm.map {
       clickTempoWords(bpm: $0, unit: active.clickSeedMetre.unit).text
     }
-  }
-
-  private var singlePlayTempoHeading: String {
-    tempoTarget.map { "Tempo reached · target \($0)" } ?? "Tempo reached"
   }
 
   /// Untouched, it shows the score the core will save (#3004).

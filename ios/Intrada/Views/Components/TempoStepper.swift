@@ -23,16 +23,16 @@ struct TempoStepper: View {
       ) { nudge(by: -step) }
       HStack(spacing: IntradaSpacing.segmentGap) {
         Text(prefix)
-          .font(IntradaFont.figure)
-          .foregroundStyle(IntradaColor.inkSecondary)
+          .font(IntradaFont.figureLarge)
+          .foregroundStyle(IntradaColor.ink)
         TextField("", text: typedText)
           .keyboardType(.numberPad)
-          .font(IntradaFont.figure)
+          .font(IntradaFont.figureLarge)
           .foregroundStyle(IntradaColor.ink)
           .focused($typing)
           .fixedSize()
       }
-      .frame(minWidth: 64, minHeight: 44)
+      .frame(minWidth: StepperValue.width, minHeight: 44)
       TempoStepButton(
         systemImage: "plus", label: "Faster", isEnabled: value < band.upperBound,
         repeatsWhileHeld: true

@@ -18,6 +18,7 @@ struct ReflectionKeySheet: View {
   @State private var tempo: TrackedTempo?
   @State private var note: String
   @State private var refusal: String?
+  @State private var contentHeight: CGFloat = 0
 
   init(
     title: String, tempoRow: ReflectionTempoView?, limits: LimitsView,
@@ -41,14 +42,28 @@ struct ReflectionKeySheet: View {
 
   var body: some View {
     BottomSheet(
-      title: title, dismissesOnDone: false, onDone: done,
+      title: title, detents: [fitted, .large], dismissesOnDone: false, onDone: done,
       leadingAction: { EmptyView() },
       content: {
         ScrollView {
           content.padding(IntradaSpacing.card)
+            .onGeometryChange(for: CGFloat.self) {
+              $0.size.height
+            } action: {
+              contentHeight = $0
+            }
         }
       })
   }
+
+  /// Opens as tall as its few fields, then drags up for the keyboard or a long note.
+  private var fitted: PresentationDetent {
+    .height(contentHeight > 0 ? contentHeight + Self.barHeight : Self.openingHeight)
+  }
+
+  /// The inline title bar and grabber above the content.
+  private static let barHeight: CGFloat = 64
+  private static let openingHeight: CGFloat = 320
 
   var content: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.section) {
@@ -57,12 +72,12 @@ struct ReflectionKeySheet: View {
       }
       if let wayRow {
         PlayWayEditor(row: wayRow, choices: wayChoices, onChange: onWay)
-        HairlineDivider()
       }
       if let tempoRow, tempo != nil {
-        HStack(spacing: IntradaSpacing.cardCompact) {
+        // Inset to the cards' text, so the label and its value share one edge.
+        StepperRow {
           FieldLabel("Tempo")
-          Spacer(minLength: IntradaSpacing.controlGap)
+        } stepper: {
           TempoStepper(
             value: tempoBinding, unit: tempoRow.click.metre.unit,
             step: limits.clickStep, band: tempoRow.band.range,
@@ -70,7 +85,7 @@ struct ReflectionKeySheet: View {
           )
           .accessibilityIdentifier("reflection.tempo")
         }
-        HairlineDivider()
+        .padding(.horizontal, IntradaSpacing.card)
       }
       FieldCard("Note for \(title)") {
         TextField("Add a note", text: $note, axis: .vertical)
@@ -108,5 +123,19 @@ struct ReflectionKeySheet: View {
 
   private var tempoBinding: Binding<Int> {
     Binding(get: { tempo?.bpm ?? 0 }, set: { tempo?.set($0) })
+  }
+}
+
+/// A label or key name leading and a stepper trailing on one right edge, the
+/// row grammar both reflection sheets share (#3004).
+struct StepperRow<Leading: View, Stepper: View>: View {
+  @ViewBuilder let leading: Leading
+  @ViewBuilder let stepper: Stepper
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.cardCompact) {
+      leading.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+      stepper
+    }
   }
 }
