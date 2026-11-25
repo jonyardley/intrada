@@ -77,7 +77,4 @@ build is shared, it is walked against
 
 - **ML Kit.** The on-device text recognition API and its licensing need a
   fresh look before the capture phase.
-- **Page suggestions on Android.** Decided before the capture phase: an
-  on-device model behind the same suggestion shape (Gemini Nano through ML
-  Kit's GenAI APIs is the candidate, with narrow device support), or none.
 - **Roborazzi.** Version and CI setup against the Ubuntu runner image.
