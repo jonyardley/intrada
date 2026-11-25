@@ -63,6 +63,13 @@ final class VariationPickerUITests: XCTestCase {
     .tap()
   }
 
+  /// The plain stretch's name, which opens its sheet; the hands stretch reads "C major · …".
+  private func keyRow(_ app: XCUIApplication) -> XCUIElement {
+    app.buttons.matching(
+      NSPredicate(format: "identifier == %@ AND label BEGINSWITH %@", "reflection.key", "C major,")
+    ).firstMatch
+  }
+
   /// The stepper reads "5, last time": the score comes first.
   private func score(_ stepper: XCUIElement) -> Int {
     Int((stepper.value as? String)?.split(separator: ",").first ?? "") ?? 0
@@ -93,6 +100,22 @@ final class VariationPickerUITests: XCTestCase {
     let plain = score(markPlain)
     let hands = score(markHands)
     XCTAssertNotEqual(plain, hands, "the two stretches hold different scores")
+
+    // The key's sheet applies a typed tempo and a note on Done, even with
+    // the number pad still up (#3004).
+    keyRow(app).tap()
+    let note = app.element("reflection.keyNote")
+    XCTAssertTrue(note.waitForExistence(timeout: 5), "the key's sheet is up")
+    note.tap()
+    app.typeText("Even at the top")
+    app.element("reflection.tempo").tap()
+    app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3) + "120")
+    app.control("sheet.done", spoken: "Done").tap()
+    let row = keyRow(app)
+    XCTAssertTrue(row.waitForExistence(timeout: 5), "back on the item-complete sheet")
+    XCTAssertTrue(row.label.contains("120"), "the typed tempo reached the row: \(row.label)")
+    XCTAssertTrue(
+      row.label.hasSuffix("note: Even at the top"), "the note reached the row: \(row.label)")
 
     app.control("reflection.save", spoken: "Save & continue").tap()
 

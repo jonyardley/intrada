@@ -122,6 +122,23 @@ struct ReflectionSubmitBridgeTests {
     #expect(try bridge.rendered().activeSession?.reflection != nil, "the sheet stays up")
   }
 
+  /// An over-long key note from the key's sheet comes back as the message the sheet shows (#3004).
+  @Test func aRefusedKeyNoteKeepsTheItemCurrentWithItsMessage() throws {
+    let bridge = RowsBridge()
+    let playId = try sheetOpen(bridge)
+
+    _ = try bridge.update(
+      .session(
+        .submitReflection(
+          nextItemStartedAt: "2026-09-21T10:05:30Z",
+          answers: ReflectionAnswers(
+            marks: [], note: "", tempos: [], ways: [],
+            notes: [DraftNote(playId: playId, note: String(repeating: "a", count: 501))]))))
+
+    #expect(try bridge.rendered().error == "Note must not exceed 500 characters")
+    #expect(try bridge.rendered().activeSession?.reflection != nil, "the sheet stays up")
+  }
+
   @Test func theOpenSheetCarriesEachRowsSeededTempo() throws {
     let bridge = RowsBridge()
     let playId = try sheetOpen(

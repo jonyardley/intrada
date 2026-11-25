@@ -38,6 +38,7 @@ None. The caller passes the score, where it came from, the range, a spoken label
 - The word: "last time" for last time's score, "suggested" for a key never scored, "today" once the musician changes it.
 - "last time" and "suggested" draw the number and the word in `inkSecondary`; "today" draws both in `ink`, the word in `smallMedium`. The word tells them apart as well as the colour (T39).
 - Each ring is the shared stepper button: an ink glyph in a 32 point circle stroked one point in `divider`, on no box or fill.
+- The stepper keeps its own width, so at large text sizes the key's name beside it wraps instead of the word spilling under the rings.
 - The range comes from the core (`LimitsView.scoreMin` and `scoreMax`, 1 to 10 today); the stepper never assumes ten. The starting score and the word are worked out by the core.
 - The picture shows each word and the top of the range, with plus disabled.
 
