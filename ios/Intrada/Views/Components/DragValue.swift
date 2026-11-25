@@ -120,7 +120,8 @@ struct DragValue<Readout: View>: View {
           .focused($typing)
           .fixedSize()
       }
-      .font(IntradaFont.figureLarge)
+      .font(IntradaFont.title)
+      .monospacedDigit()
       .foregroundStyle(IntradaColor.ink)
       .opacity(typing ? 1 : 0)
       .allowsHitTesting(typing)
@@ -247,7 +248,8 @@ extension DragStep {
   }
 #endif
 
-/// A tempo as a drag value: the core's readout in DM Mono, the number typed on a tap.
+/// A tempo as a drag value: the core's readout set as the metronome sets it, in
+/// Hanken Grotesk with tabular digits, since "♩ =" is words, not a figure; typed on a tap.
 struct TempoDrag: View {
   @Binding var value: Int
   var unit: UInt8 = 4
@@ -262,7 +264,8 @@ struct TempoDrag: View {
       accessibilityIdentifier: "reflection.tempo", onChange: { value = $0 },
       readout: { shown, dragging in
         Text(words(shown).text)
-          .font(IntradaFont.figureLarge)
+          .font(IntradaFont.title)
+          .monospacedDigit()
           .foregroundStyle(dragging ? IntradaColor.accent : IntradaColor.ink)
           .lineLimit(1)
           .fixedSize()

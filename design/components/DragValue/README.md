@@ -24,7 +24,7 @@ A number dragged up or down in steps, with a faint up and down glyph saying it c
 ## Variants
 
 - **Drag value** (`DragValue`): use for any stepped number; the caller draws the readout.
-- **Tempo** (`TempoDrag`): use for a tempo the musician corrects; the core's readout in DM Mono, typed on a tap.
+- **Tempo** (`TempoDrag`): use for a tempo the musician corrects; the core's readout in Hanken Grotesk with tabular digits, as the metronome sets it, typed on a tap.
 
 ## Behaviour
 
@@ -38,7 +38,7 @@ A number dragged up or down in steps, with a faint up and down glyph saying it c
 
 - The caller's readout, then `arrow.up.and.down` at caption size in `inkFaintIcon`, in a capsule padded by `IntradaSpacing.cardCompact`, at least 44 points tall.
 - At rest the capsule is clear, or the caller's fill (the musician's highlighter while the metronome sounds). Dragging, it is `accent` at `IntradaOpacity.wash` with the lifted shadow.
-- `TempoDrag` shows the core's readout, "♩ = 88" or "♪ = 168" by the bar's unit, in `ink` in DM Mono at 20 points (`IntradaFont.figureLarge`). The metronome keeps its own readout in Hanken Grotesk.
+- `TempoDrag` shows the core's readout, "♩ = 88" or "♪ = 168" by the bar's unit, in `ink` in Hanken Grotesk at 20 points (`IntradaFont.title`) with tabular digits, set as the metronome sets its readout: "♩ =" is words, so DM Mono would space it wide.
 - The picture shows a crotchet tempo, a quaver tempo and the top of the band.
 
 ## Accessibility

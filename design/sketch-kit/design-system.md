@@ -25,7 +25,7 @@ Intrada is a practice notebook for musicians, with an iPhone app. This is a publ
 - A text field keeps its white FieldCard or FormField look, so it reads as something you can type into.
 - Split rows with a hairline divider (HairlineDivider); never box them.
 - A stepper reads aloud as one adjustable control.
-- A tempo is a drag value (DragValue): the number in DM Mono with a faint up and down glyph, dragged up or down in steps, typed on a tap. No rings.
+- A tempo is a drag value (DragValue): the readout in Hanken Grotesk with tabular digits, as the metronome sets it, with a faint up and down glyph, dragged up or down in steps, typed on a tap. No rings.
 - When last time's value is shown beside today's, a word tells them apart as well as `inkSecondary`.
 - A small edit that belongs to the screen underneath, such as a key's tempo and note, opens in a BottomSheet rather than expanding a row in place.
 - Rejected: white boxed buttons on a grey filled panel (#3004, T39 in [the design principles](../../docs/design-principles.md)).

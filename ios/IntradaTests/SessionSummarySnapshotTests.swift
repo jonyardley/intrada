@@ -37,16 +37,10 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
 
   /// One play scores with the same stepper as several, here on last time's score (#3004).
   func testReflectionSheet() {
-    assertSnapshot(of: host(onePlaySheet(dragScore: false)), as: config)
+    assertSnapshot(of: host(onePlaySheet), as: config)
   }
 
-  // FIXME(#3004): the two option snapshots and the sheet's dragScore parameter
-  // go once the owner picks the score's control.
-  func testReflectionSheetOptionDragScore() {
-    assertSnapshot(of: host(onePlaySheet(dragScore: true)), as: config)
-  }
-
-  private func onePlaySheet(dragScore: Bool) -> some View {
+  private var onePlaySheet: some View {
     ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
@@ -54,7 +48,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         tempoRows: [.preview("p1", lastScore: 7, startScore: 7)],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,
-        onSave: { _ in }, onSkip: {}, dragScore: dragScore)
+        onSave: { _ in }, onSkip: {})
     }
   }
 
@@ -74,14 +68,10 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
 
   /// Each key starts on last time's score or a changed one, with a note under D major (#3004).
   func testReflectionSheetWithThreeVariations() {
-    assertSnapshot(of: host(threeVariationsSheet(dragScore: false)), as: config)
+    assertSnapshot(of: host(threeVariationsSheet), as: config)
   }
 
-  func testReflectionSheetWithThreeVariationsOptionDragScore() {
-    assertSnapshot(of: host(threeVariationsSheet(dragScore: true)), as: config)
-  }
-
-  private func threeVariationsSheet(dragScore: Bool) -> some View {
+  private var threeVariationsSheet: some View {
     ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
@@ -100,7 +90,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         seed: ReflectionAnswers.preview(
           marks: [DraftMark(playId: "p1", score: 5)],
           notes: [DraftNote(playId: "p3", note: "Stumbles at the top on the way down.")]),
-        onSave: { _ in }, onSkip: {}, dragScore: dragScore)
+        onSave: { _ in }, onSkip: {})
     }
   }
 
