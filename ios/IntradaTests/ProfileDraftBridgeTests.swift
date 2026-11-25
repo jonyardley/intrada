@@ -13,12 +13,10 @@ struct ProfileDraftBridgeTests {
     let draft = Profile(name: "Jon", instrument: "Violin", iconChoice: .cello, colour: .coral)
     _ = try bridge.update(.profile(.draft(draft)))
 
-    #expect(
-      try bridge.rendered().profile.draft
-        == ProfileDraftView(suggestedIcon: .violin, icon: .cello, iconChosen: true))
+    #expect(try bridge.rendered().profile.draftIcon == .cello)
 
     _ = try bridge.update(.profile(.draftEnded))
 
-    #expect(try bridge.rendered().profile.draft == nil)
+    #expect(try bridge.rendered().profile.draftIcon == nil)
   }
 }

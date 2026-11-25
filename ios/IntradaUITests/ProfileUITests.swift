@@ -113,25 +113,15 @@ final class ProfileUITests: XCTestCase {
     cello.tap()
     app.control("sheet.done", spoken: "Done").tap()
     XCTAssertTrue(
-      app.staticTexts["Chosen by you"].waitForExistence(timeout: 5), "the pick reads as one")
+      app.staticTexts["All icons"].waitForNonExistence(timeout: 5), "the picker has closed")
     app.control("profileEdit.save", spoken: "Save").tap()
     XCTAssertTrue(app.staticTexts["Violin"].waitForExistence(timeout: 5), "the new instrument")
 
     edit.tap()
-    XCTAssertTrue(
-      app.staticTexts["Chosen by you"].waitForExistence(timeout: 5),
-      "the cello pick was kept, not dropped for the violin's match")
-
-    // Picking the match reads as following the instrument before Save.
     app.control("profileEdit.changeIcon", spoken: "Change icon").tap()
-    app.row("iconPicker.tile", spokenContaining: "Violin").tap()
-    app.control("sheet.done", spoken: "Done").tap()
-    XCTAssertTrue(
-      app.staticTexts["All icons"].waitForNonExistence(timeout: 5), "the picker has closed")
-    XCTAssertFalse(app.staticTexts["Chosen by you"].exists, "the match is not a pick")
-    XCTAssertTrue(
-      app.staticTexts["Matches violin"].waitForExistence(timeout: 5),
-      "the caption follows the core's rule at once")
+    let kept = app.row("iconPicker.tile", spokenContaining: "Cello")
+    XCTAssertTrue(kept.waitForExistence(timeout: 5), "the cello tile")
+    XCTAssertTrue(kept.isSelected, "the cello pick was kept, not dropped for the violin's match")
   }
 
   /// The practice defaults the musician sets on the Profile screen are still

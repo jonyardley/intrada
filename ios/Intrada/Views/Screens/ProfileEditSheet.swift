@@ -93,24 +93,11 @@ struct ProfileEditSheet: View {
   }
 
   // Until the core has the draft, the saved profile's icon stands in (#2519).
-  private var icons: ProfileDraftView {
-    if let draft = profile?.draft { return draft }
-    guard let profile else {
-      return ProfileDraftView(suggestedIcon: .other, icon: .other, iconChosen: false)
-    }
-    return ProfileDraftView(
-      suggestedIcon: profile.suggestedIcon, icon: profile.icon, iconChosen: profile.iconChosen)
+  private var shownIcon: InstrumentIcon {
+    profile?.draftIcon ?? profile?.icon ?? .other
   }
 
-  private var iconCaption: String {
-    if icons.iconChosen { return "Chosen by you" }
-    if icons.suggestedIcon != .other {
-      return "Matches \(icons.suggestedIcon.tileLabel.lowercased())"
-    }
-    return "No match"
-  }
-
-  // Stacked at accessibility sizes so the caption keeps whole words and the button its label (#2126).
+  // Stacked at accessibility sizes so the button keeps its label (#2126).
   private var iconCard: some View {
     let stacked = dynamicTypeSize.isAccessibilitySize
     let layout: AnyLayout =
@@ -118,13 +105,10 @@ struct ProfileEditSheet: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.cardCompact))
       : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
     return layout {
-      ProfileBadge(icon: icons.icon)
-      VStack(alignment: .leading, spacing: 3) {
-        FieldLabel("Icon")
-        Text(iconCaption)
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
+      ProfileBadge(icon: shownIcon)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Icon, \(shownIcon.accessibilityLabel)")
+        .accessibilityAddTraits(.isImage)
       if !stacked {
         Spacer(minLength: IntradaSpacing.controlGap)
       }

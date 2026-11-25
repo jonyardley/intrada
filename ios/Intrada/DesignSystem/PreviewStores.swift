@@ -559,7 +559,7 @@
       ProfileView(
         name: "Jon", instrument: "Cello", suggestedIcon: .cello, icon: .cello, iconChosen: false,
         colour: .coral, greeting: "Morning, Jon", instrumentNames: ["Cello", "Piano", "Violin"],
-        draft: nil)
+        draftIcon: nil)
     }
   }
 #endif
