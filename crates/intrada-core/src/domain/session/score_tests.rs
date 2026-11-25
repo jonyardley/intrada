@@ -882,6 +882,27 @@ fn a_draft_the_core_does_not_keep_is_refused_aloud() {
 }
 
 #[test]
+fn a_kept_draft_lifts_an_earlier_refusal() {
+    let (mut m, play_id) = sheet_open_in_g(vec![]);
+    send(
+        &mut m,
+        SessionEvent::UpdateReflectionDraft {
+            answers: noted("not-a-play", "rushed"),
+        },
+    );
+    assert!(m.last_error.is_some());
+
+    send(
+        &mut m,
+        SessionEvent::UpdateReflectionDraft {
+            answers: noted(&play_id, "steady"),
+        },
+    );
+
+    assert_eq!(m.last_error, None);
+}
+
+#[test]
 fn a_refused_draft_note_with_no_earlier_note_leaves_none() {
     let (mut m, play_id) = sheet_open_in_g(vec![]);
 

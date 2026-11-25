@@ -319,6 +319,8 @@ pub(super) fn update_reflection_draft(
         draft.answers = answers;
     }
     let persist = persist_active(active);
+    // A kept draft lifts an earlier refusal, or the key sheet's Done reads it.
+    model.last_error = None;
     if let Some(refusal) = note_refusal {
         model.raise_error(refusal);
     }
