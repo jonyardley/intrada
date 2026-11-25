@@ -258,6 +258,7 @@ fn current_session() -> PracticeSession {
             back_at: Some(at("2026-09-01T10:02:30Z")),
             left_out: true,
         }],
+        note: None,
     };
     let entry = SetlistEntry {
         plan: PlannedItem {

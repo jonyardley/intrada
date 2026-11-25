@@ -497,6 +497,7 @@ mod tests {
                     back_at: Some(now),
                     left_out: true,
                 }],
+                note: None,
             }],
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {

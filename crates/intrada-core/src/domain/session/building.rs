@@ -222,6 +222,60 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
         .then_some(way)
 }
 
+/// Each key's latest score for the item, most recent session first (#3004).
+fn last_scores(model: &Model, item_id: &str) -> Vec<(Option<Key>, u8)> {
+    let mut sessions: Vec<&PracticeSession> = model
+        .sessions
+        .iter()
+        .filter(|s| s.entries.iter().any(|e| e.plan.item_id == item_id))
+        .collect();
+    sessions.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+    let mut latest: Vec<(Option<Key>, u8)> = Vec::new();
+    let plays = sessions.into_iter().flat_map(|s| {
+        s.entries
+            .iter()
+            .filter(|e| e.plan.item_id == item_id)
+            .flat_map(|e| e.plays.iter())
+            .rev()
+    });
+    for play in plays {
+        let Some(score) = play.score else { continue };
+        let key = score_key(model, item_id, play.key);
+        if !latest.iter().any(|(k, _)| Key::same_or_written(*k, key)) {
+            latest.push((key, score));
+        }
+    }
+    latest
+}
+
+/// The written key in either form, and no key, read as one.
+fn score_key(model: &Model, item_id: &str, key: Option<Key>) -> Option<Key> {
+    item_reads_as(model, item_id, written_key_as_none(model, item_id, key))
+}
+
+pub(crate) fn last_score(model: &Model, item_id: &str, key: Option<Key>) -> Option<u8> {
+    let key = score_key(model, item_id, key);
+    last_scores(model, item_id)
+        .into_iter()
+        .find(|(k, _)| Key::same_or_written(*k, key))
+        .map(|(_, score)| score)
+}
+
+pub(crate) const DEFAULT_START_SCORE: u8 = 5;
+
+/// Last time's score in this key, else the item's other keys' last scores
+/// averaged, else the middle of the scale.
+pub(crate) fn start_score(model: &Model, item_id: &str, key: Option<Key>) -> u8 {
+    let scores = last_scores(model, item_id);
+    let key = score_key(model, item_id, key);
+    scores
+        .iter()
+        .find(|(k, _)| Key::same_or_written(*k, key))
+        .map(|(_, score)| *score)
+        .or_else(|| rounded_mean(scores.iter().map(|(_, score)| *score)))
+        .unwrap_or(DEFAULT_START_SCORE)
+}
+
 pub(super) fn set_session_length(
     model: &mut Model,
     length_mins: Option<u16>,

@@ -249,6 +249,7 @@ fn entry(id: &str) -> SetlistEntry {
             click_pattern: None,
             score: Some(4),
             away: vec![],
+            note: None,
         }],
     }
 }

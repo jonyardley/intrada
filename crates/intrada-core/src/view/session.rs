@@ -210,6 +210,8 @@ fn reflection_tempos(
                 click,
                 band,
                 set_by_hand: hand_set.is_some(),
+                last_score: None,
+                start_score: session::DEFAULT_START_SCORE,
             }
         })
         .collect()
@@ -2975,6 +2977,7 @@ mod tests {
             note: "even quavers".to_string(),
             tempos: vec![],
             ways: Vec::new(),
+            notes: vec![],
         };
         let reading = TempoReading {
             bpm: 72,

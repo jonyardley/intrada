@@ -252,6 +252,8 @@ struct StoredPlay {
     score: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     away: Option<Vec<StoredAway>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    note: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -384,6 +386,7 @@ impl Reader {
             click_pattern: e.click_pattern.as_ref().map(click_state),
             score: e.score,
             away: Vec::new(),
+            note: None,
         }]
     }
 
@@ -426,6 +429,7 @@ impl Reader {
                     left_out: a.left_out,
                 })
                 .collect(),
+            note: p.note.clone(),
         }
     }
 }
@@ -510,6 +514,7 @@ fn stored_play(p: &Play) -> StoredPlay {
                 })
                 .collect(),
         ),
+        note: p.note.clone(),
     }
 }
 
