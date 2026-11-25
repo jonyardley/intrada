@@ -130,6 +130,16 @@ fn plays_win_over_stale_legacy_keys() {
     assert!(entry.plays.iter().all(|p| p.variation_ids.is_empty()));
 }
 
+/// Rows written before a play carried a note (#3004).
+#[test]
+fn a_play_written_before_notes_reads_as_no_note() {
+    let entries = r#"[{"id":"e1","itemId":"i1","itemTitle":"Major Scales","itemType":"exercise","position":0,"durationSecs":300,"status":"completed","plays":[{"id":"p1","startedAt":"2026-09-01T10:00:00Z","seconds":300,"score":8}]}]"#;
+    let entry = only_entry(entries);
+    assert_eq!(entry.plays[0].score, Some(8));
+    assert_eq!(entry.plays[0].note, None);
+    assert!(read(entries).unreadable.is_empty());
+}
+
 // ── Values the core cannot read (#949) ──
 
 #[test]
@@ -258,6 +268,7 @@ fn current_session() -> PracticeSession {
             back_at: Some(at("2026-09-01T10:02:30Z")),
             left_out: true,
         }],
+        note: None,
     };
     let entry = SetlistEntry {
         plan: PlannedItem {

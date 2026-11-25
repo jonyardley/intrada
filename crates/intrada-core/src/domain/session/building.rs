@@ -222,6 +222,71 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
         .then_some(way)
 }
 
+/// Each way's latest score for the item, most recent session first: a key
+/// with a variation is its own way, apart from the plain key (#3004).
+fn last_scores(model: &Model, item_id: &str) -> Vec<(PlayWay, u8)> {
+    let mut sessions: Vec<&PracticeSession> = model
+        .sessions
+        .iter()
+        .filter(|s| s.entries.iter().any(|e| e.plan.item_id == item_id))
+        .collect();
+    sessions.sort_by_key(|s| std::cmp::Reverse(s.started_at));
+    let mut latest: Vec<(PlayWay, u8)> = Vec::new();
+    let plays = sessions.into_iter().flat_map(|s| {
+        s.entries
+            .iter()
+            .filter(|e| e.plan.item_id == item_id)
+            .flat_map(|e| e.plays.iter())
+            .rev()
+    });
+    for play in plays {
+        let Some(score) = play.score else { continue };
+        let way = score_way(model, item_id, &play.way());
+        if !latest.iter().any(|(w, _)| w.is_same_way(&way)) {
+            latest.push((way, score));
+        }
+    }
+    latest
+}
+
+/// The written key in either form, and no key, read as one.
+fn score_way(model: &Model, item_id: &str, way: &PlayWay) -> PlayWay {
+    PlayWay {
+        key: item_reads_as(model, item_id, written_key_as_none(model, item_id, way.key)),
+        variation_ids: way.variation_ids.clone(),
+    }
+}
+
+pub(crate) fn last_score(model: &Model, item_id: &str, way: &PlayWay) -> Option<u8> {
+    let way = score_way(model, item_id, way);
+    last_scores(model, item_id)
+        .into_iter()
+        .find(|(w, _)| w.is_same_way(&way))
+        .map(|(_, score)| score)
+}
+
+pub(crate) const DEFAULT_START_SCORE: u8 = 5;
+
+/// Last time's score this way, else the item's other keys' last plain scores
+/// averaged (variations left out, decided on #3004), else the middle.
+pub(crate) fn start_score(model: &Model, item_id: &str, way: &PlayWay) -> u8 {
+    let scores = last_scores(model, item_id);
+    let way = score_way(model, item_id, way);
+    scores
+        .iter()
+        .find(|(w, _)| w.is_same_way(&way))
+        .map(|(_, score)| *score)
+        .or_else(|| {
+            rounded_mean(
+                scores
+                    .iter()
+                    .filter(|(w, _)| w.variation_ids.is_empty())
+                    .map(|(_, score)| *score),
+            )
+        })
+        .unwrap_or(DEFAULT_START_SCORE)
+}
+
 pub(super) fn set_session_length(
     model: &mut Model,
     length_mins: Option<u16>,

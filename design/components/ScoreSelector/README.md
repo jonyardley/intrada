@@ -13,10 +13,11 @@ Gives an item, a play or a whole session its mark: one box for each mark from 1 
 
 ## When to use
 
-- Marking how it went, on the reflection page and the session summary: each item, each play of an item played more than once, and the overall session mark.
+- Marking how it went on the session summary: each item, each play of an item played more than once, and the overall session mark.
 
 ## When not to use
 
+- Scoring on the reflection sheet, where the score starts on last time's or a suggested one: use `ScoreStepper`.
 - Showing a mark already given: use `ScoreRing`.
 - Choosing one of a few named options: use `SegmentedPills`.
 

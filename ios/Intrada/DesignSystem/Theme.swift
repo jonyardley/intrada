@@ -153,6 +153,8 @@ enum IntradaFont {
 
   // ── 20 ──
   static let title = Font.custom(Hanken.semibold, size: 20, relativeTo: .title3)
+  /// A number that leads its row, such as the score on a score stepper.
+  static let figureLarge = Font.custom(Mono.regular, size: 20, relativeTo: .title3)
 
   // ── 17 ──
   static let cardTitle = Font.custom(Hanken.semibold, size: cardTitleSize, relativeTo: .headline)

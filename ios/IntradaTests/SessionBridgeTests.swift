@@ -408,7 +408,8 @@ final class SessionBridgeTests: XCTestCase {
     let playId = try XCTUnwrap(try bridge.rendered().activeSession?.entries.first?.plays.last?.id)
     let answers = ReflectionAnswers(
       marks: [DraftMark(playId: playId, score: 7)], note: "bar 12 rushed",
-      tempos: [DraftTempo(playId: playId, tempo: 160, click: click)], ways: [])
+      tempos: [DraftTempo(playId: playId, tempo: 160, click: click)], ways: [],
+      notes: [DraftNote(playId: playId, note: "lighter in G")])
     let requests = try bridge.update(.session(.updateReflectionDraft(answers: answers)))
 
     let open = try XCTUnwrap(try bridge.rendered().activeSession?.reflection)
@@ -605,7 +606,7 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.updateEntryNotes(entryId: entryId, notes: nil)))
     XCTAssertNil(
       try bridge.rendered().summary?.entries.first?.notes, "clearing an entry note round-trips")
-    // Achieved tempo: the hand-off sheet's TempoStepper write, never previously
+    // Achieved tempo: the hand-off sheet's TempoDrag write, never previously
     // sent from Swift (#846). Round-trip set + clear through the live bridge.
     _ = try bridge.update(
       .session(

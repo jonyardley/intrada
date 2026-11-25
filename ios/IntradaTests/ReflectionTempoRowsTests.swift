@@ -13,7 +13,7 @@ struct ReflectionTempoRowsTests {
   private func row(tempo: UInt16, setByHand: Bool) -> ReflectionTempoView {
     ReflectionTempoView(
       playId: "p1", tempo: tempo, click: quavers, band: TempoBand(unit: 8, min: 40, max: 400),
-      setByHand: setByHand)
+      setByHand: setByHand, lastScore: nil, startScore: 5)
   }
 
   @Test(
@@ -33,5 +33,25 @@ struct ReflectionTempoRowsTests {
     #expect(tracked.userSet == userSet)
     let drafts = TrackedTempo.handSet([row], tracked: ["p1": tracked])
     #expect(drafts == sent.map { [DraftTempo(playId: "p1", tempo: $0, click: quavers)] } ?? [])
+  }
+}
+
+/// The key note field's cap counts what the core counts, so a note it lets
+/// through is never refused for length (#3004).
+struct ReflectionKeyNoteCapTests {
+  @Test(
+    arguments: [
+      ("short", 10, "short"),
+      ("exactly ten", 11, "exactly ten"),
+      ("one too many", 11, "one too man"),
+      ("", 3, ""),
+      ("e\u{301}e\u{301}", 3, "e\u{301}"),
+      ("🇬🇧🇬🇧", 3, "🇬🇧"),
+      ("éé", 1, "é"),
+    ])
+  func capKeepsWholeCharactersWithinTheScalarLimit(typed: String, max: Int, kept: String) {
+    let capped = ReflectionKeySheet.capped(typed, to: max)
+    #expect(capped == kept)
+    #expect(capped.unicodeScalars.count <= max)
   }
 }

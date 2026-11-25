@@ -102,6 +102,8 @@ pub struct LimitsView {
     pub planned_duration_min_mins: u16,
     pub planned_duration_max_mins: u16,
     pub planned_duration_default_mins: u16,
+    /// Counted in Unicode scalars, as the core counts (#3004).
+    pub play_note_max_chars: u32,
 }
 
 /// Seconds to the stepper's whole minutes, the lower bound rounded up and the
@@ -146,6 +148,7 @@ impl Default for LimitsView {
             planned_duration_min_mins,
             planned_duration_max_mins,
             planned_duration_default_mins,
+            play_note_max_chars: u32::try_from(validation::MAX_PLAY_NOTE).unwrap_or(u32::MAX),
         }
     }
 }
@@ -223,6 +226,19 @@ mod tests {
                 "a mark of {score} is outside the offered range but the core accepts it"
             );
         }
+    }
+
+    #[test]
+    fn the_limits_round_trip_on_the_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(LimitsView::default());
+    }
+
+    #[test]
+    fn the_offered_key_note_length_is_what_validate_play_note_accepts() {
+        let max = LimitsView::default().play_note_max_chars as usize;
+
+        assert!(crate::validation::validate_play_note(&"é".repeat(max)).is_ok());
+        assert!(crate::validation::validate_play_note(&"é".repeat(max + 1)).is_err());
     }
 
     #[test]

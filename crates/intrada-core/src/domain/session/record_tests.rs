@@ -345,6 +345,7 @@ fn every_field_set() -> ActiveSession {
                 left_out: false,
             },
         ],
+        note: Some("thumb under".to_string()),
         ..Play::fixture()
     }];
     ActiveSession {
@@ -358,6 +359,10 @@ fn every_field_set() -> ActiveSession {
             reading: sounding(84),
             answers: ReflectionAnswers {
                 note: "steady".to_string(),
+                notes: vec![DraftNote {
+                    play_id: "play-1".to_string(),
+                    note: "lighter".to_string(),
+                }],
                 ..ReflectionAnswers::default()
             },
         }),

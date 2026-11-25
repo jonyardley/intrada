@@ -26,24 +26,14 @@ struct ClickControl: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.marker) private var marker
+  private let initiallyDragging: Bool
 
-  /// The tempo the drag started from; every frame steps off this anchor,
-  /// not the last frame's value (#1823).
-  @State private var dragAnchor: Int?
-  /// Tracks every step crossed, for the readout and the haptic; distinct
-  /// from what has actually reached the click engine (#1823).
-  @State private var liveBpm: Int?
-  @State private var lastCommittedBpm: Int?
-  @State private var lastCommitAt: ContinuousClock.Instant?
   /// Must stay at or above `ClickEngine.leadInSeconds`, or a commit inside
   /// the previous restart's lead-in cancels it before it ever sounds, and
   /// the click goes silent for the whole drag (#1823). Not `private`, so
   /// `ClickControlTests` can assert the invariant directly.
   static let commitInterval: Duration = .milliseconds(
     Int(ClickEngine.leadInSeconds * 1000) + 20)
-
-  private var isDragging: Bool { dragAnchor != nil }
-  private var displayedBpm: Int { liveBpm ?? bpm }
 
   init(
     bpm: Int, unit: UInt8 = 4, step: Int, band: ClosedRange<Int>, isRunning: Bool,
@@ -64,10 +54,7 @@ struct ClickControl: View {
     self.onToggle = onToggle
     self.onStep = onStep
     self.onDragChange = onDragChange
-    // Previews/snapshots can't drive a real finger drag; this seeds the
-    // dragging visual state in its place (#1823).
-    self._dragAnchor = State(initialValue: initiallyDragging ? bpm : nil)
-    self._liveBpm = State(initialValue: initiallyDragging ? bpm : nil)
+    self.initiallyDragging = initiallyDragging
   }
 
   var body: some View {
@@ -86,86 +73,24 @@ struct ClickControl: View {
   }
 
   private var toggle: some View {
-    Button {
-      Haptic.impact.play()
-      onToggle()
-    } label: {
-      readoutRow
-        .padding(.horizontal, IntradaSpacing.cardCompact)
-        .frame(minHeight: 44)
-        .background(capsuleFill, in: Capsule())
-        .dropShadow(isDragging ? .lifted : .none)
-        .scaleEffect(isDragging ? 1.04 : 1)
-    }
-    .buttonStyle(PressRebound())
-    .accessibilityLabel(isRunning ? "Stop the metronome" : "Start the metronome")
-    .accessibilityValue(spokenValue)
-    .accessibilityAdjustableAction(adjust)
-    .accessibilityIdentifier("click.toggle")
-    .highPriorityGesture(dragGesture)
-    .onDisappear(perform: resetDrag)
-    .animation(reduceMotion ? nil : IntradaMotion.snappy, value: isDragging)
-  }
-
-  private var readoutRow: some View {
-    HStack(spacing: IntradaSpacing.controlGap / 2) {
-      Label(readout, systemImage: "metronome")
-        .font(isDragging ? IntradaFont.title : IntradaFont.bodyMedium)
+    DragValue(
+      value: bpm, step: step, range: band,
+      tap: .action(onToggle),
+      accessibilityLabel: isRunning ? "Stop the metronome" : "Start the metronome",
+      accessibilityValue: spokenValue, accessibilityIdentifier: "click.toggle",
+      restingFill: isRunning ? marker : .clear,
+      commitInterval: Self.commitInterval, initiallyDragging: initiallyDragging,
+      onAdjust: onStep, onChange: onDragChange
+    ) { shown, dragging in
+      Label(readout(bpm: shown), systemImage: "metronome")
+        .font(dragging ? IntradaFont.title : IntradaFont.bodyMedium)
         .monospacedDigit()
         // "♩ = 208" is one notation token; at the largest text sizes it wraps
         // between the glyph and the number, which reads as two facts.
         .lineLimit(1)
         .minimumScaleFactor(0.6)
-        .foregroundStyle(isDragging ? IntradaColor.accent : tint)
-      if !isDragging {
-        gripGlyph
-      }
+        .foregroundStyle(dragging ? IntradaColor.accent : tint)
     }
-  }
-
-  /// The passive hint that this is a drag target, not just a toggle, with no
-  /// first-use tooltip to dismiss (#1823).
-  private var gripGlyph: some View {
-    Image(systemName: "arrow.up.and.down")
-      .iconSize(.caption, weight: .semibold)
-      .foregroundStyle(IntradaColor.inkFaintIcon)
-      .accessibilityHidden(true)
-  }
-
-  private var dragGesture: some Gesture {
-    DragGesture(minimumDistance: 4)
-      .onChanged { value in
-        let anchor = dragAnchor ?? bpm
-        if dragAnchor == nil {
-          dragAnchor = anchor
-          liveBpm = bpm
-          lastCommittedBpm = bpm
-          lastCommitAt = .now
-        }
-        let next = Self.bpm(
-          fromDragTranslation: value.translation.height, anchor: anchor, step: step, band: band)
-        guard next != liveBpm else { return }
-        Haptic.selection.play()
-        liveBpm = next
-        commit(next)
-      }
-      .onEnded { _ in
-        if let liveBpm, liveBpm != lastCommittedBpm {
-          onDragChange(liveBpm)
-        }
-        resetDrag()
-      }
-  }
-
-  /// Caps how often the drag restarts the click engine (#1823): the readout
-  /// and haptic track every step, the engine only takes what its lead-in
-  /// silence can absorb without the pulse reading as broken.
-  private func commit(_ value: Int) {
-    let now = ContinuousClock.now
-    if let lastCommitAt, now - lastCommitAt < Self.commitInterval { return }
-    lastCommittedBpm = value
-    lastCommitAt = now
-    onDragChange(value)
   }
 
   // The steppers are gone while the click is stopped and a drag is out of
@@ -178,30 +103,11 @@ struct ClickControl: View {
     }
   }
 
-  /// Points of vertical drag per tempo step, tuned by feel on the simulator
-  /// (#1823): fine enough that a step reads as deliberate, loose enough that a
-  /// thumb's-length drag crosses most of the usable range.
-  static let dragPointsPerStep: CGFloat = 8
+  var readout: String { readout(bpm: bpm) }
 
-  /// Anchored to the tempo the gesture began at, not the last frame's value,
-  /// so drift never compounds across steps (#1823).
-  static func bpm(
-    fromDragTranslation translation: CGFloat, anchor: Int, step: Int, band: ClosedRange<Int>
-  ) -> Int {
-    let steps = Int(-translation / dragPointsPerStep)
-    return min(band.upperBound, max(band.lowerBound, anchor + steps * step))
-  }
-
-  private func resetDrag() {
-    dragAnchor = nil
-    liveBpm = nil
-    lastCommittedBpm = nil
-    lastCommitAt = nil
-  }
-
-  var readout: String {
+  private func readout(bpm shown: Int) -> String {
     if unavailable { return "Metronome unavailable" }
-    if showsBpmNumeral { return words.text }
+    if showsBpmNumeral { return words(shown).text }
     return targetDisplay ?? "Metronome"
   }
 
@@ -212,18 +118,15 @@ struct ClickControl: View {
     return isRunning ? IntradaColor.accent : IntradaColor.inkSecondary
   }
 
-  private var capsuleFill: Color {
-    if isDragging { return IntradaColor.accent.opacity(IntradaOpacity.wash) }
-    return isRunning ? marker : .clear
-  }
-
   var spokenValue: String {
     if unavailable { return "unavailable" }
-    if showsBpmNumeral { return words.spoken }
-    return targetSpoken ?? words.spoken
+    if showsBpmNumeral { return words(bpm).spoken }
+    return targetSpoken ?? words(bpm).spoken
   }
 
-  private var words: TempoWords { clickTempoWords(bpm: UInt16(clamping: displayedBpm), unit: unit) }
+  private func words(_ shown: Int) -> TempoWords {
+    clickTempoWords(bpm: UInt16(clamping: shown), unit: unit)
+  }
 }
 
 #if DEBUG

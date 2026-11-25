@@ -12,6 +12,7 @@ pub const MAX_TITLE: usize = 500;
 pub const MAX_COMPOSER: usize = 200;
 pub const MAX_NOTES: usize = 5000;
 pub const MAX_INTENTION: usize = 500;
+pub const MAX_PLAY_NOTE: usize = 500;
 pub const MAX_TAG: usize = 100;
 pub const MAX_TEMPO_MARKING: usize = 100;
 pub const MIN_BPM: u16 = 1;
@@ -254,6 +255,16 @@ pub fn validate_tags(tags: &[String]) -> Result<(), LibraryError> {
                 message: format!("Each tag must be between 1 and {MAX_TAG} characters"),
             });
         }
+    }
+    Ok(())
+}
+
+pub fn validate_play_note(note: &str) -> Result<(), LibraryError> {
+    if exceeds_chars(note, MAX_PLAY_NOTE) {
+        return Err(LibraryError::Validation {
+            field: "note".to_string(),
+            message: format!("Keep the note under {MAX_PLAY_NOTE} characters."),
+        });
     }
     Ok(())
 }

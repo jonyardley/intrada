@@ -152,4 +152,8 @@ pub struct ReflectionTempoView {
     pub click: ClickState,
     pub band: TempoBand,
     pub set_by_hand: bool,
+    /// The latest score for this item in this row's key, most recent session first.
+    pub last_score: Option<u8>,
+    /// `last_score`, else the item's other keys' last scores averaged, else 5.
+    pub start_score: u8,
 }

@@ -160,6 +160,7 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
             click_pattern: None,
             score: None,
             away: Vec::new(),
+            note: None,
         }
     }
 

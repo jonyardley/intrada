@@ -5065,6 +5065,7 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
             click_pattern: None,
             score: Some(6),
             away: Vec::new(),
+            note: None,
         }],
     });
 }
@@ -5107,6 +5108,7 @@ fn pinned_active_session() -> ActiveSession {
                 left_out: false,
             },
         ],
+        note: Some("thumb under".to_string()),
     }];
     let mut untouched = create_entry("x1", "Scales", ItemKind::Exercise, 1);
     untouched.id = "e2".to_string();
@@ -5139,6 +5141,10 @@ fn pinned_active_session() -> ActiveSession {
                     key: crate::domain::key::Key::parse("D major"),
                     variation_ids: vec!["v-1".to_string()],
                 }],
+                notes: vec![DraftNote {
+                    play_id: "e2-play".to_string(),
+                    note: "lighter".to_string(),
+                }],
             },
         }),
         length_mins: Some(30),
@@ -5156,18 +5162,20 @@ const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "000000001400000000000000323032362d30392d30335430393a30303a32305a78000101780001",
     "07080103000000000000000302022900010402000000000000001400000000000000323032362d",
     "30392d30335430393a30313a30305a011400000000000000323032362d30392d30335430393a30",
-    "373a30305a011400000000000000323032362d30392d30335430393a30383a32305a0000020000",
-    "000000000065320200000000000000783101000000000000000000000000000000060000000000",
-    "00005363616c657301000000000000000000000000000000020000000000000000000000000100",
-    "0000000000001400000000000000323032362d30392d30335430393a30303a30305a1400000000",
-    "000000323032362d30392d30335430383a34373a30305a011400000000000000323032362d3039",
-    "2d30335430393a30303a30305aa800010107080103000000000000000302022900010000000000",
-    "0000070000000000000065322d706c617906060000000000000073746561647901000000000000",
-    "00070000000000000065322d706c61799600000100000000000000070000000000000065322d70",
-    "6c6179010100000000000000010000000001000000000000000300000000000000762d31011e00",
+    "373a30305a011400000000000000323032362d30392d30335430393a30383a32305a0000010b00",
+    "0000000000007468756d6220756e64657202000000000000006532020000000000000078310100",
+    "000000000000000000000000000006000000000000005363616c65730100000000000000000000",
+    "00000000000200000000000000000000000001000000000000001400000000000000323032362d",
+    "30392d30335430393a30303a30305a1400000000000000323032362d30392d30335430383a3437",
+    "3a30305a011400000000000000323032362d30392d30335430393a30303a30305aa80001010708",
+    "01030000000000000003020229000100000000000000070000000000000065322d706c61790606",
+    "000000000000007374656164790100000000000000070000000000000065322d706c6179960000",
+    "0100000000000000070000000000000065322d706c617901010000000000000001000000000100",
+    "0000000000000300000000000000762d310100000000000000070000000000000065322d706c61",
+    "7907000000000000006c696768746572011e00",
 );
 
-const PINNED_BLOB_VERSION: u32 = 12;
+const PINNED_BLOB_VERSION: u32 = 13;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump
@@ -6351,6 +6359,10 @@ fn answers_for(play_id: &str) -> ReflectionAnswers {
             click: Some(seven_eight_on_group_starts()),
         }],
         ways: Vec::new(),
+        notes: vec![DraftNote {
+            play_id: play_id.to_string(),
+            note: "thumb under".to_string(),
+        }],
     }
 }
 
@@ -6624,6 +6636,7 @@ fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
     ];
 
     for (case, answers) in cases {
+        model.last_error = None;
         let saves = write_draft(&mut model, answers);
         assert_eq!(
             draft(&model).map(|d| &d.answers),
@@ -6631,9 +6644,10 @@ fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
             "{case}: the last good draft stands"
         );
         assert!(saves.is_empty(), "{case}: nothing saved");
-        assert!(
-            model.last_error.is_none(),
-            "{case}: no banner behind the sheet"
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("Couldn't save the reflection."),
+            "{case}: refused aloud, so the key sheet stays open (#3004)"
         );
     }
 }
@@ -6788,6 +6802,7 @@ fn submit_reflection_closes_the_item_with_every_answer() {
     assert_eq!(finished.duration_secs, 30, "closed at the draft's instant");
     assert_eq!(finished.notes.as_deref(), Some("left hand late in bar 12"));
     assert_eq!(finished.plays[0].score, Some(7));
+    assert_eq!(finished.plays[0].note.as_deref(), Some("thumb under"));
     assert_eq!(
         finished.plays[0].achieved_tempo,
         Some(seven_eight_on_group_starts().metre.crotchet_bpm(96))
@@ -6855,7 +6870,7 @@ fn submit_reflection_without_an_open_sheet_is_refused() {
 }
 
 #[test]
-fn a_mark_of_zero_is_left_unmarked() {
+fn a_mark_of_zero_reads_as_untouched_and_saves_the_starting_score() {
     let (mut model, start) = model_with_active_session(2);
     let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
     prepare(&mut model, start + chrono::Duration::seconds(30));
@@ -6875,7 +6890,10 @@ fn a_mark_of_zero_is_left_unmarked() {
 
     assert_eq!(model.error_seq, errors_before);
     assert_eq!(current_index(&model), 1);
-    assert!(session_entries(&model)[0].plays[0].score.is_none());
+    assert_eq!(
+        session_entries(&model)[0].plays[0].score,
+        Some(DEFAULT_START_SCORE)
+    );
 }
 
 #[test]

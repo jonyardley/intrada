@@ -3,7 +3,9 @@ use crate::domain::first_run::build_first_run_view;
 use crate::domain::item::ItemKind;
 use crate::domain::key::Key;
 use crate::domain::profile::build_profile_view;
-use crate::domain::session::{item_reads_as, last_time, opening_way, PlayWay, SessionStatus};
+use crate::domain::session::{
+    item_reads_as, last_score, last_time, opening_way, start_score, PlayWay, SessionStatus,
+};
 use crate::model::{
     BuildingSetlistView, EntryVariationsView, LimitsView, Model, SetlistBlockView, ViewModel,
 };
@@ -191,6 +193,17 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             view.record.last_time = last_time(model, item_id)
                 .filter(|_| played_plain && active.reflection.is_none())
                 .map(|way| last_time_view(current_entry, way, &labels));
+            if let (Some(sheet), Some(draft)) =
+                (view.reflection.as_mut(), active.reflection.as_ref())
+            {
+                for row in &mut sheet.tempos {
+                    if let Some(play) = current_entry.play(&row.play_id) {
+                        let way = draft.answers.way_of(play);
+                        row.last_score = last_score(model, item_id, &way);
+                        row.start_score = start_score(model, item_id, &way);
+                    }
+                }
+            }
             if let (Some(finish), Some(item), Some(draft)) = (
                 view.record.finish.as_mut(),
                 model

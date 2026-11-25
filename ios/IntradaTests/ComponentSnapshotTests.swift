@@ -42,7 +42,8 @@ final class ComponentSnapshotTests: SnapshotTestCase {
       clickTempoBands: [TempoBand(unit: 4, min: 40, max: 208)],
       clickMetrePresets: LimitsView.preview.clickMetrePresets,
       clickBars: LimitsView.preview.clickBars,
-      plannedDurationMinMins: 1, plannedDurationMaxMins: 60, plannedDurationDefaultMins: 5)
+      plannedDurationMinMins: 1, plannedDurationMaxMins: 60, plannedDurationDefaultMins: 5,
+      playNoteMaxChars: 500)
     let rings = ZStack {
       PaperBackground()
       HStack(spacing: 24) {
@@ -371,6 +372,42 @@ final class ComponentSnapshotTests: SnapshotTestCase {
       .padding(IntradaSpacing.section)
     }
     assertSnapshot(of: host(selectors), as: config)
+  }
+
+  func testScoreStepper() {
+    let states: [(Int, ScoreStepper.Origin)] = [
+      (4, .lastTime), (5, .today), (6, .suggested), (10, .today),
+    ]
+    let steppers = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        ForEach(Array(states.enumerated()), id: \.offset) { _, state in
+          ScoreStepper(
+            score: state.0, origin: state.1, range: LimitsView.preview.scoreRange,
+            accessibilityLabel: "Score for D major"
+          ) { _ in }
+        }
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(steppers), as: config)
+  }
+
+  func testTempoDrag() {
+    let limits = LimitsView.preview
+    let band = limits.clickBand(unit: 4)
+    let steppers = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        TempoDrag(value: .constant(88), step: limits.clickStep, band: band)
+        TempoDrag(
+          value: .constant(168), unit: 8, step: limits.clickStep,
+          band: limits.clickBand(unit: 8))
+        TempoDrag(value: .constant(band.upperBound), step: limits.clickStep, band: band)
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(steppers), as: config)
   }
 
   func testLibraryItemCard() {

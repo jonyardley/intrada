@@ -38,6 +38,31 @@ pub(super) fn update_entry_score(
     persist_if_active(model)
 }
 
+/// Written by the sheet's submit only, so the entry has already closed.
+pub(super) fn update_play_note(
+    model: &mut Model,
+    entry_id: String,
+    play_id: String,
+    note: String,
+) -> Command<Effect, Event> {
+    if validation::validate_play_note(&note).is_err() {
+        return crux_core::render::render();
+    }
+    let Some(entry) = entry_for_update_mut(model, &entry_id) else {
+        return crux_core::render::render();
+    };
+    if entry.status != EntryStatus::Completed {
+        return crux_core::render::render();
+    }
+    let Some(play) = entry.plays.iter_mut().find(|p| p.id == play_id) else {
+        model.raise_error(format!("Play '{play_id}' not found"));
+        return crux_core::render::render();
+    };
+    play.note = Some(note);
+    model.last_error = None;
+    persist_if_active(model)
+}
+
 pub(super) fn update_play_way(
     model: &mut Model,
     entry_id: String,

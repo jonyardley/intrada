@@ -25,6 +25,7 @@ Intrada is a practice notebook for musicians, with an iPhone app. This is a publ
 - A text field keeps its white FieldCard or FormField look, so it reads as something you can type into.
 - Split rows with a hairline divider (HairlineDivider); never box them.
 - A stepper reads aloud as one adjustable control.
+- A tempo is a drag value (DragValue): the readout in Hanken Grotesk with tabular digits, as the metronome sets it, with a faint up and down glyph, dragged up or down in steps, typed on a tap. No rings.
 - When last time's value is shown beside today's, a word tells them apart as well as `inkSecondary`.
 - A small edit that belongs to the screen underneath, such as a key's tempo and note, opens in a BottomSheet rather than expanding a row in place.
 - Rejected: white boxed buttons on a grey filled panel (#3004, T39 in [the design principles](../../docs/design-principles.md)).
@@ -36,7 +37,7 @@ Hanken Grotesk for every word; DM Mono only for a value that is a number alone, 
 | Size | Styles | For |
 |---|---|---|
 | 30 | `pageTitle` | The page title |
-| 20 | `title` | A hero or the key picker |
+| 20 | `title`, `figureLarge` | A hero or the key picker, a number that leads its row |
 | 17 | `cardTitle`, `body`, `bodyMedium` | Card titles, body, fields and values, emphasis |
 | 15 | `label`, `secondary`, `figure`, `button`, `segment` | Labels, secondary lines, figures, buttons, pills |
 | 13 | `small`, `smallMedium`, `badge` | Tabs, badges and chips |
@@ -60,11 +61,14 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 | Surfaces | FieldCard | A form field with its label inside the card |
 | Surfaces | FormField | A labelled text field in a form |
 | Surfaces | BottomSheet | A short task over the current screen |
+| Surfaces | ReflectionKeySheet | One key's tempo and note after an item, opened from its name |
 | Surfaces | HairlineDivider | The 1 point line between rows |
 | Surfaces | UpNextHero | The suggested next session, ready to start |
 | Actions | MarkerButton | The one call to action on a screen, in the musician's highlighter |
 | Actions | SegmentedPills | Choosing one of two to five options in place |
 | Actions | ScoreSelector | Giving an item, a play or a session its mark |
+| Actions | ScoreStepper | Nudging a key's score from last time, with minus and plus |
+| Actions | DragValue | Setting a tempo or other number by dragging it up or down |
 | Actions | WeekStrip | Picking a day of the week on the Practice home |
 | Actions | AddRowButton | The full-width row that adds something to a list |
 | Text and labels | SectionHeader | A section's title with an optional action |

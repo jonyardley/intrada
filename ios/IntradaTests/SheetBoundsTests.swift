@@ -19,7 +19,8 @@ struct SheetBoundsTests {
     clickMetrePresets: LimitsView.preview.clickMetrePresets,
     clickBars: LimitsView.preview.clickBars,
     // Unlike the seconds on purpose: the sheet reads the core's minutes (#2467).
-    plannedDurationMinMins: 3, plannedDurationMaxMins: 9, plannedDurationDefaultMins: 7)
+    plannedDurationMinMins: 3, plannedDurationMaxMins: 9, plannedDurationDefaultMins: 7,
+    playNoteMaxChars: 12)
 
   private func clickSheet() -> ClickSheet {
     ClickSheet(click: ClickController(), bpm: 120, limits: limits)

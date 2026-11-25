@@ -283,13 +283,20 @@ pub(super) fn update_reflection_draft(
     let entry = active.current_entry();
     answers.marks.retain(|mark| mark.score != 0);
     tidy_answers_note(&mut answers);
+    tidy_play_notes(&mut answers);
+    let note_refusal = active
+        .reflection
+        .as_ref()
+        .and_then(|draft| keep_last_good_notes(&mut answers, &draft.answers.notes));
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     }
-    if active.reflection.is_none()
-        || !draft_answers_valid(entry, &answers)
-        || !draft_ways_valid(entry, &answers.ways, model)
-    {
+    if active.reflection.is_none() {
+        return crux_core::render::render();
+    }
+    // The key sheet closes only on a draft the core kept (#3004).
+    if !draft_answers_valid(entry, &answers) || !draft_ways_valid(entry, &answers.ways, model) {
+        model.raise_error(REFLECTION_REFUSED);
         return crux_core::render::render();
     }
     answers.ways.retain(|row| {
@@ -311,7 +318,30 @@ pub(super) fn update_reflection_draft(
     if let Some(draft) = active.reflection.as_mut() {
         draft.answers = answers;
     }
-    persist_active(active)
+    let persist = persist_active(active);
+    // A kept draft lifts an earlier refusal, or the key sheet's Done reads it.
+    model.last_error = None;
+    if let Some(refusal) = note_refusal {
+        model.raise_error(refusal);
+    }
+    persist
+}
+
+/// A note over the limit keeps that key's last good one, so the rest of the
+/// draft still reaches crash recovery (#3004).
+fn keep_last_good_notes(answers: &mut ReflectionAnswers, drafted: &[DraftNote]) -> Option<String> {
+    let mut refusal = None;
+    answers.notes = std::mem::take(&mut answers.notes)
+        .into_iter()
+        .filter_map(|row| match validation::validate_play_note(&row.note) {
+            Ok(()) => Some(row),
+            Err(e) => {
+                refusal.get_or_insert(e.to_string());
+                drafted.iter().find(|d| d.play_id == row.play_id).cloned()
+            }
+        })
+        .collect();
+    refusal
 }
 
 const REFLECTION_REFUSED: &str = "Couldn't save the reflection.";
@@ -334,9 +364,17 @@ pub(super) fn submit_reflection(
     // The sheet's selector reads 0 as no mark, here and in the draft.
     answers.marks.retain(|mark| mark.score != 0);
     tidy_answers_note(&mut answers);
+    tidy_play_notes(&mut answers);
     // Checked whole before the entry closes: once it has moved on, a refusal
     // would leave the sheet nothing to retry (#1945).
-    if let Err(e) = validation::validate_entry_notes(&Some(answers.note.clone())) {
+    let note_refused =
+        validation::validate_entry_notes(&Some(answers.note.clone())).and_then(|()| {
+            answers
+                .notes
+                .iter()
+                .try_for_each(|n| validation::validate_play_note(&n.note))
+        });
+    if let Err(e) = note_refused {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
@@ -351,11 +389,25 @@ pub(super) fn submit_reflection(
     let valid = draft_answers_valid(entry, &answers)
         && draft_ways_valid(entry, &answers.ways, model)
         && answers.marks.iter().all(|m| markable(&m.play_id))
-        && answers.tempos.iter().all(|t| markable(&t.play_id));
+        && answers.tempos.iter().all(|t| markable(&t.play_id))
+        && answers.notes.iter().all(|n| markable(&n.play_id));
     if !valid {
         model.raise_error(REFLECTION_REFUSED);
         return crux_core::render::render();
     }
+    // A score left untouched keeps the one it started on, last time's or the
+    // suggested, taken as agreement (decided 2026-11-25, #3004).
+    let kept: Vec<DraftMark> = entry
+        .plays
+        .iter()
+        .filter(|play| markable(&play.id))
+        .filter(|play| !answers.marks.iter().any(|m| m.play_id == play.id))
+        .map(|play| DraftMark {
+            play_id: play.id.clone(),
+            score: start_score(model, &entry.plan.item_id, &answers.way_of(play)),
+        })
+        .collect();
+    answers.marks.extend(kept);
 
     let mut commands = Vec::new();
     if !answers.note.is_empty() {
@@ -391,6 +443,14 @@ pub(super) fn submit_reflection(
             play_way,
         ));
     }
+    for row in answers.notes {
+        commands.push(super::summary::update_play_note(
+            model,
+            entry_id.clone(),
+            row.play_id,
+            row.note,
+        ));
+    }
     for row in answers.tempos {
         commands.push(super::summary::update_entry_tempo(
             model,
@@ -407,6 +467,18 @@ pub(super) fn submit_reflection(
 fn tidy_answers_note(answers: &mut ReflectionAnswers) {
     answers.note =
         validation::trimmed_nonempty(Some(std::mem::take(&mut answers.note))).unwrap_or_default();
+}
+
+fn tidy_play_notes(answers: &mut ReflectionAnswers) {
+    answers.notes = std::mem::take(&mut answers.notes)
+        .into_iter()
+        .filter_map(|row| {
+            validation::trimmed_nonempty(Some(row.note)).map(|note| DraftNote {
+                play_id: row.play_id,
+                note,
+            })
+        })
+        .collect();
 }
 
 fn draft_ways_valid(entry: &SetlistEntry, ways: &[DraftWay], model: &Model) -> bool {
@@ -432,6 +504,7 @@ fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> boo
     };
     if !distinct(answers.marks.iter().map(|m| m.play_id.as_str()).collect())
         || !distinct(answers.tempos.iter().map(|t| t.play_id.as_str()).collect())
+        || !distinct(answers.notes.iter().map(|n| n.play_id.as_str()).collect())
     {
         return false;
     }
@@ -450,8 +523,13 @@ fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> boo
             && validation::validate_achieved_tempo(&Some(crotchets)).is_ok()
             && validation::validate_play_belongs(entry, &row.play_id).is_ok()
     });
+    let notes_valid = answers.notes.iter().all(|row| {
+        validation::validate_play_note(&row.note).is_ok()
+            && validation::validate_play_belongs(entry, &row.play_id).is_ok()
+    });
     marks_valid
         && tempos_valid
+        && notes_valid
         && validation::validate_entry_notes(&Some(answers.note.clone())).is_ok()
 }
 

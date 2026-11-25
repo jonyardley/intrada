@@ -63,6 +63,9 @@ pub struct Play {
     pub click_pattern: Option<ClickState>,
     pub score: Option<u8>,
     pub away: Vec<Away>,
+    /// What the musician wrote about this key or variation (#3004).
+    #[serde(default)]
+    pub note: Option<String>,
 }
 
 /// How a play is played: the key and the variations.
@@ -101,6 +104,7 @@ impl Play {
             click_pattern: None,
             score: None,
             away: Vec::new(),
+            note: None,
         }
     }
 
@@ -211,20 +215,19 @@ impl SetlistEntry {
     /// mean of the plain full run-throughs that carry a score, rounded to
     /// nearest (#2246). A variation is not the piece.
     pub fn score_summary(&self) -> Option<u8> {
-        let scored: Vec<u16> = self
-            .plays
-            .iter()
-            .filter(|p| p.is_plain_run_through())
-            .filter_map(|p| p.score)
-            .map(u16::from)
-            .collect();
-        if scored.is_empty() {
-            return None;
-        }
-        let total: u16 = scored.iter().sum();
-        let count = scored.len() as u16;
-        Some(((total * 2 + count) / (count * 2)) as u8)
+        rounded_mean(
+            self.plays
+                .iter()
+                .filter(|p| p.is_plain_run_through())
+                .filter_map(|p| p.score),
+        )
     }
+}
+
+/// Scores averaged, a half rounding up (#2246).
+pub(crate) fn rounded_mean(scores: impl Iterator<Item = u8>) -> Option<u8> {
+    let (total, count) = scores.fold((0u32, 0u32), |(t, c), s| (t + u32::from(s), c + 1));
+    (count > 0).then(|| ((total * 2 + count) / (count * 2)) as u8)
 }
 
 #[cfg(test)]
@@ -259,6 +262,7 @@ impl Play {
             click_pattern: None,
             score: None,
             away: Vec::new(),
+            note: None,
         }
     }
 }
@@ -351,6 +355,28 @@ pub struct ReflectionAnswers {
     pub tempos: Vec<DraftTempo>,
     /// Only the rows whose key or variations were changed by hand.
     pub ways: Vec<DraftWay>,
+    /// Only the rows with something written.
+    pub notes: Vec<DraftNote>,
+}
+
+impl ReflectionAnswers {
+    /// The key and variations the sheet says a play was in: drafted, else recorded.
+    pub(crate) fn way_of(&self, play: &Play) -> PlayWay {
+        self.ways.iter().find(|w| w.play_id == play.id).map_or_else(
+            || play.way(),
+            |w| PlayWay {
+                key: w.key,
+                variation_ids: w.variation_ids.clone(),
+            },
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct DraftNote {
+    pub play_id: String,
+    pub note: String,
 }
 
 /// What a finish row says was played, in place of what the play recorded.
@@ -417,15 +443,15 @@ pub struct ActiveSession {
     pub length_mins: Option<u16>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 11;
+const RETIRED_BLOB_VERSION_MAX: u32 = 12;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 11 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 12;
+    /// 12 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 13;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
@@ -723,11 +749,15 @@ mod record;
 #[cfg(test)]
 mod record_tests;
 mod saved;
+#[cfg(test)]
+mod score_tests;
 mod summary;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use building::{item_reads_as, last_time, opening_way, reads_as};
+pub(crate) use building::{
+    item_reads_as, last_score, last_time, opening_way, reads_as, start_score, DEFAULT_START_SCORE,
+};
 pub use record::Away;
 pub(crate) use record::*;
 pub(crate) use saved::{forget_restored_delete, undo_offer};

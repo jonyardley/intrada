@@ -53,7 +53,10 @@ struct FocusPlayerScreen: View {
           refusal: reflectionRefusal, seed: target.seed,
           onSave: { answers in handleReflection(answers) },
           onSkip: { handleSkipRating(target) },
-          onDraft: { answers in store.send(.session(.updateReflectionDraft(answers: answers))) }
+          onDraft: { answers in store.send(.session(.updateReflectionDraft(answers: answers))) },
+          onKeyDraft: { answers in
+            store.sendFromSheet(.session(.updateReflectionDraft(answers: answers)))
+          }
         )
         .presentationDetents([.medium, .large])
         .interactiveDismissDisabled()
