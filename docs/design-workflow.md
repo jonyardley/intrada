@@ -62,7 +62,7 @@ changed colour is changed by hand there too, or `just check` fails.
    (`.claude/agents/design-reviewer.md`, Opus, medium) that did not draw the
    sketch reviews its screenshots against the brief and the written design
    language. Whatever does not fit goes back to the sketch and is reviewed
-   again. Only options that pass reach Jon, two or three per screen, on one
+   again. Only options that pass reach the owner, two or three per screen, on one
    Artifact page, side by side with the review notes and snapshots of the
    neighbouring existing screens. Checks on tokens and files cannot see
    weight or how a control is drawn: the #3004 sketch passed them all and
@@ -90,9 +90,10 @@ A control the catalogue lacks is designed as a catalogue component before
 any screen uses it. Its page starts from `design/components/_template.md`
 with `status: proposed`; two or three looks are drawn in one sketch file,
 `ios/Intrada/Sketches/<Name>Sketch.swift`, with its snapshot test as in step
-4, which the page's front matter names until the build replaces them; the
-design reviewer reviews the looks as in step 5; Jon picks one, recorded on
-the issue as "Jon picked look B on YYYY-MM-DD". Only then does a screen
+4. The page's front matter names the sketch file and its snapshot until the
+build replaces them. The design reviewer reviews the looks as in step 5; the
+owner picks one, recorded on the issue as "Look B picked on YYYY-MM-DD".
+Only then does a screen
 sketch draw it. A control that ships once is copied as precedent, so its
 look is chosen before it ships, not during a build (#3018).
 

@@ -457,16 +457,25 @@ tab bar as it looks on a phone. Rejected: a full web kit of every component,
 checked against the code (too much to keep true for one person), and Figma (a
 second source and a cost).
 
-### T39: Controls are ink on paper; a stepper's signs sit in thin rings
+### T39: Steppers and single buttons are unboxed ink; a stepper's signs sit in thin rings
 
 **DECIDED 2026-11-25 (#3018, #3004).**
 
-Every control other than the one primary `MarkerButton` is drawn in ink on
-paper and recedes behind the content it changes. A stepper's minus and plus
-are ink glyphs in thin circles stroked one point in `divider`, about 32 points
-drawn with a 44 point tap area, and the value between them is in DM Mono.
-No control sits in a white box, a filled panel or a sunken strip, and rows are
-split by a hairline divider, not boxed. The written rules are the Controls
+A stepper, and a single button other than the one primary `MarkerButton`, is
+drawn in ink on the card and recedes behind the content it changes. A
+stepper's minus and plus are ink glyphs in thin circles stroked one point in
+`divider`, about 32 points drawn with a 44 point tap area, and the value
+between them is in DM Mono. No white box, filled panel or sunken strip goes
+round a stepper's minus and plus or round a single button, and rows are split
+by a hairline divider, not boxed. The catalogue's own looks stay: choosing
+one of a few options is `SegmentedPills` (a white track, the chosen pill in
+ink, as in T24) and giving a mark is `ScoreSelector` (ink filled boxes). A
+text field keeps its white `FieldCard` or `FormField` look so it reads as
+editable; the owner asked for this on 25 November 2026. A stepper reads aloud
+as one adjustable control. Last time's value differs from today's by a word
+as well as by `inkSecondary`. A small edit belonging to the screen underneath
+opens in a `BottomSheet` rather than expanding a row in place, as an entry is
+edited; the owner chose this on 25 November 2026 for #3004. The written rules are the Controls
 section of `design/sketch-kit/design-system.md`. Rejected: bare signs (a minus
 reads as a dash), one filled strip per control (brings back the panel), and
 white boxes (heavier than the content).
