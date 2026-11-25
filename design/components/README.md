@@ -12,7 +12,9 @@ first source of drift.
 **Changing a component** starts with its page: change the words, then the
 SwiftUI version, then record the snapshots
 (`docs/design-workflow.md`). A new component starts as a new page from
-[`_template.md`](_template.md) and a row here.
+[`_template.md`](_template.md) and a row here. A new control's page and its
+chosen look come before any screen uses it ("A new control" in
+`docs/design-workflow.md`).
 
 `scripts/check-components.sh` runs in `just check` and fails when a row has no
 page, a page has no row, or a page names a file, symbol or snapshot that does
