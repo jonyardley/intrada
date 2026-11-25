@@ -8,7 +8,6 @@ use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::Profile;
 use crate::domain::session::{PracticeSession, SessionStatus};
 use crate::domain::{LibrarySort, ListQuery};
-use crate::recognition::PhotoDraft;
 
 mod active_session;
 mod add_form;
@@ -23,7 +22,7 @@ pub use active_session::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, FinishRowView, FinishSheetView,
     PickerVariationView, ReflectionTempoView, ReflectionView,
 };
-pub use add_form::{FormErrorField, FormErrorTarget, PhotoRecognitionStatus, PhotoRecognitionView};
+pub use add_form::{FormErrorField, FormErrorTarget};
 pub use builder::{
     BuildingSetlistView, EntryKeysView, EntryVariationsView, KeyChoiceView, LastTimeView,
     SetlistBlockView,
@@ -89,10 +88,6 @@ pub struct Model {
     /// Bumped on every raise, identical text included, never because a
     /// notice is standing.
     pub notice_seq: u64,
-    /// What the last `ReadPhoto` produced. Transient: the confirm surface reads
-    /// it, the user edits it, and `DiscardPhotoDraft` clears it. Never written
-    /// to an item without that confirmation (spec non-goal "no silent write").
-    pub photo_recognition: PhotoRecognition,
     /// Filled at the end of `update` and only read by `view` (#1998).
     pub(crate) projections: Option<crate::view::cache::Projections>,
     pub items_sync: crate::persistence::ListSync,
@@ -156,24 +151,6 @@ impl<'a, T> IntoIterator for &'a Tracked<Vec<T>> {
     fn into_iter(self) -> Self::IntoIter {
         self.value.iter()
     }
-}
-
-/// Model-side recognition state. The view projection is
-/// [`PhotoRecognitionView`].
-#[derive(Debug, Default, Clone, PartialEq)]
-pub enum PhotoRecognition {
-    #[default]
-    Idle,
-    Reading {
-        photo_id: String,
-    },
-    Ready {
-        photo_id: String,
-        draft: PhotoDraft,
-    },
-    Failed {
-        photo_id: String,
-    },
 }
 
 impl Model {

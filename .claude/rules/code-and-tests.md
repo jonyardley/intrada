@@ -15,7 +15,9 @@ paths:
 - **Code with no reader gets deleted, not parked** (#1176): no
   `#[allow(dead_code)]`, no "inert until the feature returns", no `pub` nobody
   calls. `git` is the parking space; keep the findings and name the recovery
-  PR. A stub a test reads, or an API a shell calls, has a reader.
+  PR. A stub a test reads, or an API a shell calls, has a reader. Removing a
+  feature, follow each removed value into the parameters that only carried it
+  (#2792).
 - **Comments: default to none.** The density gate counts them; the kind is
   yours. Only a one-line section header, a non-obvious WHY citing an issue or
   incident, or `HACK(#N)` / `FIXME(#N)`. Never one that restates the code or

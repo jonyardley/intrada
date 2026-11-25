@@ -172,10 +172,6 @@ private final class RecordingBridge: CoreBridge {
     try inner.resolve(id, persistenceOutput: persistenceOutput)
   }
 
-  func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] {
-    try inner.resolve(id, recognitionOutput: recognitionOutput)
-  }
-
   func resolveEmpty(_ id: UInt32) throws -> [Request] { try inner.resolveEmpty(id) }
 
   func view() throws -> ViewModel {

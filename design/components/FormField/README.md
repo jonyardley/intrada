@@ -31,7 +31,6 @@ A labelled text field on the item form, as one row inside the form's card.
 ## Behaviour
 
 - When the form is refused and the core names this field, the field is faulted: the label turns `danger` and the row takes the `dangerWash`. The reason itself is on `FormErrorBanner` at the top of the form (#1595).
-- A field filled from a photographed page shows "From the photo" under it, faint when the read was weak (#1436).
 - The keyboard type and capitalisation are the caller's choice; sentences are capitalised by default.
 
 ## Content

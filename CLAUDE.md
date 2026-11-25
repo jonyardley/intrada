@@ -27,7 +27,7 @@ just ios-test         # unit + snapshot; just ios-fmt-check for ios/
 ## Architecture (non-negotiables)
 
 ```text
-User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Recognition, Sync) → Shell → I/O
+User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Sync) → Shell → I/O
 ```
 
 1. **Core owns all logic.** No business rules, validation, domain decisions or domain state

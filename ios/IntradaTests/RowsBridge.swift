@@ -17,10 +17,6 @@ final class RowsBridge: CoreBridge {
     keep(try live.resolve(id, persistenceOutput: persistenceOutput))
   }
 
-  func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] {
-    keep(try live.resolve(id, recognitionOutput: recognitionOutput))
-  }
-
   func resolveEmpty(_ id: UInt32) throws -> [Request] { keep(try live.resolveEmpty(id)) }
 
   func view() throws -> ViewModel { try live.view() }

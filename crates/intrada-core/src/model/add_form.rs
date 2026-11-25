@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::profile::ProfileField;
-use crate::recognition::PhotoDraft;
 
 /// Where on the create form the failure the banner names actually is (#1595).
 /// Set only by the handler that reported the error, and only where the form has
@@ -51,29 +50,4 @@ pub enum FormErrorField {
     /// The exercise's inline variation rows (#1831). Appended last: the
     /// bincode wire is positional.
     Variations,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct PhotoRecognitionView {
-    pub status: PhotoRecognitionStatus,
-    /// The photo being read, so the shell can show it beside the fields.
-    pub photo_id: Option<String>,
-    /// Present only under `Ready`. Each field carries its own `weak`, which is
-    /// what the form marks; there is deliberately no whole-draft flag beside
-    /// it, since nothing would read one.
-    pub draft: Option<PhotoDraft>,
-    /// A finished read whose draft holds no field at all.
-    pub read_nothing: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
-pub enum PhotoRecognitionStatus {
-    #[default]
-    Idle,
-    Reading,
-    Ready,
-    Failed,
 }
