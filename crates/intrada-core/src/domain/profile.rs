@@ -79,6 +79,10 @@ pub enum ProfileEvent {
     Save(Profile),
     /// The shell replaying the stored blob at launch: no validation, no re-save.
     Loaded(Profile),
+    /// The edit sheet's unsaved values, so its icon caption follows the
+    /// rule Save applies (#2519). Never saved.
+    Draft(Profile),
+    DraftEnded,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
@@ -92,6 +96,15 @@ pub struct ProfileView {
     pub colour: HighlighterColour,
     pub greeting: String,
     pub instrument_names: Vec<String>,
+    pub draft: Option<ProfileDraftView>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ProfileDraftView {
+    pub suggested_icon: InstrumentIcon,
+    pub icon: InstrumentIcon,
+    pub icon_chosen: bool,
 }
 
 const INSTRUMENT_NAMES: &[&str] = &[
@@ -222,19 +235,33 @@ pub(crate) fn greeting(name: &str, local_hour: u32) -> String {
     format!("{time_of_day}, {name}")
 }
 
-pub fn build_profile_view(profile: &Profile, local_hour: u32) -> ProfileView {
-    let suggested_icon = suggest_icon(&profile.instrument);
+pub fn build_profile_view(
+    profile: &Profile,
+    draft: Option<&Profile>,
+    local_hour: u32,
+) -> ProfileView {
+    let icons = draft_view(profile);
     ProfileView {
         name: profile.name.clone(),
         instrument: profile.instrument.clone(),
+        suggested_icon: icons.suggested_icon,
+        icon: icons.icon,
+        icon_chosen: icons.icon_chosen,
+        colour: profile.colour,
+        greeting: greeting(&profile.name, local_hour),
+        instrument_names: INSTRUMENT_NAMES.iter().map(|n| n.to_string()).collect(),
+        draft: draft.map(draft_view),
+    }
+}
+
+fn draft_view(profile: &Profile) -> ProfileDraftView {
+    let suggested_icon = suggest_icon(&profile.instrument);
+    ProfileDraftView {
         suggested_icon,
         icon: profile.icon(),
         icon_chosen: profile
             .icon_choice
             .is_some_and(|choice| choice != suggested_icon),
-        colour: profile.colour,
-        greeting: greeting(&profile.name, local_hour),
-        instrument_names: INSTRUMENT_NAMES.iter().map(|n| n.to_string()).collect(),
     }
 }
 
@@ -250,6 +277,7 @@ pub fn handle_profile_event(event: ProfileEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
             model.profile = profile.clone();
+            model.profile_draft = None;
             model.clear_error();
             Command::all([
                 Command::notify_shell(AppEffect::SaveProfile(profile)).into(),
@@ -259,6 +287,14 @@ pub fn handle_profile_event(event: ProfileEvent, model: &mut Model) -> Command<E
         }
         ProfileEvent::Loaded(profile) => {
             model.profile = profile;
+            crux_core::render::render()
+        }
+        ProfileEvent::Draft(draft) => {
+            model.profile_draft = Some(draft);
+            crux_core::render::render()
+        }
+        ProfileEvent::DraftEnded => {
+            model.profile_draft = None;
             crux_core::render::render()
         }
     }
@@ -429,6 +465,101 @@ mod tests {
         );
     }
 
+    fn draft_view_after(saved: Profile, draft: Profile) -> Option<ProfileDraftView> {
+        let mut model = Model::default();
+        let _ = save(&mut model, saved);
+        let _ = Intrada.update(Event::Profile(ProfileEvent::Draft(draft)), &mut model);
+        Intrada.view(&model).profile.draft
+    }
+
+    #[test]
+    fn the_draft_counts_a_pick_as_chosen_by_the_rule_save_applies() {
+        let cello = Profile {
+            instrument: "Cello".to_string(),
+            ..fixture()
+        };
+        let pinned_harp = Profile {
+            icon_choice: Some(InstrumentIcon::Harp),
+            ..cello.clone()
+        };
+        let picks_cello = Profile {
+            icon_choice: Some(InstrumentIcon::Cello),
+            ..cello.clone()
+        };
+        let following = ProfileDraftView {
+            suggested_icon: InstrumentIcon::Cello,
+            icon: InstrumentIcon::Cello,
+            icon_chosen: false,
+        };
+        assert_eq!(
+            draft_view_after(cello.clone(), picks_cello.clone()),
+            Some(following),
+            "picking the match follows the instrument before Save"
+        );
+        assert_eq!(
+            draft_view_after(pinned_harp, picks_cello.clone()),
+            Some(following),
+            "going back from a pinned harp to the match reads as following"
+        );
+        assert_eq!(
+            draft_view_after(
+                cello.clone(),
+                Profile {
+                    instrument: "Violin".to_string(),
+                    ..picks_cello
+                }
+            ),
+            Some(ProfileDraftView {
+                suggested_icon: InstrumentIcon::Violin,
+                icon: InstrumentIcon::Cello,
+                icon_chosen: true,
+            }),
+            "the old instrument's icon on a new instrument is a pick"
+        );
+        assert_eq!(
+            draft_view_after(
+                cello,
+                Profile {
+                    instrument: "Violin".to_string(),
+                    ..fixture()
+                }
+            ),
+            Some(ProfileDraftView {
+                suggested_icon: InstrumentIcon::Violin,
+                icon: InstrumentIcon::Violin,
+                icon_chosen: false,
+            }),
+            "with no pick the icon follows the typed instrument"
+        );
+    }
+
+    #[test]
+    fn the_draft_ends_on_an_accepted_save_or_when_the_sheet_closes() {
+        let draft = Event::Profile(ProfileEvent::Draft(fixture()));
+        let mut model = Model::default();
+        assert_eq!(Intrada.view(&model).profile.draft, None);
+
+        let _ = Intrada.update(draft.clone(), &mut model);
+        let _ = save(
+            &mut model,
+            Profile {
+                name: "x".repeat(MAX_PROFILE_NAME + 1),
+                ..fixture()
+            },
+        );
+        assert!(
+            Intrada.view(&model).profile.draft.is_some(),
+            "a refused save leaves the sheet open on its draft"
+        );
+
+        let _ = save(&mut model, fixture());
+        assert_eq!(Intrada.view(&model).profile.draft, None);
+
+        let _ = Intrada.update(draft, &mut model);
+        let _ = Intrada.update(Event::Profile(ProfileEvent::DraftEnded), &mut model);
+        assert_eq!(Intrada.view(&model).profile.draft, None);
+    }
+
     #[test]
     fn the_icon_counts_as_chosen_only_when_it_differs_from_the_suggestion() {
         let chosen = |instrument: &str, icon_choice| {
@@ -438,6 +569,7 @@ mod tests {
                     icon_choice,
                     ..fixture()
                 },
+                None,
                 9,
             )
             .icon_chosen
@@ -454,7 +586,7 @@ mod tests {
 
     #[test]
     fn every_offered_instrument_name_finds_an_icon_bar_the_bagpipes() {
-        let view = build_profile_view(&fixture(), 9);
+        let view = build_profile_view(&fixture(), None, 9);
         assert_eq!(view.instrument_names.len(), INSTRUMENT_NAMES.len());
         let unmatched: Vec<&str> = view
             .instrument_names
@@ -504,6 +636,7 @@ mod tests {
                 icon_choice: Some(InstrumentIcon::ElectricGuitar),
                 ..fixture()
             },
+            None,
             9,
         );
         assert_eq!(view.suggested_icon, InstrumentIcon::Cello);
@@ -514,7 +647,7 @@ mod tests {
 
     #[test]
     fn view_of_an_untouched_profile_is_the_defaults() {
-        let view = build_profile_view(&Profile::default(), 9);
+        let view = build_profile_view(&Profile::default(), None, 9);
         assert_eq!(view.name, "");
         assert_eq!(view.instrument, "");
         assert_eq!(view.icon, InstrumentIcon::Other);
@@ -736,6 +869,9 @@ mod tests {
         assert_round_trips(Event::Profile(ProfileEvent::Save(fixture())));
         assert_round_trips(Event::Profile(ProfileEvent::Loaded(Profile::default())));
         assert_round_trips(AppEffect::SaveProfile(fixture()));
-        assert_round_trips(build_profile_view(&fixture(), 9));
+        assert_round_trips(Event::Profile(ProfileEvent::Draft(fixture())));
+        assert_round_trips(Event::Profile(ProfileEvent::DraftEnded));
+        assert_round_trips(build_profile_view(&fixture(), None, 9));
+        assert_round_trips(build_profile_view(&fixture(), Some(&fixture()), 9));
     }
 }
