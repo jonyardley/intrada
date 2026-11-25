@@ -1,7 +1,8 @@
 # Design in the Intrada workflow
 
-Every new screen is explored on a Claude Design canvas, sketched in SwiftUI
-from the real components, signed off by Jon on that sketch, and built from it.
+Every new screen starts from a design brief, is explored on a Claude Design
+canvas, sketched in SwiftUI from the real components, reviewed by a fresh
+design reviewer, signed off by Jon on that sketch, and built from it.
 After merge, the design system is refreshed from the repo. Canvases and the
 design system live in Claude artifacts; the repo stays the source of truth.
 
@@ -27,7 +28,14 @@ changed colour is changed by hand there too, or `just check` fails.
 1. **Plan comment.** A UI issue's plan comment names the screens that need a
    sketch. A screen made only of catalogue components on an existing pattern
    can go straight to the build; the plan says so.
-2. **Explore on canvas.** Rough options side by side on a Design canvas, an
+2. **Design brief.** Before anything is drawn, a few lines on the issue under
+   the heading "Design brief": what the musician is doing at that moment
+   (often at the instrument, hands busy, between plays), what the screen or
+   control is for, the existing screens it sits beside, the design principles
+   in play, and how it should feel. Every later step and the design reviewer
+   read it, since a sketch can pass every token check and still be wrong for
+   the moment it is used in (#3018).
+3. **Explore on canvas.** Rough options side by side on a Design canvas, an
    iPhone frame for each.
    Jon starts one in claude.ai; a session starts one with the Artifact tool's
    Design type. `DesignSync` only moves files and cannot make a mockup. Draw
@@ -37,7 +45,8 @@ changed colour is changed by hand there too, or `just check` fails.
    catalogue component it stands for. Jon picks an option; the canvas is for
    choosing, not for sign off. A screen whose shape is already settled skips
    this step.
-3. **Sketch it in SwiftUI.** The chosen option is drawn from the real catalogue
+4. **Sketch it in SwiftUI.** The chosen option is drawn, in two or three
+   variations, from the real catalogue
    components in one debug only file, `ios/Intrada/Sketches/<Name>Sketch.swift`,
    wrapped in `#if DEBUG` because the app target takes in the whole folder,
    with fixture data and no core changes, plus one snapshot test that renders
@@ -47,8 +56,18 @@ changed colour is changed by hand there too, or `just check` fails.
    tool and linked from the issue, every state the screen has (empty,
    error, the longest content). A canvas drawing hides real sizes: in the
    #2794 trial the real number buttons were 32 points tall, not the 20 drawn,
-   and broke the layout the canvas promised.
-4. **Jon's word on the sketch.** The page link goes on the issue with the line
+   and broke the layout the canvas promised. A control the catalogue lacks
+   is not drawn here: it goes through "A new control" (below) first.
+5. **Design review.** A fresh `design-reviewer` agent
+   (`.claude/agents/design-reviewer.md`, Opus, medium) that did not draw the
+   sketch reviews its screenshots against the brief and the written design
+   language. Whatever does not fit goes back to the sketch and is reviewed
+   again. Only options that pass reach the owner, two or three per screen, on one
+   Artifact page, side by side with the review notes and snapshots of the
+   neighbouring existing screens. Checks on tokens and files cannot see
+   weight or how a control is drawn: the #3004 sketch passed them all and
+   still looked wrong.
+6. **Jon's word on the sketch.** The page link goes on the issue with the line
    "Waiting for Jon's word on the sketch". A yes becomes "Jon approved the
    sketch on YYYY-MM-DD"; a no is a revision of the same sketch. The build
    PR is the sketch branch itself, rebased onto fresh `origin/main`; the
@@ -56,13 +75,27 @@ changed colour is changed by hand there too, or `just check` fails.
    and its recorded images under `ios/IntradaTests/__Snapshots__/` together
    once the real screen and its snapshots exist, or
    `scripts/check-snapshots.sh` fails on an orphan image.
-5. **Build.** From the catalogue components and theme values only;
+7. **Build.** From the catalogue components and theme values only;
    `scripts/check-theme-values.sh` fails a typed colour or spacing number. A
-   new or changed component starts with its page (below), then SwiftUI, with
-   its snapshots.
-6. **Jon's word on the screenshot.** "Eyes before ready" in
+   changed component starts with its page (below), then SwiftUI, with its
+   snapshots. No new component's look arrives during a build: a control
+   with no chosen look stops the build and goes through "A new control".
+8. **Jon's word on the screenshot.** "Eyes before ready" in
    `.claude/rules/ios-ui.md`.
-7. **After merge.** Refresh the design system (below).
+9. **After merge.** Refresh the design system (below).
+
+### A new control
+
+A control the catalogue lacks is designed as a catalogue component before
+any screen uses it. Its page starts from `design/components/_template.md`
+with `status: proposed`; two or three looks are drawn in one sketch file,
+`ios/Intrada/Sketches/<Name>Sketch.swift`, with its snapshot test as in step
+4. The page's front matter names the sketch file and its snapshot until the
+build replaces them. The design reviewer reviews the looks as in step 5; the
+owner picks one, recorded on the issue as "Look B picked on YYYY-MM-DD".
+Only then does a screen
+sketch draw it. A control that ships once is copied as precedent, so its
+look is chosen before it ships, not during a build (#3018).
 
 ## Refreshing the design system
 
@@ -149,7 +182,9 @@ order, in one PR:
 1. **The page.** Change `design/components/<Name>/README.md`: an agent drafts,
    Jon approves the words. A new component starts from `_template.md`, a
    row in the index and a row in the component table in
-   `design/sketch-kit/design-system.md`, the design system's readme.
+   `design/sketch-kit/design-system.md`, the design system's readme, and
+   reaches step 2 only with its look picked through "A new control" above;
+   approved words alone are not enough.
 2. **SwiftUI.** Change the iPhone component.
 3. **Snapshots.** Record the pictures the page names, and look at them.
 4. **`just check`.** `scripts/check-components.sh` fails when a page and the
