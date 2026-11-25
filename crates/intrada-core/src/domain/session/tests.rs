@@ -2456,6 +2456,41 @@ fn test_recover_session() {
     }
 }
 
+/// The reason the length rides on the blob: a resumed timed session keeps
+/// counting down from its own start, and time away counts against it (#2789).
+#[test]
+fn a_recovered_timed_session_keeps_its_end() {
+    let mut model = model_with_library();
+    let now = Utc::now();
+    let started = now - chrono::Duration::minutes(10);
+    let active = ActiveSession {
+        id: "timed".to_string(),
+        entries: vec![create_entry(
+            "piece-1",
+            "Moonlight Sonata",
+            ItemKind::Piece,
+            0,
+        )],
+        current_index: 0,
+        current_item_started_at: started,
+        session_started_at: started,
+        reflection: None,
+        length_mins: Some(30),
+    };
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RecoverSession {
+            session: active,
+            now,
+        }),
+    );
+    let view = Intrada.view(&model).active_session.expect("active view");
+    assert_eq!(
+        view.ends_at,
+        Some((started + chrono::Duration::minutes(30)).to_rfc3339())
+    );
+}
+
 #[test]
 fn test_recover_session_reanchors_current_item_timer() {
     let mut model = model_with_library();
