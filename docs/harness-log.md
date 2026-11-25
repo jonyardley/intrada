@@ -6,7 +6,7 @@
 
 A harness change, in the repo or on Jon's machine, adds its row here in the
 same PR. A machine-local change with no PR of its own gets its row in the next
-harness PR. A `/ship` retro fix, which is prose only, is recorded by its
+harness PR. A `/intrada-ship` retro fix, which is prose only, is recorded by its
 "fix:" line in `lessons-archive.md` instead (#2934). Machine-local means a
 file under `~/.claude/` on Jon's machine, dated by the PR that documented it,
 or by the file's own date where no PR did.
