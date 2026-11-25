@@ -19,11 +19,9 @@ for tool in gh jq; do
   }
 done
 
-# Next up: every open issue, ranked (#2800). The approved plan comment is the
-# go, so no label gates the list. A claimed issue is left out: CLAIMED or IN
-# FLIGHT already shows it. An epic is left out too: it is built through its
-# issues (#2808). Order: horizon, the board's Priority, then oldest. Every page
-# is read, so the ranking covers them all; only the top few are printed.
+# Next up: every open issue, ranked (#3016). Claimed ones are left out, as
+# CLAIMED or IN FLIGHT shows them; so are epics, built through their issues
+# (#2808). Every page is read so the ranking is complete; the top few print.
 next_shown=10
 next_query='query($owner: String!, $name: String!, $endCursor: String) {
   repository(owner: $owner, name: $name) {
@@ -293,8 +291,8 @@ fi
 if [ "$next_total" -gt "$next_shown" ]; then
   echo "    (showing the top $next_shown of $next_total)"
 fi
-echo "    Order: horizon, then the board's Priority, then oldest first. Claim one,"
-echo "    post its plan, and build once the owner approves the plan comment."
+echo "    Order: horizon, then the board's Priority, then oldest first."
+echo "    For when no epic has a next issue, or for a one-off."
 
 section "IN FLIGHT (open PRs)" "$pr_lines"
 capped "$open_prs" "$open_limit"

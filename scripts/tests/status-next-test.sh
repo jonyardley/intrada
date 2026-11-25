@@ -122,6 +122,8 @@ check "$(section_of "$out")" "says when an issue has neither" "no horizon, P0"
 check "$(section_of "$out")" "says when an issue is off the board" "now, no priority"
 refute "$(cat "$FIXTURES/query.txt")" "filters on no label" 'labels:'
 check "$(cat "$FIXTURES/query.txt")" "reads every page" "--paginate"
+check "$(cat "$FIXTURES/query.txt")" "starts each page after the last" 'after: $endCursor,'
+check "$(cat "$FIXTURES/query.txt")" "asks where the next page starts" 'pageInfo { hasNextPage endCursor }'
 check "$(cat "$FIXTURES/query.txt")" "asks only for open issues" "states: OPEN"
 
 # ── A Priority on another project does not count ────────────────────────────

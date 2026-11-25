@@ -63,8 +63,9 @@ are workflow states: Backlog, In Progress, In Review and Done. Labels filter.
 **The milestone is the release**: everything meant for the next release carries
 its milestone. A `Priority` field (P0, P1, P2) ranks issues that share a
 horizon. `just status` lists open issues, bar epics, by horizon, then Priority,
-then oldest first; an agent takes the top unclaimed one. No label gates the
-build: the owner's approval of the plan comment does.
+then oldest first; an epic's next issue comes first, and the top of this list
+only when no epic has one, or for a one-off. The owner's approval of the plan
+comment is the go.
 
 ## Cutting a release
 
