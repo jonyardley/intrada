@@ -137,8 +137,8 @@ struct FocusPlayerScreen: View {
         band(active, session: reading(active, at: context.date))
       }
     } else {
-      // A session total nobody can vouch for is worse than none: an unparsable
-      // anchor would otherwise count up from screen appearance and read as fact.
+      // A snapshot or unparsable start holds still; counting from screen appearance
+      // would read as fact. The core emits start and end together, so both parse.
       band(active, session: reading(active, at: referenceDate ?? .now))
     }
   }

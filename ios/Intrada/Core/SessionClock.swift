@@ -6,36 +6,6 @@ import Foundation
 /// only parses millisecond precision and the plain option rejects any fraction at
 /// all — so a 6–9 digit chrono fraction would parse to `nil`. Parsing here
 /// normalizes an over-long fraction to milliseconds first.
-/// What the player's session clock shows: time so far with no length chosen,
-/// else time left, which goes negative once the length has run out (#2789).
-enum SessionReading: Equatable {
-  case elapsed(Int)
-  case remaining(Int)
-
-  /// `30:00` counting down, `+02:15` once over, `04:12` counting up.
-  var display: String {
-    switch self {
-    case .elapsed(let seconds): SessionClock.clockDisplay(seconds)
-    case .remaining(let seconds) where seconds < 0: "+" + SessionClock.clockDisplay(-seconds)
-    case .remaining(let seconds): SessionClock.clockDisplay(seconds)
-    }
-  }
-
-  var spokenLabel: String {
-    switch self {
-    case .elapsed: "Session so far"
-    case .remaining(let seconds) where seconds < 0: "Over by"
-    case .remaining: "Time left"
-    }
-  }
-
-  var spokenValue: String {
-    switch self {
-    case .elapsed(let seconds), .remaining(let seconds): SessionClock.clockDisplay(abs(seconds))
-    }
-  }
-}
-
 enum SessionClock {
   /// RFC3339 string for an event `now:` argument (millisecond precision + `Z`).
   /// chrono's serde deserializer parses this on the core side.
@@ -49,7 +19,7 @@ enum SessionClock {
     stoppedAt.flatMap(parseRFC3339) ?? reference
   }
 
-  /// `MM:SS` (or `H:MM:SS` past an hour) for the live count-up timer. Negative
+  /// `MM:SS` (or `H:MM:SS` past an hour) for the live timers. Negative
   /// inputs clamp to zero.
   static func clockDisplay(_ seconds: Int) -> String {
     let total = max(0, seconds)
@@ -109,5 +79,35 @@ enum SessionClock {
     let digits = string[fractionStart..<fractionEnd]
     guard digits.count > 3 else { return nil }
     return String(string[..<fractionStart]) + digits.prefix(3) + string[fractionEnd...]
+  }
+}
+
+/// What the player's session clock shows: time so far with no length chosen,
+/// else time left, which goes negative once the length has run out (#2789).
+enum SessionReading: Equatable {
+  case elapsed(Int)
+  case remaining(Int)
+
+  /// `30:00` counting down, `+02:15` once over, `04:12` counting up.
+  var display: String {
+    switch self {
+    case .elapsed(let seconds): SessionClock.clockDisplay(seconds)
+    case .remaining(let seconds) where seconds < 0: "+" + SessionClock.clockDisplay(-seconds)
+    case .remaining(let seconds): SessionClock.clockDisplay(seconds)
+    }
+  }
+
+  var spokenLabel: String {
+    switch self {
+    case .elapsed: "Session so far"
+    case .remaining(let seconds) where seconds < 0: "Over by"
+    case .remaining: "Time left"
+    }
+  }
+
+  var spokenValue: String {
+    switch self {
+    case .elapsed(let seconds), .remaining(let seconds): SessionClock.clockDisplay(abs(seconds))
+    }
   }
 }
