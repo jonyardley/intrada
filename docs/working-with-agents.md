@@ -101,6 +101,7 @@ call or unexplained bug counts only when its work is on that list (#1985).
 | You are | Do |
 |---|---|
 | Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit and wait for Jon's approval, unless it is the next Tier 2 child of an epic whose body names it, off the sensitive surfaces, naming no choice Jon has not made |
+| Holding a plan comment older than a merge it waited on | Rewrite it against main before building: platforms, line numbers and blockers move (#2792) |
 | Holding a Tier 1 fix | No plan comment; build it |
 
 Match ceremony to scope; if unsure, go one tier lighter and drift up. Before
