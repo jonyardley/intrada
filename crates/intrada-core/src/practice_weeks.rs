@@ -18,6 +18,8 @@ pub struct PracticeWeekView {
     pub practised_days: usize,
     /// Index into `days` of the day the week shows when it comes into view.
     pub opening_day: usize,
+    /// `This week`, `Last week`, otherwise `Week of 9 November` (#1377).
+    pub title: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -69,7 +71,7 @@ pub fn compute_practice_weeks(
     first_monday
         .iter_weeks()
         .take_while(|monday| *monday <= this_monday)
-        .map(|monday| week_view(monday, &by_day, clock.today))
+        .map(|monday| week_view(monday, this_monday, &by_day, clock.today))
         .collect()
 }
 
@@ -79,6 +81,7 @@ fn monday_of(day: NaiveDate) -> NaiveDate {
 
 fn week_view(
     monday: NaiveDate,
+    this_monday: NaiveDate,
     by_day: &HashMap<NaiveDate, Vec<&PracticeSession>>,
     today: NaiveDate,
 ) -> PracticeWeekView {
@@ -91,6 +94,16 @@ fn week_view(
         practised_days: days.iter().filter(|d| !d.session_ids.is_empty()).count(),
         opening_day: opening_day(&days),
         days,
+        title: week_title(monday, this_monday),
+    }
+}
+
+fn week_title(monday: NaiveDate, this_monday: NaiveDate) -> String {
+    match (this_monday - monday).num_weeks() {
+        0 => "This week".to_string(),
+        1 => "Last week".to_string(),
+        _ if monday.year() == this_monday.year() => monday.format("Week of %-d %B").to_string(),
+        _ => monday.format("Week of %-d %B %Y").to_string(),
     }
 }
 
@@ -433,6 +446,25 @@ mod tests {
                 "day {index}"
             );
         }
+    }
+
+    #[test]
+    fn each_week_is_titled_against_this_week() {
+        let today = day(2026, 11, 25);
+        let weeks = compute_practice_weeks(
+            &sessions_on(&[day(2025, 12, 30), day(2026, 1, 7)]),
+            clock(today, 0),
+        );
+        let title = |date: &str| week_containing(&weeks, date).title;
+        assert_eq!(title("2026-11-25"), "This week");
+        assert_eq!(title("2026-11-18"), "Last week");
+        assert_eq!(title("2026-11-11"), "Week of 9 November");
+        assert_eq!(title("2026-01-07"), "Week of 5 January");
+        assert_eq!(
+            title("2025-12-30"),
+            "Week of 29 December 2025",
+            "a week that starts in another year names it"
+        );
     }
 
     #[test]
