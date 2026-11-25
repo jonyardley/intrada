@@ -16,26 +16,30 @@ extension Array where Element == LibraryItemView {
         kind: PickerKind(item.itemType), priority: item.priority)
     }
     let orderedIds = sortAndFilterPickerCandidates(
-      candidates: candidates, sort: sort.pickerSortArg, search: search, filter: filter)
+      candidates: candidates, sort: PickerSortArg(sort), search: search, filter: filter)
     let byId = Dictionary(map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     return orderedIds.compactMap { byId[$0] }
   }
 }
 
-extension LibrarySort {
-  fileprivate var pickerSortArg: PickerSortArg {
-    let field: PickerSortField =
-      switch self.field {
-      case .dateAdded: .dateAdded
-      case .lastPracticed: .lastPracticed
-      case .title: .title
-      }
+extension PickerSortField {
+  init(_ field: SortField) {
+    switch field {
+    case .dateAdded: self = .dateAdded
+    case .lastPracticed: self = .lastPracticed
+    case .title: self = .title
+    }
+  }
+}
+
+extension PickerSortArg {
+  init(_ sort: LibrarySort) {
     let direction: PickerSortDirection =
-      switch self.direction {
+      switch sort.direction {
       case .ascending: .ascending
       case .descending: .descending
       }
-    return PickerSortArg(field: field, direction: direction)
+    self.init(field: PickerSortField(sort.field), direction: direction)
   }
 }
 

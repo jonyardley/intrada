@@ -1,9 +1,9 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
-/// Display wrapper over the core `SortField` — owns the menu labels and the
-/// natural default direction when switching *to* a field (a shell concern,
-/// like `LibraryFilter` wraps `ItemKind`).
+/// Display wrapper over the core `SortField` for the menu labels, like
+/// `LibraryFilter` wraps `ItemKind`; the direction a tap picks is the core's (#2754).
 enum LibrarySortField: CaseIterable, Identifiable {
   case dateAdded, lastPracticed, title
 
@@ -32,25 +32,27 @@ enum LibrarySortField: CaseIterable, Identifiable {
     case .title: "Title"
     }
   }
-
-  /// Direction applied when the user switches to this field.
-  var naturalDefault: SortDirection {
-    switch self {
-    case .dateAdded, .lastPracticed: .descending
-    case .title: .ascending
-    }
-  }
 }
 
 extension LibrarySort {
-  /// The sort to apply when the user taps `field` in the menu: flip direction
-  /// if it's already the active field, else switch to it at its natural default.
   static func selecting(_ field: LibrarySortField, from current: LibrarySort) -> LibrarySort {
-    guard field.core == current.field else {
-      return LibrarySort(field: field.core, direction: field.naturalDefault)
-    }
-    let flipped: SortDirection = current.direction == .ascending ? .descending : .ascending
-    return LibrarySort(field: current.field, direction: flipped)
+    LibrarySort(
+      librarySortOnTap(current: PickerSortArg(current), field: PickerSortField(field.core)))
+  }
+
+  fileprivate init(_ arg: PickerSortArg) {
+    let field: SortField =
+      switch arg.field {
+      case .dateAdded: .dateAdded
+      case .lastPracticed: .lastPracticed
+      case .title: .title
+      }
+    let direction: SortDirection =
+      switch arg.direction {
+      case .ascending: .ascending
+      case .descending: .descending
+      }
+    self.init(field: field, direction: direction)
   }
 }
 
