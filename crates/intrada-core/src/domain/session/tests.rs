@@ -6868,7 +6868,7 @@ fn submit_reflection_without_an_open_sheet_is_refused() {
 }
 
 #[test]
-fn a_mark_of_zero_is_left_unmarked() {
+fn a_mark_of_zero_reads_as_untouched_and_saves_the_starting_score() {
     let (mut model, start) = model_with_active_session(2);
     let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
     prepare(&mut model, start + chrono::Duration::seconds(30));
@@ -6888,7 +6888,10 @@ fn a_mark_of_zero_is_left_unmarked() {
 
     assert_eq!(model.error_seq, errors_before);
     assert_eq!(current_index(&model), 1);
-    assert!(session_entries(&model)[0].plays[0].score.is_none());
+    assert_eq!(
+        session_entries(&model)[0].plays[0].score,
+        Some(DEFAULT_START_SCORE)
+    );
 }
 
 #[test]

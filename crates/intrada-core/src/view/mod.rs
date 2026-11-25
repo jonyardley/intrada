@@ -198,9 +198,9 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             {
                 for row in &mut sheet.tempos {
                     if let Some(play) = current_entry.play(&row.play_id) {
-                        let key = draft.answers.key_of(play);
-                        row.last_score = last_score(model, item_id, key);
-                        row.start_score = start_score(model, item_id, key);
+                        let way = draft.answers.way_of(play);
+                        row.last_score = last_score(model, item_id, &way);
+                        row.start_score = start_score(model, item_id, &way);
                     }
                 }
             }

@@ -284,6 +284,10 @@ pub(super) fn update_reflection_draft(
     answers.marks.retain(|mark| mark.score != 0);
     tidy_answers_note(&mut answers);
     tidy_play_notes(&mut answers);
+    let note_refusal = active
+        .reflection
+        .as_ref()
+        .and_then(|draft| keep_last_good_notes(&mut answers, &draft.answers.notes));
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.plan.item_id, way.key);
     }
@@ -312,7 +316,29 @@ pub(super) fn update_reflection_draft(
     if let Some(draft) = active.reflection.as_mut() {
         draft.answers = answers;
     }
-    persist_active(active)
+    let persist = persist_active(active);
+    if let Some(refusal) = note_refusal {
+        model.raise_error(refusal);
+    }
+    persist
+}
+
+/// A key's note over the limit keeps that key's last good note, so the rest of
+/// the draft still reaches crash recovery; the refusal comes back for the key
+/// sheet to show (#3004).
+fn keep_last_good_notes(answers: &mut ReflectionAnswers, drafted: &[DraftNote]) -> Option<String> {
+    let mut refusal = None;
+    answers.notes = std::mem::take(&mut answers.notes)
+        .into_iter()
+        .filter_map(|row| match validation::validate_play_note(&row.note) {
+            Ok(()) => Some(row),
+            Err(e) => {
+                refusal.get_or_insert(e.to_string());
+                drafted.iter().find(|d| d.play_id == row.play_id).cloned()
+            }
+        })
+        .collect();
+    refusal
 }
 
 const REFLECTION_REFUSED: &str = "Couldn't save the reflection.";
@@ -366,17 +392,16 @@ pub(super) fn submit_reflection(
         model.raise_error(REFLECTION_REFUSED);
         return crux_core::render::render();
     }
-    // A score left untouched keeps last time's, taken as agreement (#3004).
+    // A score left untouched keeps the one it started on, last time's or the
+    // suggested, taken as agreement (decided 2026-11-25, #3004).
     let kept: Vec<DraftMark> = entry
         .plays
         .iter()
         .filter(|play| markable(&play.id))
         .filter(|play| !answers.marks.iter().any(|m| m.play_id == play.id))
-        .filter_map(|play| {
-            last_score(model, &entry.plan.item_id, answers.key_of(play)).map(|score| DraftMark {
-                play_id: play.id.clone(),
-                score,
-            })
+        .map(|play| DraftMark {
+            play_id: play.id.clone(),
+            score: start_score(model, &entry.plan.item_id, &answers.way_of(play)),
         })
         .collect();
     answers.marks.extend(kept);

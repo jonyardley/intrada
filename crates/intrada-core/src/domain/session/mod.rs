@@ -360,12 +360,15 @@ pub struct ReflectionAnswers {
 }
 
 impl ReflectionAnswers {
-    /// The key the sheet says a play was in: drafted, else recorded.
-    pub(crate) fn key_of(&self, play: &Play) -> Option<Key> {
-        self.ways
-            .iter()
-            .find(|w| w.play_id == play.id)
-            .map_or(play.key, |w| w.key)
+    /// The key and variations the sheet says a play was in: drafted, else recorded.
+    pub(crate) fn way_of(&self, play: &Play) -> PlayWay {
+        self.ways.iter().find(|w| w.play_id == play.id).map_or_else(
+            || play.way(),
+            |w| PlayWay {
+                key: w.key,
+                variation_ids: w.variation_ids.clone(),
+            },
+        )
     }
 }
 
