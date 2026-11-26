@@ -132,7 +132,7 @@ pub(crate) fn fill(
         warm_up_enabled: defaults.start_with_warm_up,
         rows,
         total_mins: total,
-        start_title: format!("Start session · {length_mins} min"),
+        start_title: format!("Start session · {total} min"),
     })
 }
 
@@ -352,8 +352,11 @@ mod tests {
     }
 
     #[test]
-    fn the_start_button_names_the_length() {
-        assert_eq!(filled(&library(), 23).start_title, "Start session · 23 min");
+    fn the_start_button_names_the_planned_total_not_the_length() {
+        let plan = filled(&library(), 23);
+
+        assert_eq!(plan.total_mins, 20);
+        assert_eq!(plan.start_title, "Start session · 20 min");
     }
 
     #[test]

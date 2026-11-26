@@ -577,7 +577,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertTrue(plan.hasWarmUpItems)
     XCTAssertTrue(plan.warmUpEnabled)
     XCTAssertEqual(plan.totalMins, 20)
-    XCTAssertEqual(plan.startTitle, "Start session · 23 min")
+    XCTAssertEqual(plan.startTitle, "Start session · 20 min")
 
     _ = try bridge.update(.session(.editPlannedSession(now: SessionClock.nowRFC3339())))
     let building = try bridge.rendered()
