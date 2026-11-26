@@ -3,14 +3,16 @@
 > What sessions learned, so the next one does not relearn it (#2801). Every
 > session start prints the lessons below. The retro that writes them, and
 > what each lesson's outcome is, is the first step of the route in the
-> [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
+> [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route),
+> and runs only when something went wrong (#3034).
 
 - A lesson is one line: the date, the issue, then what to do differently and
-  why. **What to look for**, one of each kind the session has: a mistake or
-  correction; a slow or costly step, read from the session's row in
-  `just usage 1 --quality`; and a tool, recipe or doc that misled. A
-  subagent has no row of its own there, since its cost counts in its lead's
-  session, so it names its slow step from its own run or says it has none.
+  why. It records a miss no test or check caught: a mistake or correction, a
+  costly session by the shipping skill's retro step, or a tool, recipe, doc,
+  brief, prompt or rule that misled, the role table and global rules
+  included. A subagent has no row of its own in `just usage --quality`, so
+  it names a costly step or a wrong model or effort from its own run, or
+  says it has none. A pull request where nothing went wrong writes none.
 - A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
   not added again: its line ends "(seen again N)", counting up, and an
   archived one is copied back here with its count raised above the
@@ -32,4 +34,4 @@
 ## Lessons
 
 - fix: .claude/skills/intrada-shipping/SKILL.md, 2026-11-25, #2789: a session started outside the repo has no project agent types, so spawning `reviewer` fails with "agent type not found"; spawn a general-purpose agent told to follow `.claude/agents/reviewer.md`.
-- 2026-11-25, #3004: the lead readied #3019 and #3026 with a bare `gh pr ready`, so the retro never ran until the owner asked; ready only through `just pr-ready`, which refuses a branch with no lessons commit, since prose cannot stop the bare command (issue #3033).
+- 2026-11-25, #3004: the lead readied #3019 and #3026 with a bare `gh pr ready`, so the retro never ran until the owner asked; ready only through `just pr-ready`, since prose cannot stop the bare command (issue #3033).

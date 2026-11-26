@@ -8,7 +8,7 @@ Closes #___
 
 <!-- One line: the decision or risk Jon should judge before merging. -->
 
-Process fixes: <!-- Each retro fix with the lesson it answers; "none" otherwise. -->
+Process fixes: <!-- Each retro fix with the lesson it answers; "none" when nothing went wrong. -->
 
 ## What this fixes
 

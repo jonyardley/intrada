@@ -84,7 +84,6 @@ branch() {
 }
 branch code scripts/x.sh docs/lessons.md
 branch docs docs/guide.md docs/lessons.md
-branch archived scripts/x.sh docs/lessons-archive.md
 branch nolessons scripts/x.sh
 branch behind scripts/x.sh docs/lessons.md
 GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch early scripts/x.sh docs/lessons.md .claude/skills/s/SKILL.md
@@ -211,11 +210,8 @@ Closes #42
 \`\`\`"
 expect_refused "closing line inside a code block" "does not close #42"
 
-case_run archived "$pass_checks" "$review_comment" "$good_body"
-expect_ready "a lesson sent straight to the archive"
-
 case_run nolessons "$pass_checks" "$review_comment" "$good_body"
-expect_refused "no lessons commit" "no lessons commit on this branch; write the retro"
+expect_ready "no lessons commit, since lessons are optional"
 
 case_run wait-open "$pass_checks" "$review_comment" "$good_body"
 expect_ready "a lesson waiting on an open issue, and a rule above the list naming a closed one"
@@ -243,18 +239,6 @@ g remote set-url origin "$work/nowhere"
 case_run code "$pass_checks" "$review_comment" "$good_body"
 expect_refused "main cannot be fetched" "could not fetch main"
 g remote set-url origin "$repo"
-
-# A missing tree makes `git diff` fail with 128, which must not pass as a change.
-case_run code "$pass_checks" "$review_comment" "$good_body"
-tree="$(g rev-parse code:docs)"
-mv "$repo/.git/objects/${tree:0:2}/${tree:2}" "$work/tree"
-rm -f "$CALLS/ready.log"
-set +e
-out="$(cd "$repo" && "$script" 7 42 2>&1)"
-run_status=$?
-set -e
-mv "$work/tree" "$repo/.git/objects/${tree:0:2}/${tree:2}"
-expect_refused "the lessons difference unreadable" "could not compare the lessons files"
 
 # Main moves on after the branch point; only a CI change makes the branch stale.
 on_main() {
