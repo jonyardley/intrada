@@ -4,7 +4,7 @@ import SwiftUI
 /// when the current row is full. Used for tag chips, which grow with content
 /// and shouldn't be clipped or forced onto one scrolling line.
 struct FlowLayout: Layout {
-  var spacing: CGFloat = 6
+  var spacing: CGFloat = IntradaSpacing.small
 
   func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
     let maxWidth = proposal.width ?? .infinity

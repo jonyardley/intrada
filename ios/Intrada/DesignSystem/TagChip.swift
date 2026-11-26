@@ -45,8 +45,14 @@ struct TagChip: View {
           .foregroundStyle(IntradaColor.inkFaintIcon)
       }
     }
-    .padding(.vertical, style == .outlined ? 5 : (removable ? 4 : 3))
-    .padding(.horizontal, style == .outlined ? 10 : (removable ? 9 : 8))
+    .padding(
+      .vertical,
+      style == .outlined ? IntradaSpacing.segmentGap : (removable ? IntradaSpacing.xSmall : 3)
+    )
+    .padding(
+      .horizontal,
+      style == .outlined ? 10 : (removable ? 9 : IntradaSpacing.controlGap)
+    )
     .background(
       style == .sunken ? IntradaColor.surfaceSunken : IntradaColor.cardFill, in: Capsule()
     )

@@ -200,7 +200,7 @@ enum IntradaFont {
   }
 }
 
-/// The small steps are named for their size, so a 2pt nudge takes `xxSmall`.
+/// The small steps are named for their size, so a 2 point nudge takes `xxSmall`.
 /// A fixed component height is a size, not spacing, and stays literal.
 enum IntradaSpacing {
   static let xxSmall: CGFloat = 2
