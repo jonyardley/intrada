@@ -152,8 +152,8 @@ belong here: they follow the plain-language rule (`docs/style-guide.md`).
   (`.github/workflows/release-testflight.yml`); runs on a tag only.
 - **the stamp**, the freshness fingerprint the iOS recipes write so an
   unchanged tree skips a stage; delete it to force every stage to run.
-- **hero**, the large block at the top of the Practice tab: the Up next
-  suggestion where one exists, the plain hero otherwise.
+- **hero**, the large block at the top of the Practice tab, which holds the
+  plan for the time you have.
 - **worktree**: a separate git checkout so parallel streams do not collide.
 - **bridge**: the generated FFI boundary (Event, Effect, ViewModel) between the
   Rust core and the shell. The library rows, session history and week strip
