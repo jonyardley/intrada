@@ -198,6 +198,14 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  func testExerciseDetailWarmUpOn() {
+    var item = Self.scalesInTwelveKeys
+    item.includeInWarmUp = true
+    let store = Store(bridge: PreviewBridge(items: [item]))
+    let pushed = NavigationStack(path: .constant([item.id])) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
   func testKeysSheetAllMajor() {
     assertSnapshot(of: host(KeysSheet(item: Self.scalesInTwelveKeys)), as: config)
   }

@@ -210,6 +210,8 @@ struct LibraryDetailScreen: View {
         }
         badgeRow
 
+        warmUpSection
+
         if let notes = item.notes, !notes.isEmpty {
           notesSection(notes)
         }
@@ -305,6 +307,30 @@ struct LibraryDetailScreen: View {
           input: UpdateItem(
             title: item.title, kind: item.itemType, composer: nil, key: .keep,
             tempo: nil, notes: nil, tags: nil, priority: !item.priority, includeInWarmUp: nil))))
+  }
+
+  // ── Warm-up ──
+
+  private var warmUpSection: some View {
+    SwitchRow(
+      title: "Include in warm-up?",
+      isOn: Binding(get: { liveRow.includeInWarmUp }, set: setIncludeInWarmUp),
+      identifier: "libraryDetail.warmUpSwitch"
+    )
+    .padding(IntradaSpacing.card)
+    .cardSurface()
+  }
+
+  // Reads back from the core, so a refused write never stays on screen and the
+  // refusal itself shows on the global banner (#846).
+  private func setIncludeInWarmUp(_ on: Bool) {
+    _ = store.sendAccepted(
+      .item(
+        .update(
+          id: item.id,
+          input: UpdateItem(
+            title: item.title, kind: item.itemType, composer: nil, key: .keep,
+            tempo: nil, notes: nil, tags: nil, priority: nil, includeInWarmUp: on))))
   }
 
   private var subtitle: String? {
