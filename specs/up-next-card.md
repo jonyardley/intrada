@@ -1,8 +1,8 @@
 # The Up next card
 
 > Tier 3 spec. Issue [#1082]. The suggestion is the Practice hero
-> (design-principles T15). Design: the UpNextHero page in
-> [`design/components/UpNextHero`](../design/components/UpNextHero/README.md).
+> (design-principles T15). The plan from time replaced the card and its
+> UpNextHero component on Practice in #3007.
 
 [#1082]: https://github.com/jonyardley/intrada/issues/1082
 
