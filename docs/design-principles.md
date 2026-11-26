@@ -497,9 +497,10 @@ is a judgement too.
 
 **DECIDED 2026-11-26 (#3007).** Supersedes T15, T20, T22 and T32. Practice
 opens on one choice, the session length, and the core fills it with a warm-up
-then priorities then what is going cold, each at its usual minutes. Start
+then priorities then what is going cold, then the rest of the library, most
+overdue first, each at its usual minutes. Start
 session plays that plan and names its real total. This replaces the Up next
 hero, the "Practise your priorities" text action, "Build my own instead" with
 "Show suggestion", and "Change it first": any change to the plan opens the
 session builder filled with it. The length is a `ScoreStepper` in the clock
-font that can also be typed (look B, picked on 2026-11-26).
+font at 32 point that can also be typed, picked on 2026-11-26.

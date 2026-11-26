@@ -34,7 +34,7 @@ Nudges a number up or down from where it starts, with minus and plus in thin rin
 - At the bottom of the range minus is disabled, at the top plus is; the glyph turns `inkFainter` and the ring stays, so the control keeps its shape.
 - No hold to repeat: the whole range is nine taps.
 - For a score the number itself does nothing when tapped. Leaving a key's score unchanged keeps last time's score on save (decided on #3004), so no tap is needed to agree with it.
-- With typing on, a tap on the number opens the number pad in its place, with Done on the keyboard bar, as `DragValue` does. The typed number is clamped to the range when typing ends; an empty entry changes nothing. A tap on minus or plus while typing ends the typing and steps from the typed number, or from the number before typing when the entry is empty.
+- With typing on, a tap on the number opens the number pad in its place, with Done on the keyboard bar, as `DragValue` does. Each keystroke sends the typed number clamped to the range, so Start tapped while typing plays it; an empty entry changes nothing. A tap on minus or plus while typing ends the typing and steps from the typed number, or from the number before typing when the entry is empty.
 
 ## Content
 
@@ -75,7 +75,7 @@ ScoreStepper(
   step: Int(limits.sessionLengthStepMins), figure: IntradaFont.timer(32), typing: true,
   accessibilityLabel: "Session length", accessibilityValue: "\(plan.lengthMins) minutes"
 ) { next in
-  store.send(.session(.setPlanLength(lengthMins: UInt16(next))))
+  store.send(.session(.setPlanLength(lengthMins: UInt16(clamping: next))))
 }
 ```
 

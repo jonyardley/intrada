@@ -1,8 +1,8 @@
 # The Up next card
 
-> Tier 3 spec. Issue [#1082]. The suggestion is the Practice hero
-> (design-principles T15). The plan from time replaced the card and its
-> UpNextHero component on Practice in #3007.
+> Superseded by design-principles T41 (#3007): Practice now fills the session
+> length the musician picks, and this card and its UpNextHero component are gone.
+> Tier 3 spec. Issue [#1082].
 
 [#1082]: https://github.com/jonyardley/intrada/issues/1082
 

@@ -10,13 +10,6 @@ extension ItemKind {
 
   var onAccent: Color { IntradaColor.onAccent }
 
-  var onHeroAccent: Color {
-    switch self {
-    case .piece: IntradaColor.onHeroPiece
-    case .exercise: IntradaColor.onHeroExercise
-    }
-  }
-
   var bar: Color {
     switch self {
     case .piece: IntradaColor.pieceBadgeBg

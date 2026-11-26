@@ -36,7 +36,6 @@ struct ScoreStepper: View {
   let typing: Bool
   let accessibilityLabel: String
   let accessibilityValue: String?
-  let accessibilityIdentifier: String?
   let onChange: (Int) -> Void
 
   @State private var draft = ""
@@ -46,7 +45,6 @@ struct ScoreStepper: View {
     score: Int, caption: Caption, range: ClosedRange<Int>, step: Int = 1,
     figure: Font = IntradaFont.figureLarge, typing: Bool = false,
     accessibilityLabel: String, accessibilityValue: String? = nil,
-    accessibilityIdentifier: String? = nil,
     onChange: @escaping (Int) -> Void
   ) {
     self.score = score
@@ -57,7 +55,6 @@ struct ScoreStepper: View {
     self.typing = typing
     self.accessibilityLabel = accessibilityLabel
     self.accessibilityValue = accessibilityValue
-    self.accessibilityIdentifier = accessibilityIdentifier
     self.onChange = onChange
   }
 
@@ -84,7 +81,6 @@ struct ScoreStepper: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
     .accessibilityValue(spokenValue)
-    .accessibilityIdentifier(accessibilityIdentifier ?? "")
     .accessibilityAdjustableAction { direction in
       switch direction {
       case .increment where canRaise:
@@ -145,11 +141,10 @@ struct ScoreStepper: View {
       .allowsHitTesting(typingFocused)
       .accessibilityHidden(!typingFocused)
       .onChange(of: typingFocused) { _, now in
-        if now {
-          draft = "\(score)"
-        } else if let typed = typedValue(draft) {
-          onChange(typed)
-        }
+        if now { draft = "\(score)" }
+      }
+      .onChange(of: draft) { _, typed in
+        if typingFocused { draftChanged(typed) }
       }
       .toolbar {
         if typingFocused {
@@ -171,6 +166,12 @@ struct ScoreStepper: View {
 
   func typedValue(_ text: String) -> Int? {
     Int(text.trimmingCharacters(in: .whitespaces)).map(clamped)
+  }
+
+  /// Each keystroke commits, so a Start tapped while typing plays the typed
+  /// number rather than the one before it (#3007).
+  func draftChanged(_ text: String) {
+    if let typed = typedValue(text), typed != score { onChange(typed) }
   }
 
   /// A ring tap while typing steps from the typed number and ends the typing,

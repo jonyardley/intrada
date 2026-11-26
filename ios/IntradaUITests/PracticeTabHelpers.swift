@@ -14,13 +14,14 @@ extension XCUIApplication {
     XCTAssertTrue(
       removes.firstMatch.waitForExistence(timeout: 10), "the plan's rows in the builder",
       file: file, line: line)
-    while removes.firstMatch.exists {
+    for _ in 0..<removes.count where removes.firstMatch.exists {
       let before = removes.count
       removes.firstMatch.tap()
       XCTAssertTrue(
         removes.element(boundBy: before - 1).waitForNonExistence(timeout: 5), "a row removed",
         file: file, line: line)
     }
+    XCTAssertFalse(removes.firstMatch.exists, "an empty builder", file: file, line: line)
   }
 
   /// The shortest route to the focus player: one seeded library item in a

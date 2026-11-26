@@ -82,6 +82,18 @@ struct StepperControlTests {
     #expect(length(20).typedValue(typed) == expected)
   }
 
+  @Test func eachKeystrokeCommitsTheClampedLengthSoStartPlaysIt() {
+    var sent: [Int] = []
+    let stepper = ScoreStepper(
+      score: 20, caption: .unit("minutes"), range: 5...120, step: 5, typing: true,
+      accessibilityLabel: "Session length"
+    ) { sent.append($0) }
+
+    for keystroke in ["4", "45", "", "20"] { stepper.draftChanged(keystroke) }
+
+    #expect(sent == [5, 45])
+  }
+
   @Test(
     arguments: [
       ("17", 1, 22),

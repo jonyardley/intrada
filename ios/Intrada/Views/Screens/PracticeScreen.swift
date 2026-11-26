@@ -84,7 +84,8 @@ struct PracticeScreen: View {
             StartHereCard(
               progress: firstRun,
               onAdd: { addingItem = true },
-              onStartSession: { store.send(.session(.startBuilding)) }
+              onStartSession: { plan == nil ? store.send(.session(.startBuilding)) : editPlan() },
+              onPlay: { plan == nil ? store.send(.session(.startBuilding)) : startPlan() }
             )
             .fadeUp(0)
           }
@@ -172,11 +173,11 @@ struct PracticeScreen: View {
         score: minutes, caption: .unit("minutes"),
         range: Int(limits.sessionLengthMinMins)...Int(limits.sessionLengthMaxMins),
         step: Int(limits.sessionLengthStepMins), figure: IntradaFont.timer(32), typing: true,
-        accessibilityLabel: "Session length", accessibilityValue: "\(minutes) minutes",
-        accessibilityIdentifier: "practice.length.value"
+        accessibilityLabel: "Session length", accessibilityValue: minutesPhrase(minutes)
       ) { next in
         store.send(.session(.setPlanLength(lengthMins: UInt16(clamping: next))))
       }
+      .accessibilityIdentifier("practice.length.value")
     }
   }
 
@@ -250,7 +251,17 @@ struct PracticeScreen: View {
         .foregroundStyle(IntradaColor.inkSecondary)
     }
     .padding(IntradaSpacing.cardCompact)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(
+      [
+        row.title, row.reason.replacingOccurrences(of: " · ", with: ", "),
+        minutesPhrase(row.minutes),
+      ]
+      .joined(separator: ", "))
+  }
+
+  private func minutesPhrase<N: BinaryInteger>(_ minutes: N) -> String {
+    "\(minutes) \(minutes == 1 ? "minute" : "minutes")"
   }
 
   private func editPlan() {
@@ -259,18 +270,20 @@ struct PracticeScreen: View {
       onSuccess: .impact, when: { $0.buildingSetlist != nil })
   }
 
+  private func startPlan() {
+    store.send(
+      .session(.startPlannedSession(now: SessionClock.nowRFC3339())),
+      onSuccess: .impact, when: { $0.activeSession != nil })
+  }
+
   @ViewBuilder private var startBar: some View {
     if let plan {
-      BrandBarButton {
-        store.send(
-          .session(.startPlannedSession(now: SessionClock.nowRFC3339())),
-          onSuccess: .impact, when: { $0.activeSession != nil })
-      } label: {
+      BrandBarButton(action: startPlan) {
         Image(systemName: "play.fill")
         Text(plan.startTitle)
       }
       .accessibilityLabel("Start session")
-      .accessibilityValue("\(plan.totalMins) minutes")
+      .accessibilityValue(minutesPhrase(plan.totalMins))
       .accessibilityIdentifier("practice.plan.start")
       .padding(.horizontal, IntradaSpacing.card)
       .padding(.top, IntradaSpacing.cardCompact)
