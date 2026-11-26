@@ -17,9 +17,9 @@ struct MasteryHeroCard: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(gutter)
     .background(IntradaColor.cardFill)
-    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.panel))
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
-      RoundedRectangle(cornerRadius: IntradaRadius.panel)
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
         .stroke(IntradaColor.hairline, lineWidth: 1))
   }
 

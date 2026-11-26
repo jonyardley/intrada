@@ -20,7 +20,7 @@ struct BrandBarButton<Label: View>: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, IntradaSpacing.card)
         .background(
-          marker, in: RoundedRectangle(cornerRadius: IntradaRadius.control)
+          marker, in: RoundedRectangle(cornerRadius: IntradaRadius.card)
         )
         .dropShadow(.button)
     }

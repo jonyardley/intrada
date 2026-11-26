@@ -66,7 +66,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     // Flat player paper, not the radial wash: the gradient is not what's under
     // test here and it is most of a reference's bytes (snapshot hygiene).
     let states = ZStack {
-      IntradaColor.playerBgMid
+      IntradaColor.paperTop
       VStack(spacing: 32) {
         ClickControl(
           bpm: 66, step: 2, band: 40...208, isRunning: false, unavailable: false,
@@ -99,7 +99,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
   /// which a snapshot host can't drive.
   func testClickControlDraggingStates() {
     let states = ZStack {
-      IntradaColor.playerBgMid
+      IntradaColor.paperTop
       VStack(spacing: 32) {
         ClickControl(
           bpm: 96, step: 2, band: 40...208, isRunning: false, unavailable: false,
@@ -119,7 +119,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
 
   func testClickBarLineStates() {
     let states = ZStack {
-      IntradaColor.playerBgMid
+      IntradaColor.paperTop
       VStack(spacing: 24) {
         ClickBarLine(
           metre: Metre(beats: 4, unit: 4, groups: nil), sounding: 0b1111, currentBeat: 1,
@@ -210,7 +210,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     )
     .frame(width: 342)
     .padding(IntradaSpacing.card)
-    .background(IntradaColor.playerBgMid)
+    .background(IntradaColor.paperTop)
   }
 
   func testOrientationBandLongSession() {

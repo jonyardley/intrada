@@ -279,7 +279,7 @@ struct PracticeScreen: View {
     .frame(maxWidth: .infinity)
     .padding(IntradaSpacing.section)
     .background(heroGradient)
-    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .dropShadow(.hero)
   }
 
@@ -403,7 +403,7 @@ struct PracticeScreen: View {
     .overlay(
       RoundedRectangle(cornerRadius: IntradaRadius.card)
         .strokeBorder(
-          IntradaColor.slotOutline,
+          IntradaColor.divider,
           style: StrokeStyle(lineWidth: 1, dash: [5]))
     )
   }

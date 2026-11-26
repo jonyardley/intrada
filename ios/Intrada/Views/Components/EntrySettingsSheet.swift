@@ -180,7 +180,7 @@ struct EntrySettingsSheet: View {
     }
     .buttonStyle(.plain)
     .foregroundStyle(IntradaColor.danger)
-    .cardSurface(cornerRadius: IntradaRadius.control)
+    .cardSurface(cornerRadius: IntradaRadius.card)
   }
 }
 

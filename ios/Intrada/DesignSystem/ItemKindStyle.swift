@@ -17,10 +17,10 @@ extension ItemKind {
     }
   }
 
-  var bar: LinearGradient {
+  var bar: Color {
     switch self {
-    case .piece: .pieceBar
-    case .exercise: .exerciseBar
+    case .piece: IntradaColor.pieceBadgeBg
+    case .exercise: IntradaColor.exerciseBadgeBg
     }
   }
 

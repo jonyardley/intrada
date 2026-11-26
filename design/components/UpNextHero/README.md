@@ -34,10 +34,10 @@ The suggested session at the top of Practice: what to play next, why, and one bu
 
 ## Content
 
-- The ground is the hero gradient for the musician's highlighter, from `heroGradientTop` (ink) to `heroGradientBottom`, with the `IntradaRadius.hero` corner, the `IntradaShadow.hero` lift and `IntradaSpacing.section` padding.
+- The ground is the hero gradient for the musician's highlighter, from `heroGradientTop` (ink) to `heroGradientBottom`, with the `IntradaRadius.card` corner, the `IntradaShadow.hero` lift and `IntradaSpacing.section` padding.
 - The lead piece's title is `IntradaFont.title` in `paperTop`, up to three lines. The reason under it is `secondary` in `onAccent` at `IntradaOpacity.strong`, led by a star in the marker colour when the piece is a priority.
 - Items sit in a washed list (`paperTop` at `IntradaOpacity.wash`, `IntradaRadius.card`). Each has a dot in its type's on-hero colour, the title, the core's reason and, when there is one, the weakest section.
-- The Start button is filled with the marker, with `onMarker` text in `IntradaFont.button` and the `IntradaRadius.control` corner.
+- The Start button is filled with the marker, with `onMarker` text in `IntradaFont.button` and the `IntradaRadius.card` corner.
 - Every reason, title and subtitle is the core's: the shell renders them and never writes its own (T15 in [the design principles](../../../docs/design-principles.md)).
 - A plan with no blocks draws nothing; the core never sends one.
 

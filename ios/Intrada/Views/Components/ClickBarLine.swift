@@ -111,7 +111,7 @@ private struct BeatDot: View {
       .frame(width: cappedDiameter, height: cappedDiameter)
       .overlay(
         Circle().strokeBorder(
-          sounding ? Color.clear : IntradaColor.slotOutline, lineWidth: 1.5)
+          sounding ? Color.clear : IntradaColor.divider, lineWidth: 1.5)
       )
       .overlay(
         Circle()

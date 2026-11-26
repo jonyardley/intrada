@@ -26,7 +26,7 @@ struct ChoiceGrid<Option: Hashable>: View {
 
   private func box(_ option: Option) -> some View {
     let on = isOn(option)
-    let shape = RoundedRectangle(cornerRadius: IntradaRadius.control)
+    let shape = RoundedRectangle(cornerRadius: IntradaRadius.card)
     return Button {
       Haptic.selection.play()
       onTap(option)

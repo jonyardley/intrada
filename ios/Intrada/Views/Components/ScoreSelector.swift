@@ -57,12 +57,12 @@ struct ScoreSelector: View {
         .frame(maxWidth: .infinity)
         .frame(height: 32)
         .background(
-          RoundedRectangle(cornerRadius: IntradaRadius.badge)
+          RoundedRectangle(cornerRadius: IntradaRadius.card)
             .fill(filled ? AnyShapeStyle(IntradaColor.accent) : AnyShapeStyle(Color.clear))
         )
         .overlay(
-          RoundedRectangle(cornerRadius: IntradaRadius.badge)
-            .strokeBorder(IntradaColor.slotOutline, lineWidth: 1.5)
+          RoundedRectangle(cornerRadius: IntradaRadius.card)
+            .strokeBorder(IntradaColor.divider, lineWidth: 1.5)
             .opacity(filled ? 0 : 1))
     }
     .buttonStyle(.plain)

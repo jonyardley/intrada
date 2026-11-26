@@ -71,9 +71,9 @@ struct FeedbackSheet: View {
           .resizable()
           .scaledToFit()
           .frame(maxHeight: 220)
-          .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.control))
+          .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
           .overlay(
-            RoundedRectangle(cornerRadius: IntradaRadius.control)
+            RoundedRectangle(cornerRadius: IntradaRadius.card)
               .stroke(IntradaColor.divider, lineWidth: 1)
           )
           .frame(maxWidth: .infinity)

@@ -188,10 +188,10 @@ struct ClickSheet: View {
               .frame(width: 44, height: 44)
               .background(
                 on ? IntradaColor.accent : IntradaColor.cardFill,
-                in: RoundedRectangle(cornerRadius: IntradaRadius.control)
+                in: RoundedRectangle(cornerRadius: IntradaRadius.card)
               )
               .overlay(
-                RoundedRectangle(cornerRadius: IntradaRadius.control)
+                RoundedRectangle(cornerRadius: IntradaRadius.card)
                   .stroke(IntradaColor.hairline, lineWidth: on ? 0 : 1)
               )
               .accessibilityLabel("Beat \(beat + 1)")

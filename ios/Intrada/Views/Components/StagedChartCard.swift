@@ -24,10 +24,10 @@ struct StagedChartCard: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(IntradaSpacing.cardCompact)
       .background(
-        IntradaColor.paperTop, in: RoundedRectangle(cornerRadius: IntradaRadius.badge)
+        IntradaColor.paperTop, in: RoundedRectangle(cornerRadius: IntradaRadius.card)
       )
       .overlay(
-        RoundedRectangle(cornerRadius: IntradaRadius.badge)
+        RoundedRectangle(cornerRadius: IntradaRadius.card)
           .stroke(faulted ? IntradaColor.danger : IntradaColor.divider, lineWidth: 1)
       )
       .padding(.horizontal, IntradaSpacing.card)
@@ -50,7 +50,7 @@ struct StagedChartCard: View {
     )
     .cardSurface()
     .padding(IntradaSpacing.card)
-    .background(LinearGradient.paper)
+    .background(IntradaColor.paperTop)
   }
 
   #Preview("Refused at a bar") {
@@ -60,6 +60,6 @@ struct StagedChartCard: View {
     )
     .cardSurface()
     .padding(IntradaSpacing.card)
-    .background(LinearGradient.paper)
+    .background(IntradaColor.paperTop)
   }
 #endif

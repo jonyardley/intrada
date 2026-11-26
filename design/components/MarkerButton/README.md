@@ -39,7 +39,7 @@ One button, named `MarkerButton`. `BrandBarButton` folds into it in #2684. Wheth
 
 - A verb first, two or three words: "Start session", "Save session". A count or time can follow after a middle dot: "Start session · 10 min".
 - The fill is the musician's highlighter, from `\.marker`; butter by default.
-- The label is `IntradaFont.button` in `onMarker` ink. The corner is `IntradaRadius.card`, 3 points; `BrandBarButton` takes `IntradaRadius.control`. On `BrandBarButton` a glyph is the same ink.
+- The label is `IntradaFont.button` in `onMarker` ink. The corner is `IntradaRadius.card`, 3 points, on `BrandBarButton` too. On `BrandBarButton` a glyph is the same ink.
 - No disabled state: leave the button out, or say on the screen what is missing.
 
 ## Accessibility

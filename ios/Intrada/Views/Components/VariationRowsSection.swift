@@ -144,7 +144,7 @@ struct VariationRowsSection: View {
     VariationRowsSection(rows: .constant([]))
       .cardSurface()
       .padding(IntradaSpacing.card)
-      .background(LinearGradient.paper)
+      .background(IntradaColor.paperTop)
   }
 
   #Preview("Rows") {
@@ -158,6 +158,6 @@ struct VariationRowsSection: View {
     )
     .cardSurface()
     .padding(IntradaSpacing.card)
-    .background(LinearGradient.paper)
+    .background(IntradaColor.paperTop)
   }
 #endif

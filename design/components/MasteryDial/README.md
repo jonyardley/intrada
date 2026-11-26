@@ -31,7 +31,7 @@ None. The iPhone version takes a `size`, 128 points by default.
 
 ## Content
 
-- A 9 point `dialTrack` ring, with the filled arc in the `ringSweep` gradient and round ends, starting at twelve o'clock.
+- A 9 point `track` ring, with the filled arc in `ink` and round ends, starting at twelve o'clock.
 - The arc fills the value's share of the top mark, held between empty and full.
 - The number, to one decimal place, in `scoreNumeral` at 0.297 of the size, `ink`.
 - Under it, "of" and the top mark to one decimal place, in `small`, `inkSecondary`.

@@ -15,7 +15,7 @@ struct CapsuleActionButton: View {
         .padding(.horizontal, 10)
         .padding(.vertical, IntradaSpacing.segmentGap)
         .background(
-          RoundedRectangle(cornerRadius: IntradaRadius.badge)
+          RoundedRectangle(cornerRadius: IntradaRadius.card)
             .fill(IntradaColor.surfaceSunken)
             .stroke(IntradaColor.divider, lineWidth: 1))
     }

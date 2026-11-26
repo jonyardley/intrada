@@ -112,10 +112,10 @@ struct ProfileEditSheet: View {
           .frame(minHeight: 44)
           .background(IntradaColor.cardFill)
           .overlay(
-            RoundedRectangle(cornerRadius: IntradaRadius.control)
+            RoundedRectangle(cornerRadius: IntradaRadius.card)
               .stroke(IntradaColor.divider, lineWidth: 1)
           )
-          .contentShape(RoundedRectangle(cornerRadius: IntradaRadius.control))
+          .contentShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       }
       .buttonStyle(.plain)
       .accessibilityLabel("Change icon")

@@ -64,6 +64,6 @@ struct DraftItemRow: View {
     }
     .cardSurface()
     .padding(IntradaSpacing.card)
-    .background(LinearGradient.paper)
+    .background(IntradaColor.paperTop)
   }
 #endif

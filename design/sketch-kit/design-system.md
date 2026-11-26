@@ -101,7 +101,7 @@ The sketch kit is a web copy of five components, `ScreenScaffold`, `Card`, `Libr
 Where the kit follows a decision rather than the code (Jon, 15 October 2026):
 
 - **Cards have the lift**, as T24 decided. The kit draws it by default (`lift={false}` turns it off); the app does not draw it until #2638 lands.
-- **The tab bar is drawn as it looks on a real iPhone**, an opaque bar in `tabBarFill`. The white bar in the iPhone snapshot is a test artefact (#2607). Its labels use `smallMedium`, the smallest type style, though the phone draws them a little smaller in the system font: the kit keeps to the theme's type.
+- **The tab bar is drawn as it looks on a real iPhone**, an opaque bar in `surfaceSunken`. The white bar in the iPhone snapshot is a test artefact (#2607). Its labels use `smallMedium`, the smallest type style, though the phone draws them a little smaller in the system font: the kit keeps to the theme's type.
 
 ### Phone frames
 

@@ -575,12 +575,12 @@ private struct TimerRing: View {
       // The 200 box is the price of the resident counter (T19); the ring had
       // the most slack. The time stays centred at full size.
       ZStack {
-        Circle().stroke(IntradaColor.timerTrack, lineWidth: 10)
+        Circle().stroke(IntradaColor.track, lineWidth: 10)
         if planned != nil {
           Circle()
             .trim(from: 0, to: fraction)
             .stroke(
-              LinearGradient.ringSweep,
+              IntradaColor.ink,
               style: StrokeStyle(lineWidth: 10, lineCap: .round)
             )
             .rotationEffect(.degrees(-90))

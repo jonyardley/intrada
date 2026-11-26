@@ -307,7 +307,7 @@ struct PageCameraFailure: View {
       .foregroundStyle(IntradaColor.onAccent)
       .padding(.horizontal, IntradaSpacing.card)
       .padding(.vertical, IntradaSpacing.controlGap)
-      .background(IntradaColor.danger, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))
+      .background(IntradaColor.danger, in: RoundedRectangle(cornerRadius: IntradaRadius.card))
   }
 }
 

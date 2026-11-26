@@ -104,9 +104,9 @@ struct ChordChartEditSheet: View {
         .accessibilityIdentifier("chordChart.text")
     }
     .padding(IntradaSpacing.cardCompact)
-    .background(IntradaColor.cardFill, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
+    .background(IntradaColor.cardFill, in: RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
-      RoundedRectangle(cornerRadius: IntradaRadius.control)
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
         .stroke(parseError == nil ? IntradaColor.divider : IntradaColor.danger, lineWidth: 1)
     )
   }
@@ -124,7 +124,7 @@ struct ChordChartEditSheet: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(IntradaSpacing.cardCompact)
     .background(
-      IntradaColor.dangerWash, in: RoundedRectangle(cornerRadius: IntradaRadius.control)
+      IntradaColor.dangerWash, in: RoundedRectangle(cornerRadius: IntradaRadius.card)
     )
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Couldn't parse the chart. \(message)")

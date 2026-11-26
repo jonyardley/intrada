@@ -477,6 +477,6 @@ private struct HeroPanel<Content: View>: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(IntradaSpacing.card)
       .background(heroGradient)
-      .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
+      .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
   }
 }

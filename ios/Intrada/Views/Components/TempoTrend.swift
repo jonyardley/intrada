@@ -113,7 +113,7 @@ struct TempoTrend: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .cardSurface(cornerRadius: IntradaRadius.panel)
+    .cardSurface(cornerRadius: IntradaRadius.card)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(display.spoken)
   }
