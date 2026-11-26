@@ -9,7 +9,8 @@
 - A lesson is one line: the date, the issue, then what to do differently and
   why. It records a miss no test or check caught: a mistake or correction, a
   costly session as the shipping skill's retro step reads it from
-  `just usage 1 --quality`, or a tool, recipe, doc or brief that misled. A
+  `just usage 1 --quality`, or a tool, recipe, doc, brief, prompt or rule that
+  misled, the role table and global rules included. A
   subagent has no row of its own there, since its cost counts in its lead's
   session. A pull request where nothing went wrong writes none.
 - A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
