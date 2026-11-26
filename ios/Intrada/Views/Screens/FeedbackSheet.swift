@@ -56,6 +56,8 @@ struct FeedbackSheet: View {
     }
     .interactiveDismissDisabled(!note.isEmpty)
     .onAppear { noteFocused = true }
+    // Hosted outside RootView, so the app's text cap misses it (#1411).
+    .dynamicTypeSize(.xSmall ... .xxxLarge)
   }
 
   @ViewBuilder

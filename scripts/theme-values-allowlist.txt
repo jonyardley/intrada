@@ -31,6 +31,7 @@ ios/Intrada/Views/Components/FormField.swift	.padding(.vertical, 10)	1	#2706
 ios/Intrada/Views/Components/FormField.swift	spacing: 4	1	#2706
 ios/Intrada/Views/Components/InlineSuggestionList.swift	.padding(.vertical, 10)	1	#2706
 ios/Intrada/Views/Components/InlineSuggestionList.swift	spacing: 10	1	#2706
+ios/Intrada/Views/Components/InstrumentIconPicker.swift	.padding(.horizontal, 4)	1	#2706
 ios/Intrada/Views/Components/InstrumentIconPicker.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/KeyPicker.swift	.padding(.bottom, 20)	1	#2706
 ios/Intrada/Views/Components/KeyPicker.swift	.padding(.vertical, 10)	1	#2706

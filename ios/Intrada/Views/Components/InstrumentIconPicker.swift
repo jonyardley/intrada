@@ -59,7 +59,7 @@ struct InstrumentIconPicker: View {
       }
       .frame(maxWidth: .infinity)
       .frame(minHeight: 84)
-      .padding(.horizontal, tileInset)
+      .padding(.horizontal, 4)
       .background(selected ? marker : IntradaColor.cardFill)
       .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       .overlay(
@@ -75,7 +75,6 @@ struct InstrumentIconPicker: View {
   }
 
   @Environment(\.marker) private var marker
-  private let tileInset: CGFloat = 4
 }
 
 #if DEBUG

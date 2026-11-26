@@ -47,8 +47,8 @@ is_large() {
 }
 
 # One tier above `is_large`: the Up next hero (#1082) and its filled plan card
-# (#57) are the largest unbroken gradients the app draws. Re-recorded five times
-# since #1082, they stayed under this ceiling (largest 384 KB, November 2026).
+# (#57) are the largest unbroken gradients the app draws. Re-recorded repeatedly
+# since #1082, they stayed under 420000 (largest 384 KB, November 2026).
 # Only references that are mostly one gradient belong here.
 XL_MAX_BYTES="${SNAPSHOT_XL_MAX_BYTES:-420000}"
 is_xl() {

@@ -294,7 +294,6 @@ struct SessionBuilderScreen: View {
     Image(systemName: "line.3.horizontal")
       .font(IntradaFont.bodyMedium)
       .foregroundStyle(IntradaColor.inkFaintIcon)
-      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
       .accessibilityHidden(true)
   }
 
@@ -348,7 +347,6 @@ struct SessionBuilderScreen: View {
           Image(systemName: "xmark").font(IntradaFont.secondary).foregroundStyle(
             IntradaColor.inkFaintIcon
           )
-          .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
           .frame(width: 44, height: 44)
           .contentShape(Rectangle())
         }
