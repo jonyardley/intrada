@@ -26,6 +26,7 @@ fn make_piece(id: &str) -> Item {
         keys: vec![],
         photo_id: None,
         metre: None,
+        include_in_warm_up: false,
     }
 }
 
@@ -49,6 +50,7 @@ fn make_exercise(id: &str) -> Item {
         keys: vec![],
         photo_id: None,
         metre: None,
+        include_in_warm_up: false,
     }
 }
 
@@ -1021,6 +1023,7 @@ fn the_edit_event_round_trips_on_the_ffi_bincode_wire() {
             notes: Some(Some("slowly".to_string())),
             tags: Some(vec!["warm-up".to_string()]),
             priority: None,
+            include_in_warm_up: None,
         },
         variation_ids: vec!["v1".to_string()],
         new_labels: vec!["Slow".to_string()],
@@ -2181,6 +2184,7 @@ fn update_marks_the_field_it_refused() {
                 notes: None,
                 tags: Some(vec![]),
                 priority: None,
+                include_in_warm_up: None,
             },
         },
     );
@@ -3471,4 +3475,51 @@ fn a_deleted_exercise_never_blocks_a_link_change_on_its_piece() {
         .find(|l| l.exercise_id == "ex-2")
         .expect("the deleted drill's row");
     assert!(left_behind.deleted_at.is_some());
+}
+
+// ── Warm-up switch (#3006) ──
+
+fn warm_up(include: Option<bool>) -> ItemEvent {
+    ItemEvent::Update {
+        id: "ex-1".to_string(),
+        input: UpdateItem {
+            include_in_warm_up: include,
+            ..Default::default()
+        },
+    }
+}
+
+#[test]
+fn an_update_sets_the_warm_up_switch_and_none_leaves_it() {
+    let mut model = model_with_piece_and_exercise();
+    assert!(!item(&model, "ex-1").include_in_warm_up);
+
+    let mut cmd = send_cmd(&mut model, warm_up(Some(true)));
+    assert!(item(&model, "ex-1").include_in_warm_up);
+    assert!(emits_save(&mut cmd, "ex-1"));
+
+    send(&mut model, warm_up(None));
+    assert!(
+        item(&model, "ex-1").include_in_warm_up,
+        "None changes nothing"
+    );
+
+    send(&mut model, warm_up(Some(false)));
+    assert!(!item(&model, "ex-1").include_in_warm_up);
+}
+
+#[test]
+fn the_library_view_shows_the_warm_up_switch() {
+    let mut model = model_with_piece_and_exercise();
+    send(&mut model, warm_up(Some(true)));
+    let vm = Intrada.rendered(&model);
+    let shown = |id: &str| {
+        vm.items
+            .iter()
+            .find(|i| i.id == id)
+            .expect("in the library")
+            .include_in_warm_up
+    };
+    assert!(shown("ex-1"));
+    assert!(!shown("piece-1"));
 }

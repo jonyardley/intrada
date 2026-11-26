@@ -162,6 +162,7 @@ pub(super) fn build_library_item_views(
                 .key
                 .as_ref()
                 .and_then(crate::domain::key::wheel_selection),
+            include_in_warm_up: item.include_in_warm_up,
         });
     }
 

@@ -50,6 +50,7 @@ pub(crate) fn sample_items() -> Vec<Item> {
             metre: None,
             variation_ids: vec![],
             keys: vec![],
+            include_in_warm_up: false,
         }
     };
 

@@ -103,6 +103,7 @@ pub struct UpdateItem {
     pub notes: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
     pub priority: Option<bool>,
+    pub include_in_warm_up: Option<bool>,
 }
 
 use super::session::PracticeSession;
@@ -392,6 +393,7 @@ mod tests {
             notes: Some(None),
             tags: Some(vec!["etude".to_string()]),
             priority: Some(true),
+            include_in_warm_up: Some(true),
         });
     }
 
@@ -420,6 +422,7 @@ mod tests {
                 notes: Some(Some("phrasing".to_string())),
                 tags: Some(vec!["etude".to_string()]),
                 priority: Some(true),
+                include_in_warm_up: Some(true),
             },
         });
     }
@@ -596,6 +599,7 @@ mod tests {
             metre: None,
             keys: vec![crate::domain::key::Key::C_MAJOR],
             variation_ids: vec!["v-1".to_string()],
+            include_in_warm_up: true,
         };
         assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
         assert_round_trips(PersistenceOperation::SaveItems(vec![item]));

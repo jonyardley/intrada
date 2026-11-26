@@ -35,6 +35,7 @@ fn piece(id: &str, written: Option<Key>) -> Item {
             .collect(),
         photo_id: None,
         metre: None,
+        include_in_warm_up: false,
     }
 }
 

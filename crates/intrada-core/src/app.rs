@@ -440,6 +440,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         let _ = app.update(
@@ -617,6 +618,7 @@ mod tests {
             keys: vec![],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
+            include_in_warm_up: false,
         };
         let model = Model {
             items: vec![item].into(),
@@ -659,6 +661,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
                 Item {
                     id: "p2".to_string(),
@@ -681,6 +684,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
                 Item {
                     id: "p3".to_string(),
@@ -703,6 +707,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
                 Item {
                     id: "e1".to_string(),
@@ -722,6 +727,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
             ]
             .into(),
@@ -800,6 +806,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
         model.items.push(Item {
             id: "e1".to_string(),
@@ -819,6 +826,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         let vm = app.rendered(&model);
@@ -959,6 +967,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -978,6 +987,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         model.active_query = Some(ListQuery {
@@ -1014,6 +1024,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1033,6 +1044,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         model.active_query = Some(ListQuery {
@@ -1068,6 +1080,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         model.items = vec![
             mk("a", "Bebop", &["jazz"]),
@@ -1111,6 +1124,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])].into();
         // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
@@ -1149,6 +1163,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         model.items = vec![
             mk("p1", ItemKind::Piece, Some("Chopin")),
@@ -1317,6 +1332,7 @@ mod tests {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             });
         }
         for i in 0..pieces {
@@ -1338,6 +1354,7 @@ mod tests {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             });
         }
         for s in 0..sessions {
@@ -1551,6 +1568,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         let p2 = Item {
             id: "p2".to_string(),
@@ -1570,6 +1588,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         model.items = vec![p1, p2].into();
 
@@ -1681,6 +1700,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         use crate::domain::session::{
@@ -1801,6 +1821,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         use crate::domain::session::{
@@ -1875,6 +1896,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         use crate::domain::session::{
@@ -1979,6 +2001,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         });
 
         use crate::domain::session::{
@@ -2351,6 +2374,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         }
     }
 
@@ -3733,6 +3757,7 @@ mod tests {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             }]
             .into(),
             ..Model::default()
@@ -3848,6 +3873,7 @@ mod tests {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             }]
             .into(),
             ..Model::default()
@@ -3902,6 +3928,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         let ex = Item {
             id: "ex-1".to_string(),
@@ -3921,6 +3948,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         let model = Model {
             items: vec![piece, ex].into(),
@@ -3974,6 +4002,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
                 Item {
                     id: "ex-1".to_string(),
@@ -3996,6 +4025,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
                 Item {
                     id: "ex-2".to_string(),
@@ -4015,6 +4045,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
                 Item {
                     id: "ex-3".to_string(),
@@ -4034,6 +4065,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
             ]
             .into(),
@@ -4469,6 +4501,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         }
     }
 
@@ -4944,6 +4977,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
                 Item {
                     id: "item-b".to_string(),
@@ -4963,6 +4997,7 @@ mod tests {
                     keys: vec![],
                     photo_id: None,
                     metre: None,
+                    include_in_warm_up: false,
                 },
             ]
             .into(),
@@ -5142,6 +5177,7 @@ mod tests {
             caption: "6 of 10".to_string(),
         }];
         view.key_selection = crate::domain::key::wheel_selection(&key);
+        view.include_in_warm_up = true;
         crate::domain::types::assert_round_trips(view);
     }
 

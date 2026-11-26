@@ -147,6 +147,7 @@ pub struct LibraryItemView {
     pub variations_caption: Option<String>,
     /// The wedge the key picker lights for the stored key (#2074).
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
+    pub include_in_warm_up: bool,
 }
 
 /// One library variation an item uses, with its practice state on that item:
@@ -243,6 +244,7 @@ impl LibraryItemView {
             keys_caption: None,
             variations_caption: None,
             key_selection: None,
+            include_in_warm_up: false,
         }
     }
 }
