@@ -29,7 +29,7 @@ struct RecentSessions: View {
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.cardCompact)
     .padding(.bottom, IntradaSpacing.controlGap)
-    .cardSurface(cornerRadius: IntradaRadius.panel)
+    .cardSurface(cornerRadius: IntradaRadius.card)
   }
 
   private var header: some View {

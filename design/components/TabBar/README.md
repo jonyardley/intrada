@@ -27,7 +27,7 @@ None. The four tabs are fixed, in this order.
 ## Content
 
 - Each tab is an icon over a one-word title in sentence case. The shell writes the titles in `RootView`.
-- The bar sits on `tabBarFill` (#F3EFE8). The chosen tab is in `accent` (ink); the others are in `inkSecondary`.
+- The bar sits on `surfaceSunken` (#F3EFE8). The chosen tab is in `accent` (ink); the others are in `inkSecondary`.
 - iPhone draws the system tab bar, so on iOS 26 the system's glass styles the items itself.
 - The iPhone picture (`testRootShell`) is what the test records, not the look: it draws the tabs white on paper. #2607 (I4) checks a device and settles which is true.
 

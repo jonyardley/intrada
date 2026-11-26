@@ -176,6 +176,6 @@ struct NoteBox<Content: View>: View {
     content
       .padding(IntradaSpacing.cardCompact)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .cardSurface(cornerRadius: IntradaRadius.control)
+      .cardSurface(cornerRadius: IntradaRadius.card)
   }
 }

@@ -204,7 +204,7 @@ struct SessionBuilderScreen: View {
         identifier: "builder.sessionLength"
       ) { store.send(.session(.setSessionLength(lengthMins: $0))) }
       .padding(IntradaSpacing.cardCompact)
-      .cardSurface(cornerRadius: IntradaRadius.control)
+      .cardSurface(cornerRadius: IntradaRadius.card)
     }
   }
 
@@ -519,7 +519,7 @@ struct SessionBuilderScreen: View {
       .foregroundStyle(IntradaColor.pieceBadgeFg)
       .padding(.horizontal, IntradaSpacing.small).padding(.vertical, IntradaSpacing.xxSmall)
       .background(
-        IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))
+        IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.card))
   }
 
   private func blockMenu(_ block: SetlistBlockView, groupId: String) -> some View {

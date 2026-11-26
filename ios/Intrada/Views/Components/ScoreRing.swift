@@ -29,7 +29,7 @@ struct ScoreRing: View {
   var body: some View {
     ZStack {
       Circle()
-        .stroke(IntradaColor.masteryTrack, lineWidth: lineWidth)
+        .stroke(IntradaColor.track, lineWidth: lineWidth)
       if !isUnrated {
         Circle()
           .trim(from: 0, to: settled ? fraction : 0)

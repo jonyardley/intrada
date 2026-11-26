@@ -29,11 +29,11 @@ struct MasteryDial: View {
   var body: some View {
     ZStack {
       Circle()
-        .stroke(IntradaColor.dialTrack, lineWidth: ringWidth)
+        .stroke(IntradaColor.track, lineWidth: ringWidth)
       Circle()
         .trim(from: 0, to: settled ? fraction : 0)
         .stroke(
-          LinearGradient.ringSweep,
+          IntradaColor.ink,
           style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
         )
         .rotationEffect(.degrees(-90))

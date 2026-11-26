@@ -121,7 +121,7 @@ struct PhotoCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: 244)
         .background(IntradaColor.surfaceSunken)
-        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.badge))
+        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     }
     .buttonStyle(.plain)
     .padding(.horizontal, IntradaSpacing.card)

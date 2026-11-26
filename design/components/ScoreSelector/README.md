@@ -29,7 +29,7 @@ None. The caller passes the mark, the range, a spoken label and what to do with 
 
 - One box per mark, numbered. The range comes from the core (`LimitsView.scoreMin` and `scoreMax`, 1 to 10 today); the selector never assumes ten.
 - No mark yet is 0 and fills nothing. Tapping the chosen mark again clears it.
-- Every box up to the chosen mark is filled in ink with white figures, the rest outlined in `slotOutline`.
+- Every box up to the chosen mark is filled in ink with white figures, the rest outlined in `divider`.
 - The spoken labels are written by the shell: "Mark for " and the item or play, and "Overall session mark".
 
 ## Behaviour

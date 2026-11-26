@@ -61,7 +61,7 @@ struct ChordChartCard: View {
               .padding(.vertical, IntradaSpacing.controlGap)
               .padding(.horizontal, IntradaSpacing.xSmall)
               .background(
-                RoundedRectangle(cornerRadius: IntradaRadius.badge)
+                RoundedRectangle(cornerRadius: IntradaRadius.card)
                   .fill(IntradaColor.paperTop)
                   .stroke(IntradaColor.divider, lineWidth: 1)
               )

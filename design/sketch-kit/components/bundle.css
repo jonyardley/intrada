@@ -56,7 +56,7 @@
 .ik-score { position: relative; display: inline-flex; width: 32px; height: 32px; flex: none; align-items: center; justify-content: center; }
 .ik-score svg { position: absolute; inset: 0; transform: rotate(-90deg); }
 .ik-score circle { fill: none; stroke-width: 3; }
-.ik-score__track { stroke: var(--masteryTrack); }
+.ik-score__track { stroke: var(--track); }
 .ik-score__fill { stroke: var(--masteryFill); stroke-linecap: round; }
 .ik-score__figure { color: var(--ink); }
 
@@ -106,7 +106,7 @@
 .ik-scaffold__rule { height: 1px; margin-top: var(--spacing-cardCompact); background: var(--divider); }
 .ik-scaffold__content { flex: 1; min-height: 0; overflow: hidden; }
 
-.ik-tabbar { background: var(--tabBarFill); font-family: var(--font-sans); }
+.ik-tabbar { background: var(--surfaceSunken); font-family: var(--font-sans); }
 .ik-tabbar__row { display: flex; }
 .ik-tab { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; color: var(--inkSecondary); }
 .ik-tab--on { color: var(--accent); }

@@ -32,9 +32,9 @@ struct AwayOfferBanner: View {
     }
     .padding(.leading, IntradaSpacing.cardCompact)
     .padding(.vertical, IntradaSpacing.controlGap)
-    .background(IntradaColor.cardFill, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
+    .background(IntradaColor.cardFill, in: RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
-      RoundedRectangle(cornerRadius: IntradaRadius.control)
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
         .stroke(IntradaColor.hairline, lineWidth: 1)
     )
     .cardShadow()

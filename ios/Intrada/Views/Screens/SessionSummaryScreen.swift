@@ -176,7 +176,7 @@ struct SessionSummaryScreen: View {
     .font(IntradaFont.body)
     .foregroundStyle(IntradaColor.ink)
     .padding(IntradaSpacing.cardCompact)
-    .cardSurface(cornerRadius: IntradaRadius.control)
+    .cardSurface(cornerRadius: IntradaRadius.card)
     .focused($focusedEntryId, equals: entry.id)
     .accessibilityLabel("Note for \(entry.itemTitle)")
     .onChange(of: entryNotes[entry.id]) { _, value in

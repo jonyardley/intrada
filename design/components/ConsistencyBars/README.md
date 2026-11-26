@@ -28,7 +28,7 @@ Minutes practised in each recent week, as bars, with this week picked out.
 ## Content
 
 - The busiest week's bar is 58 points tall and the others scale to it. A week with little or no practice still shows a 6 point stub, so every week has a mark.
-- Past weeks fill with `consistencyTrack`. This week fills with the `inkBar` gradient and the `IntradaShadow.glow` lift.
+- Past weeks fill with `track`. This week fills with `ink` and the `IntradaShadow.glow` lift.
 - Each bar has a 5 point corner and the bars sit 9 points apart, sharing the width equally.
 - Week labels are `IntradaFont.small` in `inkSecondary`; this week's is `accent` and semibold.
 - The bars sit on the paper, not in a card.

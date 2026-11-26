@@ -51,7 +51,7 @@ struct PlayWayEditor: View {
     }
     .padding(IntradaSpacing.cardCompact)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .cardSurface(cornerRadius: IntradaRadius.control)
+    .cardSurface(cornerRadius: IntradaRadius.card)
   }
 
   private func group(_ title: String, @ViewBuilder _ grid: () -> some View) -> some View {

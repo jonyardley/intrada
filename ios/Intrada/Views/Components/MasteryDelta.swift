@@ -101,7 +101,7 @@ struct MasteryDeltaToast: View {
     .padding(.vertical, 14)
     .padding(.horizontal, IntradaSpacing.card)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(LinearGradient.celebration)
+    .background(IntradaColor.celebrationBg)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .opacity(reveal ? 1 : 0)
     .scaleEffect(reveal ? 1 : 0.96)

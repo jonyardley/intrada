@@ -37,7 +37,7 @@ On iPhone the arc draws in from empty when the ring appears, easing out over `In
 
 ## Content
 
-- The track is a full circle in `masteryTrack`. The arc is `masteryFill` (`ink`), from twelve o'clock, with round ends, the mark's share of the top mark.
+- The track is a full circle in `track`. The arc is `masteryFill` (`ink`), from twelve o'clock, with round ends, the mark's share of the top mark.
 - The line is 9% of the ring's size, never under 3 points. The mark is `IntradaFont.scoreNumeral` at 36% of the size, in `ink`.
 - The top mark comes from the core (`scoreRange`); never assume ten.
 - No mark yet is the track alone with an eighth rest in `inkFaintIcon`. With a key label, the label shows in secondary ink instead.

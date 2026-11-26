@@ -39,7 +39,7 @@ struct UpNextHero: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(IntradaSpacing.section)
     .background(heroGradient)
-    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .dropShadow(.hero)
     .accessibilityElement(children: .contain)
   }
@@ -204,7 +204,7 @@ struct UpNextHero: View {
       .frame(maxWidth: .infinity)
       .padding(.vertical, IntradaSpacing.card)
       .background(
-        marker, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
+        marker, in: RoundedRectangle(cornerRadius: IntradaRadius.card))
     }
     .buttonStyle(PressRebound())
     .accessibilityLabel("Start practising")

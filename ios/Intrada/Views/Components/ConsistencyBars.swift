@@ -20,12 +20,8 @@ struct ConsistencyBars: View {
       ForEach(Array(weeks.enumerated()), id: \.offset) { index, week in
         VStack(spacing: IntradaSpacing.small) {
           Spacer(minLength: 0)
-          RoundedRectangle(cornerRadius: 5)
-            .fill(
-              week.isCurrent
-                ? AnyShapeStyle(LinearGradient.inkBar)
-                : AnyShapeStyle(IntradaColor.consistencyTrack)
-            )
+          RoundedRectangle(cornerRadius: IntradaRadius.card)
+            .fill(week.isCurrent ? IntradaColor.ink : IntradaColor.track)
             .frame(maxWidth: .infinity)
             .frame(height: barHeight(for: week))
             .dropShadow(week.isCurrent ? .glow : .none)

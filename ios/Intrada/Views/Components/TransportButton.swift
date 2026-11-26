@@ -20,7 +20,7 @@ struct TransportButton: View {
           .iconSize(.transport)
           .foregroundStyle(IntradaColor.onAccent)
           .frame(width: 78, height: 78)
-          .background(LinearGradient.inkBar)
+          .background(IntradaColor.ink)
           .clipShape(Circle())
           .dropShadow(.transport)
       case .secondary:

@@ -9,6 +9,7 @@ enum IntradaColor {
   static let cardFill = Color(hex: 0xFFFFFF)
   static let surfaceSunken = Color(hex: 0xF3EFE8)
   static let hairline = Color(hex: 0xECE6DA)
+  /// A dividing line, and an empty outline: the mark selector, the click's silent beats.
   static let divider = Color(hex: 0xDDD7CA)
 
   static let ink = Color(hex: 0x2A2725)
@@ -52,8 +53,6 @@ enum IntradaColor {
   /// The dimmed ground behind a floating sheet.
   static let sheetScrim = Color.black.opacity(0.2)
 
-  static let tabBarFill = Color(hex: 0xF3EFE8)
-
   /// Duller than `marker` so a badge never reads as a button (T3).
   static let pieceBadgeBg = Color(hex: 0xCBD6E0)
   static let pieceBadgeFg = ink
@@ -66,18 +65,13 @@ enum IntradaColor {
   /// Mastery is monochrome ink: the *count* carries meaning (colour-blind
   /// safe); never recolour a meter/dial by level.
   static let masteryFill = ink
-  static let masteryTrack = Color(hex: 0xEDE8DC)
-  static let dialTrack = Color(hex: 0xEDE8DC)
-  static let timerTrack = Color(hex: 0xEDE8DC)
-  static let consistencyTrack = Color(hex: 0xEDE8DC)
-  /// An empty outline: the mark selector, the click's silent beats, an empty day.
-  static let slotOutline = Color(hex: 0xDDD7CA)
+  /// The empty part of a ring, dial, timer or bar chart.
+  static let track = Color(hex: 0xEDE8DC)
   /// Dashed outline on full-width "+ Add …" rows.
   static let addDashOutline = Color(hex: 0xC9BFB0)
   static let inkFainter = Color(hex: 0xC2B8AA)
   // Focus-player warm radial backdrop.
   static let playerBgTop = Color(hex: 0xFBFAF7)
-  static let playerBgMid = Color(hex: 0xF7F4EF)
   static let playerBgBottom = Color(hex: 0xEFEAE1)
   static let heroGradientTop = ink
   /// Each marker's hue at about 22% lightness (#1877), so light text and the marker
@@ -105,37 +99,19 @@ enum IntradaColor {
 }
 
 extension LinearGradient {
-  static let paper = LinearGradient(
-    colors: [IntradaColor.paperTop], startPoint: .top, endPoint: .bottom)
-
-  static let inkBar = LinearGradient(
-    colors: [IntradaColor.ink], startPoint: .top, endPoint: .bottom)
-
-  static let celebration = LinearGradient(
-    colors: [IntradaColor.celebrationBg], startPoint: .top, endPoint: .bottom)
-
-  static let pieceBar = LinearGradient(
-    colors: [IntradaColor.pieceBadgeBg], startPoint: .top, endPoint: .bottom)
-
-  static let exerciseBar = LinearGradient(
-    colors: [IntradaColor.exerciseBadgeBg], startPoint: .top, endPoint: .bottom)
-
   /// The Practice one-tap hero card (CSS `165deg` ≈ top-trailing → bottom-leading).
   static func practiceHero(_ colour: HighlighterColour) -> LinearGradient {
     LinearGradient(
       colors: [IntradaColor.heroGradientTop, IntradaColor.heroGradientBottom(colour)],
       startPoint: .topTrailing, endPoint: .bottomLeading)
   }
-
-  static let ringSweep = LinearGradient(
-    colors: [IntradaColor.ink], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
 extension RadialGradient {
   /// The Focus-player warm cream wash — CSS `radial-gradient(120% 80% at 50% 22%)`.
   static let playerPaper = RadialGradient(
     colors: [
-      IntradaColor.playerBgTop, IntradaColor.playerBgMid, IntradaColor.playerBgBottom,
+      IntradaColor.playerBgTop, IntradaColor.paperTop, IntradaColor.playerBgBottom,
     ],
     center: UnitPoint(x: 0.5, y: 0.22), startRadius: 0, endRadius: 440)
 }
@@ -214,17 +190,9 @@ enum IntradaSpacing {
   static let section: CGFloat = 24
 }
 
-/// Corner-radius tokens. `card` is the rounding every card / inset surface uses.
+/// The one corner every rounded surface in the app uses, from badge to hero card.
 enum IntradaRadius {
   static let card: CGFloat = 3
-  /// Smaller cards and controls (session summary, reflection, feedback, builder).
-  static let control: CGFloat = 3
-  /// Type badges / small tinted chips.
-  static let badge: CGFloat = 3
-  /// Medium section/hero cards (e.g. the Progress mastery card).
-  static let panel: CGFloat = 3
-  /// The Practice one-tap hero — the single largest card in the app.
-  static let hero: CGFloat = 3
 }
 
 /// Instrument icon sizes from the profile mock (#1690): the header button, a
@@ -320,7 +288,6 @@ enum IntradaMotion {
   // Named springs (response · dampingFraction), from the design system.
   static let standard = Animation.spring(response: 0.35, dampingFraction: 0.85)
   static let snappy = Animation.spring(response: 0.28, dampingFraction: 0.9)
-  static let gentle = Animation.spring(response: 0.45, dampingFraction: 0.82)
 
   // `fadeUp` — the signature page-load reveal: opacity 0→1, translateY 12→0,
   // 500ms ease-out, staggered +60ms per item, once on first paint.

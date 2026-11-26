@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PaperBackground: View {
   var body: some View {
-    LinearGradient.paper
+    IntradaColor.paperTop
       .ignoresSafeArea()
   }
 }

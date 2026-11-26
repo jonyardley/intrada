@@ -145,7 +145,7 @@ struct RootView: View {
   private static func applyTabBarAppearance() {
     let appearance = UITabBarAppearance()
     appearance.configureWithOpaqueBackground()
-    appearance.backgroundColor = UIColor(IntradaColor.tabBarFill)
+    appearance.backgroundColor = UIColor(IntradaColor.surfaceSunken)
 
     // iOS 26's glass tab bar styles itself and ignores these item colours; they
     // apply on iOS 25 and earlier (active tint also comes from `.tint`).
