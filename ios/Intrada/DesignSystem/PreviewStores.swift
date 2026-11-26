@@ -148,7 +148,8 @@
       Store(
         bridge: PreviewBridge(
           profile: .previewCellist,
-          practiceDefaults: PracticeDefaults(click: .twoAndFour, sessionLengthMins: 40)))
+          practiceDefaults: PracticeDefaults(
+            click: .twoAndFour, sessionLengthMins: 40, startWithWarmUp: true)))
     }
 
     /// An offline store with curated sample items (specific edge cases).

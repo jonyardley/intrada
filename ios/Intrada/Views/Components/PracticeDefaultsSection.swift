@@ -18,7 +18,9 @@ struct PracticeDefaultsSection: View {
               get: { defaults.click },
               set: {
                 save(
-                  PracticeDefaults(click: $0, sessionLengthMins: defaults.sessionLengthMins))
+                  PracticeDefaults(
+                    click: $0, sessionLengthMins: defaults.sessionLengthMins,
+                    startWithWarmUp: defaults.startWithWarmUp))
               }),
             label: \.title,
             identifier: { "profile.click.\($0.identifierSuffix)" },
@@ -37,7 +39,9 @@ struct PracticeDefaultsSection: View {
           identifier: "profile.sessionLength"
         ) {
           save(
-            PracticeDefaults(click: defaults.click, sessionLengthMins: $0))
+            PracticeDefaults(
+              click: defaults.click, sessionLengthMins: $0,
+              startWithWarmUp: defaults.startWithWarmUp))
         }
         .padding(IntradaSpacing.card)
       }

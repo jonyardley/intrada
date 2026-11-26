@@ -279,7 +279,7 @@ final class Store {
     if practiceDefaultsSlot.read() == nil {
       send(.practiceDefaults(.carried(bytes)))
     }
-    // Cleared after the send: the core's save has written version 3 by now.
+    // Cleared after the send: the core's save has written the new shape by now.
     previous.clear()
   }
 

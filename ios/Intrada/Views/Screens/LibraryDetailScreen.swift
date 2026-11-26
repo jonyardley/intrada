@@ -304,7 +304,7 @@ struct LibraryDetailScreen: View {
           id: item.id,
           input: UpdateItem(
             title: item.title, kind: item.itemType, composer: nil, key: .keep,
-            tempo: nil, notes: nil, tags: nil, priority: !item.priority))))
+            tempo: nil, notes: nil, tags: nil, priority: !item.priority, includeInWarmUp: nil))))
   }
 
   private var subtitle: String? {

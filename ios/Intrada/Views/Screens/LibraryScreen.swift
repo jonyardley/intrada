@@ -132,7 +132,7 @@ struct LibraryScreen: View {
     UpdateItem(
       title: item.title, kind: item.itemType,
       composer: nil, key: .keep, tempo: nil, notes: nil,
-      tags: nil, priority: !item.priority)
+      tags: nil, priority: !item.priority, includeInWarmUp: nil)
   }
 
   private var isSearching: Bool {

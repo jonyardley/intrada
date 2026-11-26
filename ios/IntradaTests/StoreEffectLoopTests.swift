@@ -306,7 +306,8 @@ final class StoreEffectLoopTests: XCTestCase {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "profile-\(UUID().uuidString)"))
     let profile = Profile(name: "Jon", instrument: "Cello", iconChoice: nil, colour: .butter)
     defaults.set(Data(try profile.bincodeSerialize()), forKey: Store.profileDefaultsKey)
-    let practice = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil)
+    let practice = PracticeDefaults(
+      click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: true)
     defaults.set(Data(try practice.bincodeSerialize()), forKey: Store.practiceDefaultsKey)
     let firstRun = FirstRun(welcomeSeen: true)
     defaults.set(Data(try firstRun.bincodeSerialize()), forKey: Store.firstRunKey)
@@ -339,7 +340,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testSavePracticeDefaultsEffectWritesToDefaultsUnderItsOwnKey() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: true)
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in [Request(id: 7, effect: .app(.savePracticeDefaults(saved)))] }
     let store = Store(bridge: bridge, sortDefaults: defaults)
@@ -355,7 +356,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testRestorePersistedPracticeDefaultsReplaysLoaded() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: true)
     defaults.set(Data(try saved.bincodeSerialize()), forKey: Store.practiceDefaultsKey)
     let bridge = FakeBridge()
     var sentEvents: [Event] = []
@@ -370,12 +371,12 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(sentEvents, [.practiceDefaults(.loaded(saved))])
   }
 
-  /// A device updating from version 2 holds only the old key: its bytes go to
-  /// the core once, and the key goes with them (#2791).
-  func testAVersion2BlobIsSentToTheCoreOnceAndItsKeyCleared() throws {
+  /// A device updating from version 3 holds only the old key: its bytes go to
+  /// the core once, and the key goes with them (#3006).
+  func testAVersion3BlobIsSentToTheCoreOnceAndItsKeyCleared() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    let version2: [UInt8] = [0x05, 0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00]
-    defaults.set(Data(version2), forKey: Store.previousPracticeDefaultsKey)
+    let version3: [UInt8] = [0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00]
+    defaults.set(Data(version3), forKey: Store.previousPracticeDefaultsKey)
     let bridge = FakeBridge()
     var sentEvents: [Event] = []
     bridge.updateHandler = { event in
@@ -387,14 +388,14 @@ final class StoreEffectLoopTests: XCTestCase {
     store.restorePersistedPracticeDefaults()
     store.restorePersistedPracticeDefaults()
 
-    XCTAssertEqual(sentEvents, [.practiceDefaults(.carried(version2))])
+    XCTAssertEqual(sentEvents, [.practiceDefaults(.carried(version3))])
     XCTAssertNil(defaults.data(forKey: Store.previousPracticeDefaultsKey))
   }
 
-  func testAVersion2BlobBesideACurrentOneIsClearedUnsent() throws {
+  func testAVersion3BlobBesideACurrentOneIsClearedUnsent() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    defaults.set(Data([0x0a, 0, 0, 0, 0, 0]), forKey: Store.previousPracticeDefaultsKey)
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25)
+    defaults.set(Data([0, 0, 0, 0, 0]), forKey: Store.previousPracticeDefaultsKey)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25, startWithWarmUp: true)
     defaults.set(Data(try saved.bincodeSerialize()), forKey: Store.practiceDefaultsKey)
     let bridge = FakeBridge()
     var sentEvents: [Event] = []
