@@ -601,8 +601,8 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
         store
             .conn
             .prepare(
-                "SELECT id, exercise_id, position, updated_at FROM exercise_link
-                 WHERE piece_id = ?1 AND deleted_at IS NULL ORDER BY position, id",
+                "SELECT id, exercise_id, position, updated_at, deleted_at FROM exercise_link
+                 WHERE piece_id = ?1 ORDER BY position, id",
             )
             .expect("prepares")
             .query_map([id], |row| {
@@ -611,7 +611,7 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
                     exercise_id: row.get(1)?,
                     position: usize::try_from(row.get::<_, i64>(2)?).expect("a place"),
                     updated_at: at(&row.get::<_, String>(3)?),
-                    deleted_at: None,
+                    deleted_at: row.get::<_, Option<String>>(4)?.map(|text| at(&text)),
                 })
             })
             .expect("queries")
