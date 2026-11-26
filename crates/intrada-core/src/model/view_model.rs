@@ -10,7 +10,6 @@ use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::ProfileView;
 use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
-use crate::suggestion::SuggestedPlan;
 
 /// Serializable view state sent to shells for rendering.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -44,23 +43,12 @@ pub struct ViewModel {
     pub analytics: Option<AnalyticsView>,
     pub last_practised: Option<LastPractisedView>,
     pub profile: ProfileView,
-    /// Today's plan on the Practice tab (#1082, #57). `None` whenever
-    /// nothing qualifies: it suggests, it never gates.
-    pub up_next: Option<SuggestedPlan>,
     pub limits: LimitsView,
     /// Ids of the rows `active_query` leaves showing, in sort order.
     pub visible_ids: Vec<String>,
     /// Up to 5 items with practice history, most recently practised first,
     /// for the builder's "Recently practised" quick-add section (#1362).
     pub recently_practised_ids: Vec<String>,
-    /// "Practise your priorities" can show: something is starred and nothing
-    /// is being built, played or summarised, so the tap cannot meet the
-    /// core's "already in progress" refusal (#981). Derived before the Library
-    /// filter, like `up_next`.
-    pub shows_priorities: bool,
-    /// "Show suggestion" may show once the plan is put aside: a plan waits and
-    /// nothing is being built, played or summarised (#2521).
-    pub shows_suggestion_restore: bool,
     /// The crash-recovery prompt may show: no session is being played or
     /// summarised, so resuming cannot replace one (#962).
     pub offers_recovery: bool,

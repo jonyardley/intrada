@@ -9,7 +9,7 @@
 
 use crate::analytics::LocalClock;
 use crate::model::LibraryItemView;
-use crate::suggestion::staleness_of;
+use crate::staleness::staleness_of;
 
 /// The starred items, least ready first. Never practised ranks stalest of all
 /// (`Staleness::overdue_key`), so a brand-new priority leads.

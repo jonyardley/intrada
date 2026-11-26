@@ -245,7 +245,7 @@ mod tests {
         let mut model = launched(vec![piece, exercise], vec![]);
         crate::view::cache::refresh(&mut model, Utc::now());
         let _ = Intrada.update(
-            Event::Session(crate::domain::session::SessionEvent::StartFromSuggestion {
+            Event::Session(crate::domain::session::SessionEvent::StartPlannedSession {
                 now: Utc::now(),
             }),
             &mut model,

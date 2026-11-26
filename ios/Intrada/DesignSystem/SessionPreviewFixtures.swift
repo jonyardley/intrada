@@ -40,7 +40,6 @@
             itemId: "piece-1", itemTitle: "Clair de Lune", itemType: .piece,
             totalMinutes: 180, sessionCount: 9)
         ],
-        neglectedItems: [],
         scoreChanges: [
           ScoreChange(
             itemId: "piece-1", itemTitle: "Clair de Lune", previousScore: 3,

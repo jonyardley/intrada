@@ -4,7 +4,6 @@ use crate::analytics::{
 use crate::domain::types::{LibrarySort, SortDirection, SortField};
 use crate::model::{LibraryItemView, Model, PracticeSessionView, VariationOptionView};
 use crate::practice_weeks::PracticeWeekView;
-use crate::suggestion::SuggestedSession;
 use crate::view::library::{
     build_library_item_views, sort_library_items, RECENTLY_PRACTISED_LIMIT,
 };
@@ -44,10 +43,6 @@ pub(crate) struct Projections {
     pub(crate) sorted: Vec<usize>,
     pub(crate) available_tags: Vec<String>,
     pub(crate) available_composers: Vec<String>,
-    /// Ranked without the preferred length, which `view` fills to, so a
-    /// change to the preference needs no key of its own.
-    pub(crate) up_next_blocks: Vec<SuggestedSession>,
-    pub(crate) has_priorities: bool,
     pub(crate) recently_practised_ids: Vec<String>,
     pub(crate) sessions: Vec<PracticeSessionView>,
     pub(crate) practice_weeks: Vec<PracticeWeekView>,
@@ -107,14 +102,6 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
     let available_tags = vocabulary(library.iter().flat_map(|i| &i.tags));
     let available_composers = vocabulary(library.iter().map(|i| &i.subtitle));
 
-    // Derived before the filter: a narrowed library must not hide the
-    // suggestion the Practice tab leads with (#1082).
-    let up_next_blocks = crate::suggestion::rank_blocks(&library, clock);
-
-    // Pre-filter for the same reason as `up_next`: a narrowed library must
-    // not hide the "Practise your priorities" button (#981).
-    let has_priorities = library.iter().any(|i| i.priority);
-
     let mut recently_practised: Vec<LibraryItemView> = library
         .iter()
         .filter(|i| {
@@ -157,8 +144,6 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
             Some(analytics_from_changes(
                 &score_changes,
                 &model.sessions,
-                &model.items,
-                &model.practice_summaries,
                 &library,
                 clock,
             )),
@@ -172,8 +157,6 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         sorted,
         available_tags,
         available_composers,
-        up_next_blocks,
-        has_priorities,
         recently_practised_ids,
         sessions,
         practice_weeks,

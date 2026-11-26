@@ -280,96 +280,6 @@ fn suggestion_model() -> Model {
     m
 }
 
-fn build_from_suggestion(model: &mut Model) {
-    update(
-        model,
-        Event::Session(SessionEvent::StartBuildingFromSuggestion { now: Utc::now() }),
-    );
-}
-
-#[test]
-fn start_building_from_suggestion_seeds_the_derived_block() {
-    let mut m = suggestion_model();
-    build_from_suggestion(&mut m);
-
-    assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-    let e = building_entries(&m);
-    let block = group_of(&m, "piece-P").expect("the piece anchors the seeded block");
-    assert!(
-        e.iter()
-            .all(|x| x.plan.group_id.as_deref() == Some(block.as_str())),
-        "one block, not three standalone entries"
-    );
-    assert_eq!(m.last_error, None);
-}
-
-#[test]
-fn start_building_from_suggestion_caps_the_block_at_three_items() {
-    let mut m = suggestion_model();
-    for item in m.items.iter_mut() {
-        if item.id == "piece-P" {
-            item.exercise_links = crate::domain::link::links_to(
-                &["ex-A", "ex-B", "ex-C", "ex-D"],
-                chrono::Utc::now(),
-            );
-        }
-    }
-    build_from_suggestion(&mut m);
-
-    assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-}
-
-#[test]
-fn start_building_from_suggestion_rejects_when_not_idle() {
-    let mut m = suggestion_model();
-    update(&mut m, Event::Session(SessionEvent::StartBuilding));
-    add(&mut m, "ex-C");
-    build_from_suggestion(&mut m);
-
-    assert_eq!(
-        m.last_error.as_deref(),
-        Some("A practice is already in progress")
-    );
-    assert_eq!(ids(&m), ["ex-C"], "existing setlist untouched");
-}
-
-#[test]
-fn start_building_from_suggestion_is_a_no_op_with_nothing_to_suggest() {
-    // No piece has a related exercise linked, so there is no block to resume.
-    let mut m = linked_model();
-    m.items.retain(|i| i.id == "piece-Q" || i.id == "ex-D");
-    build_from_suggestion(&mut m);
-
-    assert!(
-        matches!(m.session_status, SessionStatus::Idle),
-        "an empty derivation must not leave an empty building session"
-    );
-    assert_eq!(m.last_error, None, "nothing to suggest is not an error");
-}
-
-#[test]
-fn start_building_from_suggestion_makes_no_network_call() {
-    let mut m = suggestion_model();
-    crate::view::cache::refresh(&mut m, Utc::now());
-    let app = Intrada;
-    let mut cmd = app.update(
-        Event::Session(SessionEvent::StartBuildingFromSuggestion { now: Utc::now() }),
-        &mut m,
-    );
-    assert!(
-        cmd.effects().all(|e| matches!(e, Effect::Render(_))),
-        "the suggestion is derived from data already in the model: no HTTP, \
-         no storage read (invariant 1)"
-    );
-}
-
-#[test]
-fn start_building_from_suggestion_round_trips_on_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(Event::Session(
-        SessionEvent::StartBuildingFromSuggestion { now: Utc::now() },
-    ));
-}
-
 // ── The countdown clock (#2789) ──────────────────────────────────
 
 fn start_with_length(length_mins: Option<u16>, now: DateTime<Utc>) -> Model {
@@ -424,96 +334,7 @@ fn a_session_with_no_length_has_no_end() {
     assert_eq!(view.ends_at, None);
 }
 
-#[test]
-fn the_one_tap_start_carries_the_planned_length() {
-    let mut m = plan_model();
-    one_tap(&mut m);
-    let SessionStatus::Active(ref active) = m.session_status else {
-        panic!("expected Active");
-    };
-    assert_eq!(active.length_mins, Some(25));
-}
-
 // ── Today's plan and the one-tap start (#57) ─────────────────────
-
-/// The pinned anchor's block (15 minutes, never practised) and piece-R's
-/// (10 minutes) fit a 25 minute length; nothing else qualifies.
-fn plan_model() -> Model {
-    let mut m = suggestion_model();
-    m.practice_defaults.session_length_mins = Some(25);
-    m
-}
-
-fn one_tap(model: &mut Model) -> Vec<ActiveSession> {
-    run(
-        model,
-        Event::Session(SessionEvent::StartFromSuggestion { now: Utc::now() }),
-    )
-}
-
-#[test]
-fn start_building_from_suggestion_seeds_every_planned_block() {
-    let mut m = plan_model();
-    build_from_suggestion(&mut m);
-
-    assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
-    assert_ne!(group_of(&m, "piece-P"), group_of(&m, "piece-R"));
-    assert!(groups_contiguous(building_entries(&m)));
-}
-
-#[test]
-fn start_from_suggestion_plays_the_plan_in_one_step() {
-    let mut m = plan_model();
-    let saves = one_tap(&mut m);
-
-    let played: Vec<&str> = session_entries(&m)
-        .iter()
-        .map(|e| e.plan.item_id.as_str())
-        .collect();
-    assert_eq!(played, ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
-    let group = |id: &str| {
-        session_entries(&m)
-            .iter()
-            .find(|e| e.plan.item_id == id)
-            .and_then(|e| e.plan.group_id.clone())
-    };
-    assert_eq!(group("ex-A"), group("piece-P"));
-    assert_ne!(group("piece-P"), group("piece-R"));
-    assert_saved_what_is_active(&saves, &m);
-    assert_eq!(m.last_error, None);
-}
-
-#[test]
-fn start_from_suggestion_rejects_when_not_idle() {
-    let mut m = plan_model();
-    update(&mut m, Event::Session(SessionEvent::StartBuilding));
-    add(&mut m, "ex-D");
-    one_tap(&mut m);
-
-    assert_eq!(
-        m.last_error.as_deref(),
-        Some("A practice is already in progress")
-    );
-    assert_eq!(ids(&m), ["ex-D"], "the build in progress is untouched");
-}
-
-#[test]
-fn start_from_suggestion_is_a_no_op_with_nothing_to_suggest() {
-    let mut m = linked_model();
-    m.items.retain(|i| i.id == "piece-Q" || i.id == "ex-D");
-    let saves = one_tap(&mut m);
-
-    assert!(matches!(m.session_status, SessionStatus::Idle));
-    assert!(saves.is_empty());
-    assert_eq!(m.last_error, None, "nothing to suggest is not an error");
-}
-
-#[test]
-fn start_from_suggestion_round_trips_on_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::StartFromSuggestion {
-        now: Utc::now(),
-    }));
-}
 
 #[test]
 fn prepare_reflection_round_trips_on_ffi_bincode_wire() {
@@ -524,142 +345,6 @@ fn prepare_reflection_round_trips_on_ffi_bincode_wire() {
 }
 
 // ── "Practise your priorities" (#981) ────────────────────────────
-
-fn star(model: &mut Model, starred: &[&str]) {
-    for item in model.items.iter_mut() {
-        if starred.contains(&item.id.as_str()) {
-            item.priority = true;
-        }
-    }
-}
-
-/// Same mark and return count on every fixture, so the expected interval
-/// is identical and only the gap decides the order.
-fn practised_days_ago(model: &mut Model, item_id: &str, days: i64) {
-    model.practice_summaries.insert(
-        item_id.to_string(),
-        crate::model::ItemPracticeSummary {
-            session_count: 4,
-            latest_score: Some(6),
-            last_practiced_at: Some((Utc::now() - chrono::Duration::days(days)).to_rfc3339()),
-            ..crate::model::ItemPracticeSummary::fixture()
-        },
-    );
-}
-
-fn start_with_priorities(model: &mut Model) {
-    update(
-        model,
-        Event::Session(SessionEvent::StartBuildingWithPriorities { now: Utc::now() }),
-    );
-}
-
-#[test]
-fn start_building_with_priorities_seeds_every_starred_item() {
-    let mut m = linked_model();
-    star(&mut m, &["piece-Q", "ex-D"]);
-    start_with_priorities(&mut m);
-
-    assert_eq!(
-        ids(&m),
-        ["piece-Q", "ex-D"],
-        "both starred items reach the setlist; the ordering itself is pinned in priorities.rs"
-    );
-    assert_eq!(m.last_error, None);
-}
-
-#[test]
-fn start_building_with_priorities_seeds_least_ready_first() {
-    let mut m = linked_model();
-    star(&mut m, &["piece-Q", "ex-D"]);
-    practised_days_ago(&mut m, "piece-Q", 2);
-    practised_days_ago(&mut m, "ex-D", 90);
-    start_with_priorities(&mut m);
-
-    assert_eq!(
-        ids(&m),
-        ["ex-D", "piece-Q"],
-        "the longer-neglected item leads, against both library order and the alphabet"
-    );
-}
-
-#[test]
-fn start_building_with_priorities_brings_a_starred_pieces_block() {
-    let mut m = linked_model();
-    star(&mut m, &["piece-P"]);
-    start_with_priorities(&mut m);
-
-    assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-    let e = building_entries(&m);
-    let block = group_of(&m, "piece-P").expect("the seeded piece keeps its block");
-    assert!(e
-        .iter()
-        .all(|x| x.plan.group_id.as_deref() == Some(block.as_str())));
-}
-
-#[test]
-fn start_building_with_priorities_seeds_a_starred_exercise_once() {
-    let mut m = linked_model();
-    star(&mut m, &["piece-P", "ex-A"]);
-    start_with_priorities(&mut m);
-
-    assert_eq!(
-        ids(&m).iter().filter(|id| *id == "ex-A").count(),
-        1,
-        "starred in its own right and pulled in by its piece is still one entry"
-    );
-}
-
-#[test]
-fn start_building_with_priorities_rejects_when_not_idle() {
-    let mut m = linked_model();
-    star(&mut m, &["piece-Q"]);
-    update(&mut m, Event::Session(SessionEvent::StartBuilding));
-    add(&mut m, "ex-C");
-    start_with_priorities(&mut m);
-
-    assert_eq!(
-        m.last_error.as_deref(),
-        Some("A practice is already in progress")
-    );
-    assert_eq!(ids(&m), ["ex-C"], "existing setlist untouched");
-}
-
-#[test]
-fn start_building_with_priorities_is_a_no_op_with_nothing_starred() {
-    let mut m = linked_model();
-    start_with_priorities(&mut m);
-
-    assert!(
-        matches!(m.session_status, SessionStatus::Idle),
-        "an empty priority set must not leave an empty building session"
-    );
-    assert_eq!(m.last_error, None, "nothing starred is not an error");
-}
-
-#[test]
-fn start_building_with_priorities_makes_no_network_call() {
-    let mut m = linked_model();
-    star(&mut m, &["piece-P"]);
-    crate::view::cache::refresh(&mut m, Utc::now());
-    let app = Intrada;
-    let mut cmd = app.update(
-        Event::Session(SessionEvent::StartBuildingWithPriorities { now: Utc::now() }),
-        &mut m,
-    );
-    assert!(
-        cmd.effects().all(|e| matches!(e, Effect::Render(_))),
-        "the priority set is derived from data already in the model: no HTTP, \
-         no storage read (invariant 1)"
-    );
-}
-
-#[test]
-fn start_building_with_priorities_round_trips_on_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(Event::Session(
-        SessionEvent::StartBuildingWithPriorities { now: Utc::now() },
-    ));
-}
 
 #[test]
 fn add_to_setlist_is_idempotent_by_item_id() {
@@ -7105,7 +6790,7 @@ fn set_today(model: &mut Model, length_mins: Option<u16>) {
 
 #[test]
 fn every_way_into_the_builder_starts_at_the_preferred_length() {
-    let starts: [(&str, StartBuild); 4] = [
+    let starts: [(&str, StartBuild); 2] = [
         ("start building", |m| {
             update(m, Event::Session(SessionEvent::StartBuilding))
         }),
@@ -7115,13 +6800,6 @@ fn every_way_into_the_builder_starts_at_the_preferred_length() {
                 Event::Session(SessionEvent::StartBuildingWith {
                     item_id: "piece-P".to_string(),
                 }),
-            )
-        }),
-        ("up next", build_from_suggestion),
-        ("priorities", |m| {
-            update(
-                m,
-                Event::Session(SessionEvent::StartBuildingWithPriorities { now: Utc::now() }),
             )
         }),
     ];

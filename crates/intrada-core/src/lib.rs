@@ -10,7 +10,6 @@ pub(crate) mod priorities;
 pub(crate) mod sample;
 pub(crate) mod staleness;
 pub mod stored_session;
-pub mod suggestion;
 pub mod sync;
 pub mod validation;
 pub mod view;

@@ -21,7 +21,6 @@ LibraryData
 LibrarySort
 LimitsView
 ListQuery
-NeglectedItem
 PickerVariationView
 PieceRefView
 PracticeDayView
@@ -38,7 +37,6 @@ ScoreHistoryEntry
 SessionsData
 SortDirection
 SortField
-SuggestedItem
 SummaryView
 TempoTrendPoint
 TempoTrendView

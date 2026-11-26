@@ -234,10 +234,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         ),
     };
 
-    let up_next = crate::suggestion::plan(
-        &cached.up_next_blocks,
-        model.practice_defaults.session_length_mins,
-    );
     ViewModel {
         active_query: model.active_query.clone(),
         active_sort: model.active_sort,
@@ -263,14 +259,9 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             model.profile_draft.as_ref(),
             clock.hour_of(now),
         ),
-        shows_suggestion_restore: up_next.is_some()
-            && matches!(model.session_status, SessionStatus::Idle),
-        up_next,
         limits: LimitsView::default(),
         visible_ids,
         recently_practised_ids: cached.recently_practised_ids.clone(),
-        shows_priorities: cached.has_priorities
-            && matches!(model.session_status, SessionStatus::Idle),
         offers_recovery: !matches!(
             model.session_status,
             SessionStatus::Active(_) | SessionStatus::Summary(_)

@@ -10,7 +10,7 @@ use crate::analytics::LocalClock;
 use crate::domain::item::ItemKind;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::model::LibraryItemView;
-use crate::suggestion::staleness_of;
+use crate::staleness::staleness_of;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]

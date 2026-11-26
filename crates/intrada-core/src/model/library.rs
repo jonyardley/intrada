@@ -256,24 +256,6 @@ impl LibraryItemView {
 }
 
 #[cfg(test)]
-impl LinkedExerciseView {
-    pub(crate) fn fixture(id: &str, title: &str) -> Self {
-        Self {
-            id: id.to_string(),
-            title: title.to_string(),
-            key: None,
-            key_label: None,
-            tempo_marking: None,
-            tempo_bpm: None,
-            tempo_line: None,
-            tempo_line_spoken: None,
-            practice: None,
-            piece_context_score: None,
-        }
-    }
-}
-
-#[cfg(test)]
 impl VariationView {
     pub(crate) fn fixture(id: &str, label: &str) -> Self {
         Self {

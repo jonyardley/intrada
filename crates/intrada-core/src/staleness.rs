@@ -7,7 +7,7 @@
 //! cold on the same clock.
 
 use crate::analytics::LocalClock;
-use crate::model::ItemPracticeSummary;
+use crate::model::{ItemPracticeSummary, LibraryItemView};
 
 /// How cold an item has gone, relative to its own expected return interval.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,6 +140,12 @@ fn gap_phrase(days: u32) -> String {
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
+
+/// One convention for pieces and exercises alike (#1416).
+pub(crate) fn staleness_of(item: &LibraryItemView, clock: LocalClock) -> Staleness {
+    let mark = item.practice.as_ref().and_then(|p| p.latest_score);
+    assess(item.practice.as_ref(), mark, clock)
+}
 
 #[cfg(test)]
 mod tests {
