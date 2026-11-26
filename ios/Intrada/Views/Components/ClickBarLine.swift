@@ -124,7 +124,7 @@ private struct BeatDot: View {
 
 #if DEBUG
   #Preview("Bar lines") {
-    VStack(spacing: 24) {
+    VStack(spacing: IntradaSpacing.section) {
       ClickBarLine(
         metre: Metre(beats: 4, unit: 4, groups: nil), sounding: 0b1111, currentBeat: 1, onTap: {})
       ClickBarLine(

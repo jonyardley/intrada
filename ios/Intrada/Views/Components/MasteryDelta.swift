@@ -18,7 +18,7 @@ struct MasteryDelta: View {
       Circle()
         .fill(kind.accent)
         .frame(width: 8, height: 8)
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
         Text(title)
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.ink)
@@ -29,7 +29,7 @@ struct MasteryDelta: View {
         }
       }
       Spacer(minLength: IntradaSpacing.controlGap)
-      HStack(spacing: 4) {
+      HStack(spacing: IntradaSpacing.xSmall) {
         if let was {
           Text("\(was)")
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -76,7 +76,7 @@ struct MasteryDeltaToast: View {
         .foregroundStyle(IntradaColor.onMarker)
         .frame(width: 34, height: 34)
         .background(marker, in: Circle())
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
         Text(title)
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.celebrationInk)
@@ -87,7 +87,7 @@ struct MasteryDeltaToast: View {
         }
       }
       Spacer(minLength: IntradaSpacing.controlGap)
-      HStack(spacing: 5) {
+      HStack(spacing: IntradaSpacing.segmentGap) {
         Text("\(was)")
           .opacity(IntradaOpacity.dimmed)
         Image(systemName: "arrow.right")
@@ -99,7 +99,7 @@ struct MasteryDeltaToast: View {
       .foregroundStyle(IntradaColor.celebrationInk)
     }
     .padding(.vertical, 14)
-    .padding(.horizontal, 16)
+    .padding(.horizontal, IntradaSpacing.card)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(LinearGradient.celebration)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))

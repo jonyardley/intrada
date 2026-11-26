@@ -42,7 +42,7 @@ struct StartHereCard: View {
           Spacer()
           count
         }
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
           SectionTitle("Start here")
           count
         }

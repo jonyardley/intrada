@@ -38,7 +38,7 @@ struct HighlighterSwatches: View {
             colour = swatch
             Haptic.selection.play()
           } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: IntradaSpacing.small) {
               Circle()
                 .fill(IntradaColor.marker(swatch))
                 .frame(width: 40, height: 40)

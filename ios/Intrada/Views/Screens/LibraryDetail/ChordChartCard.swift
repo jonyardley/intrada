@@ -44,13 +44,13 @@ struct ChordChartCard: View {
   }
 
   private func chartBarGrid(_ chart: ChordChart) -> some View {
-    let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    let columns = Array(repeating: GridItem(.flexible(), spacing: IntradaSpacing.small), count: 4)
     return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       ForEach(Array(chart.sections.enumerated()), id: \.offset) { _, section in
         if let label = section.label, !label.isEmpty {
           SectionTitle(label)
         }
-        LazyVGrid(columns: columns, spacing: 6) {
+        LazyVGrid(columns: columns, spacing: IntradaSpacing.small) {
           ForEach(Array(sectionChords(section).enumerated()), id: \.offset) { _, raw in
             Text(raw)
               .font(IntradaFont.cardTitle)
@@ -59,7 +59,7 @@ struct ChordChartCard: View {
               .minimumScaleFactor(0.7)
               .frame(maxWidth: .infinity)
               .padding(.vertical, IntradaSpacing.controlGap)
-              .padding(.horizontal, 4)
+              .padding(.horizontal, IntradaSpacing.xSmall)
               .background(
                 RoundedRectangle(cornerRadius: IntradaRadius.badge)
                   .fill(IntradaColor.paperTop)

@@ -9,7 +9,7 @@ struct TagPills: View {
   var body: some View {
     let shown = Array(tags.prefix(limit))
     let overflow = tags.count - shown.count
-    HStack(spacing: 6) {
+    HStack(spacing: IntradaSpacing.small) {
       ForEach(shown, id: \.self) { TagChip($0) }
       if overflow > 0 {
         TagChip("+\(overflow)")

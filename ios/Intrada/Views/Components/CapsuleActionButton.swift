@@ -13,7 +13,7 @@ struct CapsuleActionButton: View {
         .foregroundStyle(IntradaColor.accent)
         // 10/5 are capsule-specific insets, below the token scale floor.
         .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.vertical, IntradaSpacing.segmentGap)
         .background(
           RoundedRectangle(cornerRadius: IntradaRadius.badge)
             .fill(IntradaColor.surfaceSunken)

@@ -17,7 +17,7 @@ struct SessionOrientationBand<Menu: View>: View {
   static var slot: CGFloat { 56 }
 
   var body: some View {
-    VStack(spacing: 12) {
+    VStack(spacing: IntradaSpacing.cardCompact) {
       HStack(spacing: IntradaSpacing.controlGap) {
         clock
           .frame(minWidth: Self.slot, alignment: .leading)

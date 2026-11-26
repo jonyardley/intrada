@@ -38,7 +38,7 @@ struct LibraryItemCard: View {
         if item.priority || hasLinkedExercises || item.keys.count > 1 || item.variations.count > 1
           || !item.tags.isEmpty
         {
-          HStack(spacing: 6) {
+          HStack(spacing: IntradaSpacing.small) {
             if item.priority {
               Image(systemName: "star.fill")
                 .iconSize(.caption)
@@ -64,7 +64,7 @@ struct LibraryItemCard: View {
               TagPills(tags: item.tags)
             }
           }
-          .padding(.top, 5)
+          .padding(.top, IntradaSpacing.segmentGap)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)

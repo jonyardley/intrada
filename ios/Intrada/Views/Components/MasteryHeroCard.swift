@@ -24,10 +24,10 @@ struct MasteryHeroCard: View {
   }
 
   private var summary: some View {
-    VStack(alignment: .leading, spacing: 6) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.small) {
       SectionTitle("Overall mastery")
       if let change {
-        HStack(spacing: 5) {
+        HStack(spacing: IntradaSpacing.segmentGap) {
           Image(systemName: "chart.line.uptrend.xyaxis")
           Text(change)
         }

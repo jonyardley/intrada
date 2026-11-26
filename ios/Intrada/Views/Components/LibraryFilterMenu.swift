@@ -50,7 +50,7 @@ struct LibraryFilterMenu: View {
   }
 
   private func labelContent(_ text: String) -> some View {
-    HStack(spacing: 4) {
+    HStack(spacing: IntradaSpacing.xSmall) {
       Text(text)
         .font(IntradaFont.segment)
       Image(systemName: "chevron.down")

@@ -200,11 +200,14 @@ enum IntradaFont {
   }
 }
 
-/// Genuine one-offs (a fixed component height, a 2pt baseline nudge) stay
-/// literal; don't tokenise those.
+/// The small steps are named for their size, so a 2pt nudge takes `xxSmall`.
+/// A fixed component height is a size, not spacing, and stays literal.
 enum IntradaSpacing {
+  static let xxSmall: CGFloat = 2
+  static let xSmall: CGFloat = 4
   /// Between the segments of a strip, and the strip and its labels.
   static let segmentGap: CGFloat = 5
+  static let small: CGFloat = 6
   static let controlGap: CGFloat = 8
   static let cardCompact: CGFloat = 12
   static let card: CGFloat = 16

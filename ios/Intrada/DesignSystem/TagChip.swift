@@ -34,7 +34,7 @@ struct TagChip: View {
 
   private var chip: some View {
     let removable = onRemove != nil
-    return HStack(spacing: 5) {
+    return HStack(spacing: IntradaSpacing.segmentGap) {
       Text(text)
         .font(IntradaFont.smallMedium)
         .foregroundStyle(IntradaColor.inkSecondary)

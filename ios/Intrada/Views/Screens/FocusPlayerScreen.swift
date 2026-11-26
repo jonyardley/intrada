@@ -189,7 +189,7 @@ struct FocusPlayerScreen: View {
   // ── Centre: item identity, the live timer ──
 
   private func centerInfo(_ active: ActiveSessionView) -> some View {
-    VStack(spacing: 8) {
+    VStack(spacing: IntradaSpacing.controlGap) {
       TypeBadge(kind: active.currentItemType)
       Text(active.currentItemTitle)
         .font(IntradaFont.pageTitle)
@@ -587,7 +587,7 @@ private struct TimerRing: View {
         }
       }
       .padding(18)
-      VStack(spacing: 4) {
+      VStack(spacing: IntradaSpacing.xSmall) {
         Text(SessionClock.clockDisplay(elapsed))
           .font(IntradaFont.timer(size < 200 ? 40 : 48))
           .monospacedDigit()

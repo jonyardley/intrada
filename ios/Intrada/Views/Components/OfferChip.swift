@@ -13,7 +13,7 @@ struct OfferChip: View {
 
   var body: some View {
     Button(action: action) {
-      HStack(spacing: 6) {
+      HStack(spacing: IntradaSpacing.small) {
         Image(systemName: "arrow.counterclockwise")
           .iconSize(.badge, weight: .semibold)
           .accessibilityHidden(true)
@@ -38,7 +38,7 @@ struct OfferChip: View {
 
 #if DEBUG
   #Preview("Offer chip") {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.card) {
       OfferChip("Last time: B · Dotted rhythms") {}
     }
     .padding()

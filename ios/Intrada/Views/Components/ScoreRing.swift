@@ -91,7 +91,7 @@ extension EnvironmentValues {
   #Preview {
     ZStack {
       PaperBackground()
-      HStack(spacing: 16) {
+      HStack(spacing: IntradaSpacing.card) {
         ForEach([0, 1, 4, 7, 10], id: \.self) { ScoreRing(score: $0) }
         ScoreRing(score: nil)
       }

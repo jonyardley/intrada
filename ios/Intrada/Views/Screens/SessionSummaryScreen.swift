@@ -60,7 +60,7 @@ struct SessionSummaryScreen: View {
   // ── Headline ──
 
   private func headline(_ summary: SummaryView) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
       Text(summary.totalDurationDisplay)
         .font(IntradaFont.pageTitle)
         .foregroundStyle(IntradaColor.ink)
@@ -97,7 +97,7 @@ struct SessionSummaryScreen: View {
     return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       HStack(spacing: 11) {
         dot(entry, unfinished: unfinished)
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
           Text(entry.itemTitle)
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(unfinished ? IntradaColor.inkSecondary : IntradaColor.ink)
