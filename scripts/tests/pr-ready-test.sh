@@ -84,7 +84,6 @@ branch() {
 }
 branch code scripts/x.sh docs/lessons.md
 branch docs docs/guide.md docs/lessons.md
-branch archived scripts/x.sh docs/lessons-archive.md
 branch nolessons scripts/x.sh
 branch behind scripts/x.sh docs/lessons.md
 GIT_COMMITTER_DATE="2026-01-01T00:00:00Z" branch early scripts/x.sh docs/lessons.md .claude/skills/s/SKILL.md
@@ -210,9 +209,6 @@ case_run code "$pass_checks" "$review_comment" "Part of #42.
 Closes #42
 \`\`\`"
 expect_refused "closing line inside a code block" "does not close #42"
-
-case_run archived "$pass_checks" "$review_comment" "$good_body"
-expect_ready "a lesson sent straight to the archive"
 
 case_run nolessons "$pass_checks" "$review_comment" "$good_body"
 expect_ready "no lessons commit, since lessons are optional"

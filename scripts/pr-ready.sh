@@ -3,8 +3,6 @@
 # to stop at the draft opened one with no review comment and no closing line
 # (#2921). Each refusal below replaces a line a session had to remember. Run it
 # from the PR's own worktree: the review route is read from the local branch.
-# A branch needs no lessons commit, since lessons are written only when
-# something went wrong (#3034).
 #
 # Called via `just pr-ready <pr> <issue>`.
 
