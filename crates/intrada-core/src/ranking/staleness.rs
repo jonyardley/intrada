@@ -80,7 +80,7 @@ pub fn assess(
 /// `None` for never practised *and* for a date that can't be read. Defensive:
 /// `build_practice_summaries` writes this from a `DateTime<Utc>`, so the parse
 /// cannot fail today. An unreadable one degrades to the never-practised
-/// treatment, which reads honestly ("not practised yet") but does rank stalest.
+/// treatment, which reads honestly ("not practised yet") and ranks with them.
 fn days_since_practice(practice: Option<&ItemPracticeSummary>, clock: LocalClock) -> Option<u32> {
     let at = practice?.last_practiced_at.as_deref()?;
     let parsed = chrono::DateTime::parse_from_rfc3339(at).ok()?;
@@ -103,7 +103,7 @@ impl Staleness {
 
     /// How far through its interval the item has drifted, in hundredths.
     /// Ranking on this rather than raw days keeps the reason true to the
-    /// order (T42). Never practised is the stalest of all.
+    /// order (T42).
     pub fn overdue_key(&self) -> u32 {
         match self.days {
             None => u32::MAX,

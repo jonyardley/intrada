@@ -72,25 +72,21 @@ pub(crate) struct RankedTarget<'a> {
 
 impl RankedTarget<'_> {
     /// Going cold or cold first, then never played, then fresh; within each,
-    /// most overdue, then the lower score, then one actually played.
-    fn need(&self) -> (u8, Reverse<u32>, Option<u8>, bool) {
+    /// most overdue, then the lower score.
+    fn need(&self) -> (u8, Reverse<u32>, Option<u8>) {
         let tier = match (self.staleness.is_due(), self.staleness.days()) {
             (true, _) => 0,
             (false, None) => 1,
             (false, Some(_)) => 2,
         };
-        (
-            tier,
-            Reverse(self.staleness.overdue_key()),
-            self.score,
-            self.inherited,
-        )
+        (tier, Reverse(self.staleness.overdue_key()), self.score)
     }
 }
 
-/// An item's keys and variations, neediest first, or the item alone when it
-/// has neither. Never empty. One never played takes the item's own date,
-/// returns and, unscored, its score.
+/// An item's keys and variations, neediest first and one actually played
+/// before an equal one never played, or the item alone when it has neither.
+/// Never empty. One never played takes the item's own date, returns and,
+/// unscored, its score.
 pub(crate) fn rank_targets<'a>(
     item: &'a LibraryItemView,
     records: &PracticeRecords,
@@ -139,7 +135,7 @@ pub(crate) fn rank_targets<'a>(
     if targets.is_empty() {
         targets.push(target(None, None, None));
     }
-    targets.sort_by_key(RankedTarget::need);
+    targets.sort_by_key(|t| (t.need(), t.inherited));
     targets
 }
 
@@ -150,8 +146,9 @@ pub(crate) struct Ranked<'a> {
     neediest: RankedTarget<'a>,
 }
 
-/// The whole library, most in need first: starred, then most overdue, then
-/// lower score, then title as the Library files it, then id.
+/// The whole library, most in need first: starred, then going cold or cold,
+/// then never played, then fresh, each most overdue first, then lower score,
+/// then title as the Library files it, then id.
 pub(crate) fn rank_items<'a>(
     items: &'a [LibraryItemView],
     records: &PracticeRecords,
@@ -498,5 +495,48 @@ mod tests {
         ];
 
         assert_eq!(order(&items, &PracticeRecords::new()), ["c", "a", "b"]);
+    }
+
+    /// Scored 8 a week ago in 3 sessions on its G major key, played or not.
+    fn tied_on_g_major(
+        id: &str,
+        title: &str,
+        records: &mut PracticeRecords,
+        play: bool,
+    ) -> LibraryItemView {
+        let item = with_key(
+            practised(item(id, title), 7, Some(8), 3),
+            "G major",
+            play.then_some(8),
+        );
+        if play {
+            for _ in 0..3 {
+                played(records, id, "G major", 7);
+            }
+        }
+        item
+    }
+
+    #[test]
+    fn a_played_key_does_not_lift_its_item_over_an_equal_unplayed_one() {
+        let mut records = PracticeRecords::new();
+        let unplayed = tied_on_g_major("unplayed", "Arabesque", &mut records, false);
+        let played = tied_on_g_major("played", "Zephyr", &mut records, true);
+
+        assert_eq!(order(&[played, unplayed], &records), ["unplayed", "played"]);
+    }
+
+    #[test]
+    fn within_an_item_a_played_key_comes_before_an_equal_unplayed_one() {
+        let mut records = PracticeRecords::new();
+        let mut exercise = tied_on_g_major("exercise", "Thirds", &mut records, true);
+        exercise = with_key(exercise, "C major", None);
+        exercise.keys.reverse();
+        let labels: Vec<_> = rank_targets(&exercise, &records, clock())
+            .iter()
+            .map(|t| t.label)
+            .collect();
+
+        assert_eq!(labels, [Some("G major"), Some("C major")]);
     }
 }
