@@ -5,40 +5,51 @@ import XCTest
 @testable import Intrada
 
 final class PlanFromTimeSketchSnapshotTests: SnapshotTestCase {
-  private func tall(_ height: CGFloat) -> Snapshotting<UIViewController, UIImage> {
+  private var tall: Snapshotting<UIViewController, UIImage> {
     .image(
       on: ViewImageConfig(
-        safeArea: .zero, size: CGSize(width: 390, height: height),
+        safeArea: .zero, size: CGSize(width: 390, height: 1400),
         traits: .init(displayScale: 1)),
       perceptualPrecision: 0.98, traits: .init(displayScale: 1))
   }
 
-  func testEmptyWarmUpRings() {
-    assertSnapshot(of: host(PlanFromTimeSketch.emptyWarmUp()), as: tall(900))
+  private func largest(_ view: PlanFromTimeSketch) -> some View {
+    view.environment(\.dynamicTypeSize, .xxxLarge)
   }
 
-  func testTypicalRings() {
-    assertSnapshot(of: host(PlanFromTimeSketch.typical()), as: tall(900))
+  func testTypicalA() {
+    assertSnapshot(of: host(PlanFromTimeSketch.typical()), as: config)
   }
 
-  func testTypicalRingsWithHint() {
-    assertSnapshot(of: host(PlanFromTimeSketch.typical(.ringsWithHint)), as: tall(900))
+  func testTypicalB() {
+    assertSnapshot(of: host(PlanFromTimeSketch.typical(.timer)), as: config)
   }
 
-  func testTypicalSystemStepper() {
-    assertSnapshot(of: host(PlanFromTimeSketch.typical(.systemStepper)), as: tall(900))
+  func testEmptyWarmUpA() {
+    assertSnapshot(of: host(PlanFromTimeSketch.emptyWarmUp()), as: config)
   }
 
-  func testLongestLargeText() {
-    assertSnapshot(
-      of: host(PlanFromTimeSketch.longest().environment(\.dynamicTypeSize, .xxxLarge)),
-      as: tall(1700))
+  func testEmptyWarmUpB() {
+    assertSnapshot(of: host(PlanFromTimeSketch.emptyWarmUp(.timer)), as: config)
   }
 
-  func testLongestLargeTextWithHint() {
-    assertSnapshot(
-      of: host(
-        PlanFromTimeSketch.longest(.ringsWithHint).environment(\.dynamicTypeSize, .xxxLarge)),
-      as: tall(1700))
+  func testLongestLargestTextA() {
+    assertSnapshot(of: host(largest(PlanFromTimeSketch.longest())), as: tall)
+  }
+
+  func testLongestLargestTextB() {
+    assertSnapshot(of: host(largest(PlanFromTimeSketch.longest(.timer))), as: tall)
+  }
+
+  func testWarmUpOffA() {
+    assertSnapshot(of: host(PlanFromTimeSketch.warmUpOff), as: config)
+  }
+
+  func testUnderLengthA() {
+    assertSnapshot(of: host(PlanFromTimeSketch.underLength), as: config)
+  }
+
+  func testLowerLimitA() {
+    assertSnapshot(of: host(PlanFromTimeSketch.lowerLimit), as: config)
   }
 }
