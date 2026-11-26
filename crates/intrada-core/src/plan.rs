@@ -40,7 +40,6 @@ pub struct PlanKeyView {
     pub ticked: bool,
     pub suggested: bool,
     pub score: Option<u8>,
-    /// "2 weeks ago", "not practised yet".
     pub last_played: String,
 }
 
@@ -197,7 +196,7 @@ fn key_count(minutes: u32, kept: usize) -> usize {
     if kept == 0 {
         return 0;
     }
-    (((minutes + 1) / MINUTES_PER_KEY) as usize).clamp(1, kept)
+    (((minutes + MINUTES_PER_KEY / 2) / MINUTES_PER_KEY) as usize).clamp(1, kept)
 }
 
 fn keys_reason(keys: &[PlanKeyView], minutes: u32) -> String {
@@ -603,9 +602,6 @@ mod tests {
         Key::parse(name).expect("a key")
     }
 
-    /// A 9 minute scales item played yesterday, scored 9, in six sessions:
-    /// G major scored 3 a fortnight ago, D major 8 twenty days ago, A major 2
-    /// two days ago, C major 9 yesterday, E major never on its own.
     fn scales() -> (LibraryItemView, PracticeRecords) {
         let mut scales = last_played(item("scales", ItemKind::Exercise, 9), 1);
         if let Some(practice) = scales.practice.as_mut() {

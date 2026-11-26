@@ -147,7 +147,6 @@ pub(crate) struct RankedKey {
     pub(crate) label: String,
     /// The key's own, never its item's.
     pub(crate) score: Option<u8>,
-    /// "2 weeks ago", "not practised yet".
     pub(crate) last_played: String,
 }
 
