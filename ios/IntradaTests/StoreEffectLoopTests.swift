@@ -340,7 +340,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testSavePracticeDefaultsEffectWritesToDefaultsUnderItsOwnKey() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: true)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: false)
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in [Request(id: 7, effect: .app(.savePracticeDefaults(saved)))] }
     let store = Store(bridge: bridge, sortDefaults: defaults)
@@ -356,7 +356,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testRestorePersistedPracticeDefaultsReplaysLoaded() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: true)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: false)
     defaults.set(Data(try saved.bincodeSerialize()), forKey: Store.practiceDefaultsKey)
     let bridge = FakeBridge()
     var sentEvents: [Event] = []

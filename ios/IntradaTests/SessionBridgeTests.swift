@@ -183,7 +183,7 @@ final class SessionBridgeTests: XCTestCase {
   func testRealBridgePracticeDefaultsReachTheClick() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: true)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: false)
     let requests = try bridge.update(.practiceDefaults(.save(saved)))
     XCTAssertTrue(
       requests.contains {
