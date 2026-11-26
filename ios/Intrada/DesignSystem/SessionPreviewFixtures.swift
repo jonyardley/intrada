@@ -240,22 +240,22 @@
     static var previewScales: PlanRowView {
       PlanRowView(
         itemId: "plan-scales", title: "Major scales", reason: "Exercise", minutes: 3,
-        kind: .exercise)
+        kind: .exercise, keys: [], keysReason: "")
     }
     static var previewBach: PlanRowView {
       PlanRowView(
         itemId: "plan-bach", title: "Bach Prelude in C", reason: "Piece · a priority",
-        minutes: 10, kind: .piece)
+        minutes: 10, kind: .piece, keys: [], keysReason: "")
     }
     static var previewEnclosures: PlanRowView {
       PlanRowView(
         itemId: "plan-enclosures", title: "ii V i enclosures",
-        reason: "Exercise · going cold after 3 weeks", minutes: 7, kind: .exercise)
+        reason: "Exercise · going cold after 3 weeks", minutes: 7, kind: .exercise, keys: [], keysReason: "")
     }
     static var previewClair: PlanRowView {
       PlanRowView(
         itemId: "plan-clair", title: "Clair de lune", reason: "Piece · cold for 5 weeks",
-        minutes: 10, kind: .piece)
+        minutes: 10, kind: .piece, keys: [], keysReason: "")
     }
   }
 
