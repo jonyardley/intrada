@@ -53,19 +53,22 @@ impl Default for PracticeDefaults {
 impl PracticeDefaults {
     /// The blob is positional bincode, so a build reads only a blob of its
     /// own shape. The shell names its storage key by this number, so a shape
-    /// change bumps it here and nowhere else (#2216). Versions 1 and 2 are
-    /// retired; version 3 is carried across once (#3006).
+    /// change bumps it here and nowhere else (#2216). Versions 1 and 3 are
+    /// retired, version 3 never reached a tagged build; version 2, what
+    /// v0.19.0 writes, is carried across once (#3006).
     pub const BLOB_VERSION: u32 = 4;
-    pub const PREVIOUS_BLOB_VERSION: u32 = 3;
+    pub const PREVIOUS_BLOB_VERSION: u32 = 2;
 
-    /// Version 3 had no warm-up switch; an upgrade starts with it on (#3006).
+    /// Version 2 held a repetition target first, since removed (#2791), and
+    /// had no warm-up switch; an upgrade starts with it on (#3006).
     fn from_previous_blob(bytes: &[u8]) -> Option<Self> {
         #[derive(Deserialize)]
-        struct Version3 {
+        struct Version2 {
+            _rep_target: u8,
             click: ClickStart,
             session_length_mins: Option<u16>,
         }
-        let old: Version3 = BincodeFfiFormat::deserialize(bytes).ok()?;
+        let old: Version2 = BincodeFfiFormat::deserialize(bytes).ok()?;
         Some(Self {
             click: old.click,
             session_length_mins: old.session_length_mins,
@@ -90,7 +93,7 @@ pub enum PracticeDefaultsEvent {
     Save(PracticeDefaults),
     /// The shell replaying the stored blob at launch: clamped, never re-saved.
     Loaded(PracticeDefaults),
-    /// The version 3 blob's bytes, sent once when no version 4 blob exists:
+    /// The version 2 blob's bytes, sent once when no version 4 blob exists:
     /// clamped and saved in the new shape.
     Carried(Vec<u8>),
 }
@@ -298,7 +301,7 @@ mod tests {
         }
     }
 
-    // ── Carrying version 3 across (#3006) ──
+    // ── Carrying version 2 across (#2791, #3006) ──
 
     #[test]
     fn a_fresh_install_starts_with_a_warm_up() {
@@ -306,20 +309,20 @@ mod tests {
         assert!(Model::default().practice_defaults.start_with_warm_up);
     }
 
-    /// The two version 3 blobs pinned before #3006: what devices hold.
+    /// The two version 2 blobs pinned before #2791: what v0.19.0 devices hold.
     #[test]
-    fn a_version_3_blob_keeps_its_click_and_length_and_starts_with_a_warm_up() {
+    fn a_version_2_blob_keeps_its_click_and_length_and_starts_with_a_warm_up() {
         for (hex, expected) in [
             (
-                "01000000011900",
+                "0501000000011900",
                 PracticeDefaults {
                     start_with_warm_up: true,
                     ..fixture()
                 },
             ),
-            ("0000000000", PracticeDefaults::default()),
+            ("0a0000000000", PracticeDefaults::default()),
             (
-                "01000000010500",
+                "0301000000010500",
                 PracticeDefaults {
                     session_length_mins: Some(10),
                     start_with_warm_up: true,
@@ -341,8 +344,16 @@ mod tests {
     }
 
     #[test]
-    fn bytes_that_are_not_a_version_3_blob_change_and_write_nothing() {
-        for hex in ["", "01", "0100000001", "0500000000", "010000000119"] {
+    fn bytes_that_are_not_a_version_2_blob_change_and_write_nothing() {
+        // The last three are version 3 and version 4 blobs sent by mistake.
+        for hex in [
+            "",
+            "05",
+            "0509000000",
+            "01000000011900",
+            "0000000000",
+            "0100000001190000",
+        ] {
             let mut model = Model::default();
             let mut cmd = send(&mut model, PracticeDefaultsEvent::Carried(bytes(hex)));
             assert_eq!(
@@ -402,7 +413,7 @@ mod tests {
             PracticeDefaults::default(),
         )));
         assert_round_trips(Event::PracticeDefaults(PracticeDefaultsEvent::Carried(
-            bytes("01000000011900"),
+            bytes("0501000000011900"),
         )));
         assert_round_trips(AppEffect::SavePracticeDefaults(fixture()));
     }

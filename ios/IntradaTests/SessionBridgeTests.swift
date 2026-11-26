@@ -207,16 +207,16 @@ final class SessionBridgeTests: XCTestCase {
       active.currentClickSounding, 0b1010, "2 and 4 in the 4/4 an item with no metre gets")
   }
 
-  /// The version 3 bytes a device holds cross the bridge and come back as the
-  /// version 4 save, keeping the click start and the session length and
-  /// starting with a warm-up (#3006).
-  func testRealBridgeAVersion3BlobIsCarriedIntoTheCurrentShape() throws {
+  /// The version 2 bytes a v0.19.0 device holds cross the bridge and come
+  /// back as the version 4 save, keeping the click start and the session
+  /// length and starting with a warm-up (#2791, #3006).
+  func testRealBridgeAVersion2BlobIsCarriedIntoTheCurrentShape() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let version3: [UInt8] = [0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00]
+    let version2: [UInt8] = [0x05, 0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00]
     let carried = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25, startWithWarmUp: true)
 
-    let requests = try bridge.update(.practiceDefaults(.carried(version3)))
+    let requests = try bridge.update(.practiceDefaults(.carried(version2)))
 
     XCTAssertTrue(
       requests.contains {
