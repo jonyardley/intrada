@@ -20,9 +20,10 @@ ROOT="${SNAPSHOT_IOS_ROOT:-ios/IntradaTests}"
 SNAP_DIR="$ROOT/__Snapshots__"
 MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # References that stay large as lossless PNG even after `oxipng -o max -Z`:
-# smooth gradients (Practice one-tap hero, Focus player radial), dense-control screens (Session summary's
-# per-item score-pill rows over the gold gradient toast). They get a higher bound. Keep this list
-# TIGHT: add only a reference proven irreducible, with the reason. Cropping
+# smooth gradients (Practice one-tap hero, Focus player radial), dense-control
+# screens (Session summary's per-item score-pill rows over the gold gradient
+# toast). They get a higher bound. Keep this list TIGHT: add only a reference
+# proven irreducible, with the reason. Cropping
 # does not help the gradients: flat paper costs almost nothing and the gradient
 # is the whole bill, which is why a component crop is on the list alongside the
 # full screens.
