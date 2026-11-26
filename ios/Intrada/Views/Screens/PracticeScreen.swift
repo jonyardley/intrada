@@ -18,6 +18,7 @@ struct PracticeScreen: View {
   private var selection: Binding<String?>?
   @State private var showingProfile = false
   @State private var addingItem = false
+  @State private var keysItemId: String?
   // Measured from a cell, not hard-coded (#1730).
   @State private var weekStripHeight: CGFloat = 64
 
@@ -127,6 +128,13 @@ struct PracticeScreen: View {
     .sheet(isPresented: $addingItem) {
       LibraryAddScreen().environment(store)
     }
+    .sheet(isPresented: keysSheetShown) {
+      if let keysItemId { TodaysKeysSheet(itemId: keysItemId).environment(store) }
+    }
+  }
+
+  private var keysSheetShown: Binding<Bool> {
+    Binding(get: { keysItemId != nil }, set: { if !$0 { keysItemId = nil } })
   }
 
   private var buildingBinding: Binding<Bool> {
@@ -233,31 +241,56 @@ struct PracticeScreen: View {
   }
 
   private func planRow(_ row: PlanRowView) -> some View {
-    HStack(spacing: IntradaSpacing.cardCompact) {
-      row.kind.bar.frame(width: 4, height: 34).clipShape(Capsule())
-      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
-        Text(row.title)
-          .font(IntradaFont.cardTitle)
-          .foregroundStyle(IntradaColor.ink)
-          .fixedSize(horizontal: false, vertical: true)
-        Text(row.reason)
+    let ticked = row.keys.filter(\.ticked).map(\.label)
+    return VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
+      HStack(spacing: IntradaSpacing.cardCompact) {
+        row.kind.bar.frame(width: Self.barWidth, height: 34).clipShape(Capsule())
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
+          Text(row.title)
+            .font(IntradaFont.cardTitle)
+            .foregroundStyle(IntradaColor.ink)
+            .fixedSize(horizontal: false, vertical: true)
+          Text(row.reason)
+            .font(IntradaFont.secondary)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        Text("\(row.minutes) min")
           .font(IntradaFont.secondary)
+          .monospacedDigit()
           .foregroundStyle(IntradaColor.inkSecondary)
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      Text("\(row.minutes) min")
-        .font(IntradaFont.secondary)
-        .monospacedDigit()
-        .foregroundStyle(IntradaColor.inkSecondary)
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(
+        [
+          row.title, row.reason.replacingOccurrences(of: " · ", with: ", "),
+          minutesPhrase(row.minutes),
+        ]
+        .joined(separator: ", "))
+      if !ticked.isEmpty {
+        keysButton(row, ticked: ticked)
+          .padding(.leading, Self.barWidth + IntradaSpacing.cardCompact)
+      }
     }
     .padding(IntradaSpacing.cardCompact)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(
-      [
-        row.title, row.reason.replacingOccurrences(of: " · ", with: ", "),
-        minutesPhrase(row.minutes),
-      ]
-      .joined(separator: ", "))
+  }
+
+  private static let barWidth: CGFloat = 4
+
+  private func keysButton(_ row: PlanRowView, ticked: [String]) -> some View {
+    Button {
+      keysItemId = row.itemId
+    } label: {
+      FlowLayout(spacing: IntradaSpacing.xSmall) {
+        ForEach(ticked, id: \.self) { TagChip($0) }
+      }
+      .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Today's keys: \(ticked.joined(separator: ", "))")
+    .accessibilityHint("Changes today's keys for \(row.title)")
+    .accessibilityIdentifier("practice.plan.keys")
   }
 
   private func minutesPhrase<N: BinaryInteger>(_ minutes: N) -> String {
