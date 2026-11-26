@@ -19,6 +19,7 @@ pub(super) fn build_library_item_views(
     // The scored plays of each item, newest first; one pass over sessions,
     // read by the item's variations and keys below (#2246).
     let scored_plays = build_scored_plays(&model.sessions);
+    let usual_minutes = build_usual_minutes(&model.sessions);
 
     let mut items: Vec<LibraryItemView> = Vec::new();
 
@@ -162,6 +163,12 @@ pub(super) fn build_library_item_views(
                 .key
                 .as_ref()
                 .and_then(crate::domain::key::wheel_selection),
+            usual_minutes: usual_minutes
+                .get(item.id.as_str())
+                .copied()
+                .unwrap_or(STARTING_USUAL_MINUTES)
+                .round() as u32,
+            usual_minutes_from_history: usual_minutes.contains_key(item.id.as_str()),
         });
     }
 
@@ -277,6 +284,42 @@ pub(crate) fn build_practice_summaries(
             },
         )
         .collect()
+}
+
+/// Every item starts here, piece or exercise (#3003).
+const STARTING_USUAL_MINUTES: f64 = 10.0;
+const USUAL_MINUTES_FLOOR: f64 = 3.0;
+const USUAL_MINUTES_PULL: f64 = 0.3;
+/// A forgotten timer counts as at most this many usual times (#3005).
+const USUAL_MINUTES_CEILING_FACTOR: f64 = 3.0;
+/// Tapping Next straight away is a skip, not a play (#3005).
+const SHORTEST_COUNTED_PLAY_SECS: u64 = 30;
+
+/// Unrounded usual minutes per item with a counted play (#3005).
+fn build_usual_minutes(sessions: &[PracticeSession]) -> std::collections::HashMap<String, f64> {
+    use crate::domain::session::{CompletionStatus, EntryStatus};
+
+    let mut ordered: Vec<&PracticeSession> = sessions
+        .iter()
+        .filter(|s| s.completion_status != CompletionStatus::EndedEarly)
+        .collect();
+    ordered.sort_by(|a, b| (a.started_at, &a.id).cmp(&(b.started_at, &b.id)));
+
+    let mut usual = std::collections::HashMap::new();
+    for entry in ordered
+        .iter()
+        .flat_map(|s| &s.entries)
+        .filter(|e| e.status == EntryStatus::Completed)
+        .filter(|e| e.duration_secs >= SHORTEST_COUNTED_PLAY_SECS)
+    {
+        let played = entry.duration_secs as f64 / 60.0;
+        let value = usual
+            .entry(entry.plan.item_id.clone())
+            .or_insert(STARTING_USUAL_MINUTES);
+        let played = played.min(*value * USUAL_MINUTES_CEILING_FACTOR);
+        *value = (*value + (played - *value) * USUAL_MINUTES_PULL).max(USUAL_MINUTES_FLOOR);
+    }
+    usual
 }
 
 /// Every piece an exercise is used in, keyed by exercise id: the pieces that
@@ -829,6 +872,131 @@ mod tests {
             piece_view.linked_exercises[0].tempo_line.as_deref(),
             Some("♪ = 176")
         );
+    }
+
+    // ── Usual time (#3005) ──
+
+    use crate::domain::session::{CompletionStatus, EntryStatus};
+
+    fn played(
+        id: &str,
+        day: i64,
+        secs: u64,
+        status: EntryStatus,
+        ended: CompletionStatus,
+    ) -> PracticeSession {
+        let mut entry = crate::domain::session::SetlistEntry::fixture();
+        entry.status = status;
+        entry.duration_secs = secs;
+        let base = PracticeSession::fixture(id);
+        PracticeSession {
+            entries: vec![entry],
+            started_at: base.started_at + chrono::Duration::days(day),
+            completion_status: ended,
+            ..base
+        }
+    }
+
+    fn finished(id: &str, day: i64, secs: u64) -> PracticeSession {
+        played(
+            id,
+            day,
+            secs,
+            EntryStatus::Completed,
+            CompletionStatus::Completed,
+        )
+    }
+
+    fn usual_of(sessions: Vec<PracticeSession>) -> (u32, bool) {
+        let model = Model {
+            items: vec![Item::fixture("item-1")].into(),
+            sessions: sessions.into(),
+            ..Default::default()
+        };
+        let vm = crate::view::rendered(&model);
+        let item = vm
+            .items
+            .iter()
+            .find(|i| i.id == "item-1")
+            .expect("the item");
+        (item.usual_minutes, item.usual_minutes_from_history)
+    }
+
+    #[test]
+    fn a_new_item_usually_takes_the_starting_time() {
+        assert_eq!(usual_of(vec![]), (10, false));
+    }
+
+    #[test]
+    fn six_plays_of_eight_minutes_read_eight_from_history() {
+        let sessions: Vec<_> = (0..6).map(|d| finished(&format!("s{d}"), d, 480)).collect();
+
+        let raw = build_usual_minutes(&sessions)["item-1"];
+
+        assert!((raw - 8.235).abs() < 0.01, "about 8.2, got {raw}");
+        assert_eq!(usual_of(sessions), (8, true));
+    }
+
+    #[test]
+    fn one_twelve_minute_play_rounds_to_eleven_not_down_to_ten() {
+        assert_eq!(usual_of(vec![finished("s1", 0, 720)]), (11, true));
+    }
+
+    #[test]
+    fn a_play_under_thirty_seconds_does_not_count() {
+        assert_eq!(usual_of(vec![finished("s1", 0, 29)]), (10, false));
+        assert!(usual_of(vec![finished("s1", 0, 30)]).1);
+    }
+
+    #[test]
+    fn a_forgotten_two_hour_play_counts_as_thirty_minutes() {
+        assert_eq!(usual_of(vec![finished("s1", 0, 7200)]), (16, true));
+    }
+
+    #[test]
+    fn a_skipped_minute_leaves_the_usual_time() {
+        let skipped = played(
+            "s1",
+            0,
+            60,
+            EntryStatus::Skipped,
+            CompletionStatus::Completed,
+        );
+        assert_eq!(usual_of(vec![skipped]), (10, false));
+    }
+
+    #[test]
+    fn a_play_in_a_session_ended_early_leaves_the_usual_time() {
+        let early = played(
+            "s1",
+            0,
+            60,
+            EntryStatus::Completed,
+            CompletionStatus::EndedEarly,
+        );
+        assert_eq!(usual_of(vec![early]), (10, false));
+    }
+
+    #[test]
+    fn many_one_minute_plays_stop_at_three_minutes() {
+        let sessions: Vec<_> = (0..30).map(|d| finished(&format!("s{d}"), d, 60)).collect();
+
+        let raw = build_usual_minutes(&sessions)["item-1"];
+
+        assert!((raw - 3.0).abs() < f64::EPSILON, "floored at 3, got {raw}");
+        assert_eq!(usual_of(sessions), (3, true));
+    }
+
+    #[test]
+    fn sessions_count_in_the_order_they_started_not_the_order_loaded() {
+        let long_first = vec![finished("late", 1, 60), finished("early", 0, 1200)];
+        let long_last = vec![finished("early", 0, 60), finished("late", 1, 1200)];
+
+        let a = build_usual_minutes(&long_first)["item-1"];
+        let b = build_usual_minutes(&long_last)["item-1"];
+
+        assert!((a - 9.4).abs() < 0.01, "20 min then 1 min, got {a}");
+        assert!((b - 11.11).abs() < 0.01, "1 min then 20 min, got {b}");
     }
 
     // ── Count line (#2454) ──

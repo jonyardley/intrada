@@ -147,6 +147,10 @@ pub struct LibraryItemView {
     pub variations_caption: Option<String>,
     /// The wedge the key picker lights for the stored key (#2074).
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
+    /// Whole minutes this item usually takes, learnt from what is played (#3005).
+    pub usual_minutes: u32,
+    /// False until a play counts (#3005).
+    pub usual_minutes_from_history: bool,
 }
 
 /// One library variation an item uses, with its practice state on that item:
@@ -243,6 +247,8 @@ impl LibraryItemView {
             keys_caption: None,
             variations_caption: None,
             key_selection: None,
+            usual_minutes: 10,
+            usual_minutes_from_history: false,
         }
     }
 }

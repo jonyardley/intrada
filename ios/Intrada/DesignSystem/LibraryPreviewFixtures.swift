@@ -108,7 +108,8 @@
       usedIn: [ExerciseUsageView] = [], scaffoldPreview: ScaffoldPreviewView? = nil,
       chordChart: ChordChart? = nil, metre: Metre? = nil, variations: [VariationView] = [],
       photoId: String? = nil, keys: [ItemKeyView] = [], keysCaption: String? = nil,
-      variationsCaption: String? = nil, keySelection: KeyWheelSelection? = nil
+      variationsCaption: String? = nil, keySelection: KeyWheelSelection? = nil,
+      usualMinutes: UInt32 = 10, usualMinutesFromHistory: Bool = false
     ) -> LibraryItemView {
       LibraryItemView(
         id: id, itemType: itemType, title: title, subtitle: subtitle, key: key,
@@ -118,7 +119,8 @@
         linkedExercises: linkedExercises, usedIn: usedIn, scaffoldPreview: scaffoldPreview,
         chordChart: chordChart, metre: metre, variations: variations, photoId: photoId,
         keys: keys, keysCaption: keysCaption, variationsCaption: variationsCaption,
-        keySelection: keySelection)
+        keySelection: keySelection, usualMinutes: usualMinutes,
+        usualMinutesFromHistory: usualMinutesFromHistory)
     }
 
     static var previewPiece: LibraryItemView {
@@ -324,7 +326,8 @@
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false, pieceInLibrary: false,
             offersLink: false),
         ],
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"),
+        usualMinutes: 12, usualMinutesFromHistory: true)
     }
 
     /// An exercise with variations: one solid, one marked but not yet solid,

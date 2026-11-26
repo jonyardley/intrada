@@ -537,6 +537,38 @@ final class SessionBridgeTests: XCTestCase {
       vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque", "Arpeggios", "Berceuse"])
   }
 
+  /// An item's usual time crosses the wire as the starting time, then as what
+  /// a saved play teaches it: 4 minutes from 10 reads 8 (#3005, #846).
+  func testRealBridgeAnItemsUsualTimeLearnsFromASavedPlay() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    let fresh = try XCTUnwrap(try bridge.rendered().items.first)
+    XCTAssertEqual(fresh.usualMinutes, 10)
+    XCTAssertFalse(fresh.usualMinutesFromHistory, "no play yet: the starting time")
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: fresh.id)))
+    _ = try bridge.update(.session(.startSession(now: "2026-06-16T10:00:00Z")))
+    _ = try bridge.update(
+      .session(
+        .nextItem(
+          now: "2026-06-16T10:04:00Z", nextItemStartedAt: "2026-06-16T10:04:00Z", reading: .silent))
+    )
+    try acknowledgeSave(
+      bridge, try bridge.update(.session(.saveSession(now: "2026-06-16T10:04:30Z"))))
+
+    let view = try bridge.rendered()
+    let learnt = try XCTUnwrap(view.items.first { $0.id == fresh.id })
+    XCTAssertEqual(learnt.usualMinutes, 8, "(err=\(view.error ?? "nil"))")
+    XCTAssertTrue(learnt.usualMinutesFromHistory)
+  }
+
   /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
   /// bridge through Building → Active → Summary → Idle, mirroring the
   /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here

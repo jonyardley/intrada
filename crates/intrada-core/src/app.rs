@@ -5142,6 +5142,8 @@ mod tests {
             caption: "6 of 10".to_string(),
         }];
         view.key_selection = crate::domain::key::wheel_selection(&key);
+        view.usual_minutes = 8;
+        view.usual_minutes_from_history = true;
         crate::domain::types::assert_round_trips(view);
     }
 
