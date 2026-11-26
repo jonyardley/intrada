@@ -5,15 +5,22 @@ import XCTest
 let contendedTimeout: TimeInterval = 30
 
 extension XCUIApplication {
-  /// The seeded library has a piece with a related exercise, so the Practice
-  /// hero is the Up next suggestion (#1082); "Build my own instead" opens the
-  /// blank builder directly in one tap (#1617).
+  /// A seeded library always fills a plan (#3007), and Change opens the
+  /// builder holding it, so the rows come out one by one for a blank builder.
   @MainActor
   func openEmptyBuilder(file: StaticString = #filePath, line: UInt = #line) {
-    control(
-      "practice.buildOwn", spoken: "Build my own instead", timeout: 10, file: file, line: line
-    )
-    .tap()
+    control("practice.plan.change", spoken: "Change", timeout: 10, file: file, line: line).tap()
+    let removes = rows("builder.remove", spokenContaining: "Remove ")
+    XCTAssertTrue(
+      removes.firstMatch.waitForExistence(timeout: 10), "the plan's rows in the builder",
+      file: file, line: line)
+    while removes.firstMatch.exists {
+      let before = removes.count
+      removes.firstMatch.tap()
+      XCTAssertTrue(
+        removes.element(boundBy: before - 1).waitForNonExistence(timeout: 5), "a row removed",
+        file: file, line: line)
+    }
   }
 
   /// The shortest route to the focus player: one seeded library item in a

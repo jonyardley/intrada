@@ -49,10 +49,8 @@ final class GlobalBannerUITests: XCTestCase {
     expectCount(cards, 0, "a tap left of the cross dismisses rather than undoes")
   }
 
-  /// With a session in history the hero is the round Start button, which opens
-  /// the empty builder, so "Build my own instead" is gone.
   private func playASecondSession(_ app: XCUIApplication) {
-    app.control("practice.start", spoken: "Start practising", timeout: 10).tap()
+    app.openEmptyBuilder()
     app.control("builder.addItems", spoken: "Add piece or exercise", timeout: 10).tap()
     let notAdded = app.descendants(matching: .any).matching(
       NSPredicate(format: "identifier == %@ AND value == %@", "libraryPicker.row", "Not added"))

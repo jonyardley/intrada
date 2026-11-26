@@ -51,7 +51,7 @@ final class SessionBuilderUITests: XCTestCase {
 
     cancel.tap()
     app.alerts.buttons["Discard"].tap()
-    app.control("practice.start", spoken: "Start practising")
+    app.control("practice.plan.start", spoken: "Start session")
   }
 
   /// Direct manipulation: top-level units reorder by long-press drag with NO

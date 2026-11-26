@@ -1,9 +1,7 @@
 import XCTest
 
-/// The Up next suggestion: Start plays today's plan in one tap (#57), "Change
-/// it first" opens it in the builder, "Build my own instead" opens a blank one
-/// (#1617), and the suggestion comes back afterwards rather than being lost for
-/// the app run (#1618).
+/// The plan from the time the musician has (#3007): Start plays it in one tap,
+/// and Change opens it in the builder, filled.
 @MainActor
 final class PracticeSuggestionUITests: XCTestCase {
   override func setUp() {
@@ -22,7 +20,7 @@ final class PracticeSuggestionUITests: XCTestCase {
     let app = launchSeeded()
     app.tabBars.buttons["Practice"].tap()
 
-    app.control("practice.start", spoken: "Start practising", timeout: 10).tap()
+    app.control("practice.plan.start", spoken: "Start session", timeout: 10).tap()
 
     XCTAssertTrue(
       app.element("player.skip").waitForExistence(timeout: 10),
@@ -32,41 +30,14 @@ final class PracticeSuggestionUITests: XCTestCase {
     app.abandonSession()
   }
 
-  func testChangeItFirstOpensThePlanInTheBuilder() {
+  func testChangeOpensThePlanInTheBuilder() {
     let app = launchSeeded()
     app.tabBars.buttons["Practice"].tap()
 
-    app.control("practice.changePlan", spoken: "Change it first", timeout: 10).tap()
+    app.control("practice.plan.change", spoken: "Change", timeout: 10).tap()
 
     XCTAssertTrue(
       app.element("builder.row").waitForExistence(timeout: 10),
       "the builder opens holding the plan, not empty")
-  }
-
-  func testBuildOwnInsteadOpensBuilderInOneTap() {
-    let app = launchSeeded()
-    app.tabBars.buttons["Practice"].tap()
-
-    app.openEmptyBuilder()
-
-    XCTAssertTrue(
-      app.element("builder.addItems").waitForExistence(timeout: 10),
-      "one tap lands in the builder, with no second tap on Start practising")
-  }
-
-  func testSuggestionCanBeRestoredWithoutRelaunching() {
-    let app = launchSeeded()
-    app.tabBars.buttons["Practice"].tap()
-
-    app.openEmptyBuilder()
-    app.control("builder.addItems", spoken: "Add piece or exercise", timeout: 10)
-
-    app.control("builder.cancel", spoken: "Cancel", timeout: 10).tap()
-
-    app.control("practice.showSuggestion", spoken: "Show suggestion", timeout: 10).tap()
-
-    XCTAssertTrue(
-      app.element("practice.buildOwn").waitForExistence(timeout: 10),
-      "the suggestion is back without relaunching")
   }
 }
