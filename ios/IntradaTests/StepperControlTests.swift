@@ -81,4 +81,17 @@ struct StepperControlTests {
   func aTypedLengthIsClampedToTheRange(typed: String, expected: Int?) {
     #expect(length(20).typedValue(typed) == expected)
   }
+
+  @Test(
+    arguments: [
+      ("17", 1, 22),
+      ("", 1, 25),
+      ("118", 1, 120),
+      ("3", -1, 5),
+    ] as [(String, Int, Int)])
+  func aRingTapWhileTypingStepsFromTheDraftOrTheNumberBefore(
+    draft: String, steps: Int, expected: Int
+  ) {
+    #expect(length(20).stepped(by: steps, fromDraft: draft) == expected)
+  }
 }

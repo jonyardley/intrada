@@ -172,14 +172,15 @@ struct ScoreStepper: View {
   /// A ring tap while typing steps from the typed number and ends the typing,
   /// so one write lands instead of the draft overwriting the step on Done.
   private func ringTapped(by steps: Int) {
-    if typingFocused, let typed = typedValue(draft) {
-      let next = clamped(typed + steps * step)
-      draft = ""
-      typingFocused = false
-      onChange(next)
-    } else {
-      onChange(stepped(by: steps))
-    }
+    guard typingFocused else { return onChange(stepped(by: steps)) }
+    let next = stepped(by: steps, fromDraft: draft)
+    draft = ""
+    typingFocused = false
+    onChange(next)
+  }
+
+  func stepped(by steps: Int, fromDraft text: String) -> Int {
+    clamped((typedValue(text) ?? score) + steps * step)
   }
 
   private func clamped(_ value: Int) -> Int {
