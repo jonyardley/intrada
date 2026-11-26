@@ -278,7 +278,7 @@
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-            summary: "2 items", startTitle: "Start session")))
+            summary: "2 items", startTitle: "Start session", fit: nil)))
     }
 
     static var previewBuildingEmpty: Store {
@@ -289,7 +289,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-            summary: "0 items", startTitle: "Start session")))
+            summary: "0 items", startTitle: "Start session", fit: nil)))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -302,7 +302,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-            summary: "0 items", startTitle: "Start session"),
+            summary: "0 items", startTitle: "Start session", fit: nil),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -320,7 +320,7 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-            summary: "0 items", startTitle: "Start session"),
+            summary: "0 items", startTitle: "Start session", fit: nil),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -354,7 +354,7 @@
             lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
             entryKeys: [],
             summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
-            startTitle: "Start session \u{B7} 12 min")))
+            startTitle: "Start session \u{B7} 12 min", fit: nil)))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
@@ -386,7 +386,7 @@
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
-            startTitle: "Start session \u{B7} 12 min")))
+            startTitle: "Start session \u{B7} 12 min", fit: nil)))
     }
 
     /// Session builder where one of the block's related exercises is also in
@@ -410,7 +410,7 @@
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "12 min \u{B7} 1 block \u{B7} 2 items",
-            startTitle: "Start session \u{B7} 12 min")))
+            startTitle: "Start session \u{B7} 12 min", fit: nil)))
     }
 
     /// The builder with a planned piece and one offering last time
@@ -443,7 +443,7 @@
             ],
             entryKeys: entryKeys,
             summary: "22 min \u{B7} 3 items",
-            startTitle: "Start session \u{B7} 22 min")))
+            startTitle: "Start session \u{B7} 22 min", fit: nil)))
     }
 
     /// Player Focus: a piece mid-session.

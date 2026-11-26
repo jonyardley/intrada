@@ -14,7 +14,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
           entries: [], itemCount: 0, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
           lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-          summary: "0 items", startTitle: "Start session")))
+          summary: "0 items", startTitle: "Start session", fit: nil)))
     assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
   }
 
@@ -54,7 +54,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
           entries: [.previewExercise], itemCount: 1, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
           lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-          summary: "1 item", startTitle: "Start session")))
+          summary: "1 item", startTitle: "Start session", fit: nil)))
     assertSnapshot(
       of: host(AddToSessionSheet(), store: store),
       as: .image(
