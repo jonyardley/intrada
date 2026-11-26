@@ -243,7 +243,7 @@ it made resident went with #2791.
 **DECIDED 2026-09-05 (#981, #1540, #1544); superseded by T41.** Reads T15 forward: a star glyph
 and "Practise your priorities" in secondary ink under whichever hero shows.
 
-- **It shows only from Idle** (`PracticeScreen.showsPriorities`).
+- **It showed only from Idle.**
 - **Nothing starred, nothing offered**, derived before the library filter.
 - **Two secondaries under one primary is fine; two primaries is not.**
 
@@ -504,38 +504,44 @@ hero, the "Practise your priorities" text action, "Build my own instead" with
 "Show suggestion", and "Change it first": any change to the plan opens the
 session builder filled with it. The length is a `ScoreStepper` in the clock
 font at 32 point that can also be typed, picked on 2026-11-26.
+The warm-up slot takes the neediest item marked for the warm-up, so a starred
+one wins it; another warm-up item joins the rows only when starred or going
+cold (#3015).
 
 ### T42: One ranking decides what needs practice, and says why
 
 **DECIDED 2026-11-26 (#3015).** Amends T41. Every suggestion of what to
 practise comes from one place, `crates/intrada-core/src/ranking.rs`, and
-nothing else in the core orders practice material. It ranks by ordered rules,
-not a weighted score:
+nothing else in the core orders practice material. It ranks by ordered rules
+instead of a weighted score:
 
 1. Starred first.
-2. Then the most overdue: the days since it was last played divided by the gap
-   it can bear, with never played the most overdue of all.
+2. Then the most overdue: going cold or cold first, by the days since it was
+   last played divided by the gap it can bear, then never played, then fresh.
 3. Then the lower score.
 4. Then the title as the Library files it, then the id.
 
 An item is as much in need as its neediest key or variation, or its own
 record when it has neither, so a key scored 3 a fortnight ago lifts its
-exercise. Any play that is not a stray tap counts as played, scored or not.
+exercise. An unplayed key or variation takes its item's last played date,
+and the item's score where it has none, so only keys and variations actually
+played lift an item above its own record. Any play that is not a stray tap
+counts as played, scored or not.
 Each row says the rule that placed it, in plain words: "a priority", "G major,
 scored 3, 2 weeks ago", "going cold after 3 weeks", "not practised yet". A
-planned session plays the warm-up first, then by need; a variety rule would go
-in the same place.
+planned session plays the warm-up first, then by need, as `plan::fill` lays
+it out; a variety rule would go in `plan::fill` or the ranking module.
 
 | Rule | Research | Strength |
 | --- | --- | --- |
 | A gap before something is due, longer for a better score and for each return | Spacing effect (Donovan and Radosevich 1999; Cepeda et al. 2006); expanding gaps from schedulers not validated for music | Strong in general, the numbers are an informed guess |
-| A fixed, visible rule, not one learnt from one person's history | Fitted schedulers need about 1,000 reviews to beat their defaults (`docs/research/space-layer.md` §6) | Strong for the decision |
+| A fixed, visible rule over one learnt from one person's history | Fitted schedulers need about 1,000 reviews to beat their defaults (`docs/research/space-layer.md` §6) | Strong for the decision |
 | Lower score first among the equally overdue | Deliberate practice aims at specific weaknesses (Ericsson 1993; Macnamara 2014) | Framing only |
 | Starred first | The musician decides what matters; the app suggests | Principle |
-| Every row says why | A suggestion that cannot explain itself loses trust | Product aim |
+| Every row says why | A suggestion that cannot explain itself loses trust (#3015) | Product aim |
 | No interleaving yet | Music studies are mixed (Carter and Grahn 2016; Stambaugh 2009, 2010) | Mixed, deferred |
 
 To tune it, change the numbers in the `tuning` block at the top of
 `ranking.rs`: the gap by score, the bonus for returns, and the multiples of the
 gap at which something goes cold. Library sort, recently practised and the
-Progress lists order things for browsing, not for practice, and stay outside it.
+Progress lists order things for browsing and stay outside it.
