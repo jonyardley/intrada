@@ -55,16 +55,16 @@ struct SegmentedPills<Option: Hashable>: View {
       : AnyShape(Capsule(style: .circular))
     let trackLayout =
       switch style {
-      case .stacked: AnyLayout(VStackLayout(spacing: 4))
-      case .labelSized: AnyLayout(SpareSharedRow(spacing: 4))
-      default: AnyLayout(HStackLayout(spacing: 4))
+      case .stacked: AnyLayout(VStackLayout(spacing: IntradaSpacing.xSmall))
+      case .labelSized: AnyLayout(SpareSharedRow(spacing: IntradaSpacing.xSmall))
+      default: AnyLayout(HStackLayout(spacing: IntradaSpacing.xSmall))
       }
     return trackLayout {
       ForEach(options, id: \.self) { option in
         pillButton(option, style: style)
       }
     }
-    .padding(4)
+    .padding(IntradaSpacing.xSmall)
     .background(IntradaColor.cardFill, in: shape)
     .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
   }
@@ -80,9 +80,9 @@ struct SegmentedPills<Option: Hashable>: View {
       Array(options[$0..<min($0 + perRow, options.count)])
     }
     let shape = RoundedRectangle(cornerRadius: pillHeight / 2 + 4, style: .circular)
-    return VStack(spacing: 4) {
+    return VStack(spacing: IntradaSpacing.xSmall) {
       ForEach(chunks, id: \.self) { row in
-        HStack(spacing: 4) {
+        HStack(spacing: IntradaSpacing.xSmall) {
           ForEach(row, id: \.self) { option in
             pillButton(option, style: .equalRow, sizedTo: row)
           }
@@ -94,7 +94,7 @@ struct SegmentedPills<Option: Hashable>: View {
     } action: {
       pillHeight = $0
     }
-    .padding(4)
+    .padding(IntradaSpacing.xSmall)
     .background(IntradaColor.cardFill, in: shape)
     .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
   }
@@ -135,7 +135,7 @@ struct SegmentedPills<Option: Hashable>: View {
     case .wrappingTrack where style == .stacked:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .wrappingTrack where style == .labelSized:
-      text.lineLimit(1).padding(.horizontal, 4)
+      text.lineLimit(1).padding(.horizontal, IntradaSpacing.xSmall)
         .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .wrappingTrack:
       // The row's widest label plus a margin, so a row that only just fits wraps instead (#2490).
@@ -143,7 +143,7 @@ struct SegmentedPills<Option: Hashable>: View {
         ForEach(row, id: \.self) { Text(label($0)).font(font).hidden() }
         text
       }
-      .padding(.horizontal, 4)
+      .padding(.horizontal, IntradaSpacing.xSmall)
       .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .fullWidthTrack where style == .equalRow:
       // Sized to the longest label so the row wins only when every segment fits (#2133).

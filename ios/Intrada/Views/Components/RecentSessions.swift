@@ -38,7 +38,7 @@ struct RecentSessions: View {
       Spacer()
       if let trend {
         let up = trend.to > trend.from
-        HStack(spacing: 4) {
+        HStack(spacing: IntradaSpacing.xSmall) {
           // A drop is neutral taupe, never a red/green lie about the numbers.
           Image(systemName: up ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis")
             .accessibilityHidden(true)

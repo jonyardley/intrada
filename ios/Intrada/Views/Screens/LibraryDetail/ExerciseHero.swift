@@ -5,7 +5,7 @@ struct ExerciseHero: View {
   let item: LibraryItemView
 
   var body: some View {
-    VStack(spacing: 6) {
+    VStack(spacing: IntradaSpacing.small) {
       ScoreRing(
         score: item.practice?.latestScore.map(Int.init), size: 132, showsScale: true)
       // Names the hero as the score across every piece, so it can't be read as

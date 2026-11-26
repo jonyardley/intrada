@@ -158,7 +158,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
       .accessibilityElement(children: .combine)
       .accessibilityLabel(
         subtitle.map { "\(title), \($0.replacingOccurrences(of: " · ", with: ", "))" } ?? title)
-      Spacer(minLength: 12)
+      Spacer(minLength: IntradaSpacing.cardCompact)
       if let trailing {
         Button(action: trailing.action) {
           ScreenScaffoldIconButton.icon(trailing.systemImage)

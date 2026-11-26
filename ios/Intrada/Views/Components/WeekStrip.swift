@@ -10,7 +10,7 @@ struct WeekStrip: View {
   @Binding var selected: String
 
   var body: some View {
-    HStack(spacing: 4) {
+    HStack(spacing: IntradaSpacing.xSmall) {
       ForEach(days, id: \.date) { day in
         WeekDayCell(day: day, isSelected: day.date == selected) { selected = day.date }
       }
@@ -43,7 +43,7 @@ private struct WeekDayCell: View {
 
   var body: some View {
     Button(action: onTap) {
-      VStack(spacing: 5) {
+      VStack(spacing: IntradaSpacing.segmentGap) {
         Text(day.weekdayInitial)
           .font(IntradaFont.small)
           .fontWeight(isSelected || day.isToday ? .semibold : .regular)

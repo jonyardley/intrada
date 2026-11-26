@@ -320,7 +320,7 @@ struct SessionBuilderScreen: View {
       if !isEditing { gripGlyph }
       HStack(spacing: IntradaSpacing.cardCompact) {
         entry.itemType.bar.frame(width: 4, height: 34).clipShape(Capsule())
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
           Text(entry.itemTitle).font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
             .lineLimit(1)
           Text(block.caption)
@@ -373,8 +373,8 @@ struct SessionBuilderScreen: View {
       if !isEditing { gripGlyph }
       HStack(spacing: IntradaSpacing.cardCompact) {
         ItemKind.piece.bar.frame(width: 4, height: 34).clipShape(Capsule())
-        VStack(alignment: .leading, spacing: 2) {
-          HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
+          HStack(spacing: IntradaSpacing.small) {
             Text(block.pieceTitle ?? "Related exercises")
               .font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
               .lineLimit(1)
@@ -488,15 +488,15 @@ struct SessionBuilderScreen: View {
   @ViewBuilder private func planLine(_ entry: SetlistEntryView) -> some View {
     let tags = entry.planTags
     if !tags.isEmpty {
-      FlowLayout(spacing: 6) {
+      FlowLayout(spacing: IntradaSpacing.small) {
         ForEach(Array(tags.enumerated()), id: \.offset) { TagChip($0.element) }
       }
-      .padding(.top, 4)
+      .padding(.top, IntradaSpacing.xSmall)
     }
     if let offer = lastTime(entry) {
       OfferChip(offer.label) { applyLastTime(entry) }
         .accessibilityHidden(true)
-        .padding(.top, 2)
+        .padding(.top, IntradaSpacing.xxSmall)
     }
   }
 
@@ -517,7 +517,7 @@ struct SessionBuilderScreen: View {
     Text("Group")
       .font(IntradaFont.badge)
       .foregroundStyle(IntradaColor.pieceBadgeFg)
-      .padding(.horizontal, 6).padding(.vertical, 2)
+      .padding(.horizontal, IntradaSpacing.small).padding(.vertical, IntradaSpacing.xxSmall)
       .background(
         IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))
   }

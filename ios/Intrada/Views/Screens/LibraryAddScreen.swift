@@ -135,7 +135,7 @@ struct LibraryAddScreen: View {
     Button {
       choosingExercises = true
     } label: {
-      HStack(spacing: 6) {
+      HStack(spacing: IntradaSpacing.small) {
         Image(systemName: "plus")
         Text("Add exercise")
       }

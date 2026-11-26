@@ -37,7 +37,7 @@ struct MasteryDial: View {
           style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
         )
         .rotationEffect(.degrees(-90))
-      VStack(spacing: 2) {
+      VStack(spacing: IntradaSpacing.xxSmall) {
         CountingNumber(value: settled ? value : 0) { String(format: "%.1f", $0) }
           .font(IntradaFont.scoreNumeral(size * 0.297))
           .foregroundStyle(IntradaColor.ink)

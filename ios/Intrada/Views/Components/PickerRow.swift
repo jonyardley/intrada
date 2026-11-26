@@ -13,7 +13,7 @@ struct PickerRow: View {
   var body: some View {
     Button(action: action) {
       HStack(spacing: IntradaSpacing.cardCompact) {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
           Text(label)
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(IntradaColor.ink)

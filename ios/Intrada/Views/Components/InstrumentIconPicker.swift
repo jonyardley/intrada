@@ -48,7 +48,7 @@ struct InstrumentIconPicker: View {
       choice = icon
       Haptic.selection.play()
     } label: {
-      VStack(spacing: 6) {
+      VStack(spacing: IntradaSpacing.small) {
         InstrumentGlyph(icon: icon, size: IntradaGlyph.bar)
           .foregroundStyle(IntradaColor.ink)
         Text(icon.tileLabel)
@@ -59,7 +59,7 @@ struct InstrumentIconPicker: View {
       }
       .frame(maxWidth: .infinity)
       .frame(minHeight: 84)
-      .padding(.horizontal, 4)
+      .padding(.horizontal, IntradaSpacing.xSmall)
       .background(selected ? marker : IntradaColor.cardFill)
       .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       .overlay(

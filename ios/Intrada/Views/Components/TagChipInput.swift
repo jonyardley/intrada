@@ -23,7 +23,7 @@ struct TagChipInput: View {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
         if !tags.isEmpty {
-          FlowLayout(spacing: 6) {
+          FlowLayout(spacing: IntradaSpacing.small) {
             ForEach(tags, id: \.self) { tag in
               TagChip(tag, onRemove: { remove(tag) })
             }

@@ -12,7 +12,7 @@ struct ScoreSelector: View {
   let onSelect: (UInt8?) -> Void
 
   var body: some View {
-    HStack(spacing: 4) {
+    HStack(spacing: IntradaSpacing.xSmall) {
       ForEach(pillValues, id: \.self) { pill($0) }
     }
     .accessibilityElement(children: .ignore)
@@ -75,7 +75,7 @@ extension LimitsView {
 
 #if DEBUG
   #Preview("Score selector") {
-    VStack(alignment: .leading, spacing: 24) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.section) {
       ScoreSelector(score: 0, range: 1...10, accessibilityLabel: "Score") { _ in }
       ScoreSelector(score: 4, range: 1...10, accessibilityLabel: "Score") { _ in }
       ScoreSelector(score: 10, range: 1...10, accessibilityLabel: "Score") { _ in }

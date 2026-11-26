@@ -18,7 +18,7 @@ struct ConsistencyBars: View {
   var body: some View {
     HStack(alignment: .bottom, spacing: 9) {
       ForEach(Array(weeks.enumerated()), id: \.offset) { index, week in
-        VStack(spacing: 6) {
+        VStack(spacing: IntradaSpacing.small) {
           Spacer(minLength: 0)
           RoundedRectangle(cornerRadius: 5)
             .fill(
