@@ -49,7 +49,7 @@ A full-width line under the status bar for something the whole app needs to say:
 
 - The banner is one element, read as its message, with "Note, " before a notice. The action and Dismiss are accessibility actions on it, because combining the children hides the buttons.
 - The message scales with Dynamic Type, and wraps rather than truncates.
-- The dismiss cross reaching 44 points is #2687.
+- The dismiss cross takes a 44 point tap while the drawn cross stays its own size.
 
 ## Do and don't
 

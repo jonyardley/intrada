@@ -34,6 +34,7 @@ struct GlobalBanner: View {
           Button("Dismiss", action: onDismiss)
         }
       }
+      .accessibilityIdentifier("globalBanner")
   }
 
   private var bar: some View {
@@ -63,6 +64,12 @@ struct GlobalBanner: View {
           Image(systemName: "xmark")
             .iconSize(.inline, weight: .medium)
             .foregroundStyle(ink)
+            // A background lays out at the glyph's size, so the 44pt target leaves the drawn bar unchanged (#2687).
+            .background {
+              Color.clear
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+            }
         }
         .buttonStyle(.plain)
       }
