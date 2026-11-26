@@ -96,7 +96,6 @@ impl Staleness {
         self.days
     }
 
-    /// Going cold or cold: played, and past its gap.
     pub(super) fn is_due(&self) -> bool {
         matches!(self.band, StalenessBand::GoingCold | StalenessBand::Cold)
     }

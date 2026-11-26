@@ -7287,8 +7287,7 @@ fn a_planned_start_with_an_empty_library_stays_idle() {
     assert_eq!(m.last_error, None);
 }
 
-/// After one event has sent the first library and weeks sections, which
-/// every model's first update does.
+/// The caller has already sent one event, so the first update's library and weeks sections are not counted.
 fn effect_kinds(model: &mut Model, event: SessionEvent) -> Vec<&'static str> {
     set_plan_length(model, 30);
     let mut cmd = Intrada.update(Event::Session(event), model);

@@ -523,14 +523,14 @@ instead of a weighted score:
 
 An item is as much in need as its neediest key or variation, or its own
 record when it has neither, so a key scored 3 a fortnight ago lifts its
-exercise. An unplayed key or variation takes its item's last played date,
-and the item's score where it has none, so only keys and variations actually
+exercise. An unplayed key or variation takes its item's last played date
+and returns, and the item's score where it has none, so only keys and variations actually
 played lift an item above its own record. Any play that is not a stray tap
 counts as played, scored or not.
 Each row says the rule that placed it, in plain words: "a priority", "G major,
 scored 3, 2 weeks ago", "going cold after 3 weeks", "not practised yet". A
 planned session plays the warm-up first, then by need, as `plan::fill` lays
-it out; a variety rule would go in `plan::fill` or the ranking module.
+it out; a variety rule would go in `plan::fill`.
 
 | Rule | Research | Strength |
 | --- | --- | --- |

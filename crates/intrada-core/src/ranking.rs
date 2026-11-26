@@ -71,8 +71,6 @@ pub(crate) struct RankedTarget<'a> {
 }
 
 impl RankedTarget<'_> {
-    /// Going cold or cold first, then never played, then fresh; within each,
-    /// most overdue, then the lower score.
     fn need(&self) -> (u8, Reverse<u32>, Option<u8>) {
         let tier = match (self.staleness.is_due(), self.staleness.days()) {
             (true, _) => 0,
@@ -83,10 +81,7 @@ impl RankedTarget<'_> {
     }
 }
 
-/// An item's keys and variations, neediest first and one actually played
-/// before an equal one never played, or the item alone when it has neither.
-/// Never empty. One never played takes the item's own date, returns and,
-/// unscored, its score.
+/// Never empty; one never played takes its item's record (T42).
 pub(crate) fn rank_targets<'a>(
     item: &'a LibraryItemView,
     records: &PracticeRecords,
@@ -146,9 +141,7 @@ pub(crate) struct Ranked<'a> {
     neediest: RankedTarget<'a>,
 }
 
-/// The whole library, most in need first: starred, then going cold or cold,
-/// then never played, then fresh, each most overdue first, then lower score,
-/// then title as the Library files it, then id.
+/// The whole library, most in need first, by the order in T42.
 pub(crate) fn rank_items<'a>(
     items: &'a [LibraryItemView],
     records: &PracticeRecords,
@@ -364,11 +357,7 @@ mod tests {
 
         assert_eq!(ranked[0].item.id, "cold");
         assert_eq!(ranked[1].item.id, "exercise");
-        assert!(
-            !ranked[1].reason().contains("F♯ minor"),
-            "{}",
-            ranked[1].reason()
-        );
+        assert_eq!(ranked[1].reason(), "C major, scored 9, yesterday");
     }
 
     #[test]
