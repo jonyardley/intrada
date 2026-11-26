@@ -3,7 +3,7 @@ name: SectionHeader
 status: stable
 ios_symbol: SectionHeader
 ios_file: ios/Intrada/Views/Components/SectionHeader.swift
-ios_snapshots: ComponentSnapshotTests/testSectionHeader.1.png, ComponentSnapshotTests/testSectionHeaderAtAccessibilitySize.1.png, LibraryDetailSnapshotTests/testUsedInCardRowStates.1.png
+ios_snapshots: ComponentSnapshotTests/testSectionHeader.1.png, LibraryDetailSnapshotTests/testUsedInCardRowStates.1.png
 decisions: T29, T35
 ---
 
@@ -30,11 +30,10 @@ Names a section above its card, with an optional count, a fact at the trailing e
 
 ## Behaviour
 
-- At accessibility text sizes the header stacks: the title and action on the first line, the caption and fact each on a line below, so a long title never breaks mid-word. The caption drops its dot when it stacks.
 - An action that is off is hidden (`isDisabled`, `HeaderAction.enabled`), so the header never shows a control that does nothing.
 - No motion and no haptic of its own.
 
-Stacking, reading the caption and hiding an off action are the rules.
+Reading the caption and hiding an off action are the rules.
 
 ## Content
 

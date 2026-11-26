@@ -18,11 +18,11 @@ wired from the first build.
   on a wrapper that ignores its children, or the tap lands on the wrapper's
   centre.
 - **Not gated:** labels on controls no test drives, system controls, text
-  fields' spoken labels, hints, reading order and Dynamic Type at accessibility
-  sizes. Hand check those with VoiceOver on.
-- **Dynamic Type:** no `.accessibility5` snapshot; #2134 is set aside, so don't
-  add one. A fixed-size glyph beside text scales with `@ScaledMetric`, capped so
-  the row still fits (`WeekStrip`).
+  fields' spoken labels, hints and reading order. Hand check those with
+  VoiceOver on.
+- **Dynamic Type:** text is capped at `.xxxLarge` (#1411), so there are no
+  accessibility-size tests or branches. A fixed-size glyph beside text scales
+  with `@ScaledMetric`, capped so the row still fits (`WeekStrip`).
 
 ## Principles
 

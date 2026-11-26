@@ -122,6 +122,11 @@ extension ExerciseUsageView {
 
 extension LibraryItemView {
   var keyDisplay: String? { keyLabel }
+
+  var usualTimeLine: String {
+    let minutes = "\(usualMinutes) \(usualMinutes == 1 ? "minute" : "minutes")"
+    return usualMinutesFromHistory ? "Usually \(minutes)" : "\(minutes) to begin with"
+  }
 }
 
 extension LinkedExerciseView {

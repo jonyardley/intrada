@@ -6,24 +6,12 @@ struct SwitchRow: View {
   let title: String
   let isOn: Binding<Bool>
   let identifier: String
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   var body: some View {
-    if typeSize.isAccessibilitySize {
-      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        FieldLabel(title)
-          .accessibilityHidden(true)
-        Toggle(title, isOn: isOn)
-          .labelsHidden()
-          .tint(IntradaColor.accent)
-          .accessibilityIdentifier(identifier)
-      }
-    } else {
-      Toggle(isOn: isOn) {
-        FieldLabel(title)
-      }
-      .tint(IntradaColor.accent)
-      .accessibilityIdentifier(identifier)
+    Toggle(isOn: isOn) {
+      FieldLabel(title)
     }
+    .tint(IntradaColor.accent)
+    .accessibilityIdentifier(identifier)
   }
 }

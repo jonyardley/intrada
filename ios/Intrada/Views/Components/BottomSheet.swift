@@ -12,7 +12,6 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
   private let content: Content
 
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   init(
     title: String,
@@ -39,19 +38,10 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
       ZStack {
         PaperBackground()
         VStack(spacing: 0) {
-          if titleInContent {
-            Text(title)
-              .font(IntradaFont.cardTitle)
-              .foregroundStyle(IntradaColor.ink)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.horizontal, IntradaSpacing.card)
-              .padding(.top, IntradaSpacing.controlGap)
-              .accessibilityAddTraits(.isHeader)
-          }
           content
         }
       }
-      .navigationTitle(titleInContent ? "" : title)
+      .navigationTitle(title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) { leadingAction }
@@ -66,11 +56,6 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
       }
     }
     .presentationDetents(detents)
-  }
-
-  // The inline bar truncates a long title at accessibility sizes (#2125).
-  private var titleInContent: Bool {
-    typeSize.isAccessibilitySize
   }
 }
 

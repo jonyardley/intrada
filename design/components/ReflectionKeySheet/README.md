@@ -42,7 +42,6 @@ One key's tempo and note on the item-complete sheet, opened by tapping the key's
 
 - The tempo stepper's label names the key: "Tempo for D major".
 - The note field's label is its card label, "Note for D major".
-- The sheet's title moves into the content at accessibility text sizes, as every `BottomSheet` does.
 
 ## Do and don't
 

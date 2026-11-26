@@ -67,6 +67,8 @@ struct IntradaApp: App {
     WindowGroup {
       RootView()
         .environment(store)
+        // Layouts do not hold at accessibility text sizes (#1411).
+        .dynamicTypeSize(.xSmall ... .xxxLarge)
     }
   }
 }

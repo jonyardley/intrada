@@ -22,10 +22,7 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # References that stay large as lossless PNG even after `oxipng -o max -Z`:
 # smooth gradients (Practice one-tap hero, Focus player radial, the Up next
 # hero's card-level reference), dense-control screens (Session summary's
-# per-item score-pill rows over the gold gradient toast), and one
-# accessibility-size screen whose bill is glyphs rather than gradient (the
-# session detail at .accessibility3 fills the frame with large text, and
-# `oxipng` leaves it byte-identical). They get a higher bound. Keep this list
+# per-item score-pill rows over the gold gradient toast). They get a higher bound. Keep this list
 # TIGHT: add only a reference proven irreducible, with the reason. Cropping
 # does not help the gradients: flat paper costs almost nothing and the gradient
 # is the whole bill, which is why a component crop is on the list alongside the
@@ -43,7 +40,6 @@ is_large() {
       testFocusPlayerKeyAndVariationChipsWithLastTime | \
       testFocusPlayerHoldsTheItemTimerWhileTheSheetIsOpen | \
       testFocusPlayerSectionTimeUp | testFocusPlayerAwayOffer | testFocusPlayerLastTimeOffer | \
-      testPracticeSessionDetailAccessibilitySize | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection | \
       testSessionSummaryWithVariations) return 0 ;;
     *) return 1 ;;
@@ -51,9 +47,9 @@ is_large() {
 }
 
 # One tier above `is_large`: the Up next hero (#1082) and its filled plan card
-# (#57) are the largest unbroken gradients the app draws, each over half a
-# full-screen reference, so they clear the 300k bound even fully optimised. Keep this bucket to references that are
-# mostly one gradient; anything else belongs in `is_large` or under the default.
+# (#57) are the largest unbroken gradients the app draws. Re-recorded repeatedly
+# since #1082, they stayed under 420000 (largest 384 KB, November 2026).
+# Only references that are mostly one gradient belong here.
 XL_MAX_BYTES="${SNAPSHOT_XL_MAX_BYTES:-420000}"
 is_xl() {
   case "$1" in

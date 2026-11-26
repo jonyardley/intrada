@@ -40,7 +40,7 @@ None. The iPhone version takes a `size`, 128 points by default.
 ## Accessibility
 
 - One element, read as "Overall mastery 3.4 of 5.0".
-- On iPhone the whole dial grows with Dynamic Type, up to 1.6 times, so the number never crosses the ring (#1471). At accessibility sizes the text shrinks to fit inside.
+- On iPhone the whole dial grows with Dynamic Type, up to 1.6 times, so the number never crosses the ring (#1471).
 
 ## Usage
 

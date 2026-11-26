@@ -3,7 +3,7 @@ name: BottomSheet
 status: stable
 ios_symbol: BottomSheet
 ios_file: ios/Intrada/Views/Components/BottomSheet.swift
-ios_snapshots: ComponentSnapshotTests/testBottomSheet.1.png, ComponentSnapshotTests/testBottomSheetAtAccessibilitySize.1.png
+ios_snapshots: ComponentSnapshotTests/testBottomSheet.1.png
 decisions: T36
 ---
 
@@ -43,17 +43,16 @@ A short task that rises over the current screen, with its title, a way out and o
 - The top bar holds the title inline in the centre, the leading action on the left and the confirming action on the right. The confirming action carries the identifier `sheet.done`.
 - The title names the task in sentence case, two or three words: "Keys", "Filter by tag", "Add to session".
 - A disabled confirming action greys out and does nothing.
-- At accessibility text sizes the inline title would truncate, so it moves into the top of the content as a heading in `IntradaFont.cardTitle`, scaling with Dynamic Type. The second snapshot shows this.
 
 ## Accessibility
 
-- The title is a heading, inline or in the content.
+- The title is a heading.
 - Cancel and the confirming action are system toolbar buttons, with the system's tap areas.
 - The snapshots do not draw toolbar buttons or the sheet's height; check Cancel, the confirming action and the height on a simulator.
 
 ## Do and don't
 
-- **Do** build every sheet on `BottomSheet`, so the top bar and the large text title come with it.
+- **Do** build every sheet on `BottomSheet`, so the top bar comes with it.
 - **Don't** put a second filled button in the content; the confirming action in the bar is the one.
 
 ## Usage

@@ -34,6 +34,7 @@ struct GlobalBanner: View {
           Button("Dismiss", action: onDismiss)
         }
       }
+      .accessibilityIdentifier("globalBanner")
   }
 
   private var bar: some View {
@@ -57,14 +58,25 @@ struct GlobalBanner: View {
         .buttonStyle(.plain)
         // The 44pt target reaches into the bar's padding rather than growing the bar.
         .padding(.vertical, -10)
+        .accessibilityIdentifier("globalBanner.action")
       }
       if let onDismiss {
         Button(action: onDismiss) {
           Image(systemName: "xmark")
             .iconSize(.inline, weight: .medium)
             .foregroundStyle(ink)
+            // A background lays out at the glyph's size, so the 44pt target leaves the drawn bar unchanged (#2687).
+            .background {
+              Color.clear
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+                // Shifted into the card padding so the square stops short of Undo's target (#2687).
+                .offset(x: IntradaSpacing.controlGap)
+            }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Dismiss")
+        .accessibilityIdentifier("globalBanner.dismiss")
       }
     }
     .padding(.horizontal, IntradaSpacing.card)

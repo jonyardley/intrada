@@ -22,31 +22,19 @@ struct SegmentedPills<Option: Hashable>: View {
   let layout: Layout
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.dynamicTypeSize) private var typeSize
   @Namespace private var pill
   @State private var pillHeight: CGFloat = 0
 
   var body: some View {
     switch layout {
     case .fullWidthTrack:
-      if typeSize.isAccessibilitySize {
-        ViewThatFits(in: .horizontal) {
-          fullWidthTrack(.equalRow)
-          fullWidthTrack(.stacked)
-        }
-      } else {
-        fullWidthTrack(.row)
-      }
+      fullWidthTrack(.row)
     case .wrappingTrack:
-      if typeSize.isAccessibilitySize {
+      ViewThatFits(in: .horizontal) {
+        fullWidthTrack(.equalRow)
+        fullWidthTrack(.labelSized)
+        ForEach(wrappedRowLengths, id: \.self) { wrappedTrack(perRow: $0) }
         fullWidthTrack(.stacked)
-      } else {
-        ViewThatFits(in: .horizontal) {
-          fullWidthTrack(.equalRow)
-          fullWidthTrack(.labelSized)
-          ForEach(wrappedRowLengths, id: \.self) { wrappedTrack(perRow: $0) }
-          fullWidthTrack(.stacked)
-        }
       }
     }
   }

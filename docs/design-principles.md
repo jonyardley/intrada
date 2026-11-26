@@ -184,9 +184,7 @@ play closed. Anything else is a default, and a default is not data.
 **DECIDED 2026-08-28 (#1420, #1425).** Follows T16.
 
 - **A session with no measured tempo breaks the line** (never a zero), with a
-  tick below the axis; `7 of 9 sessions measured` carries the honesty. It is
-  also the one part of the footer that survives at accessibility text sizes;
-  the end dates go.
+  tick below the axis; `7 of 9 sessions measured` carries the honesty.
 - **Fewer than two measurements is not a trend** (`TempoTrendView.has_trend`,
   the core's); nothing measured draws no card (the shell's).
 - **The scale is relative, with an 8 BPM floor; the chip is neutral**, never

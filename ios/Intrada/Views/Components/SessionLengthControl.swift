@@ -10,7 +10,6 @@ struct SessionLengthControl: View {
   let limits: LimitsView
   let identifier: String
   let onChange: (UInt16?) -> Void
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
@@ -31,16 +30,12 @@ struct SessionLengthControl: View {
       .tint(IntradaColor.accent)
       .accessibilityIdentifier("\(identifier).toggle")
       if let lengthMins {
-        let rowLayout =
-          typeSize.isAccessibilitySize
-          ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.controlGap))
-          : AnyLayout(HStackLayout(spacing: IntradaSpacing.cardCompact))
-        rowLayout {
+        HStack(spacing: IntradaSpacing.cardCompact) {
           Text(valueLabel)
             .font(IntradaFont.body)
             .foregroundStyle(IntradaColor.ink)
             .accessibilityHidden(true)
-          if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+          Spacer(minLength: 0)
           Stepper(
             "\(title), \(valueLabel)",
             value: Binding(

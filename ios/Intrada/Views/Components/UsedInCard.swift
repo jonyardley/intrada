@@ -86,41 +86,33 @@ struct UsedInRow: View {
   let calendar: Calendar
   var onLink: (() -> Void)? = nil
 
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.scoreRange) private var scoreRange
 
   private var isStandalone: Bool { usage.piece == nil }
   private var navigable: Bool { usage.pieceInLibrary }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      // controlGap, not row, around the trailing controls: a row carrying both a
-      // Link button and a chevron has little width left for the meta line.
-      HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
-        if navigable, let piece = usage.piece {
-          NavigationLink(value: piece.id) { content }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(usage.spokenRow(topMark: scoreRange.upperBound))
-        } else {
-          content
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(usage.spokenRow(topMark: scoreRange.upperBound))
-        }
-        if let onLink, !dynamicTypeSize.isAccessibilitySize {
-          linkButton(onLink)
-        }
-        if navigable {
-          Image(systemName: "chevron.right")
-            .imageScale(.small)
-            .foregroundStyle(IntradaColor.inkFaintIcon)
-            .accessibilityHidden(true)
-        }
+    // controlGap, not row, around the trailing controls: a row carrying both a
+    // Link button and a chevron has little width left for the meta line.
+    HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
+      if navigable, let piece = usage.piece {
+        NavigationLink(value: piece.id) { content }
+          .buttonStyle(.plain)
+          .accessibilityElement(children: .combine)
+          .accessibilityLabel(usage.spokenRow(topMark: scoreRange.upperBound))
+      } else {
+        content
+          .accessibilityElement(children: .combine)
+          .accessibilityLabel(usage.spokenRow(topMark: scoreRange.upperBound))
       }
-      // At accessibility text sizes the button beside the meta line leaves so
-      // little width that words break mid-word, so it drops to its own line.
-      if let onLink, dynamicTypeSize.isAccessibilitySize {
+      if let onLink {
         linkButton(onLink)
+      }
+      if navigable {
+        Image(systemName: "chevron.right")
+          .imageScale(.small)
+          .foregroundStyle(IntradaColor.inkFaintIcon)
+          .accessibilityHidden(true)
       }
     }
     .padding(.vertical, IntradaSpacing.card)
@@ -128,13 +120,8 @@ struct UsedInRow: View {
     .background(IntradaColor.cardFill)
   }
 
-  // Stacked at accessibility sizes so a long title word doesn't break mid-word beside the ring (#1731).
   private var content: some View {
-    let layout: AnyLayout =
-      dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.controlGap))
-      : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
-    return layout {
+    HStack(spacing: IntradaSpacing.card) {
       // Decorative here: the ring's rest glyph and "not practised together yet"
       // are the same fact, and for a rated row the mark is already spoken by
       // `spokenRow` (#1468).
