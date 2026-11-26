@@ -1,14 +1,16 @@
 import XCTest
 
 /// Real-app UITest for #2687: the banner's dismiss cross takes a tap anywhere in
-/// its 44 point square, though the drawn cross is about 15 points wide.
+/// its 44 point square, which stops short of Undo's target.
 @MainActor
 final class GlobalBannerUITests: XCTestCase {
   override func setUp() { continueAfterFailure = false }
 
-  // The drawn cross is about 15 points wide and the square's half is 22. Above, 13
-  // still lands inside the system's own touch tolerance, so it goes to 20.
-  private let leftOfGlyph: CGFloat = 13
+  // The square sits IntradaSpacing.controlGap right of the glyph, so its left edge is
+  // 14 left of the glyph's centre; the `.inline` icon size draws the cross 15 wide.
+  // Above, 13 still lands inside the system's own touch tolerance, so it goes to 20.
+  private let squareShift: CGFloat = 8
+  private let leftOfGlyph: CGFloat = 12
   private let aboveGlyph: CGFloat = 20
 
   /// One test: each dismiss uses up a saved session, and seeded data has none,
@@ -26,7 +28,11 @@ final class GlobalBannerUITests: XCTestCase {
     expectCount(cards, 2, "two saved sessions in history")
 
     var banner = deleteASession(app)
-    app.buttons["Undo"].tap()
+    let undo = app.control("globalBanner.action", spoken: "Undo")
+    let dismiss = app.control("globalBanner.dismiss", spoken: "Dismiss")
+    XCTAssertGreaterThanOrEqual(
+      dismiss.frame.minX, undo.frame.maxX, "the dismiss square stops short of Undo")
+    undo.tap()
     XCTAssertTrue(banner.waitForNonExistence(timeout: 5), "Undo clears the banner")
     expectCount(cards, 2, "Undo brings the session back")
 
@@ -72,10 +78,11 @@ final class GlobalBannerUITests: XCTestCase {
     return banner
   }
 
-  /// The cross's frame is centred on the glyph with or without the wider tap area.
+  /// The button's frame is the square, so the glyph's centre is the shift left of its own.
   private func tapBesideTheCross(_ app: XCUIApplication, dx: CGFloat, dy: CGFloat) {
-    app.buttons["xmark"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-      .withOffset(CGVector(dx: dx, dy: dy))
+    app.control("globalBanner.dismiss", spoken: "Dismiss")
+      .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+      .withOffset(CGVector(dx: dx - squareShift, dy: dy))
       .tap()
   }
 
