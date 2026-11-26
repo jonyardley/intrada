@@ -79,6 +79,8 @@ pub struct Item {
     /// Pieces only; tombstones included (#2248).
     #[serde(default)]
     pub exercise_links: Vec<ExerciseLink>,
+    #[serde(default)]
+    pub include_in_warm_up: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -305,6 +307,7 @@ impl Item {
             variation_ids: Vec::new(),
             keys: Vec::new(),
             exercise_links: Vec::new(),
+            include_in_warm_up: false,
         }
     }
 }

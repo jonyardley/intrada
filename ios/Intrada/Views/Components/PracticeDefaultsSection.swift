@@ -18,7 +18,9 @@ struct PracticeDefaultsSection: View {
               get: { defaults.click },
               set: {
                 save(
-                  PracticeDefaults(click: $0, sessionLengthMins: defaults.sessionLengthMins))
+                  PracticeDefaults(
+                    click: $0, sessionLengthMins: defaults.sessionLengthMins,
+                    startWithWarmUp: defaults.startWithWarmUp))
               }),
             label: \.title,
             identifier: { "profile.click.\($0.identifierSuffix)" },
@@ -37,8 +39,25 @@ struct PracticeDefaultsSection: View {
           identifier: "profile.sessionLength"
         ) {
           save(
-            PracticeDefaults(click: defaults.click, sessionLengthMins: $0))
+            PracticeDefaults(
+              click: defaults.click, sessionLengthMins: $0,
+              startWithWarmUp: defaults.startWithWarmUp))
         }
+        .padding(IntradaSpacing.card)
+        HairlineDivider()
+          .padding(.leading, IntradaSpacing.card)
+        SwitchRow(
+          title: "Start with a warm-up",
+          isOn: Binding(
+            get: { defaults.startWithWarmUp },
+            set: {
+              save(
+                PracticeDefaults(
+                  click: defaults.click, sessionLengthMins: defaults.sessionLengthMins,
+                  startWithWarmUp: $0))
+            }),
+          identifier: "profile.startWithWarmUp.toggle"
+        )
         .padding(IntradaSpacing.card)
       }
       .cardSurface()

@@ -28,6 +28,7 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
         metre: None,
         variation_ids,
         keys: vec![],
+        include_in_warm_up: false,
     };
 
     model.items.push(item.clone());
@@ -134,6 +135,7 @@ pub(super) fn add_piece_in_full(
         keys: vec![],
         photo_id: piece_input.photo_id,
         metre: None,
+        include_in_warm_up: false,
     };
 
     model.items.extend(created.iter().cloned());
@@ -218,5 +220,6 @@ pub(super) fn new_exercise(
         photo_id: input.photo_id,
         metre: None,
         exercise_links: vec![],
+        include_in_warm_up: false,
     }
 }

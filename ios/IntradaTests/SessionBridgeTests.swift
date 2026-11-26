@@ -183,7 +183,7 @@ final class SessionBridgeTests: XCTestCase {
   func testRealBridgePracticeDefaultsReachTheClick() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: nil, startWithWarmUp: false)
     let requests = try bridge.update(.practiceDefaults(.save(saved)))
     XCTAssertTrue(
       requests.contains {
@@ -207,13 +207,14 @@ final class SessionBridgeTests: XCTestCase {
       active.currentClickSounding, 0b1010, "2 and 4 in the 4/4 an item with no metre gets")
   }
 
-  /// The version 2 bytes a device holds cross the bridge and come back as the
-  /// version 3 save, keeping the click start and the session length (#2791).
+  /// The version 2 bytes a v0.19.0 device holds cross the bridge and come
+  /// back as the version 4 save, keeping the click start and the session
+  /// length and starting with a warm-up (#2791, #3006).
   func testRealBridgeAVersion2BlobIsCarriedIntoTheCurrentShape() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     let version2: [UInt8] = [0x05, 0x01, 0x00, 0x00, 0x00, 0x01, 0x19, 0x00]
-    let carried = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25)
+    let carried = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25, startWithWarmUp: true)
 
     let requests = try bridge.update(.practiceDefaults(.carried(version2)))
 
@@ -233,7 +234,7 @@ final class SessionBridgeTests: XCTestCase {
   func testRealBridgeSessionLengthReachesTheBuilder() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25, startWithWarmUp: true)
     _ = try bridge.update(.practiceDefaults(.save(saved)))
     XCTAssertEqual(try bridge.rendered().practiceDefaults, saved)
     XCTAssertEqual(try bridge.rendered().limits.sessionLengthDefaultMins, 30)
@@ -484,7 +485,7 @@ final class SessionBridgeTests: XCTestCase {
             id: item.id,
             input: UpdateItem(
               title: item.title, kind: item.itemType, composer: nil, key: .keep,
-              tempo: nil, notes: nil, tags: nil, priority: true))))
+              tempo: nil, notes: nil, tags: nil, priority: true, includeInWarmUp: nil))))
     }
     XCTAssertTrue(try bridge.rendered().showsPriorities, "starred with nothing under way")
 
@@ -502,7 +503,7 @@ final class SessionBridgeTests: XCTestCase {
   func testRealBridgeOneTapStartPlaysTodaysPlan() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25)
+    let saved = PracticeDefaults(click: .twoAndFour, sessionLengthMins: 25, startWithWarmUp: true)
     _ = try bridge.update(.practiceDefaults(.save(saved)))
 
     for (title, kind) in [

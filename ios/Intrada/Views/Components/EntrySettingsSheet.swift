@@ -141,8 +141,8 @@ struct EntrySettingsSheet: View {
 
   private var durationSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      settingToggle(
-        "Planned duration", isOn: $hasPlannedDuration,
+      SwitchRow(
+        title: "Planned duration", isOn: $hasPlannedDuration,
         identifier: "entrySettings.plannedDuration"
       )
       .onChange(of: hasPlannedDuration) { _, on in
@@ -163,16 +163,6 @@ struct EntrySettingsSheet: View {
       }
     }
     .fieldCardSurface()
-  }
-
-  private func settingToggle(
-    _ title: String, isOn: Binding<Bool>, identifier: String
-  ) -> some View {
-    Toggle(isOn: isOn) {
-      FieldLabel(title)
-    }
-    .tint(IntradaColor.accent)
-    .accessibilityIdentifier(identifier)
   }
 
   // The row's non-gesture removal path (T4): dropping it from today's session

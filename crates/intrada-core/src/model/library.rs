@@ -151,6 +151,7 @@ pub struct LibraryItemView {
     pub usual_minutes: u32,
     /// False until a play counts (#3005).
     pub usual_minutes_from_history: bool,
+    pub include_in_warm_up: bool,
 }
 
 /// One library variation an item uses, with its practice state on that item:
@@ -249,6 +250,7 @@ impl LibraryItemView {
             key_selection: None,
             usual_minutes: 10,
             usual_minutes_from_history: false,
+            include_in_warm_up: false,
         }
     }
 }

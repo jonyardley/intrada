@@ -57,7 +57,7 @@ struct LibraryQueryFilterTests {
           id: hanon.id,
           input: UpdateItem(
             title: hanon.title, kind: hanon.itemType, composer: nil, key: .keep,
-            tempo: nil, notes: nil, tags: nil, priority: true))))
+            tempo: nil, notes: nil, tags: nil, priority: true, includeInWarmUp: nil))))
 
     _ = try bridge.update(
       .setQuery(ListQuery(text: nil, itemType: nil, key: nil, tags: [], priorityOnly: true)))

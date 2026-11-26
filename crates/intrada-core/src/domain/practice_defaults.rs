@@ -32,22 +32,35 @@ impl ClickStart {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeDefaults {
     pub click: ClickStart,
     pub session_length_mins: Option<u16>,
+    pub start_with_warm_up: bool,
+}
+
+impl Default for PracticeDefaults {
+    fn default() -> Self {
+        Self {
+            click: ClickStart::default(),
+            session_length_mins: None,
+            start_with_warm_up: true,
+        }
+    }
 }
 
 impl PracticeDefaults {
     /// The blob is positional bincode, so a build reads only a blob of its
     /// own shape. The shell names its storage key by this number, so a shape
-    /// change bumps it here and nowhere else (#2216). Version 1 is retired;
-    /// version 2 is carried across once (#2791).
-    pub const BLOB_VERSION: u32 = 3;
+    /// change bumps it here and nowhere else (#2216). Versions 1 and 3 are
+    /// retired, version 3 never reached a tagged build; version 2, what
+    /// v0.19.0 writes, is carried across once (#3006).
+    pub const BLOB_VERSION: u32 = 4;
     pub const PREVIOUS_BLOB_VERSION: u32 = 2;
 
-    /// Version 2 held a repetition target first, since removed (#2791).
+    /// Version 2 held a repetition target first, since removed (#2791), and
+    /// had no warm-up switch; an upgrade starts with it on (#3006).
     fn from_previous_blob(bytes: &[u8]) -> Option<Self> {
         #[derive(Deserialize)]
         struct Version2 {
@@ -59,6 +72,7 @@ impl PracticeDefaults {
         Some(Self {
             click: old.click,
             session_length_mins: old.session_length_mins,
+            start_with_warm_up: true,
         })
     }
 
@@ -79,7 +93,7 @@ pub enum PracticeDefaultsEvent {
     Save(PracticeDefaults),
     /// The shell replaying the stored blob at launch: clamped, never re-saved.
     Loaded(PracticeDefaults),
-    /// The version 2 blob's bytes, sent once when no version 3 blob exists:
+    /// The version 2 blob's bytes, sent once when no version 4 blob exists:
     /// clamped and saved in the new shape.
     Carried(Vec<u8>),
 }
@@ -130,6 +144,7 @@ mod tests {
         PracticeDefaults {
             click: ClickStart::TwoAndFour,
             session_length_mins: Some(25),
+            start_with_warm_up: false,
         }
     }
 
@@ -228,6 +243,7 @@ mod tests {
                 PracticeDefaultsEvent::Save(PracticeDefaults {
                     click: ClickStart::EveryBeat,
                     session_length_mins: Some(length),
+                    start_with_warm_up: true,
                 }),
             );
             assert_eq!(model.practice_defaults, fixture(), "length {length}");
@@ -285,23 +301,42 @@ mod tests {
         }
     }
 
-    // ── Carrying version 2 across (#2791) ──
+    // ── Carrying version 2 across (#2791, #3006) ──
 
-    /// The two version 2 blobs pinned before #2791: what devices hold.
     #[test]
-    fn a_version_2_blob_keeps_its_click_and_length_and_saves_them_as_version_3() {
+    fn a_fresh_install_starts_with_a_warm_up() {
+        assert!(PracticeDefaults::default().start_with_warm_up);
+        assert!(Model::default().practice_defaults.start_with_warm_up);
+    }
+
+    /// The two version 2 blobs pinned before #2791: what v0.19.0 devices hold.
+    #[test]
+    fn a_version_2_blob_keeps_its_click_and_length_and_starts_with_a_warm_up() {
         for (hex, expected) in [
-            ("0501000000011900", fixture()),
+            (
+                "0501000000011900",
+                PracticeDefaults {
+                    start_with_warm_up: true,
+                    ..fixture()
+                },
+            ),
             ("0a0000000000", PracticeDefaults::default()),
             (
                 "0301000000010500",
                 PracticeDefaults {
                     session_length_mins: Some(10),
+                    start_with_warm_up: true,
                     ..fixture()
                 },
             ),
         ] {
-            let mut model = Model::default();
+            let mut model = Model {
+                practice_defaults: PracticeDefaults {
+                    start_with_warm_up: false,
+                    ..PracticeDefaults::default()
+                },
+                ..Model::default()
+            };
             let mut cmd = send(&mut model, PracticeDefaultsEvent::Carried(bytes(hex)));
             assert_eq!(model.practice_defaults, expected, "{hex}");
             assert_eq!(emits_save(&mut cmd), Some(expected), "{hex}");
@@ -310,8 +345,15 @@ mod tests {
 
     #[test]
     fn bytes_that_are_not_a_version_2_blob_change_and_write_nothing() {
-        // The last two are version 3 blobs sent by mistake.
-        for hex in ["", "05", "0509000000", "01000000011900", "0000000000"] {
+        // The last three are version 3 and version 4 blobs sent by mistake.
+        for hex in [
+            "",
+            "05",
+            "0509000000",
+            "01000000011900",
+            "0000000000",
+            "0100000001190000",
+        ] {
             let mut model = Model::default();
             let mut cmd = send(&mut model, PracticeDefaultsEvent::Carried(bytes(hex)));
             assert_eq!(
@@ -335,9 +377,9 @@ mod tests {
 
     // ── Wire ──
 
-    const PINNED_DEFAULTS_HEX: &str = "01000000011900";
-    const PINNED_UNTOUCHED_DEFAULTS_HEX: &str = "0000000000";
-    const PINNED_BLOB_VERSION: u32 = 3;
+    const PINNED_DEFAULTS_HEX: &str = "0100000001190000";
+    const PINNED_UNTOUCHED_DEFAULTS_HEX: &str = "000000000001";
+    const PINNED_BLOB_VERSION: u32 = 4;
 
     /// Positional bincode: a new field breaks every stored blob (#1345). The
     /// shell's key follows `BLOB_VERSION` (#2216); the test cannot tell a

@@ -102,6 +102,9 @@ fn apply_fields(item: &mut Item, input: UpdateItem, tempo: Option<Option<Tempo>>
     if let Some(priority) = input.priority {
         item.priority = priority;
     }
+    if let Some(include) = input.include_in_warm_up {
+        item.include_in_warm_up = include;
+    }
 }
 
 pub(super) fn delete(model: &mut Model, id: String) -> Command<Effect, Event> {
