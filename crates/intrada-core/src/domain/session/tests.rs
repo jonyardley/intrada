@@ -7418,21 +7418,53 @@ fn start_opens_on_the_first_ticked_key() {
     assert_eq!(m.todays_keys, crate::plan::TodaysKeys::default());
 }
 
+fn scales_needing_g_major(now: DateTime<Utc>) -> Model {
+    let mut m = scales_model();
+    let play = |name: &str, score: u8, days: i64| {
+        let at = now - chrono::Duration::days(days);
+        let mut entry = SetlistEntry::fixture();
+        entry.plan.item_id = "scales".to_string();
+        entry.status = EntryStatus::Completed;
+        entry.plays = vec![Play {
+            key: Some(key(name)),
+            score: Some(score),
+            started_at: at,
+            seconds: 300,
+            ..Play::fixture()
+        }];
+        PracticeSession {
+            entries: vec![entry],
+            started_at: at,
+            completed_at: at,
+            ..PracticeSession::fixture(&format!("played-{name}"))
+        }
+    };
+    m.sessions = vec![
+        play("C major", 9, 1),
+        play("G major", 3, 14),
+        play("D major", 9, 1),
+    ]
+    .into();
+    m.practice_summaries = crate::view::library::build_practice_summaries(&m.sessions).into();
+    m
+}
+
 #[test]
 fn start_with_no_ticks_opens_on_the_first_suggested_key() {
-    let mut m = scales_model();
+    let now = Utc::now();
+    let mut m = scales_needing_g_major(now);
     update(
         &mut m,
-        Event::Session(SessionEvent::StartPlannedSession { now: Utc::now() }),
+        Event::Session(SessionEvent::StartPlannedSession { now }),
     );
 
-    assert_eq!(session_entries(&m)[0].plan.key, Some(key("C major")));
+    assert_eq!(session_entries(&m)[0].plan.key, Some(key("G major")));
 }
 
 #[test]
 fn today_s_ticks_clear_on_a_new_day() {
-    let mut m = scales_model();
     let now = Utc::now();
+    let mut m = scales_needing_g_major(now);
     let tomorrow = now + chrono::Duration::days(1);
     let suggestion = todays_labels(&m, tomorrow);
     tick(&mut m, "scales", &["D major"], now);
@@ -7442,7 +7474,59 @@ fn today_s_ticks_clear_on_a_new_day() {
         &mut m,
         Event::Session(SessionEvent::StartPlannedSession { now: tomorrow }),
     );
-    assert_eq!(session_entries(&m)[0].plan.key, Some(key("C major")));
+    assert_eq!(session_entries(&m)[0].plan.key, Some(key("G major")));
+}
+
+#[test]
+fn today_s_ticks_follow_the_local_day_not_the_utc_one() {
+    let mut m = scales_model();
+    m.utc_offset_minutes = 600;
+    let evening_utc = "2026-11-26T15:00:00Z"
+        .parse::<DateTime<Utc>>()
+        .expect("a time");
+    let same_local_day = "2026-11-27T13:00:00Z"
+        .parse::<DateTime<Utc>>()
+        .expect("a time");
+    let next_local_day = "2026-11-27T14:30:00Z"
+        .parse::<DateTime<Utc>>()
+        .expect("a time");
+    let suggestion = todays_labels(&m, next_local_day);
+    assert_ne!(suggestion, ["D major"]);
+    tick(&mut m, "scales", &["D major"], evening_utc);
+
+    assert_eq!(todays_labels(&m, same_local_day), ["D major"]);
+    assert_eq!(todays_labels(&m, next_local_day), suggestion);
+}
+
+#[test]
+fn a_start_from_the_changed_plan_clears_today_s_ticks() {
+    let mut m = scales_model();
+    let now = Utc::now();
+    tick(&mut m, "scales", &["D major"], now);
+
+    update(
+        &mut m,
+        Event::Session(SessionEvent::EditPlannedSession { now }),
+    );
+    update(&mut m, Event::Session(SessionEvent::StartSession { now }));
+
+    assert!(matches!(m.session_status, SessionStatus::Active(_)));
+    assert_eq!(m.todays_keys, crate::plan::TodaysKeys::default());
+}
+
+#[test]
+fn cancelling_the_changed_plan_keeps_today_s_ticks() {
+    let mut m = scales_model();
+    let now = Utc::now();
+    tick(&mut m, "scales", &["D major"], now);
+
+    update(
+        &mut m,
+        Event::Session(SessionEvent::EditPlannedSession { now }),
+    );
+    update(&mut m, Event::Session(SessionEvent::CancelBuilding));
+
+    assert_eq!(todays_labels(&m, now), ["D major"]);
 }
 
 #[test]

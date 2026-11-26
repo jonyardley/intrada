@@ -119,6 +119,7 @@ fn fresh_building(model: &Model) -> BuildingSession {
     BuildingSession {
         entries: Vec::new(),
         length_mins: model.practice_defaults.session_length_mins,
+        from_plan: false,
     }
 }
 
@@ -353,7 +354,6 @@ pub(super) fn start_planned_session(
     now: DateTime<Utc>,
 ) -> Command<Effect, Event> {
     if seed_from_plan(model, now) {
-        model.todays_keys = Default::default();
         start_session(model, now)
     } else {
         crux_core::render::render()
@@ -398,6 +398,7 @@ fn seed_from_plan(model: &mut Model, now: DateTime<Utc>) -> bool {
     let mut building = BuildingSession {
         entries: Vec::new(),
         length_mins: Some(plan.length_mins),
+        from_plan: true,
     };
     for row in plan.played_rows() {
         let Some(item) = model.items.iter().find(|i| i.id == row.item_id) else {
@@ -773,6 +774,9 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
         open_first_play(entry, now);
     }
 
+    if building.from_plan {
+        model.todays_keys = Default::default();
+    }
     let persist = persist_active(&active);
     model.session_status = SessionStatus::Active(Box::new(active));
     model.last_error = None;
