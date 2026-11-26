@@ -7468,6 +7468,10 @@ fn a_typed_length_outside_the_range_meets_it() {
 #[test]
 fn the_plan_length_is_never_saved() {
     let mut m = planned_model();
+    let _ = Intrada.update(
+        Event::Session(SessionEvent::SetPlanLength { length_mins: 20 }),
+        &mut m,
+    );
     let mut cmd = Intrada.update(
         Event::Session(SessionEvent::SetPlanLength { length_mins: 25 }),
         &mut m,
