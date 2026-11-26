@@ -19,7 +19,6 @@ One past practice session as a row: when it was, how long, how many items and wh
 
 - A piece's or exercise's own history on its page: use `RecentSessions`, which shows the mark for each session.
 - A day with no practice: the Practice home shows an empty day card instead.
-- The session that comes next: use `UpNextHero`.
 
 ## Variants
 

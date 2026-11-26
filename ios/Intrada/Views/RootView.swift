@@ -122,6 +122,7 @@ struct RootView: View {
     .marker(markerColour)
     .environment(\.scoreRange, scoreRange)
     .environment(\.openPractice, OpenPractice { selectedTab = .practice })
+    .environment(\.openLibrary, OpenPractice { selectedTab = .library })
   }
 
   /// The core's chosen highlighter, applied above every tab and the player
@@ -199,10 +200,20 @@ private struct OpenPracticeKey: EnvironmentKey {
   static let defaultValue = OpenPractice {}
 }
 
+private struct OpenLibraryKey: EnvironmentKey {
+  static let defaultValue = OpenPractice {}
+}
+
 extension EnvironmentValues {
   var openPractice: OpenPractice {
     get { self[OpenPracticeKey.self] }
     set { self[OpenPracticeKey.self] = newValue }
+  }
+
+  /// Switches to the Library tab, where an item's warm-up switch lives (#3007).
+  var openLibrary: OpenPractice {
+    get { self[OpenLibraryKey.self] }
+    set { self[OpenLibraryKey.self] = newValue }
   }
 }
 

@@ -34,81 +34,34 @@ final class PracticeSnapshotTests: SnapshotTestCase {
         store: Store(bridge: PreviewBridge(practiceWeeks: [week]))), as: config)
   }
 
-  func testPracticeScreenSuggestion() {
+  /// No item marked for the warm-up yet: the card that leads to the Library (#3007).
+  func testPracticeScreenPlanEmptyWarmUp() {
     assertSnapshot(
       of: host(
         PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
-        store: .previewPracticeSuggestion), as: config)
+        store: .previewPractice(plan: .previewEmptyWarmUp)), as: config)
   }
 
-  /// Dismissed but the core still has one to offer: the plain hero carries a
-  /// way back to it (#1618).
-  func testPracticeScreenSuggestionDismissed() {
-    assertSnapshot(
-      of: host(
-        PracticeScreen(
-          referenceDate: PracticeSessionView.previewReferenceDate, suggestionDismissed: true),
-        store: .previewPracticeSuggestion), as: config)
-  }
-
-  func testPracticeScreenPriorities() {
+  /// Profile turned the warm-up off, so the section goes altogether (#3007).
+  func testPracticeScreenPlanWarmUpOff() {
     assertSnapshot(
       of: host(
         PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
-        store: .previewPracticePriorities), as: config)
+        store: .previewPractice(plan: .previewWarmUpOff)), as: config)
   }
 
-  func testPracticeScreenSuggestionPriorities() {
+  /// The stepper, the rows and the start bar at the largest text we allow (#1411).
+  func testPracticeScreenPlanLargestText() {
     assertSnapshot(
       of: host(
         PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
-        store: .previewPracticeSuggestionPriorities), as: config)
-  }
-
-  /// Dismissed with something starred too: two secondaries (restore, then
-  /// priorities) stack under the plain hero (#1618).
-  func testPracticeScreenSuggestionDismissedPriorities() {
-    assertSnapshot(
-      of: host(
-        PracticeScreen(
-          referenceDate: PracticeSessionView.previewReferenceDate, suggestionDismissed: true),
-        store: .previewPracticeSuggestionPriorities), as: config)
-  }
-
-  /// No star, no ladder variation, never-marked wording: conditionals that can
-  /// regress without the full screen moving.
-  func testUpNextHeroNeverMarked() {
-    assertSnapshot(
-      of: host(upNextHeroCard(.previewFresh)),
+        store: .previewPractice),
       as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 370),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// Filled to a preferred length (#57, #999): "Today's plan", the plan's
-  /// totals, and the later blocks one line each under the lead.
-  func testUpNextHeroFilledPlan() {
-    assertSnapshot(
-      of: host(upNextHeroCard(.previewFilled)),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 640),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// The ground follows the musician's swatch (#1877), not butter's brown.
-  func testUpNextHeroCoral() {
-    assertSnapshot(
-      of: host(upNextHeroCard(.previewFresh).marker(.coral)),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 370),
-        traits: .init(displayScale: 2)))
-  }
-
-  private func upNextHeroCard(_ plan: SuggestedPlan) -> some View {
-    UpNextHero(plan: plan, onStart: {}, onChange: {}, onBuildOwn: {})?
-      .padding(IntradaSpacing.card)
-      .background(IntradaColor.paperTop)
-      .frame(width: 390)
+        on: .iPhone13, perceptualPrecision: 0.98,
+        traits: UITraitCollection { traits in
+          traits.displayScale = 2
+          traits.preferredContentSizeCategory = .extraExtraExtraLarge
+        }))
   }
 
   func testRecoveryPromptCard() throws {

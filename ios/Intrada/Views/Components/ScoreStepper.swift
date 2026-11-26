@@ -36,6 +36,7 @@ struct ScoreStepper: View {
   let typing: Bool
   let accessibilityLabel: String
   let accessibilityValue: String?
+  let accessibilityIdentifier: String?
   let onChange: (Int) -> Void
 
   @State private var draft = ""
@@ -45,6 +46,7 @@ struct ScoreStepper: View {
     score: Int, caption: Caption, range: ClosedRange<Int>, step: Int = 1,
     figure: Font = IntradaFont.figureLarge, typing: Bool = false,
     accessibilityLabel: String, accessibilityValue: String? = nil,
+    accessibilityIdentifier: String? = nil,
     onChange: @escaping (Int) -> Void
   ) {
     self.score = score
@@ -55,6 +57,7 @@ struct ScoreStepper: View {
     self.typing = typing
     self.accessibilityLabel = accessibilityLabel
     self.accessibilityValue = accessibilityValue
+    self.accessibilityIdentifier = accessibilityIdentifier
     self.onChange = onChange
   }
 
@@ -81,6 +84,7 @@ struct ScoreStepper: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
     .accessibilityValue(spokenValue)
+    .accessibilityIdentifier(accessibilityIdentifier ?? "")
     .accessibilityAdjustableAction { direction in
       switch direction {
       case .increment where canRaise:
