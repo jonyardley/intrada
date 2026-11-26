@@ -216,94 +216,47 @@
     }
   }
 
-  // Reason strings below are copies of the core's, per the table in
-  // specs/up-next-card.md, #1082 decision 6: reword there and these go stale silently.
-  extension SuggestedSession {
-    /// The mock's case: starred and cold, one drill unmarked, one on a variation.
-    static var previewStarred: SuggestedSession {
-      SuggestedSession(
-        pieceId: "piece-1", pieceTitle: "Like Someone in Love",
-        pieceSubtitle: "Jimmy Van Heusen",
-        reason: "A priority · cold for 5 weeks", priority: true,
-        items: [
-          SuggestedItem(
-            itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
-            latestScore: nil,
-            reason: "No confidence with this piece yet"),
-          SuggestedItem(
-            itemId: "ex-2", itemTitle: "Shell voicings", itemType: .exercise,
-            latestScore: 4,
-            reason: "Confidence 4 of 10 last time"),
-          SuggestedItem(
-            itemId: "piece-1", itemTitle: "Like Someone in Love", itemType: .piece,
-            latestScore: 6,
-            reason: "Confidence 6 of 10 last time"),
-        ],
-        estimatedMinutes: 15)
+  // Reason strings copy the core's plan rows (#3007): reword there and these go stale.
+  extension PlanView {
+    static func preview(
+      lengthMins: UInt16 = 20, warmUp: PlanRowView? = .previewScales,
+      hasWarmUpItems: Bool = true, warmUpEnabled: Bool = true,
+      rows: [PlanRowView] = [.previewBach, .previewEnclosures]
+    ) -> PlanView {
+      let total = rows.reduce(warmUp?.minutes ?? 0) { $0 + $1.minutes }
+      return PlanView(
+        lengthMins: lengthMins, warmUp: warmUp, hasWarmUpItems: hasWarmUpItems,
+        warmUpEnabled: warmUpEnabled, rows: rows, totalMins: total,
+        startTitle: "Start session · \(total) min")
     }
 
-    /// Unstarred and untouched: the longest copy the card has to fit.
-    static var previewFresh: SuggestedSession {
-      SuggestedSession(
-        pieceId: "piece-2", pieceTitle: "Prelude in C", pieceSubtitle: nil,
-        reason: "Not practised yet", priority: false,
-        items: [
-          SuggestedItem(
-            itemId: "ex-3", itemTitle: "Contrary-motion scales", itemType: .exercise,
-            latestScore: nil,
-            reason: "No confidence with this piece yet"),
-          SuggestedItem(
-            itemId: "piece-2", itemTitle: "Prelude in C", itemType: .piece,
-            latestScore: nil,
-            reason: "No confidence yet"),
-        ],
-        estimatedMinutes: 10)
+    static var previewTypical: PlanView { preview() }
+    static var previewEmptyWarmUp: PlanView { preview(warmUp: nil, hasWarmUpItems: false) }
+    static var previewWarmUpOff: PlanView {
+      preview(warmUp: nil, warmUpEnabled: false, rows: [.previewBach, .previewClair])
     }
   }
 
-  extension SuggestedSession {
-    /// A later block in a filled plan, which the hero shows as one line.
-    static var previewAutumnLeaves: SuggestedSession {
-      SuggestedSession(
-        pieceId: "piece-3", pieceTitle: "Autumn Leaves", pieceSubtitle: "Joseph Kosma",
-        reason: "Cold for 3 weeks", priority: false,
-        items: [
-          SuggestedItem(
-            itemId: "ex-4", itemTitle: "Two-five-one in G minor", itemType: .exercise,
-            latestScore: 7,
-            reason: "Confidence 7 of 10 last time"),
-          SuggestedItem(
-            itemId: "piece-3", itemTitle: "Autumn Leaves", itemType: .piece,
-            latestScore: 5,
-            reason: "Confidence 5 of 10 last time"),
-        ],
-        estimatedMinutes: 10)
+  extension PlanRowView {
+    static var previewScales: PlanRowView {
+      PlanRowView(
+        itemId: "plan-scales", title: "Major scales", reason: "Exercise", minutes: 3,
+        kind: .exercise)
     }
-  }
-
-  extension SuggestedPlan {
-    /// A plan of one block, as the hero shows with no preferred length.
-    static var previewStarred: SuggestedPlan {
-      let block = SuggestedSession.previewStarred
-      return SuggestedPlan(
-        blocks: [block], estimatedMinutes: block.estimatedMinutes,
-        itemCount: UInt32(block.items.count), lengthMins: nil)
+    static var previewBach: PlanRowView {
+      PlanRowView(
+        itemId: "plan-bach", title: "Bach Prelude in C", reason: "Piece · a priority",
+        minutes: 10, kind: .piece)
     }
-
-    /// One block, no star, never marked: the longest copy the card has to fit.
-    static var previewFresh: SuggestedPlan {
-      let block = SuggestedSession.previewFresh
-      return SuggestedPlan(
-        blocks: [block], estimatedMinutes: block.estimatedMinutes,
-        itemCount: UInt32(block.items.count), lengthMins: nil)
+    static var previewEnclosures: PlanRowView {
+      PlanRowView(
+        itemId: "plan-enclosures", title: "ii V i enclosures",
+        reason: "Exercise · going cold after 3 weeks", minutes: 7, kind: .exercise)
     }
-
-    /// Filled to a 30 minute preference: the lead block and two more.
-    static var previewFilled: SuggestedPlan {
-      let blocks = [SuggestedSession.previewStarred, .previewFresh, .previewAutumnLeaves]
-      return SuggestedPlan(
-        blocks: blocks, estimatedMinutes: blocks.reduce(0) { $0 + $1.estimatedMinutes },
-        itemCount: UInt32(blocks.reduce(0) { $0 + $1.items.count }), lengthMins: 30)
+    static var previewClair: PlanRowView {
+      PlanRowView(
+        itemId: "plan-clair", title: "Clair de lune", reason: "Piece · cold for 5 weeks",
+        minutes: 10, kind: .piece)
     }
   }
 

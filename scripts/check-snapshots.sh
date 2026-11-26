@@ -20,21 +20,18 @@ ROOT="${SNAPSHOT_IOS_ROOT:-ios/IntradaTests}"
 SNAP_DIR="$ROOT/__Snapshots__"
 MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # References that stay large as lossless PNG even after `oxipng -o max -Z`:
-# smooth gradients (Practice one-tap hero, Focus player radial, the Up next
-# hero's card-level reference), dense-control screens (Session summary's
-# per-item score-pill rows over the gold gradient toast). They get a higher bound. Keep this list
-# TIGHT: add only a reference proven irreducible, with the reason. Cropping
+# smooth gradients (Practice one-tap hero, Focus player radial), dense-control
+# screens (Session summary's per-item score-pill rows over the gold gradient
+# toast). They get a higher bound. Keep this list TIGHT: add only a reference
+# proven irreducible, with the reason. Cropping
 # does not help the gradients: flat paper costs almost nothing and the gradient
 # is the whole bill, which is why a component crop is on the list alongside the
 # full screens.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
-    testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenPriorities | \
-      testPracticeScreenQuietDay | testPracticeScreenSuggestionDismissed | \
-      testPracticeScreenSuggestionDismissedPriorities | testPracticeScreenGreeting | \
-      testUpNextHeroNeverMarked | \
-      testUpNextHeroCoral | \
+    testPracticeScreen | testPracticeScreenPopulated | \
+      testPracticeScreenQuietDay | testPracticeScreenGreeting | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
       testFocusPlayerWithVariations | testFocusPlayerKeyChip | testFocusPlayerOneKeyReadsAsText | \
       testFocusPlayerKeyAndVariationChipsWithLastTime | \
@@ -42,19 +39,6 @@ is_large() {
       testFocusPlayerSectionTimeUp | testFocusPlayerAwayOffer | testFocusPlayerLastTimeOffer | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection | \
       testSessionSummaryWithVariations) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-# One tier above `is_large`: the Up next hero (#1082) and its filled plan card
-# (#57) are the largest unbroken gradients the app draws. Re-recorded repeatedly
-# since #1082, they stayed under 420000 (largest 384 KB, November 2026).
-# Only references that are mostly one gradient belong here.
-XL_MAX_BYTES="${SNAPSHOT_XL_MAX_BYTES:-420000}"
-is_xl() {
-  case "$1" in
-    testPracticeScreenSuggestion | testPracticeScreenSuggestionPriorities | \
-      testUpNextHeroFilledPlan) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -71,7 +55,6 @@ if [ -d "$SNAP_DIR" ]; then
     fi
     ceiling="$MAX_BYTES"
     is_large "$method" && ceiling="$LARGE_MAX_BYTES"
-    is_xl "$method" && ceiling="$XL_MAX_BYTES"
     size=$(wc -c < "$png" | tr -d ' ')
     if [ "$size" -gt "$ceiling" ]; then
       echo "::error file=$png::$size bytes > $ceiling ceiling: run 'just ios-snapshots-optimize' (or raise SNAPSHOT_MAX_BYTES if genuinely large)"

@@ -5,6 +5,7 @@ struct PracticeScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.marker) private var marker
   @Environment(\.heroGradient) private var heroGradient
+  @Environment(\.openLibrary) private var openLibrary
 
   // Injected so the recovery card's date is deterministic in snapshots;
   // production uses "now".
@@ -12,9 +13,6 @@ struct PracticeScreen: View {
   /// The tapped day's `date` key; nil lets the week open on its own day.
   @State private var selectedDay: String?
   @State private var weekIndexOverride: Int?
-  // Shell state by #1082 decision 9 (specs/up-next-card.md): dismissal lasts the app
-  // run, has no domain consequence and is deliberately not persisted.
-  @State private var suggestionDismissed = false
   @State private var openSessionId: String?
   // iPad split: a tapped card selects into the detail column instead of pushing.
   private var selection: Binding<String?>?
@@ -33,13 +31,6 @@ struct PracticeScreen: View {
     init(referenceDate: Date, selectedDay: String) {
       self.referenceDate = referenceDate
       _selectedDay = State(initialValue: selectedDay)
-    }
-
-    /// Snapshot seed: land as if "Build my own instead" had already been
-    /// tapped (#1618), without driving the tap.
-    init(referenceDate: Date, suggestionDismissed: Bool) {
-      self.referenceDate = referenceDate
-      _suggestionDismissed = State(initialValue: suggestionDismissed)
     }
   #endif
 
@@ -93,7 +84,8 @@ struct PracticeScreen: View {
             StartHereCard(
               progress: firstRun,
               onAdd: { addingItem = true },
-              onStartSession: { store.send(.session(.startBuilding)) }
+              onStartSession: { plan == nil ? store.send(.session(.startBuilding)) : editPlan() },
+              onPlay: { plan == nil ? store.send(.session(.startBuilding)) : startPlan() }
             )
             .fadeUp(0)
           }
@@ -107,6 +99,7 @@ struct PracticeScreen: View {
         .padding(.bottom, IntradaSpacing.section)
       }
       .scrollEdgeShadow()
+      .safeAreaInset(edge: .bottom, spacing: 0) { startBar }
     }
     .reservingSubtitleLine(selection != nil)
     // Drop a now-out-of-range pinned week so a later data change can't jump the
@@ -144,100 +137,160 @@ struct PracticeScreen: View {
       })
   }
 
-  // MARK: - (0) The suggestion, or one tap to the next
+  // MARK: - (0) The plan from the time the musician has
 
   private var lastPractised: LastPractisedView? { store.viewModel?.lastPractised }
+  private var plan: PlanView? { store.viewModel?.suggestedPlan }
 
-  /// `nil` whenever nothing qualifies or the user has waved it away, which is
-  /// what keeps the card a suggestion and never a gate (design-principles T15).
-  private var plan: SuggestedPlan? {
-    suggestionDismissed ? nil : store.viewModel?.upNext
-  }
-
+  // An empty library has no plan; the plain hero still opens the builder.
   @ViewBuilder private var heroSection: some View {
-    VStack(spacing: IntradaSpacing.cardCompact) {
-      if let plan,
-        let suggestionHero = UpNextHero(
-          plan: plan,
-          onStart: {
-            store.send(
-              .session(.startFromSuggestion(now: SessionClock.nowRFC3339())),
-              onSuccess: .impact, when: { $0.activeSession != nil })
-          },
-          onChange: {
-            store.send(
-              .session(.startBuildingFromSuggestion(now: SessionClock.nowRFC3339())),
-              onSuccess: .impact, when: { $0.buildingSetlist != nil })
-          },
-          // "Build my own" is a decision, not a dismissal (#1617).
-          onBuildOwn: {
-            withAnimation(IntradaMotion.standard) { suggestionDismissed = true }
-            store.send(.session(.startBuilding))
+    if let plan {
+      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+        lengthSection(plan)
+        warmUpSection(plan)
+        sessionSection(plan)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+    } else {
+      hero
+    }
+  }
+
+  private func lengthSection(_ plan: PlanView) -> some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionTitle("How long have you got?")
+      lengthStepper(plan)
+        .frame(maxWidth: .infinity)
+        .padding(IntradaSpacing.card)
+        .cardSurface()
+    }
+  }
+
+  @ViewBuilder private func lengthStepper(_ plan: PlanView) -> some View {
+    if let limits = store.viewModel?.limits {
+      let minutes = Int(plan.lengthMins)
+      ScoreStepper(
+        score: minutes, caption: .unit("minutes"),
+        range: Int(limits.sessionLengthMinMins)...Int(limits.sessionLengthMaxMins),
+        step: Int(limits.sessionLengthStepMins), figure: IntradaFont.timer(32), typing: true,
+        accessibilityLabel: "Session length", accessibilityValue: minutesPhrase(minutes)
+      ) { next in
+        store.send(.session(.setPlanLength(lengthMins: UInt16(clamping: next))))
+      }
+      .accessibilityIdentifier("practice.length.value")
+    }
+  }
+
+  @ViewBuilder private func warmUpSection(_ plan: PlanView) -> some View {
+    if plan.warmUpEnabled {
+      VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+        SectionTitle("Warm-up")
+        if let row = plan.warmUp {
+          planRow(row).cardSurface()
+        } else {
+          emptyWarmUpCard
+        }
+      }
+    }
+  }
+
+  private var emptyWarmUpCard: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
+      Text("No warm-up items yet")
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.ink)
+      Text("Turn on \u{201C}Include in warm-up?\u{201D} for a piece or exercise in the Library.")
+        .font(IntradaFont.secondary)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .fixedSize(horizontal: false, vertical: true)
+      Button("Choose warm-up items") { openLibrary.callAsFunction() }
+        .font(IntradaFont.button)
+        .foregroundStyle(IntradaColor.accent)
+        .padding(.top, IntradaSpacing.controlGap)
+        .accessibilityIdentifier("practice.plan.chooseWarmUp")
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(IntradaSpacing.card)
+    .cardSurface()
+  }
+
+  private func sessionSection(_ plan: PlanView) -> some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionHeader(
+        title: "Session",
+        action: .init(title: "Change", identifier: "practice.plan.change", perform: editPlan))
+      if !plan.rows.isEmpty {
+        VStack(spacing: 0) {
+          ForEach(Array(plan.rows.enumerated()), id: \.element.itemId) { index, row in
+            if index > 0 { HairlineDivider().padding(.leading, IntradaSpacing.card) }
+            planRow(row)
           }
-        )
-      {
-        suggestionHero
-          .transition(.opacity)
-      } else {
-        hero
-        if showsSuggestionRestore { suggestionRestoreButton }
+        }
+        .cardSurface()
       }
-
-      if showsPriorities { prioritiesButton }
+      AddRowButton(title: "Add piece or exercise", style: .plain, action: editPlan)
     }
   }
 
-  // Text, never a filled CTA: two buttons a thumb apart that both start a
-  // session is the ambiguity T15 rejected for the Up next card (T20).
-  private var showsPriorities: Bool { store.viewModel?.showsPriorities ?? false }
-
-  private var prioritiesButton: some View {
-    Button {
-      store.send(
-        .session(.startBuildingWithPriorities(now: SessionClock.nowRFC3339())),
-        onSuccess: .impact)
-    } label: {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        Image(systemName: "star.fill")
-          .accessibilityHidden(true)
-        Text("Practise your priorities")
+  private func planRow(_ row: PlanRowView) -> some View {
+    HStack(spacing: IntradaSpacing.cardCompact) {
+      row.kind.bar.frame(width: 4, height: 34).clipShape(Capsule())
+      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
+        Text(row.title)
+          .font(IntradaFont.cardTitle)
+          .foregroundStyle(IntradaColor.ink)
+          .fixedSize(horizontal: false, vertical: true)
+        Text(row.reason)
+          .font(IntradaFont.secondary)
+          .foregroundStyle(IntradaColor.inkSecondary)
       }
-      .font(IntradaFont.button)
-      .foregroundStyle(IntradaColor.accent)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, IntradaSpacing.controlGap)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      Text("\(row.minutes) min")
+        .font(IntradaFont.secondary)
+        .monospacedDigit()
+        .foregroundStyle(IntradaColor.inkSecondary)
     }
-    .buttonStyle(PressRebound())
-    .accessibilityHint("Builds a session from everything you have starred")
+    .padding(IntradaSpacing.cardCompact)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(
+      [
+        row.title, row.reason.replacingOccurrences(of: " · ", with: ", "),
+        minutesPhrase(row.minutes),
+      ]
+      .joined(separator: ", "))
   }
 
-  /// True once the suggestion has been waved away but the core still has one
-  /// to offer: dismissal is not a one-way door (#1618).
-  static func showsSuggestionRestore(_ viewModel: ViewModel?, dismissed: Bool) -> Bool {
-    dismissed && viewModel?.showsSuggestionRestore == true
+  private func minutesPhrase<N: BinaryInteger>(_ minutes: N) -> String {
+    "\(minutes) \(minutes == 1 ? "minute" : "minutes")"
   }
 
-  private var showsSuggestionRestore: Bool {
-    Self.showsSuggestionRestore(store.viewModel, dismissed: suggestionDismissed)
+  private func editPlan() {
+    store.send(
+      .session(.editPlannedSession(now: SessionClock.nowRFC3339())),
+      onSuccess: .impact, when: { $0.buildingSetlist != nil })
   }
 
-  private var suggestionRestoreButton: some View {
-    Button {
-      withAnimation(IntradaMotion.standard) { suggestionDismissed = false }
-    } label: {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        Image(systemName: "arrow.counterclockwise")
-          .accessibilityHidden(true)
-        Text("Show suggestion")
+  private func startPlan() {
+    store.send(
+      .session(.startPlannedSession(now: SessionClock.nowRFC3339())),
+      onSuccess: .impact, when: { $0.activeSession != nil })
+  }
+
+  @ViewBuilder private var startBar: some View {
+    if let plan {
+      BrandBarButton(action: startPlan) {
+        Image(systemName: "play.fill")
+        Text(plan.startTitle)
       }
-      .font(IntradaFont.secondary)
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, IntradaSpacing.controlGap)
+      .accessibilityLabel("Start session")
+      .accessibilityValue(minutesPhrase(plan.totalMins))
+      .accessibilityIdentifier("practice.plan.start")
+      .padding(.horizontal, IntradaSpacing.card)
+      .padding(.top, IntradaSpacing.cardCompact)
+      .padding(.bottom, IntradaSpacing.section)
+      .background(IntradaColor.paperTop)
+      .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
     }
-    .buttonStyle(PressRebound())
-    .accessibilityHint("Brings back the suggested session")
-    .accessibilityIdentifier("practice.showSuggestion")
   }
 
   private var hero: some View {
@@ -439,9 +492,9 @@ struct PracticeScreen: View {
       .environment(Store.previewPractice)
   }
 
-  #Preview("Up next") {
+  #Preview("Empty warm-up") {
     PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
-      .environment(Store.previewPracticeSuggestion)
+      .environment(Store.previewPractice(plan: .previewEmptyWarmUp))
   }
 
   #Preview("Empty") {

@@ -156,7 +156,7 @@ slower/faster pair. Stopping is the same tap.
 
 ### T15: The Practice hero carries the suggestion, not a play glyph
 
-**DECIDED 2026-08-27 (#1082).** Where a suggestion exists it is the hero: the
+**DECIDED 2026-08-27 (#1082); superseded by T41.** Where a suggestion exists it is the hero: the
 piece, why, its items with their reasons, and one `Start · N min`. "Build my
 own instead" sits under it as the secondary (amended by T22 and T32).
 
@@ -240,7 +240,7 @@ it made resident went with #2791.
 
 ### T20: The starred route is a text action under the hero, never a second button
 
-**DECIDED 2026-09-05 (#981, #1540, #1544).** Reads T15 forward: a star glyph
+**DECIDED 2026-09-05 (#981, #1540, #1544); superseded by T41.** Reads T15 forward: a star glyph
 and "Practise your priorities" in secondary ink under whichever hero shows.
 
 - **It shows only from Idle** (`PracticeScreen.showsPriorities`).
@@ -265,7 +265,7 @@ Not settled: the edit path, per-bar parse feedback (#1387), the row wording.
 
 ### T22: "Build my own instead" opens the builder, and dismissal is never a one-way door
 
-**DECIDED 2026-09-10 (#1617, #1618).** Amends T15.
+**DECIDED 2026-09-10 (#1617, #1618); superseded by T41.** Amends T15.
 
 - **The tap does the thing it names:** it hides the suggestion and opens the
   empty builder.
@@ -362,7 +362,7 @@ are deleted.
 
 ### T32: The hero carries today's plan, and Start plays it
 
-**DECIDED 2026-10-01 (#57, #999).** Amends T15: with a preferred length the
+**DECIDED 2026-10-01 (#57, #999); superseded by T41.** Amends T15: with a preferred length the
 suggestion is a plan of several blocks, and Start plays it in one tap.
 
 - The eyebrow reads "Today's plan" with no minutes; the count line carries
@@ -492,3 +492,15 @@ This differs from T16 on purpose. A tempo is recorded only when it was measured,
 because a stepper the musician left alone says nothing about the speed played.
 A score is the musician's own judgement, and seeing last time's and leaving it
 is a judgement too.
+
+### T41: Practice asks how long you have and fills that time
+
+**DECIDED 2026-11-26 (#3007).** Supersedes T15, T20, T22 and T32. Practice
+opens on one choice, the session length, and the core fills it with a warm-up
+then priorities then what is going cold, then the rest of the library, most
+overdue first, each at its usual minutes. Start
+session plays that plan and names its real total. This replaces the Up next
+hero, the "Practise your priorities" text action, "Build my own instead" with
+"Show suggestion", and "Change it first": any change to the plan opens the
+session builder filled with it. The length is a `ScoreStepper` in the clock
+font at 32 point that can also be typed, picked on 2026-11-26.

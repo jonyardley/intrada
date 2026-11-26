@@ -279,6 +279,16 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         first_run: build_first_run_view(model),
         variations: cached.variation_options.clone(),
         undo_delete: crate::domain::session::undo_offer(model),
+        suggested_plan: if matches!(model.session_status, SessionStatus::Idle) {
+            crate::plan::fill(
+                &cached.library,
+                &model.practice_defaults,
+                model.plan_length(),
+                clock,
+            )
+        } else {
+            None
+        },
     }
 }
 

@@ -88,9 +88,6 @@ enum IntradaColor {
     case .powder: Color(hex: 0x243D4C)
     }
   }
-  /// Read `ItemKind.onHeroAccent`, not these directly.
-  static let onHeroExercise = exerciseBadgeBg
-  static let onHeroPiece = pieceBadgeBg
   static let celebrationBg = ink
   static let celebrationInk = paperTop
   /// The full-screen photo viewer's ground. Warm near-black from the ink family

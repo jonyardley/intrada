@@ -48,8 +48,6 @@
     "heroGradientBottom-sage": "The bottom of the Practice hero gradient when the sage highlighter is chosen: its hue darkened, so light text and the marker button hold contrast.",
     "heroGradientBottom-peach": "The bottom of the Practice hero gradient when the peach highlighter is chosen: its hue darkened, so light text and the marker button hold contrast.",
     "heroGradientBottom-powder": "The bottom of the Practice hero gradient when the powder highlighter is chosen: its hue darkened, so light text and the marker button hold contrast.",
-    "onHeroExercise": "An exercise's accent on the dark hero.",
-    "onHeroPiece": "A piece's accent on the dark hero.",
     "celebrationBg": "The celebration toast's dark ground.",
     "celebrationInk": "Text on celebrationBg.",
     "viewerBackdrop": "The full-screen photo viewer's ground: a warm near-black, so cream never tints a photograph.",

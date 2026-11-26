@@ -29,7 +29,7 @@
 
     private let analytics: AnalyticsView?
     private let lastPractised: LastPractisedView?
-    private let upNext: SuggestedPlan?
+    private let suggestedPlan: PlanView?
     private let recentlyPractisedIds: [String]
     private let visibleIds: [String]?
     private let profile: ProfileView?
@@ -43,7 +43,7 @@
       buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
-      upNext: SuggestedPlan? = nil, recentlyPractisedIds: [String] = [],
+      suggestedPlan: PlanView? = nil, recentlyPractisedIds: [String] = [],
       profile: ProfileView? = nil, practiceDefaults: PracticeDefaults? = nil,
       firstRun: FirstRunView? = nil
     ) {
@@ -56,7 +56,7 @@
       self.summary = summary
       self.analytics = analytics
       self.lastPractised = lastPractised
-      self.upNext = upNext
+      self.suggestedPlan = suggestedPlan
       self.recentlyPractisedIds = recentlyPractisedIds
       self.visibleIds = visibleIds
       self.profile = profile
@@ -94,19 +94,12 @@
       // A stub bridge holds no items in the core, so the fixture words the
       // line the way the core does; the bridge tests pin the real one (#2454).
       viewModel.libraryCountLine = previewCountLine(visible, filtered: activeQuery != nil)
-      // Derived from the whole library, never `visible`, so a fixture with a
-      // filter on still reports what the core would report (#981).
-      viewModel.showsPriorities =
-        items.contains { $0.priority } && buildingSetlist == nil && activeSession == nil
-        && summary == nil
-      viewModel.showsSuggestionRestore =
-        upNext != nil && buildingSetlist == nil && activeSession == nil && summary == nil
       viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
       viewModel.summary = summary
       if let analytics { viewModel.analytics = analytics }
       viewModel.lastPractised = lastPractised
-      viewModel.upNext = upNext
+      viewModel.suggestedPlan = suggestedPlan
       viewModel.recentlyPractisedIds = recentlyPractisedIds
       if let profile { viewModel.profile = profile }
       if let practiceDefaults { viewModel.practiceDefaults = practiceDefaults }
@@ -206,47 +199,23 @@
 
     /// Practice home with deterministic sessions (fixed past dates) for the
     /// populated-state snapshot, covers both completed + ended-early cards.
-    static var previewPractice: Store {
-      Store(
-        bridge: PreviewBridge(
-          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
-          lastPractised: .previewYesterday))
-    }
+    static var previewPractice: Store { previewPractice(plan: .previewTypical) }
 
     /// The Practice home as a named cellist sees it: greeted, with the badge (#1694).
     static var previewPracticeProfile: Store {
       Store(
         bridge: PreviewBridge(
           sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
-          lastPractised: .previewYesterday, profile: .previewCellist))
+          lastPractised: .previewYesterday, suggestedPlan: .previewTypical,
+          profile: .previewCellist))
     }
 
-    /// Practice home with something to suggest (#1082).
-    static var previewPracticeSuggestion: Store {
+    /// Practice home with a plan filled from the time the musician has (#3007).
+    static func previewPractice(plan: PlanView) -> Store {
       Store(
         bridge: PreviewBridge(
           sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
-          lastPractised: .previewYesterday, upNext: .previewStarred))
-    }
-
-    /// Practice home with something starred, so the priorities route shows
-    /// under the ordinary hero (#981).
-    static var previewPracticePriorities: Store {
-      Store(
-        bridge: PreviewBridge(
-          items: [starred(.previewPiece), .previewMinimal],
-          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
-          lastPractised: .previewYesterday))
-    }
-
-    /// A suggestion and a starred library together: the one layout where two
-    /// secondary actions stack under a single primary (#981).
-    static var previewPracticeSuggestionPriorities: Store {
-      Store(
-        bridge: PreviewBridge(
-          items: [starred(.previewPiece), .previewMinimal],
-          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
-          lastPractised: .previewYesterday, upNext: .previewStarred))
+          lastPractised: .previewYesterday, suggestedPlan: plan))
     }
 
     /// Practice home with a crash-recovery blob pending (#962), drives the

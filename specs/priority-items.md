@@ -91,7 +91,8 @@ touchpoints:
   longer libraries). No new screen.
 - **Practice** — A one-tap **"Practise your priorities"** loads all flagged
   items into the session builder, least-ready-first. Replaces "Practise
-  this goal" one-to-one.
+  this goal" one-to-one. Removed by #3007: priorities now lead the plan
+  Practice fills from the session length (design-principles T41).
 - **Track** — Exactly one new signal: **"a priority piece you haven't
   practised in N days"** — a neglect nudge linking straight back into a
   session. Deliberately scoped to one signal; the broader analytics rethink

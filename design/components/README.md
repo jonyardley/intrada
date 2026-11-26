@@ -42,7 +42,7 @@ not exist. Rows without a link are still to be written.
 | [SwitchRow](SwitchRow/README.md) | A setting turned on or off, inside a card |
 | [TabBar](TabBar/README.md) | The four tabs along the bottom of the app |
 | [ScoreSelector](ScoreSelector/README.md) | Giving an item, a play or a session its mark |
-| [ScoreStepper](ScoreStepper/README.md) | Nudging a key's score from last time, with minus and plus |
+| [ScoreStepper](ScoreStepper/README.md) | Nudging a key's score from last time, or the session length, with minus and plus |
 | [DragValue](DragValue/README.md) | Setting a tempo or other number by dragging it up or down |
 | [ReflectionKeySheet](ReflectionKeySheet/README.md) | One key's tempo and note after an item, opened from its name |
 | [LibraryItemCard](LibraryItemCard/README.md) | A piece or exercise in a list, with its mark |
@@ -51,7 +51,6 @@ not exist. Rows without a link are still to be written.
 | [WeekStrip](WeekStrip/README.md) | Picking a day of the week on the Practice home |
 | [RecentSessions](RecentSessions/README.md) | An item's marks from its last few sessions, with the trend |
 | [MasteryDial](MasteryDial/README.md) | The average mark across the library, as a ring |
-| [UpNextHero](UpNextHero/README.md) | The suggested next session, ready to start |
 | [AddRowButton](AddRowButton/README.md) | The full-width row that adds something to a list |
 | [ConsistencyBars](ConsistencyBars/README.md) | Minutes practised each week, as bars |
 | [FormField](FormField/README.md) | A labelled text field in a form |

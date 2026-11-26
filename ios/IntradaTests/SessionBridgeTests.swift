@@ -538,6 +538,63 @@ final class SessionBridgeTests: XCTestCase {
       vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque", "Arpeggios", "Berceuse"])
   }
 
+  /// The plan from time (#3007): a typed length, an optional warm-up row and
+  /// the rows cross as one nested view, and the start and edit events carry a
+  /// timestamp (#846). A warm-up and one priority fit 23 minutes; the second
+  /// priority would make 30.
+  func testRealBridgeThePlanFromTimeStartsAndEdits() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    for (title, kind) in [
+      ("Arabesque", ItemKind.piece), ("Berceuse", .piece), ("Scales", .exercise),
+    ] {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: kind, composer: nil, key: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    }
+    for item in try bridge.rendered().items {
+      let warmUp = item.title == "Scales"
+      _ = try bridge.update(
+        .item(
+          .update(
+            id: item.id,
+            input: UpdateItem(
+              title: item.title, kind: item.itemType, composer: nil, key: .keep,
+              tempo: nil, notes: nil, tags: nil, priority: !warmUp, includeInWarmUp: warmUp))))
+    }
+
+    _ = try bridge.update(.session(.setPlanLength(lengthMins: 23)))
+    let plan: PlanView = try XCTUnwrap(try bridge.rendered().suggestedPlan)
+    XCTAssertEqual(plan.lengthMins, 23)
+    XCTAssertEqual(plan.warmUp?.title, "Scales")
+    XCTAssertEqual(plan.warmUp?.reason, "Exercise")
+    XCTAssertEqual(plan.warmUp?.kind, .exercise)
+    XCTAssertEqual(plan.rows.map(\PlanRowView.title), ["Arabesque"])
+    XCTAssertEqual(plan.rows.first?.reason, "Piece · a priority")
+    XCTAssertEqual(plan.rows.first?.minutes, 10)
+    XCTAssertEqual(plan.rows.first?.kind, .piece)
+    XCTAssertTrue(plan.hasWarmUpItems)
+    XCTAssertTrue(plan.warmUpEnabled)
+    XCTAssertEqual(plan.totalMins, 20)
+    XCTAssertEqual(plan.startTitle, "Start session · 20 min")
+
+    _ = try bridge.update(.session(.editPlannedSession(now: SessionClock.nowRFC3339())))
+    let building = try bridge.rendered()
+    XCTAssertNil(building.error)
+    XCTAssertNil(building.suggestedPlan, "a session is being built")
+    XCTAssertEqual(building.buildingSetlist?.entries.map(\.itemTitle), ["Scales", "Arabesque"])
+    XCTAssertEqual(building.buildingSetlist?.entries.map(\.plannedDurationSecs), [600, 600])
+
+    _ = try bridge.update(.session(.cancelBuilding))
+    _ = try bridge.update(.session(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    let vm = try bridge.rendered()
+    XCTAssertNil(vm.error)
+    XCTAssertEqual(vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque"])
+  }
+
   /// An item's usual time crosses the wire as the starting time, then as what
   /// a saved play teaches it: 4 minutes from 10 reads 8 (#3005, #846).
   func testRealBridgeAnItemsUsualTimeLearnsFromASavedPlay() throws {

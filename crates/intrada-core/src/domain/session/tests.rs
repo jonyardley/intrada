@@ -7152,8 +7152,8 @@ fn todays_length_changes_the_build_and_leaves_the_preference_alone() {
 }
 
 #[test]
-fn todays_length_off_the_stepper_is_refused_and_keeps_the_last() {
-    for length in [0, 5, 32, 125] {
+fn todays_length_out_of_range_is_refused_and_keeps_the_last() {
+    for length in [0, 5, 9, 121, 125] {
         let mut m = model_with_library();
         prefer_length(&mut m, Some(30));
         update(&mut m, Event::Session(SessionEvent::StartBuilding));
@@ -7385,4 +7385,258 @@ fn an_entry_from_a_plan_carries_the_plan_and_nothing_played() {
             plays: Vec::new(),
         }
     );
+}
+// ── The plan from time on Practice (#3007) ────────────────────────
+
+/// Three starred items at the starting 10 usual minutes each, so 20
+/// minutes fits two and 30 fits all three.
+fn planned_model() -> Model {
+    let mut m = model_with_library();
+    for item in m.items.iter_mut() {
+        item.priority = true;
+    }
+    m
+}
+
+fn set_plan_length(model: &mut Model, length_mins: u16) {
+    update(
+        model,
+        Event::Session(SessionEvent::SetPlanLength { length_mins }),
+    );
+}
+
+fn plan_of(model: &Model) -> crate::plan::PlanView {
+    Intrada.view(model).suggested_plan.expect("a plan")
+}
+
+fn plan_ids(model: &Model) -> Vec<String> {
+    plan_of(model)
+        .played_rows()
+        .map(|r| r.item_id.clone())
+        .collect()
+}
+
+#[test]
+fn the_sample_library_fills_most_of_a_thirty_minute_plan() {
+    let mut m = Model::default();
+    update(&mut m, Event::LoadSampleData);
+    set_plan_length(&mut m, 30);
+
+    let plan = plan_of(&m);
+    assert!(plan.total_mins >= 20, "{plan:?}");
+    assert!(plan.total_mins <= 30, "{plan:?}");
+}
+
+#[test]
+fn the_plan_starts_at_the_preferred_length() {
+    let mut m = planned_model();
+    m.practice_defaults.session_length_mins = Some(20);
+
+    let plan = plan_of(&m);
+    assert_eq!(plan.length_mins, 20);
+    assert_eq!(plan.rows.len(), 2);
+    assert!(plan.total_mins <= 20);
+}
+
+#[test]
+fn with_no_preference_the_plan_takes_the_default_length() {
+    let m = planned_model();
+    assert_eq!(
+        plan_of(&m).length_mins,
+        crate::validation::DEFAULT_SESSION_LENGTH_MINS
+    );
+}
+
+#[test]
+fn a_new_length_rebuilds_the_plan() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 20);
+    assert_eq!(plan_ids(&m).len(), 2);
+
+    set_plan_length(&mut m, 30);
+    assert_eq!(plan_of(&m).length_mins, 30);
+    assert_eq!(plan_ids(&m).len(), 3);
+}
+
+#[test]
+fn a_typed_length_keeps_its_minutes() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 23);
+    assert_eq!(plan_of(&m).length_mins, 23);
+    assert_eq!(m.plan_length_mins, Some(23));
+}
+
+#[test]
+fn a_typed_length_outside_the_range_meets_it() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 500);
+    assert_eq!(
+        plan_of(&m).length_mins,
+        crate::validation::MAX_SESSION_LENGTH_MINS
+    );
+}
+
+#[test]
+fn the_plan_length_is_never_saved() {
+    let mut m = planned_model();
+    let _ = Intrada.update(
+        Event::Session(SessionEvent::SetPlanLength { length_mins: 20 }),
+        &mut m,
+    );
+    let mut cmd = Intrada.update(
+        Event::Session(SessionEvent::SetPlanLength { length_mins: 25 }),
+        &mut m,
+    );
+    assert!(cmd.effects().all(|e| matches!(e, Effect::Render(_))));
+    assert_eq!(m.practice_defaults.session_length_mins, None);
+}
+
+#[test]
+fn the_plan_shows_only_while_idle() {
+    let mut m = planned_model();
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    assert_eq!(Intrada.view(&m).suggested_plan, None);
+}
+
+#[test]
+fn an_empty_library_has_no_plan() {
+    let m = Model::default();
+    assert_eq!(Intrada.view(&m).suggested_plan, None);
+}
+
+#[test]
+fn start_plays_the_plan_at_each_row_s_minutes() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 20);
+    let plan = plan_of(&m);
+
+    let saves = run(
+        &mut m,
+        Event::Session(SessionEvent::StartPlannedSession { now: Utc::now() }),
+    );
+
+    let played: Vec<(String, Option<u32>)> = session_entries(&m)
+        .iter()
+        .map(|e| (e.plan.item_id.clone(), e.plan.duration_secs))
+        .collect();
+    let expected: Vec<(String, Option<u32>)> = plan
+        .played_rows()
+        .map(|r| (r.item_id.clone(), Some(r.minutes * 60)))
+        .collect();
+    assert_eq!(played, expected);
+    let SessionStatus::Active(ref active) = m.session_status else {
+        panic!("expected Active");
+    };
+    assert_eq!(active.length_mins, Some(20));
+    assert_saved_what_is_active(&saves, &m);
+    assert_eq!(m.last_error, None);
+}
+
+#[test]
+fn edit_seeds_the_builder_with_the_plan() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 20);
+    let planned = plan_ids(&m);
+
+    update(
+        &mut m,
+        Event::Session(SessionEvent::EditPlannedSession { now: Utc::now() }),
+    );
+
+    assert_eq!(ids(&m), planned);
+    assert!(building_entries(&m)
+        .iter()
+        .all(|e| e.plan.duration_secs == Some(600) && e.plan.group_id.is_none()));
+    let SessionStatus::Building(ref building) = m.session_status else {
+        panic!("expected Building");
+    };
+    assert_eq!(building.length_mins, Some(20));
+}
+
+#[test]
+fn a_length_change_in_the_builder_keeps_the_planned_entries() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 20);
+    update(
+        &mut m,
+        Event::Session(SessionEvent::EditPlannedSession { now: Utc::now() }),
+    );
+    let seeded = ids(&m);
+
+    update(
+        &mut m,
+        Event::Session(SessionEvent::SetSessionLength {
+            length_mins: Some(30),
+        }),
+    );
+
+    assert_eq!(ids(&m), seeded);
+    assert_eq!(m.last_error, None);
+}
+
+#[test]
+fn a_typed_length_steps_on_by_whole_minutes_in_the_builder() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 23);
+    update(
+        &mut m,
+        Event::Session(SessionEvent::EditPlannedSession { now: Utc::now() }),
+    );
+
+    for length in [28, 18] {
+        set_today(&mut m, Some(length));
+        assert_eq!(m.last_error, None, "{length} minutes");
+        assert_eq!(today_length(&m), Some(length));
+    }
+    set_today(&mut m, Some(121));
+    assert!(m.last_error.is_some());
+    assert_eq!(today_length(&m), Some(18));
+}
+
+#[test]
+fn a_planned_start_is_refused_while_a_practice_is_in_progress() {
+    let mut m = planned_model();
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    add(&mut m, "exercise-1");
+
+    for event in [
+        SessionEvent::StartPlannedSession { now: Utc::now() },
+        SessionEvent::EditPlannedSession { now: Utc::now() },
+    ] {
+        update(&mut m, Event::Session(event));
+        assert_eq!(
+            m.last_error.as_deref(),
+            Some("A practice is already in progress")
+        );
+        assert_eq!(ids(&m), ["exercise-1"]);
+    }
+}
+
+#[test]
+fn a_planned_start_with_an_empty_library_stays_idle() {
+    let mut m = Model::default();
+    update(
+        &mut m,
+        Event::Session(SessionEvent::StartPlannedSession { now: Utc::now() }),
+    );
+    assert!(matches!(m.session_status, SessionStatus::Idle));
+    assert_eq!(m.last_error, None);
+}
+
+#[test]
+fn the_plan_events_round_trip_on_ffi_bincode_wire() {
+    for event in [
+        SessionEvent::SetPlanLength { length_mins: 23 },
+        SessionEvent::StartPlannedSession { now: Utc::now() },
+        SessionEvent::EditPlannedSession { now: Utc::now() },
+    ] {
+        crate::domain::types::assert_round_trips(Event::Session(event));
+    }
+}
+
+#[test]
+fn the_view_with_a_plan_round_trips_on_ffi_bincode_wire() {
+    let view = Intrada.view(&planned_model());
+    assert!(view.suggested_plan.is_some());
+    crate::domain::types::assert_round_trips(view);
 }

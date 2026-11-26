@@ -78,6 +78,8 @@ pub struct Model {
     pub profile_draft: Option<Profile>,
     /// Device data, like the profile (#1915).
     pub practice_defaults: PracticeDefaults,
+    /// The length picked on Practice; lasts until the app closes (#3007).
+    pub plan_length_mins: Option<u16>,
     /// Device data, never synced (#2116).
     pub first_run: FirstRun,
     /// Bumped each time an error is raised or surfaced, never because one is
@@ -156,6 +158,14 @@ impl<'a, T> IntoIterator for &'a Tracked<Vec<T>> {
 }
 
 impl Model {
+    pub(crate) fn plan_length(&self) -> u16 {
+        crate::validation::clamp_plan_length(
+            self.plan_length_mins
+                .or(self.practice_defaults.session_length_mins)
+                .unwrap_or(crate::validation::DEFAULT_SESSION_LENGTH_MINS),
+        )
+    }
+
     /// Refuse the event in hand. Never muted: the musician needs to see why
     /// their own action did not happen, whatever they dismissed earlier.
     pub fn raise_error(&mut self, msg: impl Into<String>) {

@@ -8,6 +8,7 @@ struct StartHereCard: View {
   let progress: FirstRunView
   let onAdd: () -> Void
   let onStartSession: () -> Void
+  let onPlay: () -> Void
 
   @Environment(\.marker) private var marker
   @ScaledMetric(relativeTo: .body) private var tickSize: CGFloat = 24
@@ -24,8 +25,8 @@ struct StartHereCard: View {
         title: progress.firstItemTitle.map { "Added \($0)" } ?? "Add a piece or exercise",
         done: progress.added, action: onAdd),
       Step(title: "Build a session", done: progress.built, action: onStartSession),
-      Step(title: "Play it through", done: progress.played, action: onStartSession),
-      Step(title: "Say how confident it felt", done: progress.marked, action: onStartSession),
+      Step(title: "Play it through", done: progress.played, action: onPlay),
+      Step(title: "Say how confident it felt", done: progress.marked, action: onPlay),
     ]
   }
 
@@ -123,7 +124,7 @@ struct StartHereCard: View {
       progress: FirstRunView(
         showsWelcome: false, showsStartHere: true, added: true, built: false, played: false,
         marked: false, firstItemTitle: "Clair de Lune"),
-      onAdd: {}, onStartSession: {}
+      onAdd: {}, onStartSession: {}, onPlay: {}
     )
     .padding()
   }

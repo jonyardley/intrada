@@ -64,7 +64,6 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 | Surfaces | BottomSheet | A short task over the current screen |
 | Surfaces | ReflectionKeySheet | One key's tempo and note after an item, opened from its name |
 | Surfaces | HairlineDivider | The 1 point line between rows |
-| Surfaces | UpNextHero | The suggested next session, ready to start |
 | Actions | MarkerButton | The one call to action on a screen, in the musician's highlighter |
 | Actions | SegmentedPills | Choosing one of two to five options in place |
 | Actions | ScoreSelector | Giving an item, a play or a session its mark |

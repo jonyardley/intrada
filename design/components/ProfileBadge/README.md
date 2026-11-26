@@ -53,4 +53,4 @@ ProfileBadge(icon: profile.icon, size: IntradaGlyph.hero)
 
 ## Related
 
-`TypeBadge`, an item's type. `UpNextHero`, which sits below it on Practice.
+`TypeBadge`, an item's type.

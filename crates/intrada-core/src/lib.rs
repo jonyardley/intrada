@@ -4,6 +4,7 @@ pub mod domain;
 pub mod error;
 pub mod model;
 pub mod persistence;
+pub mod plan;
 pub mod practice_weeks;
 pub(crate) mod priorities;
 pub(crate) mod sample;

@@ -16,24 +16,6 @@ struct HeroGradientContrastTests {
     }
   }
 
-  /// The item card is the 12% paper wash over the ground; its meta lines and
-  /// the variation labels in the kind accents are the tightest pairings.
-  @Test func smallTextOnTheItemCardHoldsBodyContrast() {
-    for colour in HighlighterColour.all {
-      let card = over(
-        rgb(IntradaColor.paperTop), IntradaOpacity.wash,
-        rgb(IntradaColor.heroGradientBottom(colour)))
-      let texts = [
-        over(rgb(IntradaColor.onAccent), IntradaOpacity.secondary, card),
-        rgb(IntradaColor.onHeroPiece),
-        rgb(IntradaColor.onHeroExercise),
-      ]
-      for text in texts {
-        #expect(contrast(text, card) >= 4.5, "\(colour.label)")
-      }
-    }
-  }
-
   @Test func startButtonStandsOffTheGround() {
     for colour in HighlighterColour.all {
       let ground = rgb(IntradaColor.heroGradientBottom(colour))
@@ -57,10 +39,6 @@ struct HeroGradientContrastTests {
     var a: CGFloat = 0
     UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a)
     return [r, g, b].map(Double.init)
-  }
-
-  private func over(_ top: RGB, _ alpha: Double, _ base: RGB) -> RGB {
-    zip(top, base).map { $0 * alpha + $1 * (1 - alpha) }
   }
 
   private func luminance(_ c: RGB) -> Double {
