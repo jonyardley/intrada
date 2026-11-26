@@ -42,6 +42,13 @@ fn upgraded_to(version: &str, seed: &str, target: &str) -> Store {
 }
 
 impl Store {
+    /// The item codec reads every column the latest step adds, so a test
+    /// stopped at an earlier step finishes the chain before reading items.
+    fn finish(&mut self) {
+        migrations::migrate(&mut self.conn, migrations::latest(), &mut self.pending)
+            .expect("finishes");
+    }
+
     fn items(&mut self) -> Vec<Item> {
         match self.ok(&PersistenceOperation::LoadItems) {
             PersistenceOutput::Items(items) => items,
@@ -166,6 +173,7 @@ fn fixture() -> Item {
             updated_at: at("2026-09-02T11:30:00Z"),
             deleted_at: None,
         }],
+        include_in_warm_up: false,
     }
 }
 
@@ -188,6 +196,7 @@ fn bare(id: &str, kind: ItemKind) -> Item {
         variation_ids: vec![],
         keys: vec![],
         exercise_links: vec![],
+        include_in_warm_up: false,
     }
 }
 
@@ -466,6 +475,27 @@ fn v17_gives_a_charted_piece_its_metre_in_crotchets() {
 }
 
 #[test]
+fn v24_keeps_every_item_with_the_warm_up_switch_off() {
+    let mut store = upgraded(
+        "v23_remove_focus_and_repetitions",
+        &format!(
+            "INSERT INTO item (id, title, kind, tags, created_at, updated_at, priority)
+             VALUES ('e1', 'Major scales', 'exercise', '[]', '{EARLY}', '{EARLY}', 1);
+             INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('p1', 'Nocturne', 'piece', '[]', '{EARLY}', '{EARLY}');"
+        ),
+    );
+    let items = store.items();
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().all(|i| !i.include_in_warm_up));
+    let scales = store.item("e1");
+    assert_eq!(
+        (scales.title.as_str(), scales.priority),
+        ("Major scales", true)
+    );
+}
+
+#[test]
 fn v19_keeps_every_key_chart_and_session() {
     let chart = r#"{"key":"G","modality":"minor","sections":[]}"#;
     let entries = r#"[{"id":"e1","itemId":"p1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":300,"status":"completed","plannedVariationId":"v-old","plays":[{"id":"pl1","variationId":"v-old","startedAt":"2026-09-01T10:00:00Z","seconds":300,"repHistory":[{"action":"success","at":"2026-09-01T10:01:00Z"}],"score":7}]}]"#;
@@ -559,7 +589,7 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
     let mut conn = Connection::open_in_memory().expect("opens");
     migrations::migrate(&mut conn, "v19_keys_and_variations", &mut vec![]).expect("migrates");
     conn.execute_batch(&seed).expect("seeds");
-    let mut store = Store::new(conn, "v20_exercise_link").expect("finishes");
+    let store = Store::new(conn, "v20_exercise_link").expect("finishes");
     let link = |piece: &str, exercise: &str, position: usize| ExerciseLink {
         id: format!("link|{piece}|{exercise}"),
         exercise_id: exercise.into(),
@@ -567,17 +597,37 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
         updated_at: at("2026-01-02T00:00:00Z"),
         deleted_at: None,
     };
-    let links = |store: &mut Store, id: &str| store.item(id).exercise_links;
+    let links = |store: &Store, id: &str| -> Vec<ExerciseLink> {
+        store
+            .conn
+            .prepare(
+                "SELECT id, exercise_id, position, updated_at FROM exercise_link
+                 WHERE piece_id = ?1 AND deleted_at IS NULL ORDER BY position, id",
+            )
+            .expect("prepares")
+            .query_map([id], |row| {
+                Ok(ExerciseLink {
+                    id: row.get(0)?,
+                    exercise_id: row.get(1)?,
+                    position: usize::try_from(row.get::<_, i64>(2)?).expect("a place"),
+                    updated_at: at(&row.get::<_, String>(3)?),
+                    deleted_at: None,
+                })
+            })
+            .expect("queries")
+            .collect::<rusqlite::Result<_>>()
+            .expect("reads")
+    };
     assert_eq!(
-        links(&mut store, "p1"),
+        links(&store, "p1"),
         vec![link("p1", "b", 0), link("p1", "a", 1)]
     );
-    assert_eq!(links(&mut store, "p2"), vec![]);
-    assert_eq!(links(&mut store, "p3"), vec![]);
-    assert_eq!(links(&mut store, "p4"), vec![link("p4", "a", 1)]);
-    assert_eq!(links(&mut store, "a"), vec![]);
-    assert_eq!(links(&mut store, "x-y"), vec![link("x-y", "z", 0)]);
-    assert_eq!(links(&mut store, "x"), vec![link("x", "y-z", 0)]);
+    assert_eq!(links(&store, "p2"), vec![]);
+    assert_eq!(links(&store, "p3"), vec![]);
+    assert_eq!(links(&store, "p4"), vec![link("p4", "a", 1)]);
+    assert_eq!(links(&store, "a"), vec![]);
+    assert_eq!(links(&store, "x-y"), vec![link("x-y", "z", 0)]);
+    assert_eq!(links(&store, "x"), vec![link("x", "y-z", 0)]);
 }
 
 const DROPPED_TABLES: [&str; 10] = [
@@ -702,6 +752,7 @@ fn v21_drops_the_unread_tables_and_columns_and_leaves_every_kept_value_alone() {
     assert_eq!(tables(&store.conn), kept);
     let after: Vec<Vec<Row>> = kept.iter().map(|t| rows(&store.conn, t)).collect();
     assert_eq!(after, before);
+    store.finish();
     assert_eq!(
         store.item("p1").key,
         Some(key(Letter::G, Accidental::Natural, Some(Modality::Minor)))
@@ -808,15 +859,6 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
         "a tombstone moves the change time"
     );
 
-    let piece = store.item("p1");
-    let linked: Vec<&str> = piece
-        .exercise_links
-        .iter()
-        .filter(|l| l.deleted_at.is_none())
-        .map(|l| l.exercise_id.as_str())
-        .collect();
-    assert_eq!(linked, ["e1", "e2", "e4"]);
-
     let stored: serde_json::Value = serde_json::from_str(
         &store
             .raw("SELECT entries FROM session WHERE id = 's1'")
@@ -836,6 +878,16 @@ fn v22_folds_section_links_into_piece_links_and_drops_every_section() {
         "a play that was a section keeps its time, not its mark"
     );
     assert_eq!(plays[1].score, Some(6), "a plain play keeps its mark");
+
+    store.finish();
+    let piece = store.item("p1");
+    let linked: Vec<&str> = piece
+        .exercise_links
+        .iter()
+        .filter(|l| l.deleted_at.is_none())
+        .map(|l| l.exercise_id.as_str())
+        .collect();
+    assert_eq!(linked, ["e1", "e2", "e4"]);
 }
 
 #[test]
@@ -976,6 +1028,23 @@ fn a_save_revives_and_updates_by_id() {
     item.tempo = None;
     store.save(&item);
     assert_eq!(store.items(), vec![item]);
+}
+
+#[test]
+fn the_warm_up_switch_reads_back_as_saved() {
+    let mut store = Store::in_memory().expect("opens");
+    let mut item = Item {
+        include_in_warm_up: true,
+        ..fixture()
+    };
+    store.save(&item);
+    assert!(store.item("p1").include_in_warm_up);
+    item.include_in_warm_up = false;
+    store.save(&item);
+    assert!(!store.item("p1").include_in_warm_up);
+    item.include_in_warm_up = true;
+    store.save(&item);
+    assert!(store.item("p1").include_in_warm_up);
 }
 
 #[test]
