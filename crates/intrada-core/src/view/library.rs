@@ -916,6 +916,103 @@ mod tests {
     }
 
     #[test]
+    fn a_variation_is_recorded_by_its_id_once_a_session() {
+        let item = Item {
+            variation_ids: vec!["v1".to_string(), "v2".to_string()],
+            ..Item::fixture("item-1")
+        };
+        let session = |id: &str, day: i64, plays: Vec<Vec<&str>>| {
+            let mut entry = crate::domain::session::SetlistEntry::fixture();
+            entry.plays = plays
+                .into_iter()
+                .map(|ids| crate::domain::session::Play {
+                    variation_ids: ids.into_iter().map(str::to_string).collect(),
+                    ..crate::domain::session::Play::fixture()
+                })
+                .collect();
+            let base = PracticeSession::fixture(id);
+            PracticeSession {
+                entries: vec![entry],
+                started_at: base.started_at + chrono::Duration::days(day),
+                ..base
+            }
+        };
+        let sessions = [
+            session("s1", 0, vec![vec!["v1"], vec!["v1", "gone"]]),
+            session("s2", 3, vec![vec!["v1"]]),
+        ];
+        let index = std::collections::HashMap::from([("item-1", &item)]);
+
+        let records = build_practice_records(&sessions, &index);
+
+        let variations = &records["item-1"].variations;
+        assert_eq!(variations["v1"].sessions, 2);
+        assert_eq!(variations["v1"].last, Some(sessions[1].started_at));
+        assert!(!variations.contains_key("v2"), "never played");
+        assert!(!variations.contains_key("gone"), "not on the item");
+    }
+
+    /// An exercise whose G major was scored 3 a fortnight ago and C major 9
+    /// yesterday, and a piece scored 8 a week ago.
+    fn fortnight_model(now: chrono::DateTime<chrono::Utc>) -> Model {
+        use crate::domain::key::Key;
+        use crate::domain::session::{PlannedItem, Play, SetlistEntry};
+        let g = Key::parse("G major").expect("key");
+        let c = Key::parse("C major").expect("key");
+        let exercise = Item {
+            title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
+            keys: vec![c, g],
+            ..Item::fixture("scales")
+        };
+        let piece = Item {
+            title: "Arabesque".to_string(),
+            ..Item::fixture("piece")
+        };
+        let session = |id: &str, days: i64, item: &Item, key: Option<Key>, score: u8| {
+            let mut entry = SetlistEntry::fixture();
+            entry.plan = PlannedItem::new(&item.id, item.kind.clone());
+            entry.plays = vec![Play {
+                key,
+                score: Some(score),
+                ..Play::fixture()
+            }];
+            PracticeSession {
+                entries: vec![entry],
+                started_at: now - chrono::Duration::days(days),
+                completed_at: now - chrono::Duration::days(days),
+                ..PracticeSession::fixture(id)
+            }
+        };
+        let sessions = vec![
+            session("s1", 14, &exercise, Some(g), 3),
+            session("s2", 7, &piece, None, 8),
+            session("s3", 1, &exercise, Some(c), 9),
+        ];
+        Model {
+            practice_summaries: build_practice_summaries(&sessions).into(),
+            items: vec![piece, exercise].into(),
+            sessions: sessions.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_key_scored_low_a_fortnight_ago_leads_the_plan_and_says_why() {
+        let now = chrono::DateTime::<chrono::Utc>::from_timestamp(1_790_000_000, 0).expect("now");
+        let model = fortnight_model(now);
+
+        let plan = crate::view::build_view_at(&model, now)
+            .suggested_plan
+            .expect("a plan");
+
+        let first = &plan.rows[0];
+        assert_eq!(first.item_id, "scales");
+        assert_eq!(first.reason, "Exercise · G major, scored 3, 2 weeks ago");
+        assert_eq!(derive_plan(&model, now), Some(plan));
+    }
+
+    #[test]
     fn each_rows_tempo_line_reads_in_its_own_items_metre() {
         let six_eight = Some(crate::domain::metre::Metre {
             beats: 6,
