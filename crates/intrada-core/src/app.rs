@@ -2294,6 +2294,7 @@ mod tests {
             session_status: SessionStatus::Building(BuildingSession {
                 entries: vec![],
                 length_mins: None,
+                from_plan: false,
             }),
             ..Model::default()
         };
@@ -3345,6 +3346,7 @@ mod tests {
                     building_entry("e3", None),
                 ],
                 length_mins: None,
+                from_plan: false,
             }),
             ..Default::default()
         };
@@ -3364,6 +3366,7 @@ mod tests {
                     building_entry("e2", Some(300)),
                 ],
                 length_mins: None,
+                from_plan: false,
             }),
             ..Default::default()
         };
@@ -3432,6 +3435,7 @@ mod tests {
                 session_status: SessionStatus::Building(crate::domain::session::BuildingSession {
                     entries,
                     length_mins: None,
+                    from_plan: false,
                 }),
                 ..Default::default()
             };
@@ -3448,6 +3452,7 @@ mod tests {
             session_status: SessionStatus::Building(crate::domain::session::BuildingSession {
                 entries: vec![building_entry("e1", None), building_entry("e2", None)],
                 length_mins: None,
+                from_plan: false,
             }),
             ..Default::default()
         };

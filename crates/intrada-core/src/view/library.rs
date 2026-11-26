@@ -190,6 +190,7 @@ pub(crate) fn derive_plan(
         &build_practice_records(&model.sessions, &item_index),
         &model.practice_defaults,
         model.plan_length(),
+        &model.todays_keys,
         clock,
     )
 }

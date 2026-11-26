@@ -520,6 +520,43 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque"])
   }
 
+  /// Today's keys (#3008): each plan row crosses with its keys, and a tick
+  /// crosses back with a timestamp; Start opens on the ticked key (#846).
+  func testRealBridgeTodaysKeysCrossTheWireAndOpenTheSession() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
+    let cMajor = Key(letter: .c, accidental: .natural, mode: .major)
+    let gMajor = Key(letter: .g, accidental: .natural, mode: .major)
+    _ = try bridge.update(.item(.updateKeys(id: itemId, keys: [cMajor, gMajor])))
+
+    let row = try XCTUnwrap(try bridge.rendered().suggestedPlan?.rows.first)
+    XCTAssertEqual(row.keys.map(\PlanKeyView.key), [cMajor, gMajor])
+    XCTAssertEqual(row.keys.map(\.label), ["C major", "G major"])
+    XCTAssertEqual(row.keys.map(\.ticked), [true, true])
+    XCTAssertEqual(row.keys.map(\.suggested), [true, true])
+    XCTAssertEqual(row.keys.map(\.score), [nil, nil])
+    XCTAssertEqual(row.keys.map(\.lastPlayed), ["not practised yet", "not practised yet"])
+    XCTAssertFalse(row.keysReason.isEmpty)
+
+    _ = try bridge.update(
+      .session(.setTodaysKeys(itemId: itemId, keys: [gMajor], now: SessionClock.nowRFC3339())))
+    let ticked = try XCTUnwrap(try bridge.rendered().suggestedPlan?.rows.first)
+    XCTAssertEqual(ticked.keys.map(\.ticked), [false, true])
+    XCTAssertEqual(ticked.minutes, row.minutes)
+
+    _ = try bridge.update(.session(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    let vm = try bridge.rendered()
+    XCTAssertNil(vm.error)
+    XCTAssertEqual(vm.activeSession?.entries.first?.plannedKey, gMajor)
+  }
+
   /// An item's usual time crosses the wire as the starting time, then as what
   /// a saved play teaches it: 4 minutes from 10 reads 8 (#3005, #846).
   func testRealBridgeAnItemsUsualTimeLearnsFromASavedPlay() throws {

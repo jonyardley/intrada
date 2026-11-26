@@ -64,6 +64,7 @@ pub(crate) type PracticeRecords = HashMap<String, ItemPlays>;
 pub(crate) struct RankedTarget<'a> {
     /// `None` is the item itself.
     pub(crate) label: Option<&'a str>,
+    key: Option<Key>,
     pub(crate) score: Option<u8>,
     staleness: Staleness,
     /// Never played on its own, so graded on its item's record (T42).
@@ -89,32 +90,36 @@ pub(crate) fn rank_targets<'a>(
 ) -> Vec<RankedTarget<'a>> {
     let plays = records.get(&item.id);
     let item_score = item.practice.as_ref().and_then(|p| p.latest_score);
-    let target = |label: Option<&'a str>, score: Option<u8>, played: Option<&Played>| match played
-        .filter(|p| p.last.is_some())
-    {
-        Some(played) => RankedTarget {
-            label,
-            score,
-            staleness: grade(
-                played.last.map(|at| days_since(at, clock)),
-                score,
-                played.sessions,
-            ),
-            inherited: false,
-        },
-        None => {
-            let score = score.or(item_score);
-            RankedTarget {
-                label,
-                score,
-                staleness: assess(item.practice.as_ref(), score, clock),
-                inherited: label.is_some(),
+    let target =
+        |label: Option<&'a str>, key: Option<Key>, score: Option<u8>, played: Option<&Played>| {
+            match played.filter(|p| p.last.is_some()) {
+                Some(played) => RankedTarget {
+                    label,
+                    key,
+                    score,
+                    staleness: grade(
+                        played.last.map(|at| days_since(at, clock)),
+                        score,
+                        played.sessions,
+                    ),
+                    inherited: false,
+                },
+                None => {
+                    let score = score.or(item_score);
+                    RankedTarget {
+                        label,
+                        key,
+                        score,
+                        staleness: assess(item.practice.as_ref(), score, clock),
+                        inherited: label.is_some(),
+                    }
+                }
             }
-        }
-    };
+        };
     let keys = item.keys.iter().map(|k| {
         target(
             Some(&k.label),
+            Some(k.key),
             k.latest_score,
             plays.and_then(|p| p.keys.get(&k.key)),
         )
@@ -122,16 +127,52 @@ pub(crate) fn rank_targets<'a>(
     let variations = item.variations.iter().map(|v| {
         target(
             Some(&v.label),
+            None,
             v.latest_score,
             plays.and_then(|p| p.variations.get(&v.id)),
         )
     });
     let mut targets: Vec<RankedTarget> = keys.chain(variations).collect();
     if targets.is_empty() {
-        targets.push(target(None, None, None));
+        targets.push(target(None, None, None, None));
     }
     targets.sort_by_key(|t| (t.need(), t.inherited));
     targets
+}
+
+/// One of an item's keys as today's plan offers it (#3008).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct RankedKey {
+    pub(crate) key: Key,
+    pub(crate) label: String,
+    /// The key's own, never its item's.
+    pub(crate) score: Option<u8>,
+    pub(crate) last_played: String,
+}
+
+/// The item's keys only, neediest first by the same order as `rank_targets`.
+pub(crate) fn rank_keys(
+    item: &LibraryItemView,
+    records: &PracticeRecords,
+    clock: LocalClock,
+) -> Vec<RankedKey> {
+    rank_targets(item, records, clock)
+        .into_iter()
+        .filter_map(|t| {
+            let key = t.key?;
+            let own = item.keys.iter().find(|k| k.key == key)?;
+            let last_played = match t.staleness.days().filter(|_| !t.inherited) {
+                Some(days) => ago(days),
+                None => "not practised yet".to_string(),
+            };
+            Some(RankedKey {
+                key,
+                label: own.label.clone(),
+                score: own.latest_score,
+                last_played,
+            })
+        })
+        .collect()
 }
 
 /// An item with the target that decided its place.
@@ -182,16 +223,21 @@ impl Ranked<'_> {
         let Some(label) = self.neediest.label.filter(|_| !self.neediest.inherited) else {
             return self.neediest.staleness.clause();
         };
-        let when = match self.neediest.staleness.days() {
-            None => return format!("{label}, not practised yet"),
-            Some(0) => "today".to_string(),
-            Some(1) => "yesterday".to_string(),
-            Some(d) => format!("{} ago", gap_phrase(d)),
+        let Some(when) = self.neediest.staleness.days().map(ago) else {
+            return format!("{label}, not practised yet");
         };
         match self.neediest.score {
             Some(score) => format!("{label}, scored {score}, {when}"),
             None => format!("{label}, practised {when}"),
         }
+    }
+}
+
+fn ago(days: u32) -> String {
+    match days {
+        0 => "today".to_string(),
+        1 => "yesterday".to_string(),
+        d => format!("{} ago", gap_phrase(d)),
     }
 }
 
@@ -527,5 +573,40 @@ mod tests {
             .collect();
 
         assert_eq!(labels, [Some("G major"), Some("C major")]);
+    }
+
+    #[test]
+    fn rank_keys_lists_only_keys_neediest_first_with_when_and_score() {
+        let (items, records) = fortnight();
+        let mut scales = items[1].clone();
+        scales = with_key(scales, "D major", None);
+        scales.variations.push(VariationView {
+            id: "v1".to_string(),
+            label: "Left hand".to_string(),
+            latest_score: Some(1),
+            score_history: Vec::new(),
+            caption: String::new(),
+        });
+
+        let keys: Vec<(String, Option<u8>, String)> = rank_keys(&scales, &records, clock())
+            .into_iter()
+            .map(|k| (k.label, k.score, k.last_played))
+            .collect();
+
+        assert_eq!(
+            keys,
+            [
+                ("G major".to_string(), Some(3), "2 weeks ago".to_string()),
+                ("C major".to_string(), Some(9), "yesterday".to_string()),
+                ("D major".to_string(), None, "not practised yet".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_item_with_no_keys_ranks_no_keys() {
+        let piece = practised(item("piece", "Arabesque"), 7, Some(8), 3);
+
+        assert!(rank_keys(&piece, &PracticeRecords::new(), clock()).is_empty());
     }
 }

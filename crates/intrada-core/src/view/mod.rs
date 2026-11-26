@@ -276,6 +276,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 &cached.practice_records,
                 &model.practice_defaults,
                 model.plan_length(),
+                &model.todays_keys,
                 clock,
             )
         } else {

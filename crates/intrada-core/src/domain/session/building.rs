@@ -119,6 +119,7 @@ fn fresh_building(model: &Model) -> BuildingSession {
     BuildingSession {
         entries: Vec::new(),
         length_mins: model.practice_defaults.session_length_mins,
+        from_plan: false,
     }
 }
 
@@ -359,6 +360,23 @@ pub(super) fn start_planned_session(
     }
 }
 
+pub(super) fn set_todays_keys(
+    model: &mut Model,
+    item_id: String,
+    keys: Vec<Key>,
+    now: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
+        model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
+        return crux_core::render::render();
+    };
+    let ticks = validation::kept_ticks(&item.keys, &keys);
+    let day = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes).today;
+    model.todays_keys.set(day, item_id, ticks);
+    model.last_error = None;
+    crux_core::render::render()
+}
+
 pub(super) fn edit_planned_session(
     model: &mut Model,
     now: DateTime<Utc>,
@@ -380,6 +398,7 @@ fn seed_from_plan(model: &mut Model, now: DateTime<Utc>) -> bool {
     let mut building = BuildingSession {
         entries: Vec::new(),
         length_mins: Some(plan.length_mins),
+        from_plan: true,
     };
     for row in plan.played_rows() {
         let Some(item) = model.items.iter().find(|i| i.id == row.item_id) else {
@@ -391,7 +410,10 @@ fn seed_from_plan(model: &mut Model, now: DateTime<Utc>) -> bool {
             item.kind.clone(),
             building.entries.len(),
         );
-        entry.plan.key = opening_key(item);
+        entry.plan.key = match row.keys.iter().find(|k| k.ticked) {
+            Some(first) => written_key_as_none(model, &item.id, Some(first.key)),
+            None => opening_key(item),
+        };
         entry.plan.duration_secs = Some((row.minutes.saturating_mul(60)).clamp(
             validation::MIN_PLANNED_DURATION_SECS,
             validation::MAX_PLANNED_DURATION_SECS,
@@ -752,6 +774,9 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
         open_first_play(entry, now);
     }
 
+    if building.from_plan {
+        model.todays_keys = Default::default();
+    }
     let persist = persist_active(&active);
     model.session_status = SessionStatus::Active(Box::new(active));
     model.last_error = None;

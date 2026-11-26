@@ -234,28 +234,62 @@
     static var previewWarmUpOff: PlanView {
       preview(warmUp: nil, warmUpEnabled: false, rows: [.previewBach, .previewClair])
     }
+    static var previewWithKeys: PlanView {
+      preview(rows: [.previewBach, .previewScalesWithKeys])
+    }
+  }
+
+  extension PlanKeyView {
+    static func preview(
+      _ letter: Letter, _ accidental: Accidental = .natural, _ mode: Modality = .major,
+      label: String, ticked: Bool = false, score: UInt8? = nil,
+      lastPlayed: String = "not practised yet"
+    ) -> PlanKeyView {
+      PlanKeyView(
+        key: Key(letter: letter, accidental: accidental, mode: mode), label: label,
+        ticked: ticked, suggested: ticked, score: score, lastPlayed: lastPlayed)
+    }
   }
 
   extension PlanRowView {
     static var previewScales: PlanRowView {
       PlanRowView(
         itemId: "plan-scales", title: "Major scales", reason: "Exercise", minutes: 3,
-        kind: .exercise)
+        kind: .exercise, keys: [], keysReason: "")
+    }
+    static var previewScalesWithKeys: PlanRowView {
+      PlanRowView(
+        itemId: "plan-scales-keys", title: "Scales", reason: "Exercise · weakest keys first",
+        minutes: 9, kind: .exercise,
+        keys: [
+          .preview(.c, label: "C major", score: 7, lastPlayed: "yesterday"),
+          .preview(.g, label: "G major", ticked: true, score: 3, lastPlayed: "2 weeks ago"),
+          .preview(.d, label: "D major", score: 6, lastPlayed: "4 days ago"),
+          .preview(.f, .sharp, label: "F\u{266F} major"),
+          .preview(
+            .b, .flat, label: "B\u{266D} major", ticked: true, score: 4, lastPlayed: "3 weeks ago"),
+          .preview(.a, .natural, .minor, label: "A minor", score: 7, lastPlayed: "4 days ago"),
+          .preview(
+            .d, .natural, .minor, label: "D minor", ticked: true, score: 2,
+            lastPlayed: "2 weeks ago"),
+        ],
+        keysReason: "The three keys that need it most, about 3 minutes each")
     }
     static var previewBach: PlanRowView {
       PlanRowView(
         itemId: "plan-bach", title: "Bach Prelude in C", reason: "Piece · a priority",
-        minutes: 10, kind: .piece)
+        minutes: 10, kind: .piece, keys: [], keysReason: "")
     }
     static var previewEnclosures: PlanRowView {
       PlanRowView(
         itemId: "plan-enclosures", title: "ii V i enclosures",
-        reason: "Exercise · going cold after 3 weeks", minutes: 7, kind: .exercise)
+        reason: "Exercise · going cold after 3 weeks", minutes: 7, kind: .exercise, keys: [],
+        keysReason: "")
     }
     static var previewClair: PlanRowView {
       PlanRowView(
         itemId: "plan-clair", title: "Clair de lune", reason: "Piece · cold for 5 weeks",
-        minutes: 10, kind: .piece)
+        minutes: 10, kind: .piece, keys: [], keysReason: "")
     }
   }
 

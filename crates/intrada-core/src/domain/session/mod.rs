@@ -425,6 +425,8 @@ pub struct BuildingSession {
     /// Today's length, copied from the preference when the build starts and
     /// carried onto `ActiveSession` for the countdown (#2789, reversing #1736).
     pub length_mins: Option<u16>,
+    /// Seeded from today's plan, so its start uses up today's ticks (#3008).
+    pub from_plan: bool,
 }
 
 /// State during active practice (Active phase).
@@ -736,6 +738,14 @@ pub enum SessionEvent {
     EditPlannedSession {
         now: DateTime<Utc>,
     },
+
+    // === Today's keys (#3008), appended ===
+    /// Ticks for one plan row, kept until a start from the plan or the next day.
+    SetTodaysKeys {
+        item_id: String,
+        keys: Vec<Key>,
+        now: DateTime<Utc>,
+    },
 }
 
 mod active;
@@ -946,5 +956,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
         SessionEvent::StartPlannedSession { now } => building::start_planned_session(model, now),
         SessionEvent::EditPlannedSession { now } => building::edit_planned_session(model, now),
+        SessionEvent::SetTodaysKeys { item_id, keys, now } => {
+            building::set_todays_keys(model, item_id, keys, now)
+        }
     }
 }
