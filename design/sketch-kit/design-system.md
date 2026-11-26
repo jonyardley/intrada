@@ -71,6 +71,7 @@ Plain British English in sentence case. A button starts with a verb, in two or t
 | Actions | DragValue | Setting a tempo or other number by dragging it up or down |
 | Actions | WeekStrip | Picking a day of the week on the Practice home |
 | Actions | AddRowButton | The full-width row that adds something to a list |
+| Actions | SwitchRow | A setting turned on or off, inside a card |
 | Text and labels | SectionHeader | A section's title with an optional action |
 | Text and labels | SectionTitle | The secondary-ink label above a section |
 | Text and labels | FieldLabel | A field's label, in secondary ink |

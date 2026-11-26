@@ -39,6 +39,7 @@ not exist. Rows without a link are still to be written.
 | [SectionTitle](SectionTitle/README.md) | The secondary-ink label above a section |
 | [FieldCard](FieldCard/README.md) | A form field with its label inside the card |
 | [FieldLabel](FieldLabel/README.md) | A field's label, in secondary ink |
+| [SwitchRow](SwitchRow/README.md) | A setting turned on or off, inside a card |
 | [TabBar](TabBar/README.md) | The four tabs along the bottom of the app |
 | [ScoreSelector](ScoreSelector/README.md) | Giving an item, a play or a session its mark |
 | [ScoreStepper](ScoreStepper/README.md) | Nudging a key's score from last time, with minus and plus |
