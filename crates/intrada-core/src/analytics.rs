@@ -1527,8 +1527,6 @@ mod tests {
         assert!(ranking.is_empty());
     }
 
-    // ── Neglected Items Tests ─────────────────────────────────────────
-
     // ── Score Changes Tests ───────────────────────────────────────────
 
     #[test]

@@ -126,11 +126,10 @@ pub(crate) fn sample_items() -> Vec<Item> {
             .collect();
         scales.variation_ids = vec![BUILT_INS[0].0.to_string()];
     }
-    // One related exercise, so seed mode has a block worth resuming and the Up
-    // next card (#1082) has something to show. Anchored on the Nocturne, not
-    // the first two items: `SessionBuilderUITests` needs Clair de Lune to have
-    // no related exercises (it drives the empty-state CTA) and adds the top two
-    // library cards expecting two standalone rows.
+    // One related exercise, so seed mode has a block worth resuming. Anchored
+    // on the Nocturne, not the first two items: `SessionBuilderUITests` needs
+    // Clair de Lune to have no related exercises (it drives the empty-state
+    // CTA) and adds the top two library cards expecting two standalone rows.
     if let Some(nocturne) = items.iter_mut().find(|i| i.id == "sample-nocturne") {
         nocturne.exercise_links = crate::domain::link::links_to(&["sample-scales"], now);
     }
