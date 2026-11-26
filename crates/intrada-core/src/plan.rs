@@ -115,8 +115,7 @@ pub(crate) fn fill(
     }
 
     if warm_up.is_none() && rows.is_empty() {
-        let fits = rest.iter().find(|i| i.usual_minutes <= length);
-        if let Some(item) = fits.or(rest.first()) {
+        if let Some(item) = rest.first() {
             total += item.usual_minutes;
             rows.push(row(item, reason(item, clock)));
         }
