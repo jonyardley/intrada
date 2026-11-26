@@ -14,7 +14,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - No lesson entity: adding a piece with its chart and exercises in one save is the lesson capture answer (#1390, #1080).
 - No goals entity: direction is a star on items, and Goals were removed rather than migrated (#739).
 - Machine listening deferred: an attempt is defined by its target phrase; timing alone cannot tell a resume from a restart (#1161, #1176).
-- Getting cold is a graded estimate, kept quiet: a signal that cries wolf gets ignored (#1416, #1419).
+- Getting cold is a graded estimate, kept quiet: a signal that cries wolf gets ignored (#1416, T42).
 - Staleness weights time since practice by how well a piece is learned, not a flat 14 days (#1416).
 - The suggestion is the Practice hero; reasons are strings the core writes; dismissing it lasts the app session (#1082).
 - Today's plan fills the preferred length and starts in one tap, skipping the builder (#57, #999).

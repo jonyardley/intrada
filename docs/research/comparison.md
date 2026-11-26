@@ -137,7 +137,7 @@ Then, each building on the last:
    estimate instead of its own 14-day cut. Core only: it arrived through the
    reason strings, with no ViewModel field and no Swift logic. Whether the
    thresholds are right is an empirical question, so use it for a few weeks
-   before tuning them (#1419).
+   before tuning them (T42).
 
 Big bets, last, each a fresh decision gated on lived use:
 

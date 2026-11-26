@@ -1,5 +1,8 @@
 # Priority Items — replacing Goals in the Plan layer
 
+> **Superseded by T42** in `docs/design-principles.md` for how priorities are
+> ordered: starred first, inside the one ranking in `ranking.rs`.
+
 > **⚠️ Historical record.** Parked by the 2026-07 coach pivot, which was
 > reversed on 2026-08-13 (#1344); the surface it describes returned with the
 > restored session builder. Describes shipped behaviour; verify against the

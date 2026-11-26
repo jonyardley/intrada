@@ -1,5 +1,9 @@
 # The getting-cold signal
 
+> **Superseded by T42** in `docs/design-principles.md`: the ranking in
+> `crates/intrada-core/src/ranking.rs` decides what needs practice, and this
+> signal is part of it.
+
 > Tier 3 by domain sensitivity. Issue [#1416]. `intrada-core` only
 > (`staleness.rs`).
 

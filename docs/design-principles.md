@@ -504,3 +504,38 @@ hero, the "Practise your priorities" text action, "Build my own instead" with
 "Show suggestion", and "Change it first": any change to the plan opens the
 session builder filled with it. The length is a `ScoreStepper` in the clock
 font at 32 point that can also be typed, picked on 2026-11-26.
+
+### T42: One ranking decides what needs practice, and says why
+
+**DECIDED 2026-11-26 (#3015).** Amends T41. Every suggestion of what to
+practise comes from one place, `crates/intrada-core/src/ranking.rs`, and
+nothing else in the core orders practice material. It ranks by ordered rules,
+not a weighted score:
+
+1. Starred first.
+2. Then the most overdue: the days since it was last played divided by the gap
+   it can bear, with never played the most overdue of all.
+3. Then the lower score.
+4. Then the title as the Library files it, then the id.
+
+An item is as much in need as its neediest key or variation, or its own
+record when it has neither, so a key scored 3 a fortnight ago lifts its
+exercise. Any play that is not a stray tap counts as played, scored or not.
+Each row says the rule that placed it, in plain words: "a priority", "G major,
+scored 3, 2 weeks ago", "going cold after 3 weeks", "not practised yet". A
+planned session plays the warm-up first, then by need; a variety rule would go
+in the same place.
+
+| Rule | Research | Strength |
+| --- | --- | --- |
+| A gap before something is due, longer for a better score and for each return | Spacing effect (Donovan and Radosevich 1999; Cepeda et al. 2006); expanding gaps from schedulers not validated for music | Strong in general, the numbers are an informed guess |
+| A fixed, visible rule, not one learnt from one person's history | Fitted schedulers need about 1,000 reviews to beat their defaults (`docs/research/space-layer.md` §6) | Strong for the decision |
+| Lower score first among the equally overdue | Deliberate practice aims at specific weaknesses (Ericsson 1993; Macnamara 2014) | Framing only |
+| Starred first | The musician decides what matters; the app suggests | Principle |
+| Every row says why | A suggestion that cannot explain itself loses trust | Product aim |
+| No interleaving yet | Music studies are mixed (Carter and Grahn 2016; Stambaugh 2009, 2010) | Mixed, deferred |
+
+To tune it, change the numbers in the `tuning` block at the top of
+`ranking.rs`: the gap by score, the bonus for returns, and the multiples of the
+gap at which something goes cold. Library sort, recently practised and the
+Progress lists order things for browsing, not for practice, and stay outside it.
