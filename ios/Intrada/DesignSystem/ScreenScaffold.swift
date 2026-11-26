@@ -111,9 +111,6 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
       }
-      // Clamp the floor (avoid sub-readable text) but allow the full accessibility
-      // range now that the filter tabs scroll instead of wrapping (#810).
-      .dynamicTypeSize(.xSmall ... .accessibility5)
       // Blank inline title: a fixed small bar on every screen, native back
       // chevron and edge-swipe intact on a pushed one, nothing to look at (#1822).
       .navigationTitle("")

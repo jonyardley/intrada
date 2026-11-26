@@ -9,12 +9,11 @@ struct ChoiceGrid<Option: Hashable>: View {
   let onTap: (Option) -> Void
 
   @Environment(\.marker) private var marker
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   private var columns: [GridItem] {
     Array(
       repeating: GridItem(.flexible(), spacing: IntradaSpacing.controlGap),
-      count: typeSize.isAccessibilitySize ? 1 : 3)
+      count: 3)
   }
 
   var body: some View {

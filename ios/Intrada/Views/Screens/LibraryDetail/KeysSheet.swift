@@ -10,7 +10,6 @@ struct KeysSheet: View {
   @Environment(\.dismiss) private var dismiss
   @State private var keys: [Key]
   @State private var formError: String?
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   init(item: LibraryItemView, keys: [Key]? = nil) {
     self.item = item
@@ -55,7 +54,7 @@ struct KeysSheet: View {
           }
         )
         .padding(.vertical, IntradaSpacing.cardCompact)
-        presetLayout {
+        HStack(spacing: IntradaSpacing.controlGap) {
           chip("All major", identifier: "keysSheet.allMajor") {
             keys = KeyHelper.addingAll(.major, to: keys)
           }
@@ -78,12 +77,6 @@ struct KeysSheet: View {
   // Asked once per render: the wheel reads it for every spoke.
   private var lit: [KeyHelper.Selection] {
     keys.compactMap(KeyHelper.selection)
-  }
-
-  private var presetLayout: AnyLayout {
-    typeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(spacing: IntradaSpacing.controlGap))
-      : AnyLayout(HStackLayout(spacing: IntradaSpacing.controlGap))
   }
 
   private func chip(_ title: String, identifier: String, action: @escaping () -> Void)

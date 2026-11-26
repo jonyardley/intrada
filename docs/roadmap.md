@@ -92,8 +92,6 @@ on.
   2026-11-14 (#2860). Its last state is on the tag
   `android-paused-2026-11-20`; a restart begins there, by catching it up to
   the core.
-- **Postponed until after 1.0**: every screen at the largest text sizes
-  (#2134), set aside again on 2026-10-13 with its children kept open.
 - **After 1.0, roughly in this order**: know what to practise next (#1978),
   practise an exercise in its keys (#1970), make it yours, part two (#1980),
   what the audit leaves of one look everywhere (#1979), and chord charts

@@ -30,8 +30,6 @@ struct SectionHeader: View {
     let perform: () -> Void
   }
 
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
   let title: String
   var caption: String?
   // VoiceOver already hears the list's length, so a bare count is noise there.
@@ -40,33 +38,16 @@ struct SectionHeader: View {
   var action: Action?
 
   var body: some View {
-    // The title breaks mid-word when it shares a line with trailing text (#1781).
-    if dynamicTypeSize.isAccessibilitySize {
-      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        if action != nil {
-          HStack(alignment: .firstTextBaseline) {
-            SectionTitle(title)
-            Spacer(minLength: IntradaSpacing.controlGap)
-            actionButton
-          }
-        } else {
-          SectionTitle(title)
-        }
-        if let caption { captionView(caption) }
-        if let trailing { meta(trailing) }
+    HStack(alignment: .firstTextBaseline) {
+      SectionTitle(title)
+      if let caption { captionView("· \(caption)") }
+      if let trailing {
+        Spacer(minLength: IntradaSpacing.controlGap)
+        meta(trailing)
+      } else if action != nil {
+        Spacer(minLength: IntradaSpacing.controlGap)
       }
-    } else {
-      HStack(alignment: .firstTextBaseline) {
-        SectionTitle(title)
-        if let caption { captionView("· \(caption)") }
-        if let trailing {
-          Spacer(minLength: IntradaSpacing.controlGap)
-          meta(trailing)
-        } else if action != nil {
-          Spacer(minLength: IntradaSpacing.controlGap)
-        }
-        actionButton
-      }
+      actionButton
     }
   }
 
@@ -110,19 +91,5 @@ struct SectionHeader: View {
       }
       .padding(IntradaSpacing.card)
     }
-  }
-
-  #Preview("Accessibility size") {
-    ZStack {
-      PaperBackground()
-      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-        SectionTitle("Recent mastery")
-        SectionHeader(title: "Variations", trailing: "5 of 15 solid")
-        SectionHeader(title: "Used in", caption: "3 pieces")
-        SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))
-      }
-      .padding(IntradaSpacing.card)
-    }
-    .dynamicTypeSize(.accessibility5)
   }
 #endif

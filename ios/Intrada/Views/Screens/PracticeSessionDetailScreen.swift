@@ -9,7 +9,6 @@ struct PracticeSessionDetailScreen: View {
 
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.scoreRange) private var scoreRange
 
   var body: some View {
@@ -48,22 +47,11 @@ struct PracticeSessionDetailScreen: View {
 
   // ── Session score ──
 
-  /// Same shape as the entry rows, so the same rule: the ring goes above the
-  /// text at accessibility sizes rather than squeezing it into a column (#1471).
   private var sessionScoreCard: some View {
-    Group {
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-          ScoreRing(score: session.sessionScore.map(Int.init))
-          sessionScoreText
-        }
-      } else {
-        HStack(spacing: IntradaSpacing.card) {
-          ScoreRing(score: session.sessionScore.map(Int.init))
-          sessionScoreText
-          Spacer(minLength: 0)
-        }
-      }
+    HStack(spacing: IntradaSpacing.card) {
+      ScoreRing(score: session.sessionScore.map(Int.init))
+      sessionScoreText
+      Spacer(minLength: 0)
     }
     .padding(IntradaSpacing.card)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,24 +98,13 @@ struct PracticeSessionDetailScreen: View {
     }
   }
 
-  /// The ring drops below the text at accessibility sizes: beside it, the
-  /// column is narrow enough for the meta line to break mid-word (#1471).
   private func entryRow(_ entry: SetlistEntryView) -> some View {
     let played = entry.status == .completed
     let ring = played ? entry.scoreSummary.map(Int.init) : nil
-    return Group {
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-          entryText(entry, played: played)
-          if let ring { ScoreRing(score: ring, size: 34) }
-        }
-      } else {
-        HStack(alignment: .top, spacing: IntradaSpacing.cardCompact) {
-          entryText(entry, played: played)
-          Spacer(minLength: 0)
-          if let ring { ScoreRing(score: ring, size: 34) }
-        }
-      }
+    return HStack(alignment: .top, spacing: IntradaSpacing.cardCompact) {
+      entryText(entry, played: played)
+      Spacer(minLength: 0)
+      if let ring { ScoreRing(score: ring, size: 34) }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.cardCompact)

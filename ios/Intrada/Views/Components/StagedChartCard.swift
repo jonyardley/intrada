@@ -2,8 +2,6 @@ import SharedTypes
 import SwiftUI
 
 struct StagedChartCard: View {
-  @Environment(\.dynamicTypeSize) private var typeSize
-
   let text: String
   /// True while the chart is what a refused save named, with `faultedBarNumber`
   /// the bar it stopped at where there was one to name (#1595).
@@ -22,7 +20,7 @@ struct StagedChartCard: View {
     Text(text)
       .font(IntradaFont.chart)
       .foregroundStyle(IntradaColor.ink)
-      .lineLimit(lineLimit)
+      .lineLimit(3)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(IntradaSpacing.cardCompact)
       .background(
@@ -41,10 +39,6 @@ struct StagedChartCard: View {
 
   private var spokenFault: String {
     faulted ? FaultMark.spoken(bar: faultedBarNumber) : ""
-  }
-
-  private var lineLimit: Int {
-    typeSize.isAccessibilitySize ? 2 : 3
   }
 }
 

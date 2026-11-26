@@ -5,7 +5,6 @@ import UIKit
 /// the tester was on, sent to Sentry with the build and recent steps.
 struct FeedbackSheet: View {
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   let screenshot: Data?
   @State private var note = ""
@@ -57,21 +56,15 @@ struct FeedbackSheet: View {
     }
     .interactiveDismissDisabled(!note.isEmpty)
     .onAppear { noteFocused = true }
+    // Hosted outside RootView, so the app's text cap misses it (#1411).
+    .dynamicTypeSize(.xSmall ... .xxxLarge)
   }
 
   @ViewBuilder
   private func screenshotCard(_ image: UIImage) -> some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      if typeSize.isAccessibilitySize {
-        FieldLabel("Include screenshot")
-          .accessibilityHidden(true)
-        Toggle("Include screenshot", isOn: $includeScreenshot)
-          .labelsHidden()
-          .tint(IntradaColor.accent)
-      } else {
-        Toggle(isOn: $includeScreenshot) { FieldLabel("Include screenshot") }
-          .tint(IntradaColor.accent)
-      }
+      Toggle(isOn: $includeScreenshot) { FieldLabel("Include screenshot") }
+        .tint(IntradaColor.accent)
       if includeScreenshot {
         Image(uiImage: image)
           .resizable()

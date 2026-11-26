@@ -29,13 +29,11 @@ struct InstrumentIconPicker: View {
 
   private var shown: InstrumentIcon { choice ?? suggested }
 
-  private var stacked: Bool { dynamicTypeSize.isAccessibilitySize }
-
   private func grid(of icons: [InstrumentIcon]) -> some View {
     LazyVGrid(
       columns: Array(
         repeating: GridItem(.flexible(), spacing: IntradaSpacing.controlGap),
-        count: stacked ? 1 : 4),
+        count: 4),
       spacing: IntradaSpacing.controlGap
     ) {
       ForEach(icons, id: \.self) { icon in
@@ -50,19 +48,18 @@ struct InstrumentIconPicker: View {
       choice = icon
       Haptic.selection.play()
     } label: {
-      tileLayout {
+      VStack(spacing: 6) {
         InstrumentGlyph(icon: icon, size: IntradaGlyph.bar)
           .foregroundStyle(IntradaColor.ink)
         Text(icon.tileLabel)
           .font(IntradaFont.smallMedium)
           .foregroundStyle(selected ? IntradaColor.ink : IntradaColor.inkSecondary)
-          .lineLimit(stacked ? nil : 1)
-          .minimumScaleFactor(stacked ? 1 : 0.8)
-          .fixedSize(horizontal: false, vertical: stacked)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
       }
-      .frame(maxWidth: .infinity, alignment: stacked ? .leading : .center)
+      .frame(maxWidth: .infinity)
       .frame(minHeight: 84)
-      .padding(.horizontal, stacked ? IntradaSpacing.card : 4)
+      .padding(.horizontal, 4)
       .background(selected ? marker : IntradaColor.cardFill)
       .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       .overlay(
@@ -77,15 +74,7 @@ struct InstrumentIconPicker: View {
     .accessibilityIdentifier("iconPicker.tile")
   }
 
-  // One tile per row at accessibility sizes, glyph beside the name, so every name shows in full (#2127).
-  private var tileLayout: AnyLayout {
-    stacked
-      ? AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
-      : AnyLayout(VStackLayout(spacing: 6))
-  }
-
   @Environment(\.marker) private var marker
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 }
 
 #if DEBUG

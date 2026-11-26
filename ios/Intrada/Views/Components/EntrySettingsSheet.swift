@@ -9,7 +9,6 @@ struct EntrySettingsSheet: View {
   let limits: LimitsView
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.dynamicTypeSize) private var typeSize
 
   @State private var intention: String
   @State private var hasPlannedDuration: Bool
@@ -166,25 +165,14 @@ struct EntrySettingsSheet: View {
     .fieldCardSurface()
   }
 
-  @ViewBuilder private func settingToggle(
+  private func settingToggle(
     _ title: String, isOn: Binding<Bool>, identifier: String
   ) -> some View {
-    if typeSize.isAccessibilitySize {
-      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        FieldLabel(title)
-          .accessibilityHidden(true)
-        Toggle(title, isOn: isOn)
-          .labelsHidden()
-          .tint(IntradaColor.accent)
-          .accessibilityIdentifier(identifier)
-      }
-    } else {
-      Toggle(isOn: isOn) {
-        FieldLabel(title)
-      }
-      .tint(IntradaColor.accent)
-      .accessibilityIdentifier(identifier)
+    Toggle(isOn: isOn) {
+      FieldLabel(title)
     }
+    .tint(IntradaColor.accent)
+    .accessibilityIdentifier(identifier)
   }
 
   // The row's non-gesture removal path (T4): dropping it from today's session

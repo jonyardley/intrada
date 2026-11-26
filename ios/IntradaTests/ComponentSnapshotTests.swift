@@ -95,10 +95,6 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(bottomSheet), as: config)
   }
 
-  func testBottomSheetAtAccessibilitySize() {
-    assertSnapshot(of: host(bottomSheet.dynamicTypeSize(.accessibility3)), as: config)
-  }
-
   private var bottomSheet: some View {
     BottomSheet(
       title: "Keys",
@@ -162,10 +158,6 @@ final class ComponentSnapshotTests: SnapshotTestCase {
 
   func testSectionHeader() {
     assertSnapshot(of: host(sectionHeaders), as: config)
-  }
-
-  func testSectionHeaderAtAccessibilitySize() {
-    assertSnapshot(of: host(sectionHeaders.dynamicTypeSize(.accessibility3)), as: config)
   }
 
   private var sectionHeaders: some View {

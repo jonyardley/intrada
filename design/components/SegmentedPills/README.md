@@ -24,7 +24,7 @@ Choosing one of two to five options in place, with the choice showing at once.
 
 ## Variants
 
-- **Full width track** (`.fullWidthTrack`): use for a form choice. Equal segments; at accessibility sizes the segments stack.
+- **Full width track** (`.fullWidthTrack`): use for a form choice. Equal segments.
 - **Wrapping track** (`.wrappingTrack`): use when a label can be long, such as a grouping like 2 + 2 + 3. Whole pills move to a new row rather than a label breaking.
 
 Every caller names its track; there is no default.

@@ -196,16 +196,6 @@ final class PracticeSnapshotTests: SnapshotTestCase {
         }, store: .previewPractice), as: config)
   }
 
-  /// Pins the accessibility-size branch: the ring drops below the text so the
-  /// meta line cannot break mid-word (#1471's shape, one screen over).
-  func testPracticeSessionDetailAccessibilitySize() {
-    let detail = NavigationStack {
-      PracticeSessionDetailScreen(session: .previewCompleted)
-    }
-    .dynamicTypeSize(.accessibility3)
-    assertSnapshot(of: host(detail, store: .previewPractice), as: config)
-  }
-
   /// The greeting leads the subtitle and the badge is the way in (#1694, T25).
   func testPracticeScreenGreeting() {
     assertSnapshot(

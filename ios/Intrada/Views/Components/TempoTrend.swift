@@ -89,8 +89,6 @@ struct TempoTrendDisplay {
 struct TempoTrend: View {
   let display: TempoTrendDisplay
 
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
   private let plotHeight: CGFloat = 84
   private let dotRadius: CGFloat = 3.5
   private let latestDotRadius: CGFloat = 5
@@ -123,21 +121,10 @@ struct TempoTrend: View {
   // ── Header ──
 
   private var header: some View {
-    Group {
-      // Side by side normally; stacked at accessibility sizes, where sharing
-      // the row leaves the eyebrow too narrow for its own first word.
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: 2) {
-          SectionTitle("Measured tempo")
-          chip
-        }
-      } else {
-        HStack(alignment: .firstTextBaseline) {
-          SectionTitle("Measured tempo")
-          Spacer(minLength: IntradaSpacing.controlGap)
-          chip
-        }
-      }
+    HStack(alignment: .firstTextBaseline) {
+      SectionTitle("Measured tempo")
+      Spacer(minLength: IntradaSpacing.controlGap)
+      chip
     }
     .padding(.bottom, IntradaSpacing.controlGap)
   }
@@ -206,18 +193,11 @@ struct TempoTrend: View {
 
   private var footer: some View {
     HStack(alignment: .firstTextBaseline) {
-      // Three labels cannot share this row at accessibility sizes, and the
-      // count is the one that earns its place: it is what stops the breaks in
-      // the line reading as a fault.
-      if !dynamicTypeSize.isAccessibilitySize {
-        Text(display.startDateText)
-        Spacer()
-      }
+      Text(display.startDateText)
+      Spacer()
       Text(measuredCountText)
-      if !dynamicTypeSize.isAccessibilitySize {
-        Spacer()
-        Text(display.endDateText)
-      }
+      Spacer()
+      Text(display.endDateText)
     }
     .font(IntradaFont.small)
     .foregroundStyle(IntradaColor.inkSecondary)
