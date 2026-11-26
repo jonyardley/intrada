@@ -6,10 +6,13 @@ struct SessionLengthControl: View {
   let title: String
   let lengthMins: UInt16?
   let detail: String?
-  let valueLabel: String
   let limits: LimitsView
   let identifier: String
   let onChange: (UInt16?) -> Void
+
+  static func spokenMinutes(_ minutes: Int) -> String {
+    "\(minutes) \(minutes == 1 ? "minute" : "minutes")"
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
@@ -30,24 +33,17 @@ struct SessionLengthControl: View {
       .tint(IntradaColor.accent)
       .accessibilityIdentifier("\(identifier).toggle")
       if let lengthMins {
-        HStack(spacing: IntradaSpacing.cardCompact) {
-          Text(valueLabel)
-            .font(IntradaFont.body)
-            .foregroundStyle(IntradaColor.ink)
-            .accessibilityHidden(true)
-          Spacer(minLength: 0)
-          Stepper(
-            "\(title), \(valueLabel)",
-            value: Binding(
-              get: { Int(lengthMins) },
-              set: { onChange(UInt16($0)) }),
-            in: Int(limits.sessionLengthMinMins)...Int(limits.sessionLengthMaxMins),
-            step: Int(limits.sessionLengthStepMins)
-          )
-          .labelsHidden()
-          .fixedSize()
-          .accessibilityIdentifier("\(identifier).stepper")
+        let minutes = Int(lengthMins)
+        ScoreStepper(
+          score: minutes, caption: .unit("minutes"),
+          range: Int(limits.sessionLengthMinMins)...Int(limits.sessionLengthMaxMins),
+          step: Int(limits.sessionLengthStepMins), figure: IntradaFont.timer(32), typing: true,
+          accessibilityLabel: title, accessibilityValue: Self.spokenMinutes(minutes)
+        ) { next in
+          onChange(UInt16(clamping: next))
         }
+        .accessibilityIdentifier("\(identifier).stepper")
+        .frame(maxWidth: .infinity)
       }
     }
   }

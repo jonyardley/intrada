@@ -158,4 +158,9 @@ struct StepperControlTests {
   ) {
     #expect(length(5).stepped(by: steps, fromDraft: draft, saved: 20) == expected)
   }
+
+  @Test(arguments: [(1, "1 minute"), (25, "25 minutes")])
+  func aSessionLengthIsSpokenInMinutes(minutes: Int, spoken: String) {
+    #expect(SessionLengthControl.spokenMinutes(minutes) == spoken)
+  }
 }

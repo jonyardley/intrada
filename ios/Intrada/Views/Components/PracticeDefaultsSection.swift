@@ -34,7 +34,6 @@ struct PracticeDefaultsSection: View {
           title: "Session length",
           lengthMins: defaults.sessionLengthMins,
           detail: defaults.sessionLengthMins == nil ? "Off" : nil,
-          valueLabel: "\(defaults.sessionLengthMins ?? 0) min",
           limits: limits,
           identifier: "profile.sessionLength"
         ) {
