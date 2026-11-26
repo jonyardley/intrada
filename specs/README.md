@@ -26,4 +26,4 @@ The specs that remain:
 - [`priority-items.md`](priority-items.md): priority items in place of goals
 - [`session-delete.md`](session-delete.md): deleting a saved session
 - [`simpler-removals.md`](simpler-removals.md): removing focus, repetitions and the Add detail choices
-- [`up-next-card.md`](up-next-card.md): the Practice tab suggestion
+- [`up-next-card.md`](up-next-card.md): the Practice tab suggestion, superseded by T42

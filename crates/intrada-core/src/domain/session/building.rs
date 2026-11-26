@@ -343,61 +343,6 @@ pub(super) fn start_building_with(model: &mut Model, item_id: String) -> Command
     handle_session_event(SessionEvent::AddToSetlist { item_id }, model)
 }
 
-pub(super) fn start_building_from_suggestion(
-    model: &mut Model,
-    now: DateTime<Utc>,
-) -> Command<Effect, Event> {
-    seed_from_suggestion(model, now);
-    crux_core::render::render()
-}
-
-pub(super) fn start_from_suggestion(
-    model: &mut Model,
-    now: DateTime<Utc>,
-) -> Command<Effect, Event> {
-    if seed_from_suggestion(model, now) {
-        start_session(model, now)
-    } else {
-        crux_core::render::render()
-    }
-}
-
-/// False when nothing was seeded; nothing to suggest is not an error (#1082).
-fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
-    if !matches!(model.session_status, SessionStatus::Idle) {
-        model.raise_error("A practice is already in progress".to_string());
-        return false;
-    }
-    let Some(plan) = crate::view::library::derive_up_next(model, now) else {
-        return false;
-    };
-
-    let mut building = fresh_building(model);
-    for block in &plan.blocks {
-        let group_id = ulid::Ulid::generate().to_string();
-        for suggested in &block.items {
-            let position = building.entries.len();
-            let mut entry = create_entry(
-                &suggested.item_id,
-                &suggested.item_title,
-                suggested.item_type.clone(),
-                position,
-            );
-            entry.plan.key = model
-                .items
-                .iter()
-                .find(|i| i.id == suggested.item_id)
-                .and_then(opening_key);
-            entry.plan.group_id = Some(group_id.clone());
-            building.entries.push(entry);
-        }
-    }
-
-    model.session_status = SessionStatus::Building(building);
-    model.last_error = None;
-    true
-}
-
 pub(super) fn set_plan_length(model: &mut Model, length_mins: u16) -> Command<Effect, Event> {
     model.plan_length_mins = Some(validation::clamp_plan_length(length_mins));
     crux_core::render::render()
@@ -460,35 +405,6 @@ fn seed_from_plan(model: &mut Model, now: DateTime<Utc>) -> bool {
     model.session_status = SessionStatus::Building(building);
     model.last_error = None;
     true
-}
-
-pub(super) fn start_building_with_priorities(
-    model: &mut Model,
-    now: DateTime<Utc>,
-) -> Command<Effect, Event> {
-    if !matches!(model.session_status, SessionStatus::Idle) {
-        model.raise_error("A practice is already in progress".to_string());
-        return crux_core::render::render();
-    }
-    // Nothing starred is not an error, for the same reason as the Up
-    // next CTA: the button cannot be on screen, and a race must not
-    // strand an empty builder.
-    let ordered = crate::view::library::derive_priorities(model, now);
-    if ordered.is_empty() {
-        return crux_core::render::render();
-    }
-
-    model.session_status = SessionStatus::Building(fresh_building(model));
-    // `AddToSetlist` owns block formation, deduping and idempotency
-    // (#939), so seeding folds over it rather than building entries a
-    // second way. Every step's command is kept: dropping all but the
-    // last would silently swallow any effect it grows later.
-    Command::all(
-        ordered
-            .into_iter()
-            .map(|item_id| handle_session_event(SessionEvent::AddToSetlist { item_id }, model))
-            .collect::<Vec<_>>(),
-    )
 }
 
 pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effect, Event> {

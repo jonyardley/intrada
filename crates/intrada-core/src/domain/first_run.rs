@@ -236,8 +236,7 @@ mod tests {
     }
 
     fn started_from_todays_plan() -> Model {
-        let mut piece = item("p1", "Clair de Lune", 0);
-        piece.exercise_links = crate::domain::link::links_to(&["ex1"], chrono::Utc::now());
+        let piece = item("p1", "Clair de Lune", 0);
         let exercise = Item {
             kind: ItemKind::Exercise,
             ..item("ex1", "Scales", 0)
@@ -245,7 +244,7 @@ mod tests {
         let mut model = launched(vec![piece, exercise], vec![]);
         crate::view::cache::refresh(&mut model, Utc::now());
         let _ = Intrada.update(
-            Event::Session(crate::domain::session::SessionEvent::StartFromSuggestion {
+            Event::Session(crate::domain::session::SessionEvent::StartPlannedSession {
                 now: Utc::now(),
             }),
             &mut model,

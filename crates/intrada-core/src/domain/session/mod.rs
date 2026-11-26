@@ -514,26 +514,6 @@ pub enum SessionEvent {
     StartBuildingWith {
         item_id: String,
     },
-    /// "Change it first" on the Practice hero: from Idle, start building
-    /// seeded with today's plan (#1082, #57). Carries only `now`, because the
-    /// core re-derives the plan rather than trusting the shell's copy of it,
-    /// and the derivation is clock-dependent.
-    StartBuildingFromSuggestion {
-        now: DateTime<Utc>,
-    },
-    /// The Practice hero's Start: from Idle, seed today's plan and start
-    /// playing it in one step (#57). Carries only `now`, for the same reason.
-    StartFromSuggestion {
-        now: DateTime<Utc>,
-    },
-    /// The Practice tab's "Practise your priorities" (#981): from Idle, start
-    /// building seeded with every starred item, least ready first. Carries only
-    /// `now`, for the same reason `StartBuildingFromSuggestion` does: the core
-    /// re-derives the set rather than trusting the shell's copy, and the
-    /// ordering is clock-dependent.
-    StartBuildingWithPriorities {
-        now: DateTime<Utc>,
-    },
     RemoveFromSetlist {
         entry_id: String,
     },
@@ -746,8 +726,8 @@ pub enum SessionEvent {
     SetPlanLength {
         length_mins: u16,
     },
-    /// Practice's Start: from Idle, seed the plan and start playing it. The
-    /// core re-derives the plan, as `StartFromSuggestion` does.
+    /// Practice's Start: from Idle, seed the plan and start playing it. Only
+    /// `now`: the core re-derives the plan, which depends on the clock.
     StartPlannedSession {
         now: DateTime<Utc>,
     },
@@ -811,16 +791,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::StartBuildingWith { item_id } => {
             building::start_building_with(model, item_id)
-        }
-
-        SessionEvent::StartBuildingFromSuggestion { now } => {
-            building::start_building_from_suggestion(model, now)
-        }
-
-        SessionEvent::StartFromSuggestion { now } => building::start_from_suggestion(model, now),
-
-        SessionEvent::StartBuildingWithPriorities { now } => {
-            building::start_building_with_priorities(model, now)
         }
 
         SessionEvent::AddToSetlist { item_id } => building::add_to_setlist(model, item_id),

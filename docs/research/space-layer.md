@@ -1,7 +1,7 @@
 # Research note: the Space layer (spaced repetition and mastery decay)
 
 *Why getting cold is a quiet, graded estimate. Kept for sections 4 and 6, which
-`staleness.rs` and #1419 cite; delete when #1419 closes. 2026-08-14.*
+T42 and `ranking.rs` cite. 2026-08-14.*
 
 ## 4. Pedagogy evidence
 

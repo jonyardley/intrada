@@ -4,14 +4,13 @@ use crate::analytics::{
 use crate::domain::types::{LibrarySort, SortDirection, SortField};
 use crate::model::{LibraryItemView, Model, PracticeSessionView, VariationOptionView};
 use crate::practice_weeks::PracticeWeekView;
-use crate::suggestion::SuggestedSession;
 use crate::view::library::{
     build_library_item_views, sort_library_items, RECENTLY_PRACTISED_LIMIT,
 };
 use crate::view::session::{play_labels, session_to_view};
 
 /// Everything the projections read. The local day and the offset are here
-/// because staleness, Up next, the week strip and Progress read
+/// because the ranking, the week strip and Progress read
 /// `LocalClock::today` (#1694).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ProjectionKey {
@@ -41,13 +40,10 @@ pub(crate) struct Projections {
     pub(crate) key: ProjectionKey,
     /// In `model.items` order; `sorted` holds the order the Library shows.
     pub(crate) library: Vec<LibraryItemView>,
+    pub(crate) practice_records: crate::ranking::PracticeRecords,
     pub(crate) sorted: Vec<usize>,
     pub(crate) available_tags: Vec<String>,
     pub(crate) available_composers: Vec<String>,
-    /// Ranked without the preferred length, which `view` fills to, so a
-    /// change to the preference needs no key of its own.
-    pub(crate) up_next_blocks: Vec<SuggestedSession>,
-    pub(crate) has_priorities: bool,
     pub(crate) recently_practised_ids: Vec<String>,
     pub(crate) sessions: Vec<PracticeSessionView>,
     pub(crate) practice_weeks: Vec<PracticeWeekView>,
@@ -101,19 +97,13 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         model.items.iter().map(|i| (i.id.as_str(), i)).collect();
 
     let library = build_library_item_views(model, &item_index);
+    let practice_records =
+        crate::view::library::build_practice_records(&model.sessions, &item_index);
 
     // Computed before the filter so the vocabulary stays stable as the
     // filter narrows (#851).
     let available_tags = vocabulary(library.iter().flat_map(|i| &i.tags));
     let available_composers = vocabulary(library.iter().map(|i| &i.subtitle));
-
-    // Derived before the filter: a narrowed library must not hide the
-    // suggestion the Practice tab leads with (#1082).
-    let up_next_blocks = crate::suggestion::rank_blocks(&library, clock);
-
-    // Pre-filter for the same reason as `up_next`: a narrowed library must
-    // not hide the "Practise your priorities" button (#981).
-    let has_priorities = library.iter().any(|i| i.priority);
 
     let mut recently_practised: Vec<LibraryItemView> = library
         .iter()
@@ -157,8 +147,6 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
             Some(analytics_from_changes(
                 &score_changes,
                 &model.sessions,
-                &model.items,
-                &model.practice_summaries,
                 &library,
                 clock,
             )),
@@ -169,11 +157,10 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
     Projections {
         key: ProjectionKey::of(model, clock),
         library,
+        practice_records,
         sorted,
         available_tags,
         available_composers,
-        up_next_blocks,
-        has_priorities,
         recently_practised_ids,
         sessions,
         practice_weeks,

@@ -1,8 +1,5 @@
-//! Today's plan from the time the musician has (#3007): a warm-up, priorities,
-//! what is going cold, then the rest of the library. Pure and clock-injected like `suggestion`.
-
-use std::cmp::Reverse;
-use std::collections::HashSet;
+//! Today's plan from the time the musician has (#3007): a warm-up, then the
+//! library by need (T42), fitted to the time. Pure and clock-injected.
 
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +7,7 @@ use crate::analytics::LocalClock;
 use crate::domain::item::ItemKind;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::model::LibraryItemView;
-use crate::suggestion::staleness_of;
+use crate::ranking::{self, PracticeRecords, Ranked};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -44,81 +41,43 @@ impl PlanView {
     }
 }
 
-/// `None` only for an empty library. An item that does not fit is skipped,
-/// never shrunk; when nothing fits, the most overdue item stands alone.
+/// `None` only for an empty library; what does not fit is skipped, never shrunk.
 pub(crate) fn fill(
     items: &[LibraryItemView],
+    records: &PracticeRecords,
     defaults: &PracticeDefaults,
     length_mins: u16,
     clock: LocalClock,
 ) -> Option<PlanView> {
-    if items.is_empty() {
-        return None;
-    }
+    let ranked = ranking::rank_items(items, records, clock);
+    let neediest = ranked.first()?;
     let length = u32::from(length_mins);
-    let most_overdue_first = |list: &mut Vec<&LibraryItemView>| {
-        list.sort_by_cached_key(|i| {
-            (
-                Reverse(staleness_of(i, clock).overdue_key()),
-                i.title.to_lowercase(),
-                i.id.clone(),
-            )
-        });
-    };
-
-    let mut taken: HashSet<&str> = HashSet::new();
-    let mut total = 0u32;
-
-    let warm_up = if defaults.start_with_warm_up {
-        let mut pool: Vec<&LibraryItemView> =
-            items.iter().filter(|i| i.include_in_warm_up).collect();
-        most_overdue_first(&mut pool);
-        pool.iter().find(|i| i.usual_minutes <= length).map(|item| {
-            taken.insert(item.id.as_str());
-            total += item.usual_minutes;
-            row(item, kind_word(&item.item_type).to_string())
-        })
-    } else {
-        None
-    };
-
-    let mut cold: Vec<&LibraryItemView> = items
+    let warm_up_on = defaults.start_with_warm_up;
+    let chosen = ranked
         .iter()
-        .filter(|i| {
-            let staleness = staleness_of(i, clock);
-            !staleness.is_fresh() && staleness.days().is_some()
-        })
-        .collect();
-    most_overdue_first(&mut cold);
-    let mut rest: Vec<&LibraryItemView> = items.iter().collect();
-    most_overdue_first(&mut rest);
-    let filler = rest
-        .iter()
-        .copied()
-        .filter(|i| !(defaults.start_with_warm_up && i.include_in_warm_up));
-    let candidates = crate::priorities::order_priorities(items, clock)
-        .into_iter()
-        .chain(cold)
-        .chain(filler);
-
+        .find(|r| warm_up_on && r.item.include_in_warm_up && r.item.usual_minutes <= length);
+    let mut total = chosen.map_or(0, |r| r.item.usual_minutes);
+    let warm_up = chosen.map(|r| row(r.item, kind_word(&r.item.item_type).to_string()));
     let mut rows = Vec::new();
-    for item in candidates {
-        if taken.contains(item.id.as_str()) {
+
+    for candidate in &ranked {
+        let item = candidate.item;
+        if chosen.is_some_and(|c| c.item.id == item.id) {
             continue;
         }
-        if total + item.usual_minutes > length {
+        let spare_warm_up = warm_up_on && item.include_in_warm_up;
+        if spare_warm_up && !item.priority && !candidate.is_due() {
             continue;
         }
-        taken.insert(item.id.as_str());
-        total += item.usual_minutes;
-        rows.push(row(item, reason(item, clock)));
+        if total + item.usual_minutes <= length {
+            total += item.usual_minutes;
+            rows.push(row(item, reason(candidate)));
+        }
     }
 
     if warm_up.is_none() && rows.is_empty() {
-        if let Some(item) = rest.first() {
-            total += item.usual_minutes;
-            rows.push(row(item, reason(item, clock)));
-        }
+        total += neediest.item.usual_minutes;
+        rows.push(row(neediest.item, reason(neediest)));
     }
 
     Some(PlanView {
@@ -142,13 +101,12 @@ fn row(item: &LibraryItemView, reason: String) -> PlanRowView {
     }
 }
 
-fn reason(item: &LibraryItemView, clock: LocalClock) -> String {
-    let kind = kind_word(&item.item_type);
-    if item.priority {
-        format!("{kind} · a priority")
-    } else {
-        format!("{kind} · {}", staleness_of(item, clock).clause())
-    }
+fn reason(ranked: &Ranked) -> String {
+    format!(
+        "{} · {}",
+        kind_word(&ranked.item.item_type),
+        ranked.reason()
+    )
 }
 
 fn kind_word(kind: &ItemKind) -> &'static str {
@@ -223,7 +181,14 @@ mod tests {
     }
 
     fn filled(items: &[LibraryItemView], length: u16) -> PlanView {
-        fill(items, &PracticeDefaults::default(), length, clock()).expect("a plan")
+        fill(
+            items,
+            &PracticeRecords::new(),
+            &PracticeDefaults::default(),
+            length,
+            clock(),
+        )
+        .expect("a plan")
     }
 
     fn ids(plan: &PlanView) -> Vec<&str> {
@@ -232,7 +197,16 @@ mod tests {
 
     #[test]
     fn an_empty_library_has_no_plan() {
-        assert_eq!(fill(&[], &PracticeDefaults::default(), 20, clock()), None);
+        assert_eq!(
+            fill(
+                &[],
+                &PracticeRecords::new(),
+                &PracticeDefaults::default(),
+                20,
+                clock()
+            ),
+            None
+        );
     }
 
     #[test]
@@ -258,7 +232,8 @@ mod tests {
             start_with_warm_up: false,
             ..PracticeDefaults::default()
         };
-        let plan = fill(&library(), &defaults, 20, clock()).expect("a plan");
+        let plan =
+            fill(&library(), &PracticeRecords::new(), &defaults, 20, clock()).expect("a plan");
 
         assert_eq!(plan.warm_up, None);
         assert!(!plan.warm_up_enabled);
@@ -275,7 +250,7 @@ mod tests {
             last_played(item("concerto", ItemKind::Piece, 30), 3),
             last_played(warm_up(item("scales", ItemKind::Exercise, 5)), 1),
         ];
-        let plan = fill(&items, &defaults, 20, clock()).expect("a plan");
+        let plan = fill(&items, &PracticeRecords::new(), &defaults, 20, clock()).expect("a plan");
 
         assert_eq!(ids(&plan), ["scales"]);
         assert_eq!(plan.total_mins, 5);
@@ -324,6 +299,42 @@ mod tests {
 
         assert_eq!(plan.warm_up, None);
         assert!(!plan.has_warm_up_items);
+    }
+
+    #[test]
+    fn a_starred_warm_up_item_wins_the_warm_up_over_a_colder_one() {
+        let items = vec![
+            last_played(warm_up(item("cold", ItemKind::Exercise, 5)), 25),
+            last_played(starred(warm_up(item("starred", ItemKind::Exercise, 5))), 1),
+        ];
+        let plan = filled(&items, 20);
+
+        assert_eq!(plan.warm_up.expect("a warm-up").item_id, "starred");
+    }
+
+    #[test]
+    fn a_spare_starred_warm_up_item_takes_its_place_among_the_priorities() {
+        let items = vec![
+            last_played(starred(warm_up(item("first", ItemKind::Exercise, 5))), 25),
+            last_played(starred(warm_up(item("spare", ItemKind::Exercise, 5))), 1),
+            last_played(starred(item("sonata", ItemKind::Piece, 5)), 25),
+        ];
+        let plan = filled(&items, 20);
+
+        assert_eq!(ids(&plan), ["first", "sonata", "spare"]);
+    }
+
+    #[test]
+    fn a_spare_warm_up_item_fills_only_when_it_is_going_cold() {
+        let items = vec![
+            last_played(warm_up(item("chosen", ItemKind::Exercise, 5)), 25),
+            last_played(warm_up(item("cold", ItemKind::Exercise, 5)), 15),
+            last_played(warm_up(item("fresh", ItemKind::Exercise, 5)), 1),
+            warm_up(item("new", ItemKind::Exercise, 5)),
+        ];
+        let plan = filled(&items, 30);
+
+        assert_eq!(ids(&plan), ["chosen", "cold"]);
     }
 
     #[test]

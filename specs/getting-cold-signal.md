@@ -1,13 +1,17 @@
 # The getting-cold signal
 
+> **Superseded by T42** in `docs/design-principles.md`: the ranking in
+> `crates/intrada-core/src/ranking.rs` decides what needs practice, and this
+> signal is part of it.
+
 > Tier 3 by domain sensitivity. Issue [#1416]. `intrada-core` only
 > (`staleness.rs`).
 
 [#1416]: https://github.com/jonyardley/intrada/issues/1416
 
 Time since an item was practised is measured against an interval its own
-history earns, not a flat 14 days. The Up next headline and ranking and
-`compute_neglected_items` all read `staleness::assess`.
+history earns, in place of a flat 14 days. The ranking module grades every
+item, key and variation with it (`ranking/staleness.rs`).
 
 ## Key decisions
 
@@ -30,12 +34,12 @@ history earns, not a flat 14 days. The Up next headline and ranking and
    `Fresh` inside the interval, `GoingCold` up to twice it, `Cold` beyond,
    `Unknown` for never practised or an unreadable date. Bias lax.
 
-3. **Never practised says so.** `Unknown` is never `Cold`, but still ranks
-   stalest of all.
+3. **Never practised says so.** `Unknown` is never `Cold`; it ranks after
+   going cold or cold and before fresh (T42).
 
-4. **The ranking moves with the copy.** The Up next anchor and its exercises
-   rank on `overdue_key` (days as a fraction of the interval), so the headline
-   says what the ranking used (decision 3 of [`up-next-card.md`](up-next-card.md)).
+4. **The ranking moves with the copy.** The ranking orders on `overdue_key`
+   (days as a fraction of the interval), so each reason says what the ranking
+   used.
 
 5. **The interval reads the mark the surface shows**: a step mid-climb, or an
    exercise's mark in one piece's context.
@@ -49,8 +53,8 @@ history earns, not a flat 14 days. The Up next headline and ranking and
    Per-exercise coldness has room on the cold shelf, where it is the whole
    point rather than a second clause squeezed under a mark (#1418).
 
-8. **`compute_neglected_items` reads the same estimate**, filtering on
-   `is_fresh()`. One opinion in the core about how cold something is.
+8. **One opinion in the core about how cold something is.** The neglected
+   list that also read this estimate has gone; the ranking is its only reader.
 
 9. **Nothing gates.** The output is a fact the user reads; the app suggests,
    never prescribes.

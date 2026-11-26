@@ -8,8 +8,8 @@ use crate::model::{
 };
 
 /// Every library item projected for the view, unfiltered and unsorted. Shared
-/// by `build_view` and the Up next derivation, so the card reads the same marks
-/// the Library screens show rather than deriving its own (#1082).
+/// by `build_view` and `derive_plan`, so the ranking reads the same marks the
+/// Library screens show rather than deriving its own (T42).
 pub(super) fn build_library_item_views(
     model: &Model,
     item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
@@ -176,22 +176,8 @@ pub(super) fn build_library_item_views(
     items
 }
 
-/// Today's plan for a given instant. The seeding events re-derive through
-/// this rather than trusting anything the shell sends (#1082).
-pub(crate) fn derive_up_next(
-    model: &Model,
-    now: chrono::DateTime<chrono::Utc>,
-) -> Option<crate::suggestion::SuggestedPlan> {
-    let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
-        model.items.iter().map(|i| (i.id.as_str(), i)).collect();
-    let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
-    let blocks =
-        crate::suggestion::rank_blocks(&build_library_item_views(model, &item_index), clock);
-    crate::suggestion::plan(&blocks, model.practice_defaults.session_length_mins)
-}
-
-/// The plan from time for a given instant, re-derived for the same reason
-/// as `derive_up_next` (#3007).
+/// The plan from time for a given instant. The seeding events re-derive
+/// through this rather than trusting anything the shell sends (#3007).
 pub(crate) fn derive_plan(
     model: &Model,
     now: chrono::DateTime<chrono::Utc>,
@@ -201,22 +187,11 @@ pub(crate) fn derive_plan(
     let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
     crate::plan::fill(
         &build_library_item_views(model, &item_index),
+        &build_practice_records(&model.sessions, &item_index),
         &model.practice_defaults,
         model.plan_length(),
         clock,
     )
-}
-
-/// The starred items in the order "Practise your priorities" seeds them
-/// (#981). Re-derived in the core for the same reason as `derive_up_next`.
-pub(crate) fn derive_priorities(model: &Model, now: chrono::DateTime<chrono::Utc>) -> Vec<String> {
-    let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
-        model.items.iter().map(|i| (i.id.as_str(), i)).collect();
-    let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
-    crate::priorities::order_priorities(&build_library_item_views(model, &item_index), clock)
-        .iter()
-        .map(|i| i.id.clone())
-        .collect()
 }
 
 /// Build practice summaries (keyed by item_id) in a single pass over sessions.
@@ -511,6 +486,57 @@ pub(crate) fn build_scored_plays(
     index
 }
 
+/// Each item's keys and variations, when last played and in how many sessions,
+/// for the ranking (T42). Any play that is not incidental counts, scored or
+/// not; keys match as `build_key_views` matches them.
+pub(crate) fn build_practice_records(
+    sessions: &[PracticeSession],
+    item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
+) -> crate::ranking::PracticeRecords {
+    #[derive(PartialEq, Eq, Hash)]
+    enum Touch<'a> {
+        Key(crate::domain::key::Key),
+        Variation(&'a str),
+    }
+    let mut records = crate::ranking::PracticeRecords::new();
+    for session in sessions {
+        let mut touched: std::collections::HashSet<(&str, Touch)> =
+            std::collections::HashSet::new();
+        for entry in &session.entries {
+            let Some(item) = item_index.get(entry.plan.item_id.as_str()) else {
+                continue;
+            };
+            for play in entry.plays.iter().filter(|p| !p.is_incidental()) {
+                for key in &item.keys {
+                    let in_key = match reads_as(item, play.key) {
+                        Some(k) => k.same_key(key),
+                        None => item.key.is_some_and(|k| k.same_key(key)),
+                    };
+                    if in_key {
+                        touched.insert((item.id.as_str(), Touch::Key(*key)));
+                    }
+                }
+                for id in item
+                    .variation_ids
+                    .iter()
+                    .filter(|id| play.variation_ids.contains(id))
+                {
+                    touched.insert((item.id.as_str(), Touch::Variation(id.as_str())));
+                }
+            }
+        }
+        for (item_id, touch) in touched {
+            let record = records.entry(item_id.to_string()).or_default();
+            let played = match touch {
+                Touch::Key(key) => record.keys.entry(key).or_default(),
+                Touch::Variation(id) => record.variations.entry(id.to_string()).or_default(),
+            };
+            played.add_session(session.started_at);
+        }
+    }
+    records
+}
+
 fn history<'a>(
     plays: &'a [ScoredPlay<'a>],
     on: impl Fn(&crate::domain::session::Play) -> bool,
@@ -584,7 +610,7 @@ pub(crate) fn build_key_views(
 /// Accents folded onto their base letter, then case removed, so "Étude" files
 /// under E instead of after every ASCII title, and beside "Etude" rather than
 /// after it (#1447).
-fn title_sort_key(title: &str) -> String {
+pub(crate) fn title_sort_key(title: &str) -> String {
     use unicode_normalization::UnicodeNormalization;
     title
         .nfd()
@@ -855,6 +881,135 @@ mod tests {
             .map(|k| (k.label.as_str(), k.latest_score))
             .collect();
         assert_eq!(marks, [("G major", Some(4)), ("A major", None)]);
+    }
+
+    #[test]
+    fn an_unscored_play_counts_as_played_and_a_stray_tap_does_not() {
+        let g = crate::domain::key::Key::parse("G major").expect("key");
+        let a = crate::domain::key::Key::parse("A major").expect("key");
+        let item = Item {
+            keys: vec![g, a],
+            ..Item::fixture("item-1")
+        };
+        let play = |key, seconds| crate::domain::session::Play {
+            key,
+            seconds,
+            ..crate::domain::session::Play::fixture()
+        };
+        let mut entry = crate::domain::session::SetlistEntry::fixture();
+        entry.plays = vec![play(None, 60), play(None, 90), play(Some(a), 2)];
+        let session = PracticeSession {
+            entries: vec![entry],
+            ..PracticeSession::fixture("s1")
+        };
+        let index = std::collections::HashMap::from([("item-1", &item)]);
+
+        let records = build_practice_records(std::slice::from_ref(&session), &index);
+
+        let keys = &records["item-1"].keys;
+        assert_eq!(keys[&g].sessions, 1, "two plays in one session return once");
+        assert_eq!(keys[&g].last, Some(session.started_at));
+        assert!(
+            !keys.contains_key(&a),
+            "under five seconds unscored is a stray tap"
+        );
+    }
+
+    #[test]
+    fn a_variation_is_recorded_by_its_id_once_a_session() {
+        let item = Item {
+            variation_ids: vec!["v1".to_string(), "v2".to_string()],
+            ..Item::fixture("item-1")
+        };
+        let session = |id: &str, day: i64, plays: Vec<Vec<&str>>| {
+            let mut entry = crate::domain::session::SetlistEntry::fixture();
+            entry.plays = plays
+                .into_iter()
+                .map(|ids| crate::domain::session::Play {
+                    variation_ids: ids.into_iter().map(str::to_string).collect(),
+                    ..crate::domain::session::Play::fixture()
+                })
+                .collect();
+            let base = PracticeSession::fixture(id);
+            PracticeSession {
+                entries: vec![entry],
+                started_at: base.started_at + chrono::Duration::days(day),
+                ..base
+            }
+        };
+        let sessions = [
+            session("s1", 0, vec![vec!["v1"], vec!["v1", "gone"]]),
+            session("s2", 3, vec![vec!["v1"]]),
+        ];
+        let index = std::collections::HashMap::from([("item-1", &item)]);
+
+        let records = build_practice_records(&sessions, &index);
+
+        let variations = &records["item-1"].variations;
+        assert_eq!(variations["v1"].sessions, 2);
+        assert_eq!(variations["v1"].last, Some(sessions[1].started_at));
+        assert!(!variations.contains_key("v2"), "never played");
+        assert!(!variations.contains_key("gone"), "not on the item");
+    }
+
+    /// An exercise whose G major was scored 3 a fortnight ago and C major 9
+    /// yesterday, and a piece scored 8 a week ago.
+    fn fortnight_model(now: chrono::DateTime<chrono::Utc>) -> Model {
+        use crate::domain::key::Key;
+        use crate::domain::session::{PlannedItem, Play, SetlistEntry};
+        let g = Key::parse("G major").expect("key");
+        let c = Key::parse("C major").expect("key");
+        let exercise = Item {
+            title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
+            keys: vec![c, g],
+            ..Item::fixture("scales")
+        };
+        let piece = Item {
+            title: "Arabesque".to_string(),
+            ..Item::fixture("piece")
+        };
+        let session = |id: &str, days: i64, item: &Item, key: Option<Key>, score: u8| {
+            let mut entry = SetlistEntry::fixture();
+            entry.plan = PlannedItem::new(&item.id, item.kind.clone());
+            entry.plays = vec![Play {
+                key,
+                score: Some(score),
+                ..Play::fixture()
+            }];
+            PracticeSession {
+                entries: vec![entry],
+                started_at: now - chrono::Duration::days(days),
+                completed_at: now - chrono::Duration::days(days),
+                ..PracticeSession::fixture(id)
+            }
+        };
+        let sessions = vec![
+            session("s1", 14, &exercise, Some(g), 3),
+            session("s2", 7, &piece, None, 8),
+            session("s3", 1, &exercise, Some(c), 9),
+        ];
+        Model {
+            practice_summaries: build_practice_summaries(&sessions).into(),
+            items: vec![piece, exercise].into(),
+            sessions: sessions.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_key_scored_low_a_fortnight_ago_leads_the_plan_and_says_why() {
+        let now = chrono::DateTime::<chrono::Utc>::from_timestamp(1_790_000_000, 0).expect("now");
+        let model = fortnight_model(now);
+
+        let plan = crate::view::build_view_at(&model, now)
+            .suggested_plan
+            .expect("a plan");
+
+        let first = &plan.rows[0];
+        assert_eq!(first.item_id, "scales");
+        assert_eq!(first.reason, "Exercise · G major, scored 3, 2 weeks ago");
+        assert_eq!(derive_plan(&model, now), Some(plan));
     }
 
     #[test]
