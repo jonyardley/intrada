@@ -64,7 +64,10 @@
   --celebrationBg: var(--ink);
   --celebrationInk: var(--paperTop);
   --viewerBackdrop: #1a1917;
+  --spacing-xxSmall: 2px;
+  --spacing-xSmall: 4px;
   --spacing-segmentGap: 5px;
+  --spacing-small: 6px;
   --spacing-controlGap: 8px;
   --spacing-cardCompact: 12px;
   --spacing-card: 16px;

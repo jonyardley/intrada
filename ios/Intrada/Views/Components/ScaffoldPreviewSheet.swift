@@ -56,7 +56,7 @@ struct ScaffoldPreviewSheet: View {
   }
 
   private var header: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: IntradaSpacing.small) {
       Image(systemName: "key")
         .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.exerciseBadgeFg)
@@ -96,7 +96,7 @@ struct ScaffoldPreviewSheet: View {
   }
 
   private var fallbackLegend: some View {
-    HStack(alignment: .top, spacing: 6) {
+    HStack(alignment: .top, spacing: IntradaSpacing.small) {
       Image(systemName: "arrow.turn.down.right")
         .font(IntradaFont.small)
         .foregroundStyle(IntradaColor.exerciseBadgeFg)
@@ -186,8 +186,8 @@ private struct FlagBadge: View {
     Text(text)
       .font(IntradaFont.smallMedium)
       .foregroundStyle(tint)
-      .padding(.horizontal, 6)
-      .padding(.vertical, 2)
+      .padding(.horizontal, IntradaSpacing.small)
+      .padding(.vertical, IntradaSpacing.xxSmall)
       .background(IntradaColor.surfaceSunken, in: Capsule())
       .accessibilityHidden(true)
   }

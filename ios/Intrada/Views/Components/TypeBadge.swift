@@ -7,14 +7,14 @@ struct TypeBadge: View {
   let kind: ItemKind
 
   var body: some View {
-    HStack(spacing: 5) {
+    HStack(spacing: IntradaSpacing.segmentGap) {
       Image(systemName: kind.iconName)
         .imageScale(.small)
       Text(kind.label)
     }
     .font(IntradaFont.badge)
     .foregroundStyle(foreground)
-    .padding(.vertical, 5)
+    .padding(.vertical, IntradaSpacing.segmentGap)
     .padding(.horizontal, 10)
     .background(background, in: Capsule())
     .accessibilityElement(children: .combine)

@@ -13,7 +13,7 @@ struct AddRowButton: View {
 
   var body: some View {
     Button(action: action) {
-      VStack(spacing: 4) {
+      VStack(spacing: IntradaSpacing.xSmall) {
         Label(title, systemImage: "plus")
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.accent)
@@ -52,7 +52,7 @@ struct AddRowButton: View {
 
 #if DEBUG
   #Preview("Add row") {
-    VStack(spacing: 16) {
+    VStack(spacing: IntradaSpacing.card) {
       AddRowButton(title: "Add a related exercise") {}
       AddRowButton(title: "Add a related exercise", style: .plain) {}
       AddRowButton(title: "Choose variations", hint: "Hands separately, dotted rhythms, your own") {

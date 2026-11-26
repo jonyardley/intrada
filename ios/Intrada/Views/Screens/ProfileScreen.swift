@@ -39,14 +39,14 @@ struct ProfileScreen: View {
   private var hero: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       ProfileBadge(icon: profile?.icon ?? .other, size: IntradaGlyph.hero)
-      VStack(spacing: 4) {
+      VStack(spacing: IntradaSpacing.xSmall) {
         if let name = profile?.name, !name.isEmpty {
           Text(name)
             .font(IntradaFont.pageTitle)
             .foregroundStyle(IntradaColor.ink)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
-            .padding(.horizontal, 4)
+            .padding(.horizontal, IntradaSpacing.xSmall)
         } else {
           Text("Add a name")
             .font(IntradaFont.pageTitle)

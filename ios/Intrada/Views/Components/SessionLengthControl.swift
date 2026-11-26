@@ -18,7 +18,7 @@ struct SessionLengthControl: View {
           get: { lengthMins != nil },
           set: { on in onChange(on ? limits.sessionLengthDefaultMins : nil) })
       ) {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
           FieldLabel(title)
           if let detail {
             Text(detail)

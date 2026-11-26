@@ -20,13 +20,13 @@ struct SessionCard: View {
         Text(session.playedSummary)
           .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
-          .padding(.top, 2)
+          .padding(.top, IntradaSpacing.xxSmall)
       }
       if session.completionStatus == .endedEarly {
         Text("Ended early")
           .font(IntradaFont.small)
           .foregroundStyle(IntradaColor.inkSecondary)
-          .padding(.top, 2)
+          .padding(.top, IntradaSpacing.xxSmall)
       }
     }
     .padding(.vertical, IntradaSpacing.card)

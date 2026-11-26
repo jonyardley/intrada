@@ -54,7 +54,7 @@ struct UpNextHero: View {
           Spacer(minLength: IntradaSpacing.controlGap)
           countText.fixedSize()
         }
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
           headingLabel
           countText.fixedSize(horizontal: false, vertical: true)
         }
@@ -67,7 +67,7 @@ struct UpNextHero: View {
         .minimumScaleFactor(0.75)
         .fixedSize(horizontal: false, vertical: true)
 
-      HStack(alignment: .firstTextBaseline, spacing: 6) {
+      HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.small) {
         if lead.priority {
           Image(systemName: "star.fill")
             .iconSize(.caption)
@@ -149,7 +149,7 @@ struct UpNextHero: View {
         Spacer(minLength: IntradaSpacing.controlGap)
         totals.fixedSize()
       }
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
         title.fixedSize(horizontal: false, vertical: true)
         totals.fixedSize(horizontal: false, vertical: true)
       }
@@ -170,9 +170,9 @@ struct UpNextHero: View {
       Circle()
         .fill(item.itemType.onHeroAccent)
         .frame(width: 7, height: 7)
-        .padding(.top, 6)
+        .padding(.top, IntradaSpacing.small)
 
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
         titleLine(item)
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.paperTop)

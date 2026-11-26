@@ -214,7 +214,7 @@ private struct PillarLine: View {
         .foregroundStyle(IntradaColor.inkFaintIcon)
         .frame(width: 28)
         .accessibilityHidden(true)
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
         Text(name)
           .font(IntradaFont.cardTitle)
           .foregroundStyle(IntradaColor.ink)
@@ -368,7 +368,7 @@ private struct FirstPieceRow: View {
           .iconSize(.control)
           .foregroundStyle(IntradaColor.accent)
           .frame(width: 28)
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
           Text(title)
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(IntradaColor.ink)

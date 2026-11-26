@@ -15,6 +15,7 @@ Intrada is a practice notebook for musicians, with an iPhone app. This is a publ
 - Give each entry in a screen's top-level list a card of its own, `spacing-cardCompact` (12) apart, as the Library's items and the Practice home's sessions do.
 - Draw a list inside a detail card, such as a piece's linked exercises, sections or variations, or the items in a session being built, as rows in that card with a `divider` line (HairlineDivider) between them. A form's fields sit the same way.
 - Inset content `spacing-card` (16) from the card's edge, or `spacing-cardCompact` (12) in a dense list. Space sections `spacing-section` (24) apart and controls `spacing-controlGap` (8).
+- The small steps are named for their size: `spacing-xxSmall` (2) for a 2 point nudge, `spacing-xSmall` (4) for a label over its value, and `spacing-small` (6) for tags in a row.
 
 ## Controls
 

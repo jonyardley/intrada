@@ -14,7 +14,7 @@ struct FormField: View {
   var note: String?
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
       FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
       TextField(placeholder, text: $text, axis: axis)
         .font(IntradaFont.body)

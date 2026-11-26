@@ -67,7 +67,7 @@ private struct KeyRingItem: View {
   let key: ItemKeyView
 
   var body: some View {
-    VStack(spacing: 6) {
+    VStack(spacing: IntradaSpacing.small) {
       ScoreRing(score: key.latestScore.map(Int.init), size: 44, labelOverride: shortLabel)
       Text(key.caption)
         .font(IntradaFont.secondary)
@@ -91,7 +91,7 @@ private struct VariationListRow: View {
   let variation: VariationView
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 2) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
       Text(variation.label)
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.ink)

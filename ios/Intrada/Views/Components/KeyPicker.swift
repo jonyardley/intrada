@@ -58,7 +58,7 @@ struct KeyPicker: View {
 
   private var row: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
         FieldLabel(label)
         if let display = key.flatMap(KeyHelper.display) {
           Text(display)
@@ -136,7 +136,7 @@ struct KeyPicker: View {
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         } else {
-          VStack(spacing: 2) {
+          VStack(spacing: IntradaSpacing.xxSmall) {
             Text("\u{266A}")  // ♪
               .font(IntradaFont.title)
               .foregroundStyle(IntradaColor.inkFaintIcon)

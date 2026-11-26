@@ -67,7 +67,7 @@ struct ChordChartEditSheet: View {
   }
 
   private var keyCaption: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: IntradaSpacing.small) {
       Image(systemName: "key")
         .font(IntradaFont.secondary)
         .accessibilityHidden(true)
@@ -89,8 +89,8 @@ struct ChordChartEditSheet: View {
         Text("| Cm7 | F7 | Bbmaj7 |")
           .font(IntradaFont.chartEditor)
           .foregroundStyle(IntradaColor.inkSecondary)
-          .padding(.horizontal, 5)
-          .padding(.vertical, 8)
+          .padding(.horizontal, IntradaSpacing.segmentGap)
+          .padding(.vertical, IntradaSpacing.controlGap)
           .allowsHitTesting(false)
       }
       TextEditor(text: $text)
@@ -131,7 +131,7 @@ struct ChordChartEditSheet: View {
   }
 
   private var formatHint: some View {
-    VStack(alignment: .leading, spacing: 6) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.small) {
       SectionTitle("Format")
       Text("[Section] labels · one bar between | pipes")
         .font(IntradaFont.secondary)

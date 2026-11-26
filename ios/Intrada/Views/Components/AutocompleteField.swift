@@ -23,7 +23,7 @@ struct AutocompleteField: View {
     let matches = formSuggestions(pool: suggestions, typed: text, alreadyChosen: [])
     let showSuggestions = (focused || initiallyShowingSuggestions) && !matches.isEmpty
     VStack(spacing: 0) {
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
         FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
         TextField(placeholder, text: $text)
           .font(IntradaFont.body)

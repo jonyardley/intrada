@@ -140,7 +140,7 @@ struct LinkedItemPickerSheet: View {
         Image(systemName: priorityOnly ? "star.fill" : "star")
           .font(IntradaFont.smallMedium)
           .foregroundStyle(priorityOnly ? IntradaColor.accent : IntradaColor.inkFaintIcon)
-          .padding(.vertical, 6)
+          .padding(.vertical, IntradaSpacing.small)
           .padding(.horizontal, 10)
           .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
       }

@@ -60,7 +60,7 @@ struct PracticeSessionDetailScreen: View {
   }
 
   private var sessionScoreText: some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
       SectionTitle("How it went")
       Text("Your confidence for the session")
         .font(IntradaFont.secondary)
@@ -71,7 +71,7 @@ struct PracticeSessionDetailScreen: View {
   // ── Note ──
 
   private func noteCard(_ notes: String) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.xSmall) {
       SectionTitle("Your note")
       Text(notes)
         .font(IntradaFont.body)
@@ -121,27 +121,27 @@ struct PracticeSessionDetailScreen: View {
         .font(IntradaFont.small)
         .foregroundStyle(IntradaColor.inkSecondary)
       if entry.plays.count > 1 {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
           ForEach(entry.plays, id: \.id) { play in
             Text(playLine(play))
               .font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
-        .padding(.top, 2)
+        .padding(.top, IntradaSpacing.xxSmall)
       } else if let play = entry.plays.first, play.label != nil {
         // A single variation still gets named (#1785), in the same style as
         // the multi-variation lines above rather than a one-off treatment.
         Text(singleVariationLine(play))
           .font(IntradaFont.small)
           .foregroundStyle(IntradaColor.inkSecondary)
-          .padding(.top, 2)
+          .padding(.top, IntradaSpacing.xxSmall)
       }
       if let notes = entry.notes, !notes.isEmpty {
         Text(notes)
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
-          .padding(.top, 2)
+          .padding(.top, IntradaSpacing.xxSmall)
       }
     }
   }
