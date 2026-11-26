@@ -1,6 +1,6 @@
 //! What needs practice, decided in one place (T42, #3015). Nothing outside
-//! this module orders practice material: the plan takes its candidates, its
-//! reasons and its session order from here.
+//! this module orders practice material: the plan takes its candidates, their
+//! order and their reasons from here.
 
 mod staleness;
 
@@ -178,6 +178,11 @@ pub(crate) fn rank_items<'a>(
 // ── Reason ───────────────────────────────────────────────────────────
 
 impl Ranked<'_> {
+    /// Played, and going cold or cold on its neediest key or variation.
+    pub(crate) fn is_due(&self) -> bool {
+        self.neediest.staleness.is_due()
+    }
+
     /// The rule that placed the item, mid-sentence: "a priority", "G major,
     /// scored 3, 2 weeks ago", "going cold after 3 weeks".
     pub(crate) fn reason(&self) -> String {
@@ -198,16 +203,6 @@ impl Ranked<'_> {
             None => format!("{label}, practised {when}"),
         }
     }
-}
-
-// ── Session order ────────────────────────────────────────────────────
-
-/// The order a planned session offers its candidates in: the warm-up items
-/// first, then by need. A variety rule would go here (T42).
-pub(crate) fn sequence<'r, 'a>(ranked: &'r [Ranked<'a>], warm_up_on: bool) -> Vec<&'r Ranked<'a>> {
-    let mut order: Vec<&Ranked> = ranked.iter().collect();
-    order.sort_by_key(|r| !(warm_up_on && r.item.include_in_warm_up));
-    order
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -503,23 +498,5 @@ mod tests {
         ];
 
         assert_eq!(order(&items, &PracticeRecords::new()), ["c", "a", "b"]);
-    }
-
-    #[test]
-    fn the_warm_up_leads_the_sequence_only_when_it_is_on() {
-        let mut warm = practised(item("warm", "Scales"), 1, None, 1);
-        warm.include_in_warm_up = true;
-        let new = item("new", "Zephyr");
-        let items = [warm, new];
-        let ranked = rank_items(&items, &PracticeRecords::new(), clock());
-        let ids = |on| -> Vec<&str> {
-            sequence(&ranked, on)
-                .iter()
-                .map(|r| r.item.id.as_str())
-                .collect()
-        };
-
-        assert_eq!(ids(true), ["warm", "new"]);
-        assert_eq!(ids(false), ["new", "warm"]);
     }
 }

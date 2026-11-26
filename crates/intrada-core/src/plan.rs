@@ -41,10 +41,7 @@ impl PlanView {
     }
 }
 
-/// `None` only for an empty library. Candidates, their order and their
-/// reasons come from `ranking`; this only fits them to the time. An item that
-/// does not fit is skipped, never shrunk; when nothing fits, the neediest item
-/// stands alone.
+/// `None` only for an empty library; what does not fit is skipped, never shrunk.
 pub(crate) fn fill(
     items: &[LibraryItemView],
     records: &PracticeRecords,
@@ -56,24 +53,23 @@ pub(crate) fn fill(
     let neediest = ranked.first()?;
     let length = u32::from(length_mins);
     let warm_up_on = defaults.start_with_warm_up;
-    let mut total = 0u32;
-    let mut warm_up = None;
+    let chosen = ranked
+        .iter()
+        .find(|r| warm_up_on && r.item.include_in_warm_up && r.item.usual_minutes <= length);
+    let mut total = chosen.map_or(0, |r| r.item.usual_minutes);
+    let warm_up = chosen.map(|r| row(r.item, kind_word(&r.item.item_type).to_string()));
     let mut rows = Vec::new();
 
-    for candidate in ranking::sequence(&ranked, warm_up_on) {
+    for candidate in &ranked {
         let item = candidate.item;
-        let fits = total + item.usual_minutes <= length;
-        if warm_up_on && item.include_in_warm_up {
-            if warm_up.is_none() && fits {
-                total += item.usual_minutes;
-                warm_up = Some(row(item, kind_word(&item.item_type).to_string()));
-                continue;
-            }
-            if !item.priority {
-                continue;
-            }
+        if chosen.is_some_and(|c| c.item.id == item.id) {
+            continue;
         }
-        if fits {
+        let spare_warm_up = warm_up_on && item.include_in_warm_up;
+        if spare_warm_up && !item.priority && !candidate.is_due() {
+            continue;
+        }
+        if total + item.usual_minutes <= length {
             total += item.usual_minutes;
             rows.push(row(item, reason(candidate)));
         }
@@ -303,6 +299,42 @@ mod tests {
 
         assert_eq!(plan.warm_up, None);
         assert!(!plan.has_warm_up_items);
+    }
+
+    #[test]
+    fn a_starred_warm_up_item_wins_the_warm_up_over_a_colder_one() {
+        let items = vec![
+            last_played(warm_up(item("cold", ItemKind::Exercise, 5)), 25),
+            last_played(starred(warm_up(item("starred", ItemKind::Exercise, 5))), 1),
+        ];
+        let plan = filled(&items, 20);
+
+        assert_eq!(plan.warm_up.expect("a warm-up").item_id, "starred");
+    }
+
+    #[test]
+    fn a_spare_starred_warm_up_item_takes_its_place_among_the_priorities() {
+        let items = vec![
+            last_played(starred(warm_up(item("first", ItemKind::Exercise, 5))), 25),
+            last_played(starred(warm_up(item("spare", ItemKind::Exercise, 5))), 1),
+            last_played(starred(item("sonata", ItemKind::Piece, 5)), 25),
+        ];
+        let plan = filled(&items, 20);
+
+        assert_eq!(ids(&plan), ["first", "sonata", "spare"]);
+    }
+
+    #[test]
+    fn a_spare_warm_up_item_fills_only_when_it_is_going_cold() {
+        let items = vec![
+            last_played(warm_up(item("chosen", ItemKind::Exercise, 5)), 25),
+            last_played(warm_up(item("cold", ItemKind::Exercise, 5)), 15),
+            last_played(warm_up(item("fresh", ItemKind::Exercise, 5)), 1),
+            warm_up(item("new", ItemKind::Exercise, 5)),
+        ];
+        let plan = filled(&items, 30);
+
+        assert_eq!(ids(&plan), ["chosen", "cold"]);
     }
 
     #[test]
