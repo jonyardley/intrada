@@ -66,57 +66,78 @@ pub(crate) struct RankedTarget<'a> {
     pub(crate) label: Option<&'a str>,
     pub(crate) score: Option<u8>,
     staleness: Staleness,
+    /// Never played on its own, so graded on its item's record (T42).
+    inherited: bool,
 }
 
 impl RankedTarget<'_> {
-    /// Most overdue first, then the lower score; never scored leads its tie.
-    fn need(&self) -> (Reverse<u32>, Option<u8>) {
-        (Reverse(self.staleness.overdue_key()), self.score)
+    /// Going cold or cold first, then never played, then fresh; within each,
+    /// most overdue, then the lower score, then one actually played.
+    fn need(&self) -> (u8, Reverse<u32>, Option<u8>, bool) {
+        let tier = match (self.staleness.is_due(), self.staleness.days()) {
+            (true, _) => 0,
+            (false, None) => 1,
+            (false, Some(_)) => 2,
+        };
+        (
+            tier,
+            Reverse(self.staleness.overdue_key()),
+            self.score,
+            self.inherited,
+        )
     }
 }
 
 /// An item's keys and variations, neediest first, or the item alone when it
-/// has neither. Never empty.
+/// has neither. Never empty. One never played takes the item's own date,
+/// returns and, unscored, its score.
 pub(crate) fn rank_targets<'a>(
     item: &'a LibraryItemView,
     records: &PracticeRecords,
     clock: LocalClock,
 ) -> Vec<RankedTarget<'a>> {
     let plays = records.get(&item.id);
-    let target = |label: &'a str, score: Option<u8>, played: Option<&Played>| {
-        let played = played.copied().unwrap_or_default();
-        RankedTarget {
-            label: Some(label),
+    let item_score = item.practice.as_ref().and_then(|p| p.latest_score);
+    let target = |label: Option<&'a str>, score: Option<u8>, played: Option<&Played>| match played
+        .filter(|p| p.last.is_some())
+    {
+        Some(played) => RankedTarget {
+            label,
             score,
             staleness: grade(
                 played.last.map(|at| days_since(at, clock)),
                 score,
                 played.sessions,
             ),
+            inherited: false,
+        },
+        None => {
+            let score = score.or(item_score);
+            RankedTarget {
+                label,
+                score,
+                staleness: assess(item.practice.as_ref(), score, clock),
+                inherited: label.is_some(),
+            }
         }
     };
     let keys = item.keys.iter().map(|k| {
         target(
-            &k.label,
+            Some(&k.label),
             k.latest_score,
             plays.and_then(|p| p.keys.get(&k.key)),
         )
     });
     let variations = item.variations.iter().map(|v| {
         target(
-            &v.label,
+            Some(&v.label),
             v.latest_score,
             plays.and_then(|p| p.variations.get(&v.id)),
         )
     });
     let mut targets: Vec<RankedTarget> = keys.chain(variations).collect();
     if targets.is_empty() {
-        let score = item.practice.as_ref().and_then(|p| p.latest_score);
-        targets.push(RankedTarget {
-            label: None,
-            score,
-            staleness: assess(item.practice.as_ref(), score, clock),
-        });
+        targets.push(target(None, None, None));
     }
     targets.sort_by_key(RankedTarget::need);
     targets
@@ -163,7 +184,7 @@ impl Ranked<'_> {
         if self.item.priority {
             return "a priority".to_string();
         }
-        let Some(label) = self.neediest.label else {
+        let Some(label) = self.neediest.label.filter(|_| !self.neediest.inherited) else {
             return self.neediest.staleness.clause();
         };
         let when = match self.neediest.staleness.days() {
@@ -333,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn a_never_played_key_is_most_in_need() {
+    fn an_unplayed_key_takes_its_items_record_and_does_not_pin_it_top() {
         let exercise = with_key(
             with_key(
                 practised(item("exercise", "Thirds"), 1, Some(9), 6),
@@ -348,8 +369,40 @@ mod tests {
         played(&mut records, "exercise", "C major", 1);
         let items = [cold, exercise];
         let ranked = rank_items(&items, &records, clock());
-        assert_eq!(ranked[0].item.id, "exercise");
-        assert_eq!(ranked[0].reason(), "F♯ minor, not practised yet");
+
+        assert_eq!(ranked[0].item.id, "cold");
+        assert_eq!(ranked[1].item.id, "exercise");
+        assert!(
+            !ranked[1].reason().contains("F♯ minor"),
+            "{}",
+            ranked[1].reason()
+        );
+    }
+
+    #[test]
+    fn an_unplayed_key_that_wins_speaks_for_the_item() {
+        let exercise = with_key(
+            practised(item("exercise", "Thirds"), 21, Some(9), 1),
+            "F# minor",
+            None,
+        );
+        let items = [exercise];
+
+        assert_eq!(
+            rank_items(&items, &PracticeRecords::new(), clock())[0].reason(),
+            "practised 3 weeks ago"
+        );
+    }
+
+    #[test]
+    fn a_never_played_item_with_keys_is_not_practised_yet() {
+        let exercise = with_key(item("exercise", "Thirds"), "F# minor", None);
+        let items = [exercise];
+
+        assert_eq!(
+            rank_items(&items, &PracticeRecords::new(), clock())[0].reason(),
+            "not practised yet"
+        );
     }
 
     #[test]
@@ -416,13 +469,28 @@ mod tests {
     }
 
     #[test]
-    fn never_practised_comes_before_cold_in_a_keyless_library() {
+    fn never_practised_comes_after_cold_and_before_fresh() {
         let cold = practised(item("cold", "Arabesque"), 60, None, 1);
+        let going = practised(item("going", "Bourrée"), 15, None, 1);
+        let fresh = practised(item("fresh", "Csárdás"), 1, None, 1);
         let new = item("new", "Zephyr");
 
         assert_eq!(
-            order(&[cold, new], &PracticeRecords::new()),
-            ["new", "cold"]
+            order(&[fresh, new, going, cold], &PracticeRecords::new()),
+            ["cold", "going", "new", "fresh"]
+        );
+    }
+
+    #[test]
+    fn a_starred_item_never_practised_follows_a_starred_cold_one() {
+        let mut cold = practised(item("cold", "Arabesque"), 60, None, 1);
+        cold.priority = true;
+        let mut new = item("new", "Zephyr");
+        new.priority = true;
+
+        assert_eq!(
+            order(&[new, cold], &PracticeRecords::new()),
+            ["cold", "new"]
         );
     }
 

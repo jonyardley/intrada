@@ -96,6 +96,11 @@ impl Staleness {
         self.days
     }
 
+    /// Going cold or cold: played, and past its gap.
+    pub(super) fn is_due(&self) -> bool {
+        matches!(self.band, StalenessBand::GoingCold | StalenessBand::Cold)
+    }
+
     /// How far through its interval the item has drifted, in hundredths.
     /// Ranking on this rather than raw days keeps the reason true to the
     /// order (T42). Never practised is the stalest of all.
