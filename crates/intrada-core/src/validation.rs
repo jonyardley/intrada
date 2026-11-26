@@ -35,8 +35,8 @@ pub const DEFAULT_PLANNED_DURATION_SECS: u32 = 360;
 pub const MIN_SESSION_LENGTH_MINS: u16 = 10;
 pub const MAX_SESSION_LENGTH_MINS: u16 = 120;
 pub const SESSION_LENGTH_STEP_MINS: u16 = 5;
-/// Where the stepper starts when a length is switched on, never a length
-/// applied on its own: no length is `None` (#1736).
+/// Where the stepper starts when a length is switched on, and the plan's
+/// length when no preference is set (#3007).
 pub const DEFAULT_SESSION_LENGTH_MINS: u16 = 30;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
@@ -327,6 +327,11 @@ pub fn clamp_session_length(length_mins: u16) -> u16 {
     let step = SESSION_LENGTH_STEP_MINS;
     let rounded = length_mins.saturating_add(step / 2) / step * step;
     rounded.clamp(MIN_SESSION_LENGTH_MINS, MAX_SESSION_LENGTH_MINS)
+}
+
+/// A typed plan length keeps its minutes and only meets the range (#3007).
+pub fn clamp_plan_length(length_mins: u16) -> u16 {
+    length_mins.clamp(MIN_SESSION_LENGTH_MINS, MAX_SESSION_LENGTH_MINS)
 }
 
 pub fn validate_achieved_tempo(tempo: &Option<u16>) -> Result<(), LibraryError> {
@@ -2015,6 +2020,21 @@ mod tests {
         ] {
             assert_eq!(clamp_session_length(stored), expected, "{stored} minutes");
             assert!(validate_session_length(&Some(expected)).is_ok());
+        }
+    }
+
+    #[test]
+    fn a_typed_plan_length_keeps_its_minutes_within_the_range() {
+        for (typed, expected) in [
+            (0, 10),
+            (5, 10),
+            (10, 10),
+            (23, 23),
+            (47, 47),
+            (120, 120),
+            (500, 120),
+        ] {
+            assert_eq!(clamp_plan_length(typed), expected, "{typed} minutes");
         }
     }
 

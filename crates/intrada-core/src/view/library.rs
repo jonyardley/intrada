@@ -190,6 +190,23 @@ pub(crate) fn derive_up_next(
     crate::suggestion::plan(&blocks, model.practice_defaults.session_length_mins)
 }
 
+/// The plan from time for a given instant, re-derived for the same reason
+/// as `derive_up_next` (#3007).
+pub(crate) fn derive_plan(
+    model: &Model,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<crate::plan::PlanView> {
+    let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+        model.items.iter().map(|i| (i.id.as_str(), i)).collect();
+    let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
+    crate::plan::fill(
+        &build_library_item_views(model, &item_index),
+        &model.practice_defaults,
+        model.plan_length(),
+        clock,
+    )
+}
+
 /// The starred items in the order "Practise your priorities" seeds them
 /// (#981). Re-derived in the core for the same reason as `derive_up_next`.
 pub(crate) fn derive_priorities(model: &Model, now: chrono::DateTime<chrono::Utc>) -> Vec<String> {

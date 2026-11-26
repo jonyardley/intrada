@@ -739,6 +739,23 @@ pub enum SessionEvent {
     },
     /// The undo banner was closed, so the last delete stands.
     DismissUndoDelete,
+
+    // === Plan from time (#3007), appended ===
+    /// The length picked on Practice, any whole minutes within the range;
+    /// held until the app closes, never saved.
+    SetPlanLength {
+        length_mins: u16,
+    },
+    /// Practice's Start: from Idle, seed the plan and start playing it. The
+    /// core re-derives the plan, as `StartFromSuggestion` does.
+    StartPlannedSession {
+        now: DateTime<Utc>,
+    },
+    /// A change to the plan: from Idle, seed the builder with it. The builder
+    /// never re-plans, so a length change there keeps the entries.
+    EditPlannedSession {
+        now: DateTime<Utc>,
+    },
 }
 
 mod active;
@@ -953,5 +970,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::DeleteSaved { session_id, now } => saved::delete(model, session_id, now),
         SessionEvent::UndoDelete { now } => saved::undo_delete(model, now),
         SessionEvent::DismissUndoDelete => saved::dismiss_undo(model),
+
+        SessionEvent::SetPlanLength { length_mins } => {
+            building::set_plan_length(model, length_mins)
+        }
+        SessionEvent::StartPlannedSession { now } => building::start_planned_session(model, now),
+        SessionEvent::EditPlannedSession { now } => building::edit_planned_session(model, now),
     }
 }

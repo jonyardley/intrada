@@ -398,6 +398,70 @@ fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
     true
 }
 
+pub(super) fn set_plan_length(model: &mut Model, length_mins: u16) -> Command<Effect, Event> {
+    model.plan_length_mins = Some(validation::clamp_plan_length(length_mins));
+    crux_core::render::render()
+}
+
+pub(super) fn start_planned_session(
+    model: &mut Model,
+    now: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    if seed_from_plan(model, now) {
+        start_session(model, now)
+    } else {
+        crux_core::render::render()
+    }
+}
+
+pub(super) fn edit_planned_session(
+    model: &mut Model,
+    now: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    seed_from_plan(model, now);
+    crux_core::render::render()
+}
+
+/// False when nothing was seeded; an empty library is not an error.
+fn seed_from_plan(model: &mut Model, now: DateTime<Utc>) -> bool {
+    if !matches!(model.session_status, SessionStatus::Idle) {
+        model.raise_error("A practice is already in progress".to_string());
+        return false;
+    }
+    let Some(plan) = crate::view::library::derive_plan(model, now) else {
+        return false;
+    };
+
+    let mut building = BuildingSession {
+        entries: Vec::new(),
+        length_mins: Some(plan.length_mins),
+    };
+    for row in plan.played_rows() {
+        let Some(item) = model.items.iter().find(|i| i.id == row.item_id) else {
+            continue;
+        };
+        let mut entry = create_entry(
+            &item.id,
+            &row.title,
+            item.kind.clone(),
+            building.entries.len(),
+        );
+        entry.plan.key = opening_key(item);
+        entry.plan.duration_secs = Some((row.minutes.saturating_mul(60)).clamp(
+            validation::MIN_PLANNED_DURATION_SECS,
+            validation::MAX_PLANNED_DURATION_SECS,
+        ));
+        building.entries.push(entry);
+    }
+    if building.entries.is_empty() {
+        return false;
+    }
+
+    model.session_status = SessionStatus::Building(building);
+    model.last_error = None;
+    true
+}
+
 pub(super) fn start_building_with_priorities(
     model: &mut Model,
     now: DateTime<Utc>,

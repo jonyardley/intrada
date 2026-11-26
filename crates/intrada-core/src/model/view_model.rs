@@ -71,6 +71,9 @@ pub struct ViewModel {
     /// The undo banner's text while the last saved-session delete can be
     /// taken back (#2581).
     pub undo_delete: Option<String>,
+    /// Practice's plan from time, only while nothing is being built, played
+    /// or summarised and the library has items (#3007).
+    pub suggested_plan: Option<crate::plan::PlanView>,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a
