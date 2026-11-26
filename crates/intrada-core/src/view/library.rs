@@ -187,6 +187,7 @@ pub(crate) fn derive_plan(
     let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
     crate::plan::fill(
         &build_library_item_views(model, &item_index),
+        &build_practice_records(&model.sessions, &item_index),
         &model.practice_defaults,
         model.plan_length(),
         clock,
@@ -485,6 +486,57 @@ pub(crate) fn build_scored_plays(
     index
 }
 
+/// Each item's keys and variations, when last played and in how many sessions,
+/// for the ranking (T42). Any play that is not incidental counts, scored or
+/// not; keys match as `build_key_views` matches them.
+pub(crate) fn build_practice_records(
+    sessions: &[PracticeSession],
+    item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
+) -> crate::ranking::PracticeRecords {
+    #[derive(PartialEq, Eq, Hash)]
+    enum Touch<'a> {
+        Key(crate::domain::key::Key),
+        Variation(&'a str),
+    }
+    let mut records = crate::ranking::PracticeRecords::new();
+    for session in sessions {
+        let mut touched: std::collections::HashSet<(&str, Touch)> =
+            std::collections::HashSet::new();
+        for entry in &session.entries {
+            let Some(item) = item_index.get(entry.plan.item_id.as_str()) else {
+                continue;
+            };
+            for play in entry.plays.iter().filter(|p| !p.is_incidental()) {
+                for key in &item.keys {
+                    let in_key = match reads_as(item, play.key) {
+                        Some(k) => k.same_key(key),
+                        None => item.key.is_some_and(|k| k.same_key(key)),
+                    };
+                    if in_key {
+                        touched.insert((item.id.as_str(), Touch::Key(*key)));
+                    }
+                }
+                for id in item
+                    .variation_ids
+                    .iter()
+                    .filter(|id| play.variation_ids.contains(id))
+                {
+                    touched.insert((item.id.as_str(), Touch::Variation(id.as_str())));
+                }
+            }
+        }
+        for (item_id, touch) in touched {
+            let record = records.entry(item_id.to_string()).or_default();
+            let played = match touch {
+                Touch::Key(key) => record.keys.entry(key).or_default(),
+                Touch::Variation(id) => record.variations.entry(id.to_string()).or_default(),
+            };
+            played.add_session(session.started_at);
+        }
+    }
+    records
+}
+
 fn history<'a>(
     plays: &'a [ScoredPlay<'a>],
     on: impl Fn(&crate::domain::session::Play) -> bool,
@@ -558,7 +610,7 @@ pub(crate) fn build_key_views(
 /// Accents folded onto their base letter, then case removed, so "Étude" files
 /// under E instead of after every ASCII title, and beside "Etude" rather than
 /// after it (#1447).
-fn title_sort_key(title: &str) -> String {
+pub(crate) fn title_sort_key(title: &str) -> String {
     use unicode_normalization::UnicodeNormalization;
     title
         .nfd()
@@ -829,6 +881,38 @@ mod tests {
             .map(|k| (k.label.as_str(), k.latest_score))
             .collect();
         assert_eq!(marks, [("G major", Some(4)), ("A major", None)]);
+    }
+
+    #[test]
+    fn an_unscored_play_counts_as_played_and_a_stray_tap_does_not() {
+        let g = crate::domain::key::Key::parse("G major").expect("key");
+        let a = crate::domain::key::Key::parse("A major").expect("key");
+        let item = Item {
+            keys: vec![g, a],
+            ..Item::fixture("item-1")
+        };
+        let play = |key, seconds| crate::domain::session::Play {
+            key,
+            seconds,
+            ..crate::domain::session::Play::fixture()
+        };
+        let mut entry = crate::domain::session::SetlistEntry::fixture();
+        entry.plays = vec![play(None, 60), play(None, 90), play(Some(a), 2)];
+        let session = PracticeSession {
+            entries: vec![entry],
+            ..PracticeSession::fixture("s1")
+        };
+        let index = std::collections::HashMap::from([("item-1", &item)]);
+
+        let records = build_practice_records(std::slice::from_ref(&session), &index);
+
+        let keys = &records["item-1"].keys;
+        assert_eq!(keys[&g].sessions, 1, "two plays in one session return once");
+        assert_eq!(keys[&g].last, Some(session.started_at));
+        assert!(
+            !keys.contains_key(&a),
+            "under five seconds unscored is a stray tap"
+        );
     }
 
     #[test]

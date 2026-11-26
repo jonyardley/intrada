@@ -40,6 +40,7 @@ pub(crate) struct Projections {
     pub(crate) key: ProjectionKey,
     /// In `model.items` order; `sorted` holds the order the Library shows.
     pub(crate) library: Vec<LibraryItemView>,
+    pub(crate) practice_records: crate::ranking::PracticeRecords,
     pub(crate) sorted: Vec<usize>,
     pub(crate) available_tags: Vec<String>,
     pub(crate) available_composers: Vec<String>,
@@ -96,6 +97,8 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         model.items.iter().map(|i| (i.id.as_str(), i)).collect();
 
     let library = build_library_item_views(model, &item_index);
+    let practice_records =
+        crate::view::library::build_practice_records(&model.sessions, &item_index);
 
     // Computed before the filter so the vocabulary stays stable as the
     // filter narrows (#851).
@@ -154,6 +157,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
     Projections {
         key: ProjectionKey::of(model, clock),
         library,
+        practice_records,
         sorted,
         available_tags,
         available_composers,

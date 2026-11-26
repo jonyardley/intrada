@@ -1,13 +1,14 @@
-//! The getting-cold signal (#1416, `specs/getting-cold-signal.md`): how long an
-//! item has sat, graded against how long it can reasonably bear to sit.
+//! The getting-cold signal (#1416, T42): how long something has sat, graded
+//! against how long it can reasonably bear to sit.
 //!
 //! The same gap means different things for different material. A tune marked
 //! 3 of 10 and played once is fragile; the same tune marked 9 of 10 across a
 //! year of returns is not, and the binary 14-day flag this replaces sent both
 //! cold on the same clock.
 
+use super::tuning;
 use crate::analytics::LocalClock;
-use crate::model::{ItemPracticeSummary, LibraryItemView};
+use crate::model::ItemPracticeSummary;
 
 /// How cold an item has gone, relative to its own expected return interval.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,30 +33,27 @@ pub struct Staleness {
 /// How long an item can reasonably sit before coming back is worth suggesting.
 /// Fixed and deliberately lax: no published scheduler is validated for
 /// repertoire, one musician will never produce enough history to fit one, and a
-/// signal that cries wolf gets ignored (#1419, `space-layer.md` §4, §6).
+/// signal that cries wolf gets ignored (T42, `space-layer.md` §4, §6).
 fn expected_interval_days(mark: Option<u8>, session_count: usize) -> u32 {
-    let base = match mark {
-        None => 10,
-        Some(0..=3) => 5,
-        Some(4..=6) => 9,
-        Some(7..=8) => 16,
-        Some(_) => 30,
-    };
-    let returns_bonus = match session_count {
-        0..=1 => 0,
-        2..=4 => 2,
-        5..=9 => 5,
-        _ => 9,
-    };
+    let base = mark.map_or(tuning::GAP_UNSCORED, |m| {
+        tuning::GAP_BY_SCORE
+            .iter()
+            .find(|(top, _)| m <= *top)
+            .map_or(tuning::GAP_UNSCORED, |(_, gap)| *gap)
+    });
+    let returns_bonus = tuning::RETURNS_BONUS
+        .iter()
+        .find(|(top, _)| session_count <= *top)
+        .map_or(0, |(_, bonus)| *bonus);
     base + returns_bonus
 }
 
-fn grade(days: Option<u32>, mark: Option<u8>, session_count: usize) -> Staleness {
+pub(super) fn grade(days: Option<u32>, mark: Option<u8>, session_count: usize) -> Staleness {
     let expected_interval_days = expected_interval_days(mark, session_count);
     let band = match days {
         None => StalenessBand::Unknown,
-        Some(d) if d <= expected_interval_days => StalenessBand::Fresh,
-        Some(d) if d <= expected_interval_days * 2 => StalenessBand::GoingCold,
+        Some(d) if d <= expected_interval_days * tuning::GOING_COLD_AFTER => StalenessBand::Fresh,
+        Some(d) if d <= expected_interval_days * tuning::COLD_AFTER => StalenessBand::GoingCold,
         Some(_) => StalenessBand::Cold,
     };
     Staleness {
@@ -86,27 +84,21 @@ pub fn assess(
 fn days_since_practice(practice: Option<&ItemPracticeSummary>, clock: LocalClock) -> Option<u32> {
     let at = practice?.last_practiced_at.as_deref()?;
     let parsed = chrono::DateTime::parse_from_rfc3339(at).ok()?;
-    let day = clock.day_of(parsed.with_timezone(&chrono::Utc));
-    Some((clock.today - day).num_days().max(0) as u32)
+    Some(days_since(parsed.with_timezone(&chrono::Utc), clock))
+}
+
+pub(super) fn days_since(at: chrono::DateTime<chrono::Utc>, clock: LocalClock) -> u32 {
+    (clock.today - clock.day_of(at)).num_days().max(0) as u32
 }
 
 impl Staleness {
-    /// Days since last practised, for a surface that reports the gap as a fact
-    /// alongside the grade.
-    pub(crate) fn days(&self) -> Option<u32> {
+    pub(super) fn days(&self) -> Option<u32> {
         self.days
     }
 
-    /// The only band not worth surfacing: `Unknown` means an item the library
-    /// has never got to, which is its own kind of left behind.
-    pub fn is_fresh(&self) -> bool {
-        matches!(self.band, StalenessBand::Fresh)
-    }
-
     /// How far through its interval the item has drifted, in hundredths.
-    /// Ranking on this rather than raw days is what keeps
-    /// decision 3 of `specs/up-next-card.md` (#1082) true: the headline says the same
-    /// thing the ranking used. Never practised is the stalest of all.
+    /// Ranking on this rather than raw days keeps the reason true to the
+    /// order (T42). Never practised is the stalest of all.
     pub fn overdue_key(&self) -> u32 {
         match self.days {
             None => u32::MAX,
@@ -130,7 +122,7 @@ impl Staleness {
 
 /// Grading the units matters as much as grading the band: "not practised for
 /// 137 days" is a number nobody reads, where "cold for 5 months" is a sentence.
-fn gap_phrase(days: u32) -> String {
+pub(super) fn gap_phrase(days: u32) -> String {
     match days {
         0..=13 => format!("{days} days"),
         14..=55 => format!("{} weeks", (days + 3) / 7),
@@ -140,12 +132,6 @@ fn gap_phrase(days: u32) -> String {
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
-
-/// One convention for pieces and exercises alike (#1416).
-pub(crate) fn staleness_of(item: &LibraryItemView, clock: LocalClock) -> Staleness {
-    let mark = item.practice.as_ref().and_then(|p| p.latest_score);
-    assess(item.practice.as_ref(), mark, clock)
-}
 
 #[cfg(test)]
 mod tests {
@@ -259,17 +245,6 @@ mod tests {
         assert_eq!(
             s.band, GoingCold,
             "20 days on an 11-day interval is not cold"
-        );
-    }
-
-    #[test]
-    fn only_the_fresh_band_has_nothing_to_report() {
-        assert!(grade(Some(1), None, 0).is_fresh());
-        assert!(!grade(Some(15), None, 0).is_fresh());
-        assert!(!grade(Some(90), None, 0).is_fresh());
-        assert!(
-            !grade(None, None, 0).is_fresh(),
-            "an item never practised has not been kept warm either"
         );
     }
 

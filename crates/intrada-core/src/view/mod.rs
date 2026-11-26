@@ -273,6 +273,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         suggested_plan: if matches!(model.session_status, SessionStatus::Idle) {
             crate::plan::fill(
                 &cached.library,
+                &cached.practice_records,
                 &model.practice_defaults,
                 model.plan_length(),
                 clock,
