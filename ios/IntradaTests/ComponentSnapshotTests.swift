@@ -401,6 +401,23 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(steppers), as: config)
   }
 
+  func testScoreStepperSessionLength() {
+    let steppers = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        ForEach([20, 5], id: \.self) { minutes in
+          ScoreStepper(
+            score: minutes, caption: .unit("minutes"), range: 5...120, step: 5,
+            figure: IntradaFont.timer(32), typing: true,
+            accessibilityLabel: "Session length", accessibilityValue: "\(minutes) minutes"
+          ) { _ in }
+        }
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(steppers), as: config)
+  }
+
   func testTempoDrag() {
     let limits = LimitsView.preview
     let band = limits.clickBand(unit: 4)

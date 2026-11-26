@@ -38,4 +38,47 @@ struct StepperControlTests {
     ) { _ in }
     #expect(stepper.spokenValue == spoken)
   }
+
+  private func length(_ minutes: Int) -> ScoreStepper {
+    ScoreStepper(
+      score: minutes, caption: .unit("minutes"), range: 5...120, step: 5,
+      figure: IntradaFont.timer(32), typing: true,
+      accessibilityLabel: "Session length", accessibilityValue: "\(minutes) minutes"
+    ) { _ in }
+  }
+
+  @Test func aLengthStepsByTheCallersStepAndAddsWithoutSnapping() {
+    #expect(length(20).stepped(by: 1) == 25)
+    #expect(length(20).stepped(by: -1) == 15)
+    #expect(length(17).stepped(by: 1) == 22)
+  }
+
+  @Test func aLengthStepStopsAtTheRangeEnds() {
+    #expect(!length(5).canLower)
+    #expect(length(7).stepped(by: -1) == 5)
+    #expect(!length(120).canRaise)
+    #expect(length(118).stepped(by: 1) == 120)
+  }
+
+  @Test func theCallersSpokenValueReplacesTheCaption() {
+    #expect(length(20).spokenValue == "20 minutes")
+    let unspoken = ScoreStepper(
+      score: 20, caption: .unit("minutes"), range: 5...120, accessibilityLabel: "Session length"
+    ) { _ in }
+    #expect(unspoken.spokenValue == "20, minutes")
+  }
+
+  @Test(
+    arguments: [
+      ("17", 17),
+      ("0", 5),
+      ("3", 5),
+      ("240", 120),
+      (" 45 ", 45),
+      ("", nil),
+      ("abc", nil),
+    ] as [(String, Int?)])
+  func aTypedLengthIsClampedToTheRange(typed: String, expected: Int?) {
+    #expect(length(20).typedValue(typed) == expected)
+  }
 }
