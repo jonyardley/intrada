@@ -92,7 +92,10 @@ pub(crate) fn fill(
     most_overdue_first(&mut cold);
     let mut rest: Vec<&LibraryItemView> = items.iter().collect();
     most_overdue_first(&mut rest);
-    let filler = rest.iter().copied().filter(|i| !i.include_in_warm_up);
+    let filler = rest
+        .iter()
+        .copied()
+        .filter(|i| !(defaults.start_with_warm_up && i.include_in_warm_up));
     let candidates = crate::priorities::order_priorities(items, clock)
         .into_iter()
         .chain(cold)
@@ -112,7 +115,8 @@ pub(crate) fn fill(
     }
 
     if warm_up.is_none() && rows.is_empty() {
-        if let Some(item) = rest.first() {
+        let fits = rest.iter().find(|i| i.usual_minutes <= length);
+        if let Some(item) = fits.or(rest.first()) {
             total += item.usual_minutes;
             rows.push(row(item, reason(item, clock)));
         }
@@ -260,7 +264,22 @@ mod tests {
         assert_eq!(plan.warm_up, None);
         assert!(!plan.warm_up_enabled);
         assert!(plan.has_warm_up_items);
-        assert!(!ids(&plan).contains(&"scales"));
+    }
+
+    #[test]
+    fn with_the_warm_up_off_a_warm_up_item_fills_like_any_other() {
+        let defaults = PracticeDefaults {
+            start_with_warm_up: false,
+            ..PracticeDefaults::default()
+        };
+        let items = vec![
+            last_played(item("concerto", ItemKind::Piece, 30), 3),
+            last_played(warm_up(item("scales", ItemKind::Exercise, 5)), 1),
+        ];
+        let plan = fill(&items, &defaults, 20, clock()).expect("a plan");
+
+        assert_eq!(ids(&plan), ["scales"]);
+        assert_eq!(plan.total_mins, 5);
     }
 
     #[test]
