@@ -8,8 +8,10 @@
 
 - A lesson is one line: the date, the issue, then what to do differently and
   why. It records a miss no test or check caught: a mistake or correction, a
-  step that cost far more than it should, or a tool, recipe or doc that
-  misled. A pull request where nothing went wrong writes none.
+  costly session as the shipping skill's retro step reads it from
+  `just usage 1 --quality`, or a tool, recipe, doc or brief that misled. A
+  subagent has no row of its own there, since its cost counts in its lead's
+  session. A pull request where nothing went wrong writes none.
 - A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
   not added again: its line ends "(seen again N)", counting up, and an
   archived one is copied back here with its count raised above the

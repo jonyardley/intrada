@@ -15,8 +15,11 @@ review rule there.
 1. **Retro, only when something went wrong** that no test or check caught,
    once the code is done and before the gates, so any lesson and its fix are
    checked, reviewed and built with the code (#2962): one lesson per miss,
-   given an outcome (below), committed. Nothing went wrong, nothing is
-   written; `just pr-ready` needs no lessons commit (#3034).
+   given an outcome (below), committed. First read the session's row in
+   `just usage 1 --quality`: two or more corrections, a peak context past
+   200k, or a model or effort above the role table counts as something that
+   went wrong, and its lesson names what to do differently. Nothing went
+   wrong, nothing is written; `just pr-ready` needs no lessons commit (#3034).
 2. **Gates**, through `test-runner`: `just pre-review`, plus `just ios-test`
    when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
    class the diff adds or edits, and for each class that drives a form the
