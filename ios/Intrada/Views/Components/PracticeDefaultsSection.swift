@@ -44,6 +44,21 @@ struct PracticeDefaultsSection: View {
               startWithWarmUp: defaults.startWithWarmUp))
         }
         .padding(IntradaSpacing.card)
+        HairlineDivider()
+          .padding(.leading, IntradaSpacing.card)
+        SwitchRow(
+          title: "Start with a warm-up",
+          isOn: Binding(
+            get: { defaults.startWithWarmUp },
+            set: {
+              save(
+                PracticeDefaults(
+                  click: defaults.click, sessionLengthMins: defaults.sessionLengthMins,
+                  startWithWarmUp: $0))
+            }),
+          identifier: "profile.startWithWarmUp.toggle"
+        )
+        .padding(IntradaSpacing.card)
       }
       .cardSurface()
       Text("New sessions start with these. Change them in the session.")
