@@ -196,7 +196,7 @@ struct SessionBuilderScreen: View {
   @ViewBuilder private var lengthCard: some View {
     if let setlist, let limits = store.viewModel?.limits {
       SessionLengthControl(
-        title: "Today's length",
+        title: "Session length",
         lengthMins: setlist.lengthMins,
         detail: nil,
         valueLabel: setlist.lengthSummary ?? "",
