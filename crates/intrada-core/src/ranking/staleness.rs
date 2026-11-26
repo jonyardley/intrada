@@ -360,7 +360,7 @@ mod tests {
                     assert!(!clause.is_empty(), "empty clause for {gap:?}");
                     assert!(!clause.contains('\n'), "multi-line: {clause}");
                     assert!(
-                        !clause.contains('—') && !clause.contains("--"),
+                        !clause.contains('\u{2014}') && !clause.contains("--"),
                         "dash in prose: {clause}"
                     );
                     assert!(!clause.ends_with('.'), "full stop on a label: {clause}");
