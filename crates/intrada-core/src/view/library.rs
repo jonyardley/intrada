@@ -290,6 +290,8 @@ pub(crate) fn build_practice_summaries(
 const STARTING_USUAL_MINUTES: f64 = 10.0;
 const USUAL_MINUTES_FLOOR: f64 = 3.0;
 const USUAL_MINUTES_PULL: f64 = 0.3;
+/// A forgotten timer counts as at most this many usual times (#3005).
+const USUAL_MINUTES_CEILING_FACTOR: f64 = 3.0;
 
 /// Unrounded usual minutes per item with a counted play (#3005).
 fn build_usual_minutes(sessions: &[PracticeSession]) -> std::collections::HashMap<String, f64> {
@@ -311,6 +313,7 @@ fn build_usual_minutes(sessions: &[PracticeSession]) -> std::collections::HashMa
         let value = usual
             .entry(entry.plan.item_id.clone())
             .or_insert(STARTING_USUAL_MINUTES);
+        let played = played.min(*value * USUAL_MINUTES_CEILING_FACTOR);
         *value = (*value + (played - *value) * USUAL_MINUTES_PULL).max(USUAL_MINUTES_FLOOR);
     }
     usual
@@ -934,6 +937,11 @@ mod tests {
     #[test]
     fn one_twelve_minute_play_rounds_to_eleven_not_down_to_ten() {
         assert_eq!(usual_of(vec![finished("s1", 0, 720)]), (11, true));
+    }
+
+    #[test]
+    fn a_forgotten_two_hour_play_counts_as_thirty_minutes() {
+        assert_eq!(usual_of(vec![finished("s1", 0, 7200)]), (16, true));
     }
 
     #[test]
