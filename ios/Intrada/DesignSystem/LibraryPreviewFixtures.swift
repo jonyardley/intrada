@@ -326,7 +326,8 @@
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false, pieceInLibrary: false,
             offersLink: false),
         ],
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"),
+        usualMinutes: 12, usualMinutesFromHistory: true)
     }
 
     /// An exercise with variations: one solid, one marked but not yet solid,

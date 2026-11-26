@@ -208,7 +208,10 @@ struct LibraryDetailScreen: View {
         if item.itemType == .exercise {
           ExerciseHero(item: item)
         }
-        badgeRow
+        VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+          badgeRow
+          usualTimeLine
+        }
 
         if let notes = item.notes, !notes.isEmpty {
           notesSection(notes)
@@ -327,6 +330,13 @@ struct LibraryDetailScreen: View {
         }
       }
     }
+  }
+
+  private var usualTimeLine: some View {
+    Text(item.usualTimeLine)
+      .font(IntradaFont.secondary)
+      .foregroundStyle(IntradaColor.inkSecondary)
+      .fixedSize(horizontal: false, vertical: true)
   }
 }
 
