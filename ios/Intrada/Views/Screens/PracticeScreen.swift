@@ -288,7 +288,7 @@ struct PracticeScreen: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .accessibilityLabel("Today's keys: \(ticked.joined(separator: ", "))")
+    .accessibilityLabel("Today's keys for \(row.title): \(ticked.joined(separator: ", "))")
     .accessibilityHint("Changes today's keys for \(row.title)")
     .accessibilityIdentifier("practice.plan.keys")
   }

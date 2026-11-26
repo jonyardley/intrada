@@ -18,7 +18,15 @@ struct TodaysKeysSheet: View {
   var body: some View {
     BottomSheet(title: "Today's keys", detents: [.large]) {
       ScrollView {
-        if let row { content(row) }
+        if let row {
+          content(row)
+        } else {
+          Text("This item is no longer in today's plan.")
+            .font(IntradaFont.secondary)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(IntradaSpacing.card)
+        }
       }
     }
   }
