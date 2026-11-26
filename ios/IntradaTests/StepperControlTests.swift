@@ -82,28 +82,80 @@ struct StepperControlTests {
     #expect(length(20).typedValue(typed) == expected)
   }
 
-  @Test func eachKeystrokeCommitsTheClampedLengthSoStartPlaysIt() {
+  @MainActor private final class LengthCaller {
+    var score: Int
     var sent: [Int] = []
-    let stepper = ScoreStepper(
-      score: 20, caption: .unit("minutes"), range: 5...120, step: 5, typing: true,
-      accessibilityLabel: "Session length"
-    ) { sent.append($0) }
+    var lastSent: Int
 
-    for keystroke in ["4", "45", "", "20"] { stepper.draftChanged(keystroke) }
+    init(_ score: Int) {
+      self.score = score
+      lastSent = score
+    }
 
-    #expect(sent == [5, 45])
+    var stepper: ScoreStepper {
+      ScoreStepper(
+        score: score, caption: .unit("minutes"), range: 5...120, step: 5, typing: true,
+        accessibilityLabel: "Session length"
+      ) { [self] in
+        sent.append($0)
+        score = $0
+      }
+    }
+
+    func type(_ keystrokes: [String]) {
+      for keystroke in keystrokes {
+        if let sent = stepper.draftChanged(keystroke, lastSent: lastSent) { lastSent = sent }
+      }
+    }
+  }
+
+  @Test func eachKeystrokeCommitsTheClampedLengthSoStartPlaysIt() {
+    let caller = LengthCaller(20)
+
+    caller.type(["4", "45", "", "20"])
+
+    #expect(caller.sent == [5, 45, 20])
+    #expect(caller.score == 20)
+  }
+
+  @Test func anEmptyEntryWhenTypingEndsPutsBackTheLengthBeforeTyping() {
+    let caller = LengthCaller(20)
+
+    caller.type(["2", ""])
+    caller.stepper.typingEnded(draft: "", saved: 20, lastSent: caller.lastSent)
+
+    #expect(caller.sent == [5, 20])
+    #expect(caller.score == 20)
+  }
+
+  @Test func aTypedLengthWhenTypingEndsIsKept() {
+    let caller = LengthCaller(20)
+
+    caller.type(["4", "45"])
+    caller.stepper.typingEnded(draft: "45", saved: 20, lastSent: caller.lastSent)
+
+    #expect(caller.sent == [5, 45])
+  }
+
+  @Test func untouchedTypingEndsWithNoWrite() {
+    let caller = LengthCaller(20)
+
+    caller.stepper.typingEnded(draft: "", saved: 20, lastSent: caller.lastSent)
+
+    #expect(caller.sent.isEmpty)
   }
 
   @Test(
     arguments: [
       ("17", 1, 22),
       ("", 1, 25),
+      ("", -1, 15),
       ("118", 1, 120),
       ("3", -1, 5),
     ] as [(String, Int, Int)])
-  func aRingTapWhileTypingStepsFromTheDraftOrTheNumberBefore(
+  func aRingTapWhileTypingStepsFromTheDraftOrTheNumberBeforeTyping(
     draft: String, steps: Int, expected: Int
   ) {
-    #expect(length(20).stepped(by: steps, fromDraft: draft) == expected)
+    #expect(length(5).stepped(by: steps, fromDraft: draft, saved: 20) == expected)
   }
 }

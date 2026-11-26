@@ -39,6 +39,8 @@ struct ScoreStepper: View {
   let onChange: (Int) -> Void
 
   @State private var draft = ""
+  @State private var scoreBeforeTyping: Int?
+  @State private var lastSent: Int?
   @FocusState private var typingFocused: Bool
 
   init(
@@ -141,10 +143,21 @@ struct ScoreStepper: View {
       .allowsHitTesting(typingFocused)
       .accessibilityHidden(!typingFocused)
       .onChange(of: typingFocused) { _, now in
-        if now { draft = "\(score)" }
+        if now {
+          draft = "\(score)"
+          scoreBeforeTyping = score
+          lastSent = score
+        } else if let saved = scoreBeforeTyping {
+          typingEnded(draft: draft, saved: saved, lastSent: lastSent ?? score)
+          scoreBeforeTyping = nil
+          lastSent = nil
+        }
       }
       .onChange(of: draft) { _, typed in
-        if typingFocused { draftChanged(typed) }
+        guard typingFocused, let sent = draftChanged(typed, lastSent: lastSent ?? score) else {
+          return
+        }
+        lastSent = sent
       }
       .toolbar {
         if typingFocused {
@@ -170,22 +183,33 @@ struct ScoreStepper: View {
 
   /// Each keystroke commits, so a Start tapped while typing plays the typed
   /// number rather than the one before it (#3007).
-  func draftChanged(_ text: String) {
-    if let typed = typedValue(text), typed != score { onChange(typed) }
+  @discardableResult
+  func draftChanged(_ text: String, lastSent: Int) -> Int? {
+    guard let typed = typedValue(text), typed != lastSent else { return nil }
+    onChange(typed)
+    return typed
+  }
+
+  /// An empty entry changes nothing, so typing that ends on one puts back the
+  /// number from before typing over whatever a keystroke on the way sent.
+  func typingEnded(draft text: String, saved: Int, lastSent: Int) {
+    if typedValue(text) == nil, saved != lastSent { onChange(saved) }
   }
 
   /// A ring tap while typing steps from the typed number and ends the typing,
   /// so one write lands instead of the draft overwriting the step on Done.
   private func ringTapped(by steps: Int) {
     guard typingFocused else { return onChange(stepped(by: steps)) }
-    let next = stepped(by: steps, fromDraft: draft)
+    let next = stepped(by: steps, fromDraft: draft, saved: scoreBeforeTyping ?? score)
+    scoreBeforeTyping = nil
+    lastSent = nil
     draft = ""
     typingFocused = false
     onChange(next)
   }
 
-  func stepped(by steps: Int, fromDraft text: String) -> Int {
-    clamped((typedValue(text) ?? score) + steps * step)
+  func stepped(by steps: Int, fromDraft text: String, saved: Int) -> Int {
+    clamped((typedValue(text) ?? saved) + steps * step)
   }
 
   private func clamped(_ value: Int) -> Int {
