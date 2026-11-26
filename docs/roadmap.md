@@ -48,7 +48,8 @@ on.
 - **Two ideas to explore**, not to build yet: warm-ups (#2795) and a
   checklist for starting a new piece (#2796).
 - **One database change per release**: this one removes focus, repetitions
-  and the Add detail choices.
+  and the Add detail choices. A second, the warm-up switch on each item
+  (#3006), was agreed with the owner on 26 November 2026.
 
 ### Next, in order
 

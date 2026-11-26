@@ -42,7 +42,7 @@ fn upgraded_to(version: &str, seed: &str, target: &str) -> Store {
 }
 
 impl Store {
-    /// The item codec reads every column the latest step adds, so a test
+    /// The item codec reads the warm-up column v24 adds (#3006), so a test
     /// stopped at an earlier step finishes the chain before reading items.
     fn finish(&mut self) {
         migrations::migrate(&mut self.conn, migrations::latest(), &mut self.pending)
@@ -589,7 +589,7 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
     let mut conn = Connection::open_in_memory().expect("opens");
     migrations::migrate(&mut conn, "v19_keys_and_variations", &mut vec![]).expect("migrates");
     conn.execute_batch(&seed).expect("seeds");
-    let store = Store::new(conn, "v20_exercise_link").expect("finishes");
+    let mut store = Store::new(conn, "v20_exercise_link").expect("finishes");
     let link = |piece: &str, exercise: &str, position: usize| ExerciseLink {
         id: format!("link|{piece}|{exercise}"),
         exercise_id: exercise.into(),
@@ -628,6 +628,12 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
     assert_eq!(links(&store, "a"), vec![]);
     assert_eq!(links(&store, "x-y"), vec![link("x-y", "z", 0)]);
     assert_eq!(links(&store, "x"), vec![link("x", "y-z", 0)]);
+
+    store.finish();
+    assert_eq!(store.item("p2").exercise_links, vec![]);
+    assert_eq!(store.item("p3").exercise_links, vec![]);
+    assert_eq!(store.item("x-y").exercise_links, vec![link("x-y", "z", 0)]);
+    assert_eq!(store.item("x").exercise_links, vec![link("x", "y-z", 0)]);
 }
 
 const DROPPED_TABLES: [&str; 10] = [
