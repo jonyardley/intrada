@@ -16,13 +16,17 @@ review rule there.
    once the code is done and before the gates, so any lesson and its fix are
    checked, reviewed and built with the code (#2962): one lesson per miss,
    given an outcome (below), committed. First read the session's row in
-   `just usage 1 --quality`: two or more corrections, a peak context past
-   200k, or a model or effort that did not fit the work counts as something
-   that went wrong, and its lesson names what to do differently. Judge the fit
-   by the work, not by the role table: when the table itself looks wrong, the
-   lesson says which row and why. Anything is in scope for a lesson, the role
-   table, global rules, guards and prompts included. Nothing went wrong,
-   nothing is written; `just pr-ready` needs no lessons commit (#3034).
+   `just usage 1 --quality`, found by the first eight characters of the
+   session id (the folder name in the scratchpad path), not by branch: a `cor`
+   of two or more, a `peak` past 200k, or a model or effort that did not fit
+   the work counts as something that went wrong, and its lesson names what to
+   do differently. The row covers the whole session over the last day, so it
+   is a rough signal; no row means the session was not among the costliest,
+   and corrections are counted by hand. Judge the fit by the work, not only by
+   the role table: when the table itself looks wrong, the lesson says which
+   row and why. Anything is in scope for a lesson, the role table, global
+   rules, guards and prompts included. Nothing went wrong, nothing is
+   written; `just pr-ready` needs no lessons commit (#3034).
 2. **Gates**, through `test-runner`: `just pre-review`, plus `just ios-test`
    when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
    class the diff adds or edits, and for each class that drives a form the
