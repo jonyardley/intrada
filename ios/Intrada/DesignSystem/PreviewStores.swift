@@ -205,7 +205,6 @@
     static var previewPracticeProfile: Store {
       Store(
         bridge: PreviewBridge(
-          items: PlanView.previewItems,
           sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday, suggestedPlan: .previewTypical,
           profile: .previewCellist))
@@ -215,7 +214,6 @@
     static func previewPractice(plan: PlanView) -> Store {
       Store(
         bridge: PreviewBridge(
-          items: PlanView.previewItems,
           sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday, suggestedPlan: plan))
     }

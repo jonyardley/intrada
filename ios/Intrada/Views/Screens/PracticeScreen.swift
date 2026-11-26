@@ -233,7 +233,7 @@ struct PracticeScreen: View {
 
   private func planRow(_ row: PlanRowView) -> some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
-      kind(of: row).bar.frame(width: 4, height: 34).clipShape(Capsule())
+      row.kind.bar.frame(width: 4, height: 34).clipShape(Capsule())
       VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
         Text(row.title)
           .font(IntradaFont.cardTitle)
@@ -251,10 +251,6 @@ struct PracticeScreen: View {
     }
     .padding(IntradaSpacing.cardCompact)
     .accessibilityElement(children: .combine)
-  }
-
-  private func kind(of row: PlanRowView) -> ItemKind {
-    store.libraryRows.first { $0.id == row.itemId }?.itemType ?? .piece
   }
 
   private func editPlan() {

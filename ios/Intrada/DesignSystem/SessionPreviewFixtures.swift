@@ -235,37 +235,28 @@
     static var previewWarmUpOff: PlanView {
       preview(warmUp: nil, warmUpEnabled: false, rows: [.previewBach, .previewClair])
     }
-
-    /// The library rows the plan's ids point at, so each row draws its kind's bar.
-    static var previewItems: [LibraryItemView] {
-      [
-        LibraryItemFixture.view(id: "plan-scales", itemType: .exercise, title: "Major scales"),
-        LibraryItemFixture.view(id: "plan-bach", title: "Bach Prelude in C"),
-        LibraryItemFixture.view(
-          id: "plan-enclosures", itemType: .exercise, title: "ii V i enclosures"),
-        LibraryItemFixture.view(id: "plan-clair", title: "Clair de lune"),
-      ]
-    }
   }
 
   extension PlanRowView {
     static var previewScales: PlanRowView {
-      PlanRowView(itemId: "plan-scales", title: "Major scales", reason: "Exercise", minutes: 3)
+      PlanRowView(
+        itemId: "plan-scales", title: "Major scales", reason: "Exercise", minutes: 3,
+        kind: .exercise)
     }
     static var previewBach: PlanRowView {
       PlanRowView(
         itemId: "plan-bach", title: "Bach Prelude in C", reason: "Piece · a priority",
-        minutes: 10)
+        minutes: 10, kind: .piece)
     }
     static var previewEnclosures: PlanRowView {
       PlanRowView(
         itemId: "plan-enclosures", title: "ii V i enclosures",
-        reason: "Exercise · going cold after 3 weeks", minutes: 7)
+        reason: "Exercise · going cold after 3 weeks", minutes: 7, kind: .exercise)
     }
     static var previewClair: PlanRowView {
       PlanRowView(
         itemId: "plan-clair", title: "Clair de lune", reason: "Piece · cold for 5 weeks",
-        minutes: 10)
+        minutes: 10, kind: .piece)
     }
   }
 
