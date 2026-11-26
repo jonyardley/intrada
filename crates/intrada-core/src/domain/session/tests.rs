@@ -7152,8 +7152,8 @@ fn todays_length_changes_the_build_and_leaves_the_preference_alone() {
 }
 
 #[test]
-fn todays_length_off_the_stepper_is_refused_and_keeps_the_last() {
-    for length in [0, 5, 32, 125] {
+fn todays_length_out_of_range_is_refused_and_keeps_the_last() {
+    for length in [0, 5, 9, 121, 125] {
         let mut m = model_with_library();
         prefer_length(&mut m, Some(30));
         update(&mut m, Event::Session(SessionEvent::StartBuilding));
@@ -7561,6 +7561,25 @@ fn a_length_change_in_the_builder_keeps_the_planned_entries() {
 
     assert_eq!(ids(&m), seeded);
     assert_eq!(m.last_error, None);
+}
+
+#[test]
+fn a_typed_length_steps_on_by_whole_minutes_in_the_builder() {
+    let mut m = planned_model();
+    set_plan_length(&mut m, 23);
+    update(
+        &mut m,
+        Event::Session(SessionEvent::EditPlannedSession { now: Utc::now() }),
+    );
+
+    for length in [28, 18] {
+        set_today(&mut m, Some(length));
+        assert_eq!(m.last_error, None, "{length} minutes");
+        assert_eq!(today_length(&m), Some(length));
+    }
+    set_today(&mut m, Some(121));
+    assert!(m.last_error.is_some());
+    assert_eq!(today_length(&m), Some(18));
 }
 
 #[test]

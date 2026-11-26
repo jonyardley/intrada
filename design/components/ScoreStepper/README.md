@@ -25,7 +25,7 @@ Nudges a number up or down from where it starts, with minus and plus in thin rin
 ## Variants
 
 - **Stepper** (`ScoreStepper`): use for a score. The caller passes the score, where it came from, the range, a spoken label and what to do with the change.
-- **Session length** (`ScoreStepper` with a unit caption): Look B, 32 point, with typing, picked by Jon on 2026-11-26. The number is in the large clock font (`IntradaFont.timer(32)`) with "minutes" under it, the step is the core's length step, and a tap on the number opens the number pad.
+- **Session length** (`ScoreStepper` with a unit caption): Look B, 32 point, with typing, picked by the owner on 2026-11-26. The number is in the large clock font (`IntradaFont.timer(32)`) with "minutes" under it, the step is the core's length step, and a tap on the number opens the number pad.
 - **Ring button alone** (`TempoStepButton`): use for minus or plus beside another control, such as the metronome's readout while it sounds. The disabled state is an option on it.
 
 ## Behaviour

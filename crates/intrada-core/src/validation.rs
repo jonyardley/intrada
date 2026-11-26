@@ -321,6 +321,22 @@ pub fn validate_session_length(length_mins: &Option<u16>) -> Result<(), LibraryE
     Ok(())
 }
 
+/// Today's length in the builder: any whole minutes in range, since a typed
+/// plan length seeds it off the step (#3007).
+pub fn validate_plan_length(length_mins: &Option<u16>) -> Result<(), LibraryError> {
+    if let Some(m) = length_mins {
+        if !(MIN_SESSION_LENGTH_MINS..=MAX_SESSION_LENGTH_MINS).contains(m) {
+            return Err(LibraryError::Validation {
+                field: "session_length_mins".to_string(),
+                message: format!(
+                    "Session length must be between {MIN_SESSION_LENGTH_MINS} and {MAX_SESSION_LENGTH_MINS} minutes"
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
 /// A stored length the range or step has since moved past, brought back
 /// onto it rather than thrown away.
 pub fn clamp_session_length(length_mins: u16) -> u16 {
@@ -2002,6 +2018,26 @@ mod tests {
             assert_eq!(
                 validate_session_length(length).is_ok(),
                 *ok,
+                "{length:?} minutes"
+            );
+        }
+    }
+
+    #[test]
+    fn todays_length_takes_any_whole_minutes_in_range() {
+        for (length, ok) in [
+            (None, true),
+            (Some(10), true),
+            (Some(23), true),
+            (Some(28), true),
+            (Some(120), true),
+            (Some(9), false),
+            (Some(121), false),
+            (Some(u16::MAX), false),
+        ] {
+            assert_eq!(
+                validate_plan_length(&length).is_ok(),
+                ok,
                 "{length:?} minutes"
             );
         }

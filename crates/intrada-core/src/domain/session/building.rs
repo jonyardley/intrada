@@ -295,7 +295,7 @@ pub(super) fn set_session_length(
         model.raise_error("A session length can only be set while building".to_string());
         return crux_core::render::render();
     };
-    if let Err(e) = validation::validate_session_length(&length_mins) {
+    if let Err(e) = validation::validate_plan_length(&length_mins) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }

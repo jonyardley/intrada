@@ -253,7 +253,7 @@ and the button reads `Set up profile`, never `Get started` (rule 3).
 
 ### V9: `How long have you got?` heads Practice
 
-**Decided 2026-11-26 (Jon, #3007).** The one second-person question allowed as
+**Decided 2026-11-26 (the owner, #3007).** The one second-person question allowed as
 a heading on chrome, an exception to V2. It sits at a real decision (rule 6):
 the answer is the session length right under it, and the plan fills from it.
 No other heading follows it as precedent.

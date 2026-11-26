@@ -1,6 +1,5 @@
-//! Today's plan from the time the musician has (#3007): a warm-up, then the
-//! priorities, then what is going cold, each at its usual minutes. Pure and
-//! clock-injected like `suggestion`, so the view and the seeding events agree.
+//! Today's plan from the time the musician has (#3007): a warm-up, priorities,
+//! then what is going cold. Pure and clock-injected like `suggestion`.
 
 use std::cmp::Reverse;
 use std::collections::HashSet;
@@ -73,13 +72,11 @@ pub(crate) fn fill(
         let mut pool: Vec<&LibraryItemView> =
             items.iter().filter(|i| i.include_in_warm_up).collect();
         most_overdue_first(&mut pool);
-        pool.first()
-            .filter(|i| i.usual_minutes <= length)
-            .map(|item| {
-                taken.insert(item.id.as_str());
-                total += item.usual_minutes;
-                row(item, kind_word(&item.item_type).to_string())
-            })
+        pool.iter().find(|i| i.usual_minutes <= length).map(|item| {
+            taken.insert(item.id.as_str());
+            total += item.usual_minutes;
+            row(item, kind_word(&item.item_type).to_string())
+        })
     } else {
         None
     };
@@ -109,7 +106,7 @@ pub(crate) fn fill(
         rows.push(row(item, reason(item, clock)));
     }
 
-    if rows.is_empty() {
+    if warm_up.is_none() && rows.is_empty() {
         let mut rest: Vec<&LibraryItemView> = items
             .iter()
             .filter(|i| !taken.contains(i.id.as_str()))
@@ -278,6 +275,31 @@ mod tests {
         let plan = filled(&items, 20);
 
         assert_eq!(plan.warm_up.expect("a warm-up").item_id, "stale");
+    }
+
+    #[test]
+    fn a_warm_up_item_too_long_for_the_length_gives_way_to_one_that_fits() {
+        let items = vec![
+            last_played(warm_up(item("long", ItemKind::Exercise, 30)), 25),
+            last_played(warm_up(item("short", ItemKind::Exercise, 5)), 15),
+        ];
+        let plan = filled(&items, 20);
+
+        assert_eq!(plan.warm_up.expect("a warm-up").item_id, "short");
+    }
+
+    #[test]
+    fn a_warm_up_that_fills_the_length_stands_alone() {
+        let items = vec![
+            warm_up(item("scales", ItemKind::Exercise, 10)),
+            starred(item("sonata", ItemKind::Piece, 10)),
+            last_played(item("nocturne", ItemKind::Piece, 10), 25),
+        ];
+        let plan = filled(&items, 10);
+
+        assert_eq!(ids(&plan), ["scales"]);
+        assert!(plan.rows.is_empty());
+        assert_eq!(plan.total_mins, 10);
     }
 
     #[test]
