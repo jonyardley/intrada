@@ -10,7 +10,7 @@ use crate::view::library::{
 use crate::view::session::{play_labels, session_to_view};
 
 /// Everything the projections read. The local day and the offset are here
-/// because staleness, Up next, the week strip and Progress read
+/// because the ranking, the week strip and Progress read
 /// `LocalClock::today` (#1694).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ProjectionKey {

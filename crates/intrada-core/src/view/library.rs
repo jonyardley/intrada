@@ -8,8 +8,8 @@ use crate::model::{
 };
 
 /// Every library item projected for the view, unfiltered and unsorted. Shared
-/// by `build_view` and the Up next derivation, so the card reads the same marks
-/// the Library screens show rather than deriving its own (#1082).
+/// by `build_view` and `derive_plan`, so the ranking reads the same marks the
+/// Library screens show rather than deriving its own (#1082).
 pub(super) fn build_library_item_views(
     model: &Model,
     item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
