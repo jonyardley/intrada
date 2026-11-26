@@ -411,6 +411,24 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(defaults.data(forKey: Store.previousPracticeDefaultsKey))
   }
 
+  func testAnOrphanVersion3BlobIsClearedUnsent() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
+    let orphanKey = "intrada.practice-defaults.v3"  // gitleaks:allow
+    defaults.set(Data([0x05, 0, 0, 0, 0, 0]), forKey: orphanKey)
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.restorePersistedPracticeDefaults()
+
+    XCTAssertTrue(sentEvents.isEmpty)
+    XCTAssertNil(defaults.data(forKey: orphanKey))
+  }
+
   func testRestorePersistedPracticeDefaultsNoopWhenAbsent() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
     let bridge = FakeBridge()

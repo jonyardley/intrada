@@ -496,6 +496,52 @@ fn v24_keeps_every_item_with_the_warm_up_switch_off() {
 }
 
 #[test]
+fn a_v0_19_0_notebook_reaches_the_latest_step_with_every_item_intact_and_the_switch_off() {
+    let mut store = upgraded(
+        "v22_remove_sections",
+        &format!(
+            "INSERT INTO item (id, title, kind, composer, key, modality, notes, tags,
+               created_at, updated_at, priority)
+             VALUES ('p1', 'Nocturne', 'piece', 'Chopin', 'E', 'minor', 'slow left hand',
+               '[\"romantic\"]', '{EARLY}', '{EARLY}', 1);
+             INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('e1', 'Major scales', 'exercise', '[]', '{EARLY}', '{EARLY}');"
+        ),
+    );
+    let items = store.items();
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().all(|i| !i.include_in_warm_up));
+    let nocturne = store.item("p1");
+    assert_eq!(
+        (
+            nocturne.title.as_str(),
+            nocturne.kind.clone(),
+            nocturne.composer.as_deref(),
+            nocturne.notes.as_deref(),
+            nocturne.tags.clone(),
+            nocturne.priority,
+        ),
+        (
+            "Nocturne",
+            ItemKind::Piece,
+            Some("Chopin"),
+            Some("slow left hand"),
+            vec!["romantic".to_string()],
+            true
+        )
+    );
+    assert_eq!(
+        nocturne.key,
+        Some(key(Letter::E, Accidental::Natural, Some(Modality::Minor)))
+    );
+    let scales = store.item("e1");
+    assert_eq!(
+        (scales.title.as_str(), scales.kind.clone(), scales.priority),
+        ("Major scales", ItemKind::Exercise, false)
+    );
+}
+
+#[test]
 fn v19_keeps_every_key_chart_and_session() {
     let chart = r#"{"key":"G","modality":"minor","sections":[]}"#;
     let entries = r#"[{"id":"e1","itemId":"p1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":300,"status":"completed","plannedVariationId":"v-old","plays":[{"id":"pl1","variationId":"v-old","startedAt":"2026-09-01T10:00:00Z","seconds":300,"repHistory":[{"action":"success","at":"2026-09-01T10:01:00Z"}],"score":7}]}]"#;
