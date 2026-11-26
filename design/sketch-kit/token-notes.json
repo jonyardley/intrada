@@ -2,9 +2,9 @@
   "tokens": {
     "paperTop": "The paper: the ground of every screen. Text on it is ink or inkSecondary.",
     "cardFill": "The fill of every card, sheet and dialog (see the Card component).",
-    "surfaceSunken": "A ground sunk below the paper, such as a track behind a control, and the tab bar.",
+    "surfaceSunken": "A ground sunk below the paper, such as a track behind a control, and the tab bar's fill.",
     "hairline": "The one point edge round a card.",
-    "divider": "The one pixel line between rows inside a card, and an empty outline: the mark selector, the click's silent beats.",
+    "divider": "The one pixel line between rows inside a card, and an empty outline: the mark selector, the click's silent beats, an empty day.",
     "ink": "Text and the interactive colour on paper and on cards. Never a brand hue.",
     "inkSecondary": "Secondary lines and every label (section, field, toggle), on paper and cards.",
     "inkFaintIcon": "A dimmed glyph with no text of its own; it clears the contrast floor for marks that are not text. Never for text.",

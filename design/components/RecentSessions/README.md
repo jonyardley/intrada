@@ -32,7 +32,7 @@ None. Rows are not tappable and nothing moves.
 
 ## Content
 
-- A card, `cardSurface()` with the `IntradaRadius.card` corner.
+- A card, `cardSurface()` with the `IntradaRadius.card` corner. That corner goes when #2664 removes the parameter.
 - The header is `SectionTitle` "Recent sessions", with the trend on the right in `badge`.
 - A rise shows in `success` with a rising chart glyph. A fall shows in `inkSecondary` with a falling glyph: a drop is neutral, never red.
 - Each row is a 38 point `ScoreRing` and the date in `secondary`, `inkSecondary`, with `HairlineDivider` between rows.

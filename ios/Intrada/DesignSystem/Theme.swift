@@ -9,7 +9,7 @@ enum IntradaColor {
   static let cardFill = Color(hex: 0xFFFFFF)
   static let surfaceSunken = Color(hex: 0xF3EFE8)
   static let hairline = Color(hex: 0xECE6DA)
-  /// A dividing line, and an empty outline: the mark selector, the click's silent beats.
+  /// A dividing line, and an empty outline: the mark selector, the click's silent beats, an empty day.
   static let divider = Color(hex: 0xDDD7CA)
 
   static let ink = Color(hex: 0x2A2725)
