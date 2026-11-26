@@ -85,7 +85,6 @@ ios/Intrada/Views/Components/StartHereCard.swift	spacing: 4	1	#2706
 ios/Intrada/Views/Components/TagChipInput.swift	.padding(.vertical, 10)	1	#2706
 ios/Intrada/Views/Components/TagChipInput.swift	spacing: 6	1	#2706
 ios/Intrada/Views/Components/TagPills.swift	spacing: 6	1	#2706
-ios/Intrada/Views/Components/TempoTrend.swift	spacing: 2	1	#2706
 ios/Intrada/Views/Components/TickRow.swift	spacing: 3	1	#2706
 ios/Intrada/Views/Components/TransportButton.swift	spacing: 32	1	#2706
 ios/Intrada/Views/Components/TypeBadge.swift	.padding(.horizontal, 10)	1	#2706
@@ -126,7 +125,7 @@ ios/Intrada/Views/Screens/SessionBuilderScreen.swift	.padding(.top, 2)	1	#2706
 ios/Intrada/Views/Screens/SessionBuilderScreen.swift	.padding(.top, 4)	1	#2706
 ios/Intrada/Views/Screens/SessionBuilderScreen.swift	.padding(.vertical, 2)	1	#2706
 ios/Intrada/Views/Screens/SessionBuilderScreen.swift	spacing: 1	1	#2706
-ios/Intrada/Views/Screens/SessionBuilderScreen.swift	spacing: 2	3	#2706
+ios/Intrada/Views/Screens/SessionBuilderScreen.swift	spacing: 2	2	#2706
 ios/Intrada/Views/Screens/SessionBuilderScreen.swift	spacing: 6	2	#2706
 ios/Intrada/Views/Screens/SessionSummaryScreen.swift	.padding(.leading, 19)	2	#2706
 ios/Intrada/Views/Screens/SessionSummaryScreen.swift	spacing: 10	1	#2706

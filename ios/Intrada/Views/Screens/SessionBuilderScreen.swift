@@ -8,7 +8,6 @@ import SwiftUI
 struct SessionBuilderScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.dynamicTypeSize) private var typeSize
   @State private var confirmingCancel = false
   // `SharedTypes`' domain `Set` (setlists) shadows `Swift.Set` here.
   @State private var collapsedGroups: Swift.Set<String> = []
@@ -299,14 +298,6 @@ struct SessionBuilderScreen: View {
       .accessibilityHidden(true)
   }
 
-  private var rowLineLimit: Int { typeSize.isAccessibilitySize ? 3 : 1 }
-
-  private var titleLayout: AnyLayout {
-    typeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
-      : AnyLayout(HStackLayout(spacing: 6))
-  }
-
   // ── Rows ─────────────────────────────────────────────────────────────
 
   @ViewBuilder private func rowView(_ row: BuilderRow) -> some View {
@@ -332,10 +323,10 @@ struct SessionBuilderScreen: View {
         entry.itemType.bar.frame(width: 4, height: 34).clipShape(Capsule())
         VStack(alignment: .leading, spacing: 2) {
           Text(entry.itemTitle).font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
-            .lineLimit(rowLineLimit)
+            .lineLimit(1)
           Text(block.caption)
             .font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
-            .lineLimit(rowLineLimit)
+            .lineLimit(1)
           planLine(entry)
         }
         Spacer(minLength: IntradaSpacing.controlGap)
@@ -385,10 +376,10 @@ struct SessionBuilderScreen: View {
       HStack(spacing: IntradaSpacing.cardCompact) {
         ItemKind.piece.bar.frame(width: 4, height: 34).clipShape(Capsule())
         VStack(alignment: .leading, spacing: 2) {
-          titleLayout {
+          HStack(spacing: 6) {
             Text(block.pieceTitle ?? "Related exercises")
               .font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
-              .lineLimit(rowLineLimit)
+              .lineLimit(1)
               .fixedSize(horizontal: false, vertical: true)
             if collapsed {
               Text(block.relatedLabel).font(IntradaFont.secondary)
@@ -399,7 +390,7 @@ struct SessionBuilderScreen: View {
           }
           if let subtitle = collapsed ? block.plannedDisplay : block.caption {
             Text(subtitle).font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
-              .lineLimit(rowLineLimit)
+              .lineLimit(1)
           }
           if let piece = block.piece { planLine(piece) }
         }
@@ -445,10 +436,10 @@ struct SessionBuilderScreen: View {
           ItemKind.exercise.bar.frame(width: 3, height: 26).clipShape(Capsule())
           VStack(alignment: .leading, spacing: 1) {
             Text(entry.itemTitle).font(IntradaFont.bodyMedium).foregroundStyle(IntradaColor.ink)
-              .lineLimit(rowLineLimit)
+              .lineLimit(1)
             Text("Related").font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
-              .lineLimit(rowLineLimit)
+              .lineLimit(1)
             planLine(entry)
           }
           Spacer(minLength: 0)

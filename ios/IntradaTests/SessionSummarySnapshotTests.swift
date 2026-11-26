@@ -167,23 +167,6 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
-  func testReflectionSheetWithThreeVariationsAccessibilitySize() {
-    let sheet = ZStack(alignment: .bottom) {
-      PaperBackground()
-      ReflectionSheet(
-        itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
-        tempoRows: [.preview("p1"), .preview("p2")],
-        plays: [
-          .preview("p1", "C major", "4:10"),
-          .preview("p2", "G major", "3:20"),
-        ],
-        limits: .preview,
-        onSave: { _ in }, onSkip: {})
-    }
-    .dynamicTypeSize(.accessibility1)
-    assertSnapshot(of: host(sheet), as: config)
-  }
-
   /// A stamped row counts in its own metre (7/8, quavers); an unstamped one counts in crotchets (#1761 rule 6).
   func testReflectionSheetWithTempoPerRow() {
     let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
@@ -202,27 +185,6 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
-    assertSnapshot(of: host(sheet), as: config)
-  }
-
-  func testReflectionSheetWithTempoPerRowAccessibilitySize() {
-    let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
-    let sheet = ZStack(alignment: .bottom) {
-      PaperBackground()
-      ReflectionSheet(
-        itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
-        tempoRows: [
-          .preview("p1", tempo: 168, click: ClickState(metre: sevenEight, sounding: 0b0101001)),
-          .preview("p2"),
-        ],
-        plays: [
-          .preview("p1", "C major", "4:10"),
-          .preview("p2", "G major", "3:20"),
-        ],
-        limits: .preview,
-        onSave: { _ in }, onSkip: {})
-    }
-    .dynamicTypeSize(.accessibility1)
     assertSnapshot(of: host(sheet), as: config)
   }
 

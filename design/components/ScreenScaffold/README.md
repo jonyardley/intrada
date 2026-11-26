@@ -17,7 +17,7 @@ The frame of every top-level screen: paper behind it, the page title and its lin
 
 ## When not to use
 
-- A sheet on iPhone: use `BottomSheet`, which puts its title in the content for large text.
+- A sheet on iPhone: use `BottomSheet`.
 - The practice player, which has its own full-screen layout.
 
 ## Variants
@@ -55,7 +55,7 @@ The look is intrada's: the highlighter swipe, the round add disc and the rule.
 - The title and subtitle are one element, read as "Library, 8 pieces, 4 exercises": the separator becomes a comma. Header actions stay separate elements.
 - The title is read as a heading; on iPhone that is #2657.
 - The round add button reads as its label, such as "Add item".
-- Every text size scales, up to the largest accessibility size. A title too long for one line wraps rather than truncating, and on iPhone it then loses the swipe.
+- Text scales up to the largest standard size, where the app caps it (#1411). A title too long for one line wraps rather than truncating, and on iPhone it then loses the swipe.
 
 ## Do and don't
 

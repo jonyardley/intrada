@@ -14,7 +14,7 @@ struct PlaceholderContent: View {
   var glyphTint: Color = IntradaColor.accent.opacity(IntradaOpacity.dimmed)
   var actions: [PlaceholderAction] = []
 
-  // Scrolls only when it cannot fit: at accessibility sizes the buttons would
+  // Scrolls only when it cannot fit: at large text sizes the buttons would
   // otherwise squeeze the message and their own labels into truncation.
   var body: some View {
     GeometryReader { proxy in

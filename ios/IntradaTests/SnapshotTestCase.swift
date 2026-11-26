@@ -38,7 +38,7 @@ class SnapshotTestCase: XCTestCase {
   }
 
   // UIKit keeps the back chevron size from the first pushed bar a process draws,
-  // so a default-size one goes first and no accessibility-size test sets it (#1744, #2161).
+  // so a default-size one goes first and no larger-text test sets it (#1744, #2161).
   private static func primeBackChevron() {
     guard !backChevronPrimed else { return }
     backChevronPrimed = true

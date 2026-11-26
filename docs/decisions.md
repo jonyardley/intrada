@@ -52,6 +52,7 @@ Decisions whose full records were removed from the repo, one line each; git hist
 - The Focus Player is native, with the core owning the clock (#932).
 - The click keeps going in the background through a silent audio session, and the timer reads the wall clock (#1399).
 - Lock screen progress uses a Live Activity; the native design replaces the Tauri plugin design (#1600).
+- Accessibility text sizes dropped on 2026-11-26: text caps at the largest standard size, because layouts did not hold beyond it and the owner chose not to support them (#1411, closes epic #2134).
 - TestFlight ships via fastlane match and an App Store Connect key, on dispatch or a v tag, never per PR, saving macOS minutes (#784, #984).
 
 ## Process

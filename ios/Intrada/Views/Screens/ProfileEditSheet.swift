@@ -7,7 +7,6 @@ import SwiftUI
 struct ProfileEditSheet: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var name = ""
   @State private var instrument = ""
@@ -97,19 +96,11 @@ struct ProfileEditSheet: View {
     profile?.draftIcon ?? profile?.icon ?? .other
   }
 
-  // Stacked at accessibility sizes so the label and the button keep whole words (#2126).
   private var iconCard: some View {
-    let stacked = dynamicTypeSize.isAccessibilitySize
-    let layout: AnyLayout =
-      stacked
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.cardCompact))
-      : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
-    return layout {
+    HStack(spacing: IntradaSpacing.card) {
       ProfileBadge(icon: shownIcon)
       FieldLabel("Icon")
-      if !stacked {
-        Spacer(minLength: IntradaSpacing.controlGap)
-      }
+      Spacer(minLength: IntradaSpacing.controlGap)
       // The frame sits inside the label so the whole 44pt box takes the tap (#2318).
       Button {
         choosingIcon = true

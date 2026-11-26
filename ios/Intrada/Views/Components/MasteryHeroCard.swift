@@ -1,30 +1,18 @@
 import SwiftUI
 
-/// The Progress hero. At accessibility sizes the ring drops below the text: the
-/// column beside it left the eyebrow too narrow for its own first word (#1471).
+/// The Progress hero.
 struct MasteryHeroCard: View {
   let mastery: Double
   let change: String?
   let climbing: String?
 
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
   private let gutter: CGFloat = 18
 
   var body: some View {
-    Group {
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: gutter) {
-          MasteryDial(value: mastery)
-          summary
-        }
-      } else {
-        HStack(spacing: gutter) {
-          MasteryDial(value: mastery)
-          summary
-          Spacer(minLength: 0)
-        }
-      }
+    HStack(spacing: gutter) {
+      MasteryDial(value: mastery)
+      summary
+      Spacer(minLength: 0)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(gutter)
@@ -64,16 +52,5 @@ struct MasteryHeroCard: View {
       )
       .padding(IntradaSpacing.card)
     }
-  }
-
-  #Preview("Accessibility size") {
-    ZStack {
-      PaperBackground()
-      MasteryHeroCard(
-        mastery: 6.4, change: "+1.2 this week", climbing: "Climbing steadily across 5 items."
-      )
-      .padding(IntradaSpacing.card)
-    }
-    .dynamicTypeSize(.accessibility3)
   }
 #endif

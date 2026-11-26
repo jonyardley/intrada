@@ -117,7 +117,7 @@ Sweep: `consistency.*`.
 **Accessibility.** Can every musician use it?
 
 1. Does every control have a screen reader label that says what it does?
-2. Does every screen hold together at the largest text size?
+2. Does every screen hold together at the largest standard text size (the cap, #1411)?
 3. Contrast of every token pair drawn together, reduced motion, and tap
    targets of at least 44 points.
 
@@ -225,7 +225,7 @@ Jon, about 30 minutes, on a TestFlight build of the audited commit:
 1. Delete and reinstall. Add a first piece and a first exercise from nothing.
 2. Build a session, play it through with the timer and reps, score it. Force
    quit mid-item and reopen.
-3. Turn on the largest text size and VoiceOver, and do step 2 again for one
+3. Turn on the largest standard text size and VoiceOver, and do step 2 again for one
    item.
 4. Switch to dark mode and airplane mode. Read each tab's words aloud against
    the tone of voice.
