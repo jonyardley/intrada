@@ -277,7 +277,7 @@
                 caption: "Exercise", plannedDisplay: nil, relatedLabel: "piece only"),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], entryKeys: [],
+            lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "2 items", startTitle: "Start session")))
     }
 
@@ -288,7 +288,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], entryKeys: [],
+            lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
             summary: "0 items", startTitle: "Start session")))
     }
 

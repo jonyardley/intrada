@@ -48,11 +48,7 @@ pub fn format_planned_duration(secs: u64) -> String {
 /// a total never reads as filling a length it falls short of.
 pub fn format_length_summary(length_mins: Option<u16>, planned_total_secs: u64) -> Option<String> {
     let length = length_mins?;
-    Some(if planned_total_secs == 0 {
-        format!("{length} min today")
-    } else {
-        format!("{} of {length} min planned", planned_total_secs / 60)
-    })
+    (planned_total_secs > 0).then(|| format!("{} of {length} min planned", planned_total_secs / 60))
 }
 
 /// Coarse "45m" / "2h 15m" total (Pencil's pattern) for session-summary lines:
@@ -890,7 +886,7 @@ mod tests {
         let table: &[(Option<u16>, u64, Option<&str>)] = &[
             (None, 0, None),
             (None, 1200, None),
-            (Some(30), 0, Some("30 min today")),
+            (Some(30), 0, None),
             (Some(30), 1200, Some("20 of 30 min planned")),
             (Some(30), 1530, Some("25 of 30 min planned")),
             (Some(30), 1800, Some("30 of 30 min planned")),

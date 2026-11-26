@@ -198,8 +198,7 @@ struct SessionBuilderScreen: View {
       SessionLengthControl(
         title: "Session length",
         lengthMins: setlist.lengthMins,
-        detail: nil,
-        valueLabel: setlist.lengthSummary ?? "",
+        detail: setlist.lengthSummary,
         limits: limits,
         identifier: "builder.sessionLength"
       ) { store.send(.session(.setSessionLength(lengthMins: $0))) }

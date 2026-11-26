@@ -6858,7 +6858,11 @@ fn the_builder_view_carries_todays_length_against_the_planned_total() {
     let view = |m: &Model| Intrada.view(m).building_setlist.expect("building");
 
     assert_eq!(view(&m).length_mins, Some(30));
-    assert_eq!(view(&m).length_summary.as_deref(), Some("30 min today"));
+    assert_eq!(
+        view(&m).length_summary,
+        None,
+        "the stepper already shows the length"
+    );
 
     add(&mut m, "piece-1");
     add(&mut m, "piece-2");
