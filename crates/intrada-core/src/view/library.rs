@@ -287,16 +287,12 @@ pub(crate) fn build_practice_summaries(
 }
 
 /// Every item starts here, piece or exercise (#3003).
-pub(crate) const STARTING_USUAL_MINUTES: f64 = 10.0;
+const STARTING_USUAL_MINUTES: f64 = 10.0;
 const USUAL_MINUTES_FLOOR: f64 = 3.0;
 const USUAL_MINUTES_PULL: f64 = 0.3;
 
-/// Each item's usual time in minutes, unrounded, for items with at least one
-/// counted play: a finished entry in a session not ended early pulls it 0.3 of
-/// the way towards that entry's length (#3005).
-pub(crate) fn build_usual_minutes(
-    sessions: &[PracticeSession],
-) -> std::collections::HashMap<String, f64> {
+/// Unrounded usual minutes per item with a counted play (#3005).
+fn build_usual_minutes(sessions: &[PracticeSession]) -> std::collections::HashMap<String, f64> {
     use crate::domain::session::{CompletionStatus, EntryStatus};
 
     let mut ordered: Vec<&PracticeSession> = sessions
@@ -874,12 +870,14 @@ mod tests {
 
     // ── Usual time (#3005) ──
 
+    use crate::domain::session::{CompletionStatus, EntryStatus};
+
     fn played(
         id: &str,
         day: i64,
         secs: u64,
-        status: crate::domain::session::EntryStatus,
-        ended: crate::domain::session::CompletionStatus,
+        status: EntryStatus,
+        ended: CompletionStatus,
     ) -> PracticeSession {
         let mut entry = crate::domain::session::SetlistEntry::fixture();
         entry.status = status;
@@ -898,8 +896,8 @@ mod tests {
             id,
             day,
             secs,
-            crate::domain::session::EntryStatus::Completed,
-            crate::domain::session::CompletionStatus::Completed,
+            EntryStatus::Completed,
+            CompletionStatus::Completed,
         )
     }
 
@@ -934,13 +932,18 @@ mod tests {
     }
 
     #[test]
+    fn one_twelve_minute_play_rounds_to_eleven_not_down_to_ten() {
+        assert_eq!(usual_of(vec![finished("s1", 0, 720)]), (11, true));
+    }
+
+    #[test]
     fn a_skipped_minute_leaves_the_usual_time() {
         let skipped = played(
             "s1",
             0,
             60,
-            crate::domain::session::EntryStatus::Skipped,
-            crate::domain::session::CompletionStatus::Completed,
+            EntryStatus::Skipped,
+            CompletionStatus::Completed,
         );
         assert_eq!(usual_of(vec![skipped]), (10, false));
     }
@@ -951,8 +954,8 @@ mod tests {
             "s1",
             0,
             60,
-            crate::domain::session::EntryStatus::Completed,
-            crate::domain::session::CompletionStatus::EndedEarly,
+            EntryStatus::Completed,
+            CompletionStatus::EndedEarly,
         );
         assert_eq!(usual_of(vec![early]), (10, false));
     }

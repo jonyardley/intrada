@@ -149,7 +149,7 @@ pub struct LibraryItemView {
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
     /// Whole minutes this item usually takes, learnt from what is played (#3005).
     pub usual_minutes: u32,
-    /// False until a play counts, so the shell says "from your starting time".
+    /// False until a play counts (#3005).
     pub usual_minutes_from_history: bool,
 }
 

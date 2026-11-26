@@ -144,7 +144,7 @@ Hard budgets, per surface:
 - Live view: **no prose at all** beyond labels and the item title.
 
 Times are spelt out where there is room ("8 minutes", "1 minute"); "min" only
-where space is tight, such as a row's trailing figure or a button.
+where space is tight, such as a row's trailing figure or a button (#3005).
 
 If a string will not fit the budget, the screen is doing two things.
 

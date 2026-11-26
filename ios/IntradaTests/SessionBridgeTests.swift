@@ -537,11 +537,6 @@ final class SessionBridgeTests: XCTestCase {
       vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque", "Arpeggios", "Berceuse"])
   }
 
-  /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
-  /// bridge through Building → Active → Summary → Idle, mirroring the
-  /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here
-  /// as a failed transition instead of the silent no-op the stub bridge would
-  /// hide (#846).
   /// An item's usual time crosses the wire as the starting time, then as what
   /// a saved play teaches it: 4 minutes from 10 reads 8 (#3005, #846).
   func testRealBridgeAnItemsUsualTimeLearnsFromASavedPlay() throws {
@@ -574,6 +569,11 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertTrue(learnt.usualMinutesFromHistory)
   }
 
+  /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
+  /// bridge through Building → Active → Summary → Idle, mirroring the
+  /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here
+  /// as a failed transition instead of the silent no-op the stub bridge would
+  /// hide (#846).
   func testRealBridgeSessionFlowBuildPlaySave() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
