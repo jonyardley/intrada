@@ -35,7 +35,9 @@ struct PracticeDefaultsSection: View {
           lengthMins: defaults.sessionLengthMins,
           detail: defaults.sessionLengthMins == nil ? "Off" : nil,
           limits: limits,
-          identifier: "profile.sessionLength"
+          identifier: "profile.sessionLength",
+          // The core keeps a saved default on the 5 minute step, so a typed 37 would be refused (#3043).
+          typing: false
         ) {
           save(
             PracticeDefaults(

@@ -8,6 +8,7 @@ struct SessionLengthControl: View {
   let detail: String?
   let limits: LimitsView
   let identifier: String
+  var typing = true
   let onChange: (UInt16?) -> Void
 
   static func spokenMinutes(_ minutes: Int) -> String {
@@ -37,7 +38,7 @@ struct SessionLengthControl: View {
         ScoreStepper(
           score: minutes, caption: .unit("minutes"),
           range: Int(limits.sessionLengthMinMins)...Int(limits.sessionLengthMaxMins),
-          step: Int(limits.sessionLengthStepMins), figure: IntradaFont.timer(32), typing: true,
+          step: Int(limits.sessionLengthStepMins), figure: IntradaFont.timer(32), typing: typing,
           accessibilityLabel: title, accessibilityValue: Self.spokenMinutes(minutes)
         ) { next in
           onChange(UInt16(clamping: next))
