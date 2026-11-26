@@ -266,20 +266,6 @@ fn start_building_with_unknown_item_stays_idle() {
     );
 }
 
-// ── The Up next card's seeding event (#1082) ─────────────────────
-
-fn suggestion_model() -> Model {
-    let mut m = linked_model();
-    // Pin the anchor so these tests assert the seeding, not the ranking
-    // (which `suggestion.rs` covers).
-    for item in m.items.iter_mut() {
-        if item.id == "piece-P" {
-            item.priority = true;
-        }
-    }
-    m
-}
-
 // ── The countdown clock (#2789) ──────────────────────────────────
 
 fn start_with_length(length_mins: Option<u16>, now: DateTime<Utc>) -> Model {
@@ -334,7 +320,7 @@ fn a_session_with_no_length_has_no_end() {
     assert_eq!(view.ends_at, None);
 }
 
-// ── Today's plan and the one-tap start (#57) ─────────────────────
+// ── Reflection ───────────────────────────────────────────────────
 
 #[test]
 fn prepare_reflection_round_trips_on_ffi_bincode_wire() {
@@ -344,7 +330,7 @@ fn prepare_reflection_round_trips_on_ffi_bincode_wire() {
     }));
 }
 
-// ── "Practise your priorities" (#981) ────────────────────────────
+// ── Building the setlist ─────────────────────────────────────────
 
 #[test]
 fn add_to_setlist_is_idempotent_by_item_id() {
@@ -6805,7 +6791,7 @@ fn every_way_into_the_builder_starts_at_the_preferred_length() {
     ];
     for (name, start) in starts {
         for preferred in [Some(25), None] {
-            let mut m = suggestion_model();
+            let mut m = linked_model();
             prefer_length(&mut m, preferred);
             start(&mut m);
             assert_eq!(today_length(&m), preferred, "{name} with {preferred:?}");
@@ -7299,6 +7285,52 @@ fn a_planned_start_with_an_empty_library_stays_idle() {
     );
     assert!(matches!(m.session_status, SessionStatus::Idle));
     assert_eq!(m.last_error, None);
+}
+
+/// After one event has sent the first library and weeks sections, which
+/// every model's first update does.
+fn effect_kinds(model: &mut Model, event: SessionEvent) -> Vec<&'static str> {
+    set_plan_length(model, 30);
+    let mut cmd = Intrada.update(Event::Session(event), model);
+    let mut kinds: Vec<&'static str> = cmd
+        .effects()
+        .map(|e| match e {
+            Effect::Render(_) => "render",
+            Effect::App(req) if matches!(req.operation, AppEffect::SaveSessionInProgress(_)) => {
+                "save in progress"
+            }
+            _ => "other",
+        })
+        .collect();
+    kinds.sort_unstable();
+    kinds
+}
+
+#[test]
+fn editing_the_plan_only_renders() {
+    let mut m = planned_model();
+    let kinds = effect_kinds(&mut m, SessionEvent::EditPlannedSession { now: Utc::now() });
+    assert_eq!(kinds, ["render"]);
+}
+
+#[test]
+fn starting_the_plan_renders_and_saves_the_recovery_copy_only() {
+    let mut m = planned_model();
+    let kinds = effect_kinds(
+        &mut m,
+        SessionEvent::StartPlannedSession { now: Utc::now() },
+    );
+    assert_eq!(kinds, ["render", "save in progress"]);
+}
+
+#[test]
+fn starting_the_plan_of_an_empty_library_only_renders() {
+    let mut m = Model::default();
+    let kinds = effect_kinds(
+        &mut m,
+        SessionEvent::StartPlannedSession { now: Utc::now() },
+    );
+    assert_eq!(kinds, ["render"]);
 }
 
 #[test]
