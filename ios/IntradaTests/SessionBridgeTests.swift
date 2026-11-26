@@ -242,7 +242,7 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.startBuilding))
     var building = try XCTUnwrap(try bridge.rendered().buildingSetlist)
     XCTAssertEqual(building.lengthMins, 25)
-    XCTAssertEqual(building.lengthSummary, "25 min today")
+    XCTAssertNil(building.lengthSummary)
 
     _ = try bridge.update(.session(.setSessionLength(lengthMins: 10)))
     building = try XCTUnwrap(try bridge.rendered().buildingSetlist)

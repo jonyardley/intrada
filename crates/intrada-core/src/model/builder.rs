@@ -72,8 +72,8 @@ pub struct BuildingSetlistView {
     pub total_duration_display: Option<String>,
     pub total_duration_summary: Option<String>,
     pub length_mins: Option<u16>,
-    /// "20 of 30 min planned", or "30 min today" before anything is planned;
-    /// `None` without a length (#1736).
+    /// "20 of 30 min planned"; `None` without a length (#1736) or before anything
+    /// is planned, since the stepper above it already shows the length (#3043).
     pub length_summary: Option<String>,
     /// The variations each entry can be tagged to, for the entries whose item
     /// has any. Looked up in the whole library, so a search cannot empty it.
