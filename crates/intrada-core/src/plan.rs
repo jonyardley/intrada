@@ -1,13 +1,20 @@
 //! Today's plan from the time the musician has (#3007): a warm-up, then the
 //! library by need (T42), fitted to the time. Pure and clock-injected.
 
+use std::collections::HashMap;
+
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::LocalClock;
 use crate::domain::item::ItemKind;
+use crate::domain::key::Key;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::model::LibraryItemView;
 use crate::ranking::{self, PracticeRecords, Ranked};
+
+/// About one key for every this many minutes of a row (#3008).
+const MINUTES_PER_KEY: u32 = 3;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -18,6 +25,52 @@ pub struct PlanRowView {
     pub reason: String,
     pub minutes: u32,
     pub kind: ItemKind,
+    /// Every key the item keeps, neediest first; the ticked ones are today's.
+    pub keys: Vec<PlanKeyView>,
+    /// Why the suggested keys were picked; empty with no keys.
+    pub keys_reason: String,
+}
+
+/// One of a row's keys in today's plan (#3008).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PlanKeyView {
+    pub key: Key,
+    pub label: String,
+    pub ticked: bool,
+    pub suggested: bool,
+    pub score: Option<u8>,
+    /// "2 weeks ago", "not practised yet".
+    pub last_played: String,
+}
+
+/// The keys ticked for today's plan by item id, for the local day they were
+/// ticked; never saved (#3008).
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct TodaysKeys {
+    day: Option<NaiveDate>,
+    by_item: HashMap<String, Vec<Key>>,
+}
+
+impl TodaysKeys {
+    /// Empty `ticks` brings back the suggestion.
+    pub(crate) fn set(&mut self, day: NaiveDate, item_id: String, ticks: Vec<Key>) {
+        if self.day != Some(day) {
+            *self = TodaysKeys {
+                day: Some(day),
+                by_item: HashMap::new(),
+            };
+        }
+        if ticks.is_empty() {
+            self.by_item.remove(&item_id);
+        } else {
+            self.by_item.insert(item_id, ticks);
+        }
+    }
+
+    pub(crate) fn on(&self, day: NaiveDate) -> Option<&HashMap<String, Vec<Key>>> {
+        (self.day == Some(day)).then_some(&self.by_item)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -47,8 +100,14 @@ pub(crate) fn fill(
     records: &PracticeRecords,
     defaults: &PracticeDefaults,
     length_mins: u16,
+    ticks: &TodaysKeys,
     clock: LocalClock,
 ) -> Option<PlanView> {
+    let ticks = ticks.on(clock.today);
+    let plan_row = |item: &LibraryItemView, reason: String| {
+        let ticked = ticks.and_then(|t| t.get(&item.id)).map_or(&[][..], |t| t);
+        row(item, reason, todays_keys(item, records, ticked, clock))
+    };
     let ranked = ranking::rank_items(items, records, clock);
     let neediest = ranked.first()?;
     let length = u32::from(length_mins);
@@ -57,7 +116,7 @@ pub(crate) fn fill(
         .iter()
         .find(|r| warm_up_on && r.item.include_in_warm_up && r.item.usual_minutes <= length);
     let mut total = chosen.map_or(0, |r| r.item.usual_minutes);
-    let warm_up = chosen.map(|r| row(r.item, kind_word(&r.item.item_type).to_string()));
+    let warm_up = chosen.map(|r| plan_row(r.item, kind_word(&r.item.item_type).to_string()));
     let mut rows = Vec::new();
 
     for candidate in &ranked {
@@ -71,13 +130,13 @@ pub(crate) fn fill(
         }
         if total + item.usual_minutes <= length {
             total += item.usual_minutes;
-            rows.push(row(item, reason(candidate)));
+            rows.push(plan_row(item, reason(candidate)));
         }
     }
 
     if warm_up.is_none() && rows.is_empty() {
         total += neediest.item.usual_minutes;
-        rows.push(row(neediest.item, reason(neediest)));
+        rows.push(plan_row(neediest.item, reason(neediest)));
     }
 
     Some(PlanView {
@@ -91,14 +150,79 @@ pub(crate) fn fill(
     })
 }
 
-fn row(item: &LibraryItemView, reason: String) -> PlanRowView {
+fn row(item: &LibraryItemView, reason: String, keys: Vec<PlanKeyView>) -> PlanRowView {
     PlanRowView {
         item_id: item.id.clone(),
         title: item.title.clone(),
         reason,
         minutes: item.usual_minutes,
         kind: item.item_type.clone(),
+        keys_reason: keys_reason(&keys, item.usual_minutes),
+        keys,
     }
+}
+
+/// Every kept key in need order, the neediest few suggested; a tick for a key
+/// the item no longer keeps is dropped, and no ticks left means the suggestion.
+fn todays_keys(
+    item: &LibraryItemView,
+    records: &PracticeRecords,
+    ticked: &[Key],
+    clock: LocalClock,
+) -> Vec<PlanKeyView> {
+    let ranked = ranking::rank_keys(item, records, clock);
+    let suggested = key_count(item.usual_minutes, ranked.len());
+    let kept: Vec<Key> = ranked.iter().map(|k| k.key).collect();
+    let ticked = crate::validation::kept_ticks(&kept, ticked);
+    ranked
+        .into_iter()
+        .enumerate()
+        .map(|(i, k)| PlanKeyView {
+            ticked: if ticked.is_empty() {
+                i < suggested
+            } else {
+                ticked.contains(&k.key)
+            },
+            suggested: i < suggested,
+            key: k.key,
+            label: k.label,
+            score: k.score,
+            last_played: k.last_played,
+        })
+        .collect()
+}
+
+/// Round to nearest, at least one, never more than the item keeps.
+fn key_count(minutes: u32, kept: usize) -> usize {
+    if kept == 0 {
+        return 0;
+    }
+    (((minutes + 1) / MINUTES_PER_KEY) as usize).clamp(1, kept)
+}
+
+fn keys_reason(keys: &[PlanKeyView], minutes: u32) -> String {
+    let count = keys.iter().filter(|k| k.suggested).count() as u32;
+    if count == 0 {
+        return String::new();
+    }
+    let each = ((minutes + count / 2) / count).max(1);
+    let unit = if each == 1 { "minute" } else { "minutes" };
+    match count {
+        1 => format!("The key that needs it most, about {each} {unit}"),
+        n => format!(
+            "The {} keys that need it most, about {each} {unit} each",
+            number_word(n)
+        ),
+    }
+}
+
+fn number_word(n: u32) -> String {
+    const WORDS: [&str; 11] = [
+        "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+    ];
+    n.checked_sub(2)
+        .and_then(|i| WORDS.get(i as usize))
+        .map_or_else(|| n.to_string(), |w| (*w).to_string())
 }
 
 fn reason(ranked: &Ranked) -> String {
@@ -186,6 +310,7 @@ mod tests {
             &PracticeRecords::new(),
             &PracticeDefaults::default(),
             length,
+            &TodaysKeys::default(),
             clock(),
         )
         .expect("a plan")
@@ -203,6 +328,7 @@ mod tests {
                 &PracticeRecords::new(),
                 &PracticeDefaults::default(),
                 20,
+                &TodaysKeys::default(),
                 clock()
             ),
             None
@@ -232,8 +358,15 @@ mod tests {
             start_with_warm_up: false,
             ..PracticeDefaults::default()
         };
-        let plan =
-            fill(&library(), &PracticeRecords::new(), &defaults, 20, clock()).expect("a plan");
+        let plan = fill(
+            &library(),
+            &PracticeRecords::new(),
+            &defaults,
+            20,
+            &TodaysKeys::default(),
+            clock(),
+        )
+        .expect("a plan");
 
         assert_eq!(plan.warm_up, None);
         assert!(!plan.warm_up_enabled);
@@ -250,7 +383,15 @@ mod tests {
             last_played(item("concerto", ItemKind::Piece, 30), 3),
             last_played(warm_up(item("scales", ItemKind::Exercise, 5)), 1),
         ];
-        let plan = fill(&items, &PracticeRecords::new(), &defaults, 20, clock()).expect("a plan");
+        let plan = fill(
+            &items,
+            &PracticeRecords::new(),
+            &defaults,
+            20,
+            &TodaysKeys::default(),
+            clock(),
+        )
+        .expect("a plan");
 
         assert_eq!(ids(&plan), ["scales"]);
         assert_eq!(plan.total_mins, 5);
@@ -454,5 +595,212 @@ mod tests {
     #[test]
     fn the_plan_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(filled(&library(), 20));
+    }
+
+    // ── Today's keys (#3008) ──
+
+    fn key(name: &str) -> Key {
+        Key::parse(name).expect("a key")
+    }
+
+    /// A 9 minute scales item played yesterday, scored 9, in six sessions:
+    /// G major scored 3 a fortnight ago, D major 8 twenty days ago, A major 2
+    /// two days ago, C major 9 yesterday, E major never on its own.
+    fn scales() -> (LibraryItemView, PracticeRecords) {
+        let mut scales = last_played(item("scales", ItemKind::Exercise, 9), 1);
+        if let Some(practice) = scales.practice.as_mut() {
+            practice.session_count = 6;
+            practice.latest_score = Some(9);
+        }
+        let mut records = PracticeRecords::new();
+        for (name, score, days) in [
+            ("C major", Some(9), Some(1)),
+            ("G major", Some(3), Some(14)),
+            ("D major", Some(8), Some(20)),
+            ("A major", Some(2), Some(2)),
+            ("E major", None, None),
+        ] {
+            scales.keys.push(crate::model::ItemKeyView {
+                key: key(name),
+                label: key(name).label(),
+                latest_score: score,
+                caption: String::new(),
+            });
+            if let Some(days) = days {
+                records
+                    .entry("scales".to_string())
+                    .or_default()
+                    .keys
+                    .entry(key(name))
+                    .or_default()
+                    .add_session(
+                        (today() - chrono::Duration::days(days))
+                            .and_hms_opt(10, 0, 0)
+                            .expect("valid time")
+                            .and_utc(),
+                    );
+            }
+        }
+        (scales, records)
+    }
+
+    fn scales_row(minutes: u32, ticks: &TodaysKeys) -> PlanRowView {
+        let (mut scales, records) = scales();
+        scales.usual_minutes = minutes;
+        let plan = fill(
+            &[scales],
+            &records,
+            &PracticeDefaults::default(),
+            120,
+            ticks,
+            clock(),
+        )
+        .expect("a plan");
+        let row = plan.played_rows().next().expect("a row").clone();
+        row
+    }
+
+    fn labels(row: &PlanRowView) -> Vec<&str> {
+        row.keys
+            .iter()
+            .filter(|k| k.ticked)
+            .map(|k| k.label.as_str())
+            .collect()
+    }
+
+    fn ticked(names: &[&str]) -> TodaysKeys {
+        let mut ticks = TodaysKeys::default();
+        ticks.set(
+            today(),
+            "scales".to_string(),
+            names.iter().map(|n| key(n)).collect(),
+        );
+        ticks
+    }
+
+    #[test]
+    fn about_one_key_for_every_three_minutes() {
+        for (minutes, kept, expected) in [(2, 12, 1), (5, 12, 2), (9, 12, 3), (30, 12, 10)] {
+            assert_eq!(key_count(minutes, kept), expected, "{minutes} minutes");
+        }
+        assert_eq!(key_count(30, 5), 5);
+        assert_eq!(key_count(1, 5), 1);
+        assert_eq!(key_count(9, 0), 0);
+    }
+
+    #[test]
+    fn a_nine_minute_row_suggests_its_three_neediest_keys() {
+        let row = scales_row(9, &TodaysKeys::default());
+
+        assert_eq!(labels(&row), ["G major", "D major", "A major"]);
+        let all: Vec<(&str, bool, Option<u8>, &str)> = row
+            .keys
+            .iter()
+            .map(|k| {
+                (
+                    k.label.as_str(),
+                    k.suggested,
+                    k.score,
+                    k.last_played.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            all,
+            [
+                ("G major", true, Some(3), "2 weeks ago"),
+                ("D major", true, Some(8), "3 weeks ago"),
+                ("A major", true, Some(2), "2 days ago"),
+                ("C major", false, Some(9), "yesterday"),
+                ("E major", false, None, "not practised yet"),
+            ]
+        );
+        assert_eq!(
+            row.keys_reason,
+            "The three keys that need it most, about 3 minutes each"
+        );
+    }
+
+    #[test]
+    fn the_row_s_minutes_set_how_many_keys_are_suggested() {
+        assert_eq!(labels(&scales_row(2, &TodaysKeys::default())), ["G major"]);
+        assert_eq!(
+            scales_row(2, &TodaysKeys::default()).keys_reason,
+            "The key that needs it most, about 2 minutes"
+        );
+        assert_eq!(
+            labels(&scales_row(5, &TodaysKeys::default())),
+            ["G major", "D major"]
+        );
+        assert_eq!(labels(&scales_row(30, &TodaysKeys::default())).len(), 5);
+    }
+
+    #[test]
+    fn ticks_change_the_labels_but_not_the_minutes() {
+        let row = scales_row(9, &ticked(&["E major", "C major"]));
+
+        assert_eq!(labels(&row), ["C major", "E major"]);
+        assert_eq!(row.minutes, 9);
+        assert!(row.keys.iter().take(3).all(|k| k.suggested));
+    }
+
+    #[test]
+    fn a_tick_for_a_key_the_item_does_not_keep_is_dropped() {
+        assert_eq!(
+            labels(&scales_row(9, &ticked(&["B major", "C major"]))),
+            ["C major"]
+        );
+        assert_eq!(
+            labels(&scales_row(9, &ticked(&["B major"]))),
+            ["G major", "D major", "A major"]
+        );
+    }
+
+    #[test]
+    fn yesterday_s_ticks_bring_back_the_suggestion() {
+        let mut ticks = TodaysKeys::default();
+        ticks.set(
+            today() - chrono::Duration::days(1),
+            "scales".to_string(),
+            vec![key("C major")],
+        );
+
+        assert_eq!(
+            labels(&scales_row(9, &ticks)),
+            ["G major", "D major", "A major"]
+        );
+    }
+
+    #[test]
+    fn the_warm_up_row_carries_its_keys_too() {
+        let (scales, records) = scales();
+        let plan = fill(
+            &[warm_up(scales)],
+            &records,
+            &PracticeDefaults::default(),
+            20,
+            &TodaysKeys::default(),
+            clock(),
+        )
+        .expect("a plan");
+
+        let warm_up = plan.warm_up.expect("a warm-up");
+        assert_eq!(labels(&warm_up), ["G major", "D major", "A major"]);
+    }
+
+    #[test]
+    fn an_item_with_no_keys_has_no_labels() {
+        let plan = filled(&library(), 20);
+
+        assert!(plan.played_rows().all(|r| r.keys.is_empty()));
+        assert!(plan.played_rows().all(|r| r.keys_reason.is_empty()));
+    }
+
+    #[test]
+    fn a_plan_with_keys_round_trips_on_ffi_bincode_wire() {
+        let row = scales_row(9, &ticked(&["C major"]));
+        assert!(!row.keys.is_empty());
+        crate::domain::types::assert_round_trips(row.keys[0].clone());
+        crate::domain::types::assert_round_trips(row);
     }
 }

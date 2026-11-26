@@ -7349,3 +7349,128 @@ fn the_view_with_a_plan_round_trips_on_ffi_bincode_wire() {
     assert!(view.suggested_plan.is_some());
     crate::domain::types::assert_round_trips(view);
 }
+
+// --- Today's keys (#3008) ---
+
+fn key(name: &str) -> crate::domain::key::Key {
+    crate::domain::key::Key::parse(name).expect("a key")
+}
+
+/// Only scales, keeping C, G and D major, none played, so the suggestion
+/// is the item's own order.
+fn scales_model() -> Model {
+    let mut m = model_with_library();
+    let mut scales = m.items[0].clone();
+    scales.id = "scales".to_string();
+    scales.title = "Scales".to_string();
+    scales.kind = ItemKind::Exercise;
+    scales.keys = vec![key("C major"), key("G major"), key("D major")];
+    m.items = vec![scales].into();
+    m
+}
+
+fn tick(model: &mut Model, item_id: &str, names: &[&str], now: DateTime<Utc>) {
+    update(
+        model,
+        Event::Session(SessionEvent::SetTodaysKeys {
+            item_id: item_id.to_string(),
+            keys: names.iter().map(|n| key(n)).collect(),
+            now,
+        }),
+    );
+}
+
+fn todays_labels(model: &Model, now: DateTime<Utc>) -> Vec<String> {
+    crate::view::build_view_at(model, now)
+        .suggested_plan
+        .expect("a plan")
+        .played_rows()
+        .flat_map(|r| r.keys.iter().filter(|k| k.ticked))
+        .map(|k| k.label.clone())
+        .collect()
+}
+
+#[test]
+fn a_tick_changes_today_s_labels() {
+    let mut m = scales_model();
+    let now = Utc::now();
+    let before = todays_labels(&m, now);
+
+    tick(&mut m, "scales", &["D major"], now);
+
+    assert_ne!(before, ["D major"]);
+    assert_eq!(todays_labels(&m, now), ["D major"]);
+    assert_eq!(m.last_error, None);
+}
+
+#[test]
+fn start_opens_on_the_first_ticked_key() {
+    let mut m = scales_model();
+    let now = Utc::now();
+    tick(&mut m, "scales", &["D major", "G major"], now);
+
+    update(
+        &mut m,
+        Event::Session(SessionEvent::StartPlannedSession { now }),
+    );
+
+    assert_eq!(session_entries(&m)[0].plan.key, Some(key("G major")));
+    assert_eq!(m.todays_keys, crate::plan::TodaysKeys::default());
+}
+
+#[test]
+fn start_with_no_ticks_opens_on_the_first_suggested_key() {
+    let mut m = scales_model();
+    update(
+        &mut m,
+        Event::Session(SessionEvent::StartPlannedSession { now: Utc::now() }),
+    );
+
+    assert_eq!(session_entries(&m)[0].plan.key, Some(key("C major")));
+}
+
+#[test]
+fn today_s_ticks_clear_on_a_new_day() {
+    let mut m = scales_model();
+    let now = Utc::now();
+    let tomorrow = now + chrono::Duration::days(1);
+    let suggestion = todays_labels(&m, tomorrow);
+    tick(&mut m, "scales", &["D major"], now);
+
+    assert_eq!(todays_labels(&m, tomorrow), suggestion);
+    update(
+        &mut m,
+        Event::Session(SessionEvent::StartPlannedSession { now: tomorrow }),
+    );
+    assert_eq!(session_entries(&m)[0].plan.key, Some(key("C major")));
+}
+
+#[test]
+fn ticking_only_keys_the_item_does_not_keep_brings_back_the_suggestion() {
+    let mut m = scales_model();
+    let now = Utc::now();
+    let suggestion = todays_labels(&m, now);
+    tick(&mut m, "scales", &["D major"], now);
+
+    tick(&mut m, "scales", &["B major"], now);
+
+    assert_eq!(todays_labels(&m, now), suggestion);
+}
+
+#[test]
+fn ticking_an_item_not_in_the_library_is_refused() {
+    let mut m = scales_model();
+    tick(&mut m, "gone", &["C major"], Utc::now());
+
+    assert!(m.last_error.is_some());
+    assert_eq!(m.todays_keys, crate::plan::TodaysKeys::default());
+}
+
+#[test]
+fn set_todays_keys_round_trips_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::SetTodaysKeys {
+        item_id: "scales".to_string(),
+        keys: vec![key("F# minor"), key("Bb major")],
+        now: Utc::now(),
+    }));
+}

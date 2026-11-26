@@ -350,6 +350,20 @@ pub fn clamp_plan_length(length_mins: u16) -> u16 {
     length_mins.clamp(MIN_SESSION_LENGTH_MINS, MAX_SESSION_LENGTH_MINS)
 }
 
+/// Today's ticks kept to the keys the item still keeps, in either spelling,
+/// once each and as the item spells them (#3008). Empty means the suggestion.
+pub fn kept_ticks(kept: &[Key], ticked: &[Key]) -> Vec<Key> {
+    let mut out: Vec<Key> = Vec::new();
+    for tick in ticked {
+        if let Some(k) = kept.iter().find(|k| k.same_key(tick)) {
+            if !out.contains(k) {
+                out.push(*k);
+            }
+        }
+    }
+    out
+}
+
 pub fn validate_achieved_tempo(tempo: &Option<u16>) -> Result<(), LibraryError> {
     if let Some(t) = tempo {
         if !(MIN_ACHIEVED_TEMPO..=MAX_ACHIEVED_TEMPO).contains(t) {
@@ -2071,6 +2085,24 @@ mod tests {
             (500, 120),
         ] {
             assert_eq!(clamp_plan_length(typed), expected, "{typed} minutes");
+        }
+    }
+
+    #[test]
+    fn todays_ticks_keep_only_the_keys_the_item_keeps() {
+        let k = |name: &str| Key::parse(name).expect("a key");
+        let kept = [k("C major"), k("F# major"), k("A minor")];
+        for (ticked, expected) in [
+            (
+                vec![k("A minor"), k("C major")],
+                vec![k("A minor"), k("C major")],
+            ),
+            (vec![k("E major")], vec![]),
+            (vec![k("G♭ major")], vec![k("F# major")]),
+            (vec![k("C major"), k("C major")], vec![k("C major")]),
+            (vec![], vec![]),
+        ] {
+            assert_eq!(kept_ticks(&kept, &ticked), expected, "{ticked:?}");
         }
     }
 

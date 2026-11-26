@@ -80,6 +80,8 @@ pub struct Model {
     pub practice_defaults: PracticeDefaults,
     /// The length picked on Practice; lasts until the app closes (#3007).
     pub plan_length_mins: Option<u16>,
+    /// The keys ticked on today's plan; cleared by a planned start (#3008).
+    pub todays_keys: crate::plan::TodaysKeys,
     /// Device data, never synced (#2116).
     pub first_run: FirstRun,
     /// Bumped each time an error is raised or surfaced, never because one is
