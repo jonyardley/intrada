@@ -292,6 +292,8 @@ const USUAL_MINUTES_FLOOR: f64 = 3.0;
 const USUAL_MINUTES_PULL: f64 = 0.3;
 /// A forgotten timer counts as at most this many usual times (#3005).
 const USUAL_MINUTES_CEILING_FACTOR: f64 = 3.0;
+/// Tapping Next straight away is a skip, not a play (#3005).
+const SHORTEST_COUNTED_PLAY_SECS: u64 = 30;
 
 /// Unrounded usual minutes per item with a counted play (#3005).
 fn build_usual_minutes(sessions: &[PracticeSession]) -> std::collections::HashMap<String, f64> {
@@ -308,6 +310,7 @@ fn build_usual_minutes(sessions: &[PracticeSession]) -> std::collections::HashMa
         .iter()
         .flat_map(|s| &s.entries)
         .filter(|e| e.status == EntryStatus::Completed)
+        .filter(|e| e.duration_secs >= SHORTEST_COUNTED_PLAY_SECS)
     {
         let played = entry.duration_secs as f64 / 60.0;
         let value = usual
@@ -937,6 +940,12 @@ mod tests {
     #[test]
     fn one_twelve_minute_play_rounds_to_eleven_not_down_to_ten() {
         assert_eq!(usual_of(vec![finished("s1", 0, 720)]), (11, true));
+    }
+
+    #[test]
+    fn a_play_under_thirty_seconds_does_not_count() {
+        assert_eq!(usual_of(vec![finished("s1", 0, 29)]), (10, false));
+        assert!(usual_of(vec![finished("s1", 0, 30)]).1);
     }
 
     #[test]
