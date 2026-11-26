@@ -1,5 +1,5 @@
 //! Today's plan from the time the musician has (#3007): a warm-up, priorities,
-//! then what is going cold. Pure and clock-injected like `suggestion`.
+//! what is going cold, then the rest of the library. Pure and clock-injected like `suggestion`.
 
 use std::cmp::Reverse;
 use std::collections::HashSet;
@@ -20,6 +20,7 @@ pub struct PlanRowView {
     /// "Piece · a priority"; the warm-up row says only its kind.
     pub reason: String,
     pub minutes: u32,
+    pub kind: ItemKind,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -44,7 +45,7 @@ impl PlanView {
 }
 
 /// `None` only for an empty library. An item that does not fit is skipped,
-/// never shrunk; when nothing fits, the first candidate stands alone.
+/// never shrunk; when nothing fits, the most overdue item stands alone.
 pub(crate) fn fill(
     items: &[LibraryItemView],
     defaults: &PracticeDefaults,
@@ -89,9 +90,13 @@ pub(crate) fn fill(
         })
         .collect();
     most_overdue_first(&mut cold);
+    let mut rest: Vec<&LibraryItemView> = items.iter().collect();
+    most_overdue_first(&mut rest);
+    let filler = rest.iter().copied().filter(|i| !i.include_in_warm_up);
     let candidates = crate::priorities::order_priorities(items, clock)
         .into_iter()
-        .chain(cold);
+        .chain(cold)
+        .chain(filler);
 
     let mut rows = Vec::new();
     for item in candidates {
@@ -107,16 +112,7 @@ pub(crate) fn fill(
     }
 
     if warm_up.is_none() && rows.is_empty() {
-        let mut rest: Vec<&LibraryItemView> = items
-            .iter()
-            .filter(|i| !taken.contains(i.id.as_str()))
-            .collect();
-        most_overdue_first(&mut rest);
-        let pick = rest
-            .iter()
-            .find(|i| total + i.usual_minutes <= length)
-            .or(rest.first());
-        if let Some(item) = pick {
+        if let Some(item) = rest.first() {
             total += item.usual_minutes;
             rows.push(row(item, reason(item, clock)));
         }
@@ -139,6 +135,7 @@ fn row(item: &LibraryItemView, reason: String) -> PlanRowView {
         title: item.title.clone(),
         reason,
         minutes: item.usual_minutes,
+        kind: item.item_type.clone(),
     }
 }
 
@@ -339,6 +336,50 @@ mod tests {
             last_played(item("cold", ItemKind::Piece, 5), 25),
         ];
         assert_eq!(ids(&filled(&items, 20)), ["cold", "going"]);
+    }
+
+    #[test]
+    fn a_library_of_fresh_items_still_fills_the_length() {
+        let items = vec![
+            last_played(item("etude", ItemKind::Piece, 10), 1),
+            last_played(item("arpeggios", ItemKind::Exercise, 5), 2),
+            last_played(item("nocturne", ItemKind::Piece, 8), 3),
+            last_played(item("trills", ItemKind::Exercise, 4), 4),
+        ];
+        let plan = filled(&items, 20);
+        let longest = items.iter().map(|i| i.usual_minutes).max().unwrap_or(0);
+
+        assert!(plan.total_mins <= 20);
+        assert!(plan.total_mins + longest > 20, "{plan:?}");
+    }
+
+    #[test]
+    fn a_fresh_row_says_when_it_was_last_played() {
+        let items = vec![
+            last_played(item("etude", ItemKind::Piece, 5), 3),
+            item("new", ItemKind::Exercise, 5),
+        ];
+        let plan = filled(&items, 20);
+        let reasons: Vec<&str> = plan.rows.iter().map(|r| r.reason.as_str()).collect();
+
+        assert_eq!(
+            reasons,
+            [
+                "Exercise · not practised yet",
+                "Piece · practised 3 days ago"
+            ]
+        );
+    }
+
+    #[test]
+    fn each_row_carries_its_kind() {
+        let plan = filled(&library(), 20);
+        let kinds: Vec<&ItemKind> = plan.played_rows().map(|r| &r.kind).collect();
+
+        assert_eq!(
+            kinds,
+            [&ItemKind::Exercise, &ItemKind::Piece, &ItemKind::Exercise]
+        );
     }
 
     #[test]

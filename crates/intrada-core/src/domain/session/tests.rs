@@ -7417,6 +7417,17 @@ fn plan_ids(model: &Model) -> Vec<String> {
 }
 
 #[test]
+fn the_sample_library_fills_most_of_a_thirty_minute_plan() {
+    let mut m = Model::default();
+    update(&mut m, Event::LoadSampleData);
+    set_plan_length(&mut m, 30);
+
+    let plan = plan_of(&m);
+    assert!(plan.total_mins >= 20, "{plan:?}");
+    assert!(plan.total_mins <= 30, "{plan:?}");
+}
+
+#[test]
 fn the_plan_starts_at_the_preferred_length() {
     let mut m = planned_model();
     m.practice_defaults.session_length_mins = Some(20);
