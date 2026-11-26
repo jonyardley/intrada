@@ -24,8 +24,8 @@ pub use active_session::{
 };
 pub use add_form::{FormErrorField, FormErrorTarget};
 pub use builder::{
-    BuildingSetlistView, EntryKeysView, EntryVariationsView, KeyChoiceView, LastTimeView,
-    SetlistBlockView,
+    BuildingSetlistView, EntryKeysView, EntryVariationsView, FitOffer, FitState, FitView,
+    KeyChoiceView, LastTimeView, SetlistBlockView,
 };
 pub(crate) use library::{saved_mark_caption, solid_caption, SOLID_MIN};
 pub use library::{

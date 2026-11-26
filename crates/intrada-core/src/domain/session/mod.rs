@@ -746,10 +746,25 @@ pub enum SessionEvent {
         keys: Vec<Key>,
         now: DateTime<Utc>,
     },
+
+    // === Minutes against the length (#3009), appended ===
+    /// Scale the timed rows down to today's length. Building only; a plan
+    /// that is not over is left alone.
+    TrimToFit,
+    /// Scale the timed rows up to today's length. Building only; a plan that
+    /// is not under is left alone.
+    StretchToFit,
+    /// Add the ranked items not yet planned, each at its usual minutes, while
+    /// they fit the minutes left. Building only.
+    FillWithSuggestions {
+        now: DateTime<Utc>,
+    },
 }
 
 mod active;
 mod building;
+#[cfg(test)]
+mod fit_tests;
 mod live;
 mod plays;
 mod record;
@@ -762,6 +777,7 @@ mod summary;
 #[cfg(test)]
 mod tests;
 
+use building::Fitting;
 pub(crate) use building::{
     item_reads_as, last_score, last_time, opening_way, reads_as, start_score, DEFAULT_START_SCORE,
 };
@@ -959,5 +975,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::SetTodaysKeys { item_id, keys, now } => {
             building::set_todays_keys(model, item_id, keys, now)
         }
+        SessionEvent::TrimToFit => building::fit_to_length(model, Fitting::Trim),
+        SessionEvent::StretchToFit => building::fit_to_length(model, Fitting::Stretch),
+        SessionEvent::FillWithSuggestions { now } => building::fill_with_suggestions(model, now),
     }
 }

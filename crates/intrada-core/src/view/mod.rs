@@ -159,6 +159,17 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     entry_keys,
                     summary,
                     start_title,
+                    fit: crate::fit::fit_view(
+                        &building.entries,
+                        building.length_mins,
+                        !crate::fit::suggestions_for(
+                            building,
+                            &cached.library,
+                            &cached.practice_records,
+                            clock,
+                        )
+                        .is_empty(),
+                    ),
                 }),
                 None,
             )
