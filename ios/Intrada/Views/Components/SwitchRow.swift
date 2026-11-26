@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The switch in a card row, bound straight to a core value so a refused write
-/// never shows (#1736).
+/// The switch in a card row; bind it to the core's value when the setting is
+/// one, so a refused write never shows (#1736).
 struct SwitchRow: View {
   let title: String
   let isOn: Binding<Bool>

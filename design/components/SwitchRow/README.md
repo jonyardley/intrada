@@ -22,7 +22,7 @@ A setting the musician turns on or off, with its name beside the switch, inside 
 
 ## Behaviour
 
-- Bind it straight to a core value, so a refused write snaps back and the refusal shows on the global banner (#1736).
+- Bind it to the core's value when the setting is one, so a refused write snaps back and the refusal shows on the global banner (#1736).
 - The system switch's own motion; no haptic.
 
 ## Content
@@ -48,4 +48,4 @@ SwitchRow(
 
 ## Related
 
-`FieldLabel`, which draws its name. `SegmentedPills`, for more than two choices.
+`FieldLabel`, which draws its name. `SegmentedPills`, for two to five named options.
