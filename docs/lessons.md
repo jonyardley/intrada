@@ -3,14 +3,13 @@
 > What sessions learned, so the next one does not relearn it (#2801). Every
 > session start prints the lessons below. The retro that writes them, and
 > what each lesson's outcome is, is the first step of the route in the
-> [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route).
+> [shipping skill](../.claude/skills/intrada-shipping/SKILL.md#the-route),
+> and runs only when something went wrong (#3034).
 
 - A lesson is one line: the date, the issue, then what to do differently and
-  why. **What to look for**, one of each kind the session has: a mistake or
-  correction; a slow or costly step, read from the session's row in
-  `just usage 1 --quality`; and a tool, recipe or doc that misled. A
-  subagent has no row of its own there, since its cost counts in its lead's
-  session, so it names its slow step from its own run or says it has none.
+  why. It records a miss no test or check caught: a mistake or correction, a
+  step that cost far more than it should, or a tool, recipe or doc that
+  misled. A pull request where nothing went wrong writes none.
 - A lesson already here or in [`lessons-archive.md`](lessons-archive.md) is
   not added again: its line ends "(seen again N)", counting up, and an
   archived one is copied back here with its count raised above the

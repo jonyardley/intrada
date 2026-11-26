@@ -1,6 +1,6 @@
 ---
 name: intrada-shipping
-description: The route from finished code to merge in intrada, in order (retro, gates, review, draft, CI, ready, the merge wait), with the PR, issue and plan comment templates. Read before opening or updating any PR or writing an issue.
+description: The route from finished code to merge in intrada, in order (retro when something went wrong, gates, review, draft, CI, ready, the merge wait), with the PR, issue and plan comment templates. Read before opening or updating any PR or writing an issue.
 ---
 
 ## The route
@@ -12,10 +12,11 @@ Each spawn names its model and effort from the role table in
 `~/.claude/CLAUDE.md`; rounds, and who fixes findings, follow the global
 review rule there.
 
-1. **Retro**, once the code is done and before the gates, so the lessons and
-   their fixes are checked, reviewed and built with the code (#2962): two or
-   three lessons, one per kind `docs/lessons.md` names, each given an outcome
-   (below), committed.
+1. **Retro, only when something went wrong** that no test or check caught,
+   once the code is done and before the gates, so any lesson and its fix are
+   checked, reviewed and built with the code (#2962): one lesson per miss,
+   given an outcome (below), committed. Nothing went wrong, nothing is
+   written; `just pr-ready` needs no lessons commit (#3034).
 2. **Gates**, through `test-runner`: `just pre-review`, plus `just ios-test`
    when `ios/` changed, plus `just ios-test-ui-class <Class>` for each UI test
    class the diff adds or edits, and for each class that drives a form the
@@ -120,7 +121,7 @@ fixed.
 - **Look at**: one line naming the decision or risk the owner should judge;
   on Tier 3 or a sensitive surface, each residual risk ending in its issue or
   "deliberate, not tracked", never spelling out an exploitable gap. Under it,
-  **Process fixes**: each retro fix with its lesson, or "none".
+  **Process fixes**: each retro fix with its lesson, or "none", the usual case.
 - **What this fixes**: what the affected person notices, in the first
   sentence, then one sentence on why this approach over the obvious other. No
   paths, symbols or code.

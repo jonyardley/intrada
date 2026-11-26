@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Mark a PR ready only once the ship route is done (#2955): a brief that said
-# to stop at the draft opened one with no lessons, no review comment and no
-# closing line (#2921). Each refusal below replaces a line a session had to
-# remember. Run it from the PR's own worktree: the review route and the
-# lessons commit are read from the local branch.
+# to stop at the draft opened one with no review comment and no closing line
+# (#2921). Each refusal below replaces a line a session had to remember. Run it
+# from the PR's own worktree: the review route is read from the local branch.
+# A branch needs no lessons commit, since lessons are written only when
+# something went wrong (#3034).
 #
 # Called via `just pr-ready <pr> <issue>`.
 
@@ -26,7 +27,7 @@ refuse() {
   exit 1
 }
 
-# The review route and the lessons commit both diff against main.
+# The review route diffs against main.
 git fetch -q origin main || refuse "could not fetch main."
 view="$(gh pr view "$pr" --json headRefOid,body,author,comments)"
 
@@ -80,14 +81,6 @@ fi
 body="$(jq -r .body <<<"$view" | perl -0pe 's/<!--.*?-->//gs; s/```.*?```//gs')"
 grep -qiE "(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):? +#$issue([^0-9]|$)" <<<"$body" ||
   refuse "the body does not close #$issue; add \"Closes #$issue\"."
-
-lessons=0
-git diff --quiet "$base" HEAD -- docs/lessons.md docs/lessons-archive.md || lessons=$?
-case "$lessons" in
-  1) ;;
-  0) refuse "no lessons commit on this branch; write the retro, the route's first step." ;;
-  *) refuse "could not compare the lessons files (git diff exited $lessons)." ;;
-esac
 
 # A printed lesson waiting on a closed issue stayed printed until the cap
 # (#2968), so archive it now: the one this PR closes, or one closed already.
