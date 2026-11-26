@@ -1,5 +1,7 @@
 # One-tap start: today's plan on the Practice hero
 
+> Superseded by T42 in `docs/design-principles.md` (#3015): the code this spec describes has gone.
+
 > Tier 3. Issues #57 and #999.
 
 The core ranks up to four candidate blocks the way it ranks the Up next block,

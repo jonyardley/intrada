@@ -1,5 +1,7 @@
 # Stage 4.2 — choosing the next direction
 
+> Superseded by T42 in `docs/design-principles.md` (#3015) for what needs practice: the Up next card and the neglected list below have gone, and one ranking module replaces them.
+
 *Phase R, Stage 4.2 of the rethink plan ([`decisions.md`](../decisions.md)): the one-page
 comparison of the five research notes in this folder. **Decided 2026-08-14:
 Jon adopted the ordered sequence below.** Feature names follow the
@@ -133,8 +135,8 @@ Then, each building on the last:
    how long an item has sat is now measured against the interval its own
    history earns it, so a fragile piece and a consolidated one no longer go
    cold on the same clock. The card's headline reason and its ranking both
-   moved to the graded number, and `compute_neglected_items` reads the same
-   estimate instead of its own 14-day cut. Core only: it arrived through the
+   moved to the graded number, and the neglected list read the same estimate
+   in place of its own 14-day cut. Core only: it arrived through the
    reason strings, with no ViewModel field and no Swift logic. Whether the
    thresholds are right is an empirical question, so use it for a few weeks
    before tuning them (T42).

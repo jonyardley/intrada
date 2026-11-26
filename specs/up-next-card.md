@@ -1,5 +1,7 @@
 # The Up next card
 
+> Superseded by T42 in `docs/design-principles.md` (#3015): the ranking module decides what needs practice.
+
 > Superseded by design-principles T41 (#3007): Practice now fills the session
 > length the musician picks, and this card and its UpNextHero component are gone.
 > Tier 3 spec. Issue [#1082].
