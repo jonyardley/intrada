@@ -464,6 +464,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         }
     }
 
@@ -773,6 +774,7 @@ mod tests {
             notes: None,
             tags: None,
             priority: None,
+            include_in_warm_up: None,
         };
         let mut cmd = app.update(
             Event::Item(ItemEvent::Update {
@@ -970,6 +972,7 @@ mod tests {
             notes: None,
             tags: None,
             priority: None,
+            include_in_warm_up: None,
         };
         let mut update = app.update(
             Event::Item(ItemEvent::Update {

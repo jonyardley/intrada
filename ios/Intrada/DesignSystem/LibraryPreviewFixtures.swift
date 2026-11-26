@@ -109,7 +109,8 @@
       chordChart: ChordChart? = nil, metre: Metre? = nil, variations: [VariationView] = [],
       photoId: String? = nil, keys: [ItemKeyView] = [], keysCaption: String? = nil,
       variationsCaption: String? = nil, keySelection: KeyWheelSelection? = nil,
-      usualMinutes: UInt32 = 10, usualMinutesFromHistory: Bool = false
+      usualMinutes: UInt32 = 10, usualMinutesFromHistory: Bool = false,
+      includeInWarmUp: Bool = false
     ) -> LibraryItemView {
       LibraryItemView(
         id: id, itemType: itemType, title: title, subtitle: subtitle, key: key,
@@ -120,7 +121,7 @@
         chordChart: chordChart, metre: metre, variations: variations, photoId: photoId,
         keys: keys, keysCaption: keysCaption, variationsCaption: variationsCaption,
         keySelection: keySelection, usualMinutes: usualMinutes,
-        usualMinutesFromHistory: usualMinutesFromHistory)
+        usualMinutesFromHistory: usualMinutesFromHistory, includeInWarmUp: includeInWarmUp)
     }
 
     static var previewPiece: LibraryItemView {
@@ -431,14 +432,14 @@
       tags: [String] = [],
       exerciseLinks: [ExerciseLink] = [], createdAt: String = "2026-01-01T00:00:00Z",
       updatedAt: String? = nil, priority: Bool = false, chordChart: ChordChart? = nil,
-      photoId: String? = nil, metre: Metre? = nil
+      photoId: String? = nil, metre: Metre? = nil, includeInWarmUp: Bool = false
     ) -> Item {
       Item(
         id: id, title: title, kind: kind, composer: composer, key: key,
         tempo: tempo, notes: notes, tags: tags,
         createdAt: createdAt, updatedAt: updatedAt ?? createdAt, priority: priority,
         chordChart: chordChart, photoId: photoId, metre: metre, variationIds: [],
-        keys: [], exerciseLinks: exerciseLinks)
+        keys: [], exerciseLinks: exerciseLinks, includeInWarmUp: includeInWarmUp)
     }
   }
 #endif

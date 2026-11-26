@@ -38,7 +38,7 @@ final class LibraryBridgeTests: XCTestCase {
           input: UpdateItem(
             title: "Renamed", kind: .exercise, composer: .some("Bach"), key: .clear,
             tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
-            tags: nil, priority: nil))))
+            tags: nil, priority: nil, includeInWarmUp: nil))))
 
     let afterEdit = try bridge.rendered()
     XCTAssertEqual(
@@ -262,7 +262,7 @@ final class LibraryBridgeTests: XCTestCase {
           id: item.id,
           input: UpdateItem(
             title: "Scales in thirds", kind: nil, composer: nil, key: .set(key: dMinor),
-            tempo: nil, notes: nil, tags: nil, priority: nil),
+            tempo: nil, notes: nil, tags: nil, priority: nil, includeInWarmUp: nil),
           variationIds: [swung.id], newLabels: ["Staccato"])))
 
     let view = try bridge.rendered()
@@ -654,7 +654,7 @@ final class LibraryBridgeTests: XCTestCase {
           input: UpdateItem(
             title: item.title, kind: item.itemType,
             composer: nil, key: .keep, tempo: nil, notes: nil,
-            tags: nil, priority: on)))
+            tags: nil, priority: on, includeInWarmUp: nil)))
     }
 
     _ = try bridge.update(toggle(true))
@@ -665,6 +665,44 @@ final class LibraryBridgeTests: XCTestCase {
     _ = try bridge.update(toggle(false))
     XCTAssertEqual(
       try bridge.rendered().items.first?.priority, false, "star should flip priority off")
+  }
+
+  /// The warm-up switch crosses the bridge, is written by the store and comes
+  /// back on in a fresh core's library (#3006).
+  func testRealBridgeWarmUpSwitchIsSavedAndReadBackOn() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let id = try add(bridge, "Major scales", .exercise)
+    XCTAssertEqual(try bridge.rendered().items.first?.includeInWarmUp, false)
+
+    let saved = try bridge.update(
+      .item(
+        .update(
+          id: id,
+          input: UpdateItem(
+            title: nil, kind: nil, composer: nil, key: .keep, tempo: nil, notes: nil,
+            tags: nil, priority: nil, includeInWarmUp: true)))
+    ).compactMap { request -> Item? in
+      guard case .persistence(.saveItem(let item)) = request.effect else { return nil }
+      return item
+    }
+    XCTAssertNil(try bridge.rendered().error)
+    XCTAssertEqual(saved.map(\.includeInWarmUp), [true])
+
+    let store = try SharedItemStore.inMemory()
+    for item in saved { XCTAssertEqual(try store.handle(.saveItem(item)), .ack) }
+    guard case .items(let loaded) = try store.handle(.loadItems) else {
+      return XCTFail("the store answers a load with items")
+    }
+
+    let relaunched = RowsBridge()
+    let load = try XCTUnwrap(
+      try relaunched.update(.startApp).first {
+        if case .persistence(.loadItems) = $0.effect { return true } else { return false }
+      })
+    _ = try relaunched.resolve(load.id, persistenceOutput: .items(loaded))
+    XCTAssertEqual(
+      try relaunched.rendered().items.first { $0.id == id }?.includeInWarmUp, true)
   }
 
   /// A related exercise sends its mode and tempo as parts, not one formatted
@@ -746,7 +784,7 @@ final class LibraryBridgeTests: XCTestCase {
           id: id,
           input: UpdateItem(
             title: "Nocturne Op. 9", kind: nil, composer: .some(nil), key: .keep,
-            tempo: nil, notes: nil, tags: nil, priority: nil))))
+            tempo: nil, notes: nil, tags: nil, priority: nil, includeInWarmUp: nil))))
 
     let view = try bridge.rendered()
     XCTAssertNil(view.error, "err=\(view.error ?? "nil")")
@@ -825,7 +863,7 @@ final class LibraryBridgeTests: XCTestCase {
             composer: .some("Chopin (ed. Cortot)"),
             key: .set(key: Key(letter: .d, accidental: .natural, mode: nil)),
             tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
-            tags: ["romantic", "edited"], priority: true))))
+            tags: ["romantic", "edited"], priority: true, includeInWarmUp: nil))))
 
     let view = try bridge.rendered()
     XCTAssertNil(view.error, "the full patch must decode cleanly (#846)")

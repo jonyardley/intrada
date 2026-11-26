@@ -318,6 +318,10 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
         "v23_remove_focus_and_repetitions",
         Step::Code(remove_focus_and_repetitions),
     ),
+    (
+        "v24_item_include_in_warm_up",
+        Step::Sql("ALTER TABLE item ADD COLUMN include_in_warm_up INTEGER NOT NULL DEFAULT 0"),
+    ),
 ];
 
 pub(crate) fn latest() -> &'static str {

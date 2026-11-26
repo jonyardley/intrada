@@ -136,6 +136,7 @@ fn item(
     let metre: Option<String> = column(row, "metre")?;
     let keys: Option<String> = column(row, "keys")?;
     let priority: i64 = column(row, "priority")?;
+    let include_in_warm_up: i64 = column(row, "include_in_warm_up")?;
     Ok(Item {
         title: column(row, "title")?,
         kind: item_kind(&column::<String>(row, "kind")?, unreadable),
@@ -156,6 +157,7 @@ fn item(
         keys: decode_keys(keys.as_deref(), &id, unreadable),
         exercise_links,
         id,
+        include_in_warm_up: include_in_warm_up != 0,
     })
 }
 
@@ -241,9 +243,9 @@ pub(crate) fn upsert(tx: &Transaction, item: &Item) -> Result<(), StoreError> {
             "INSERT INTO item
                (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
                 created_at, updated_at, priority, chord_chart, photo_id,
-                metre, variation_ids, keys, deleted_at)
+                metre, variation_ids, keys, include_in_warm_up, deleted_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16,
-                     ?17, ?18, NULL)
+                     ?17, ?18, ?19, NULL)
              ON CONFLICT(id) DO UPDATE SET
                title = excluded.title, kind = excluded.kind, composer = excluded.composer,
                key = excluded.key, modality = excluded.modality,
@@ -254,7 +256,8 @@ pub(crate) fn upsert(tx: &Transaction, item: &Item) -> Result<(), StoreError> {
                chord_chart = excluded.chord_chart, photo_id = excluded.photo_id,
                metre = excluded.metre,
                variation_ids = {variation_ids},
-               keys = excluded.keys, deleted_at = NULL",
+               keys = excluded.keys, include_in_warm_up = excluded.include_in_warm_up,
+               deleted_at = NULL",
             tags = keeping_unreadable("tags"),
             variation_ids = keeping_unreadable("variation_ids"),
         ),
@@ -277,6 +280,7 @@ pub(crate) fn upsert(tx: &Transaction, item: &Item) -> Result<(), StoreError> {
             metre,
             encode_json(&item.variation_ids)?,
             keys,
+            item.include_in_warm_up,
         ],
     )?;
     for l in &item.exercise_links {

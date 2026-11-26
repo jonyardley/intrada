@@ -278,6 +278,22 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(labels), as: config)
   }
 
+  func testSwitchRow() {
+    let rows = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        SwitchRow(title: "Include in warm-up?", isOn: .constant(true), identifier: "on")
+          .padding(IntradaSpacing.card)
+          .cardSurface()
+        SwitchRow(title: "Planned duration", isOn: .constant(false), identifier: "off")
+          .padding(IntradaSpacing.card)
+          .cardSurface()
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(rows), as: config)
+  }
+
   func testFormField() {
     let fields = ZStack {
       PaperBackground()

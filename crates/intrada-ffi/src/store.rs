@@ -110,6 +110,7 @@ mod tests {
             variation_ids: vec![],
             keys: vec![],
             exercise_links: vec![],
+            include_in_warm_up: false,
         }
     }
 

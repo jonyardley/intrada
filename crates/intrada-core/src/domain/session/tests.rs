@@ -52,6 +52,7 @@ fn model_with_library() -> Model {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             },
             Item {
                 id: "piece-2".to_string(),
@@ -71,6 +72,7 @@ fn model_with_library() -> Model {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             },
             Item {
                 id: "exercise-1".to_string(),
@@ -90,6 +92,7 @@ fn model_with_library() -> Model {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             },
         ]
         .into(),
@@ -124,6 +127,7 @@ fn linked_model() -> Model {
         keys: vec![],
         photo_id: None,
         metre: None,
+        include_in_warm_up: false,
     };
     Model {
         items: vec![

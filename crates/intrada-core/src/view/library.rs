@@ -169,6 +169,7 @@ pub(super) fn build_library_item_views(
                 .unwrap_or(STARTING_USUAL_MINUTES)
                 .round() as u32,
             usual_minutes_from_history: usual_minutes.contains_key(item.id.as_str()),
+            include_in_warm_up: item.include_in_warm_up,
         });
     }
 

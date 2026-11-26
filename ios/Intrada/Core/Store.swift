@@ -273,13 +273,16 @@ final class Store {
   /// The core reads the old shape and saves the new one, so the old key goes
   /// once its bytes are sent, and is never read again (#2791).
   private func carryPreviousPracticeDefaults() {
+    // An untagged build wrote version 3, which no release reads (#3006).
+    let orphan = "intrada.practice-defaults.v3"  // gitleaks:allow
+    practiceDefaultsSlot.defaults.removeObject(forKey: orphan)
     let previous = DefaultsSlot(
       key: Self.previousPracticeDefaultsKey, defaults: practiceDefaultsSlot.defaults)
     guard let bytes = previous.read() else { return }
     if practiceDefaultsSlot.read() == nil {
       send(.practiceDefaults(.carried(bytes)))
     }
-    // Cleared after the send: the core's save has written version 3 by now.
+    // Cleared after the send: the core's save has written the new shape by now.
     previous.clear()
   }
 

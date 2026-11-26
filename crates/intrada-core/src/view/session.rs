@@ -964,6 +964,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         }
     }
 
@@ -1582,6 +1583,7 @@ mod tests {
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view = build_active_session_view(
@@ -2267,6 +2269,7 @@ mod tests {
                 keys: vec![],
                 photo_id: None,
                 metre: None,
+                include_in_warm_up: false,
             }]
             .into(),
             ..Default::default()

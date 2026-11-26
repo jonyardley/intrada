@@ -69,6 +69,7 @@ pub(super) fn commit_scaffold(
             keys: vec![],
             photo_id: None,
             metre: None,
+            include_in_warm_up: false,
         })
         .collect();
 

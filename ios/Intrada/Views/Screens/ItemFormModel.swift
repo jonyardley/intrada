@@ -157,7 +157,7 @@ final class ItemFormModel {
       tempo: typedTempo(),
       notes: .some(emptyToNil(notes)),
       tags: tags,
-      priority: nil)
+      priority: nil, includeInWarmUp: nil)
   }
 
   private func emptyToNil(_ value: String) -> String? {

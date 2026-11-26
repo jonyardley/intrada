@@ -63,8 +63,9 @@ struct FeedbackSheet: View {
   @ViewBuilder
   private func screenshotCard(_ image: UIImage) -> some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Toggle(isOn: $includeScreenshot) { FieldLabel("Include screenshot") }
-        .tint(IntradaColor.accent)
+      SwitchRow(
+        title: "Include screenshot", isOn: $includeScreenshot,
+        identifier: "feedback.includeScreenshot.toggle")
       if includeScreenshot {
         Image(uiImage: image)
           .resizable()
