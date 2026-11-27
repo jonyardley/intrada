@@ -17,7 +17,8 @@ extension XCUIApplication {
       file: file, line: line)
     for _ in 0..<planRows.count where planRows.firstMatch.exists {
       let before = planRows.count
-      planRows.firstMatch.tap()
+      // The row's centre can hold its Last time chip, which a tap applies instead.
+      planRows.firstMatch.staticTexts.firstMatch.tap()
       control(
         "entrySettings.remove", spoken: "Remove from this session", file: file, line: line
       ).tap()

@@ -38,7 +38,7 @@ final class SessionBuilderUITests: XCTestCase {
     XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5), "queued items")
     XCTAssertEqual(rows.count, 2, "two items queued")
 
-    rows.firstMatch.tap()
+    rows.firstMatch.staticTexts.firstMatch.tap()
     app.control("entrySettings.remove", spoken: "Remove from this session").tap()
     XCTAssertTrue(
       rows.element(boundBy: 1).waitForNonExistence(timeout: 5),
