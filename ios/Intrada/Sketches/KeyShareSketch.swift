@@ -3,7 +3,12 @@
   import SwiftUI
 
   struct KeyShareSketch {
-    enum Mark: CaseIterable { case gaps, ticks, track }
+    enum Look: CaseIterable { case hint, beside, ring }
+
+    enum Move {
+      case nextKey(name: String, short: String)
+      case finish
+    }
 
     struct State {
       let keyLabel: String
@@ -13,47 +18,50 @@
       let parts: [Double]
       let partLine: String?
       let partSide: String?
-      let next: String?
+      let move: Move
+      let shareUp: Bool
     }
 
     static let filling = State(
       keyLabel: "C major", keyChoices: 3, itemElapsed: 110, itemPlanned: 540,
       parts: [110.0 / 180, 0, 0], partLine: "C major, 1:50 of 3:00",
-      partSide: "3 minutes each", next: nil)
+      partSide: "3 minutes each", move: .nextKey(name: "G major", short: "G"), shareUp: false)
 
     static let over = State(
       keyLabel: "C major", keyChoices: 3, itemElapsed: 185, itemPlanned: 540,
       parts: [1, 0, 0], partLine: "C major, 3:05 of 3:00",
-      partSide: nil, next: "Next · G major")
+      partSide: nil, move: .nextKey(name: "G major", short: "G"), shareUp: true)
 
-    static let lastOver = State(
-      keyLabel: "D major", keyChoices: 3, itemElapsed: 550, itemPlanned: 540,
-      parts: [1, 1, 1], partLine: "D major, 3:10 of 3:00",
-      partSide: "Still timing D", next: nil)
+    static let lastKey = State(
+      keyLabel: "D major", keyChoices: 3, itemElapsed: 432, itemPlanned: 540,
+      parts: [1, 1, 72.0 / 180], partLine: "D major, 1:12 of 3:00",
+      partSide: "Last key", move: .finish, shareUp: false)
 
     static let oneKey = State(
       keyLabel: "C major", keyChoices: 1, itemElapsed: 110, itemPlanned: 540,
-      parts: [], partLine: nil, partSide: nil, next: nil)
+      parts: [], partLine: nil, partSide: nil, move: .finish, shareUp: false)
 
     static let untimed = State(
       keyLabel: "C major", keyChoices: 3, itemElapsed: 110, itemPlanned: nil,
-      parts: [], partLine: nil, partSide: nil, next: nil)
+      parts: [], partLine: nil, partSide: nil,
+      move: .nextKey(name: "G major", short: "G"), shareUp: false)
 
     static let items = 3
     static let currentItem = 1
+    static let nextItem = "Bach Prelude in C"
   }
 
   // ── The player, drawn from its public parts with fixture values ──
 
   struct KeySharePlayerSketch: View {
-    var mark: KeyShareSketch.Mark = .gaps
+    var look: KeyShareSketch.Look = .hint
     var state: KeyShareSketch.State = KeyShareSketch.filling
 
     var body: some View {
       ZStack {
         IntradaColor.paperTop.ignoresSafeArea()
         VStack(spacing: 0) {
-          SketchOrientationBand(mark: mark, parts: state.parts)
+          SketchOrientationBand(parts: state.parts)
           Spacer(minLength: IntradaSpacing.card)
           centerInfo
           SketchTimerRing(elapsed: state.itemElapsed, planned: state.itemPlanned)
@@ -68,7 +76,7 @@
           )
           .padding(.top, IntradaSpacing.controlGap)
           Spacer(minLength: IntradaSpacing.card)
-          controls
+          SketchMoveOnControls(look: look, move: state.move, shareUp: state.shareUp)
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -91,8 +99,6 @@
       }
     }
 
-    // ── The row under the ring ──
-
     private func partRow(_ line: String) -> some View {
       HStack {
         Text(line)
@@ -100,23 +106,7 @@
           .monospacedDigit()
           .foregroundStyle(IntradaColor.ink)
         Spacer(minLength: IntradaSpacing.controlGap)
-        if let next = state.next {
-          Button {
-          } label: {
-            HStack(spacing: IntradaSpacing.xSmall) {
-              Text(next)
-                .font(IntradaFont.label)
-              Image(systemName: "arrow.right")
-                .iconSize(.inline, weight: .semibold)
-                .accessibilityHidden(true)
-            }
-            .foregroundStyle(IntradaColor.ink)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(PressRebound())
-          .accessibilityHint("Moves on to the next key")
-        } else if let side = state.partSide {
+        if let side = state.partSide {
           Text(side)
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -124,28 +114,160 @@
       }
       .frame(minHeight: 44)
     }
+  }
 
-    // ── Bottom: the transport, as shipped ──
+  // ── Bottom: pause stays the big ink circle, moving on is quieter ──
 
-    private var controls: some View {
+  struct SketchMoveOnControls: View {
+    let look: KeyShareSketch.Look
+    let move: KeyShareSketch.Move
+    let shareUp: Bool
+
+    private var tint: Color { shareUp ? IntradaColor.ink : IntradaColor.inkSecondary }
+
+    private var title: String {
+      switch move {
+      case .nextKey(let name, _): "Move to \(name)"
+      case .finish: "Finish this item"
+      }
+    }
+
+    private var spoken: String {
+      switch move {
+      case .nextKey(let name, _): "Move to \(name)"
+      case .finish: "Finish this item, then \(KeyShareSketch.nextItem)"
+      }
+    }
+
+    var body: some View {
       VStack(spacing: IntradaSpacing.cardCompact) {
-        HStack(spacing: IntradaSpacing.section + IntradaSpacing.controlGap) {
-          TransportButton(systemImage: "play.fill", prominence: .primary, label: "Next item") {}
-          TransportButton(
-            systemImage: "forward.end", prominence: .secondary, label: "Skip this item"
-          ) {}
+        switch look {
+        case .hint: hintLook
+        case .beside: besideLook
+        case .ring: ringLook
         }
-        Text("Next · Bach Prelude in C")
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
       }
       .padding(.bottom, IntradaSpacing.card)
+    }
+
+    private var pause: some View {
+      TransportButton(systemImage: "pause.fill", prominence: .primary, label: "Pause") {}
+    }
+
+    private var afterLine: some View {
+      Text("Then \(KeyShareSketch.nextItem)")
+        .font(IntradaFont.small)
+        .foregroundStyle(IntradaColor.inkSecondary)
+    }
+
+    // Look A: the hint line under pause becomes the control.
+    @ViewBuilder private var hintLook: some View {
+      pause
+      Button {
+      } label: {
+        HStack(spacing: IntradaSpacing.small) {
+          if case .finish = move {
+            Image(systemName: "checkmark")
+              .iconSize(.inline, weight: shareUp ? .semibold : .regular)
+              .accessibilityHidden(true)
+          }
+          Text(title)
+            .font(shareUp ? IntradaFont.label : IntradaFont.secondary)
+        }
+        .foregroundStyle(tint)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(PressRebound())
+      .accessibilityLabel(spoken)
+      if case .finish = move {
+        afterLine
+      }
+    }
+
+    // Look B: pause in the middle, a two line text control where skip sits today.
+    @ViewBuilder private var besideLook: some View {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+        pause
+        Button {
+        } label: {
+          VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
+            Text(besideCaption)
+              .font(IntradaFont.small)
+              .foregroundStyle(IntradaColor.inkSecondary)
+            Text(besideName)
+              .font(shareUp ? IntradaFont.label : IntradaFont.secondary)
+              .foregroundStyle(tint)
+          }
+          .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(PressRebound())
+        .accessibilityLabel(spoken)
+      }
+      if case .finish = move {
+        afterLine
+      }
+    }
+
+    private var besideCaption: String {
+      switch move {
+      case .nextKey: "Next key"
+      case .finish: "Last key"
+      }
+    }
+
+    private var besideName: String {
+      switch move {
+      case .nextKey(let name, _): name
+      case .finish: "Finish item"
+      }
+    }
+
+    // Look C: a thin ring beside pause, as a stepper's sign (T39), named underneath.
+    @ViewBuilder private var ringLook: some View {
+      HStack(spacing: IntradaSpacing.section + IntradaSpacing.controlGap) {
+        Color.clear.frame(width: 48, height: 1)
+        pause
+        Button {
+        } label: {
+          ZStack {
+            Circle()
+              .stroke(shareUp ? IntradaColor.ink : IntradaColor.divider, lineWidth: 1)
+            switch move {
+            case .nextKey(_, let short):
+              Text(short)
+                .font(IntradaFont.label)
+                .foregroundStyle(tint)
+            case .finish:
+              Image(systemName: "checkmark")
+                .iconSize(.inline, weight: .medium)
+                .foregroundStyle(tint)
+            }
+          }
+          .frame(width: 40, height: 40)
+          .frame(width: 48, height: 48)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(PressRebound())
+        .accessibilityLabel(spoken)
+      }
+      Text(ringLine)
+        .font(IntradaFont.secondary)
+        .foregroundStyle(IntradaColor.inkSecondary)
+    }
+
+    private var ringLine: String {
+      switch move {
+      case .nextKey(let name, _): "Next key · \(name)"
+      case .finish: "Next · \(KeyShareSketch.nextItem)"
+      }
     }
   }
 
   /// A copy of `SessionOrientationBand` with the split strip in place of `SegmentedProgress`.
   struct SketchOrientationBand: View {
-    let mark: KeyShareSketch.Mark
     let parts: [Double]
 
     var body: some View {
@@ -167,26 +289,28 @@
             .frame(minWidth: 56, alignment: .trailing)
         }
         SketchSplitProgress(
-          items: KeyShareSketch.items, current: KeyShareSketch.currentItem, parts: parts,
-          mark: mark)
+          items: KeyShareSketch.items, current: KeyShareSketch.currentItem, parts: parts)
       }
     }
   }
 
   /// The session strip, with the current item's segment split into `parts`, each
-  /// a fraction from 0 to 1. Fewer than two parts draws the strip as shipped.
+  /// a fraction from 0 to 1, 2 points apart against 8 between items.
   struct SketchSplitProgress: View {
     let items: Int
     let current: Int
     let parts: [Double]
-    let mark: KeyShareSketch.Mark
     var height: CGFloat = 4
 
     var body: some View {
-      HStack(spacing: IntradaSpacing.segmentGap) {
+      HStack(spacing: IntradaSpacing.controlGap) {
         ForEach(0..<items, id: \.self) { index in
           if index == current && parts.count > 1 {
-            split
+            HStack(spacing: IntradaSpacing.xxSmall) {
+              ForEach(Array(parts.enumerated()), id: \.offset) { _, fraction in
+                part(fraction).clipShape(Capsule())
+              }
+            }
           } else {
             Capsule().fill(index <= current ? IntradaColor.ink : IntradaColor.divider)
           }
@@ -196,50 +320,10 @@
       .accessibilityHidden(true)
     }
 
-    @ViewBuilder private var split: some View {
-      switch mark {
-      case .gaps:
-        HStack(spacing: IntradaSpacing.xxSmall) {
-          ForEach(Array(parts.enumerated()), id: \.offset) { _, fraction in
-            part(fraction, empty: IntradaColor.divider).clipShape(Capsule())
-          }
-        }
-      case .ticks:
-        GeometryReader { geo in
-          let width = geo.size.width / CGFloat(parts.count)
-          ZStack(alignment: .leading) {
-            Capsule().fill(IntradaColor.divider)
-            ForEach(Array(parts.enumerated()), id: \.offset) { index, fraction in
-              Rectangle()
-                .fill(IntradaColor.ink)
-                .frame(width: width * min(max(fraction, 0), 1))
-                .offset(x: width * CGFloat(index))
-            }
-            ForEach(1..<parts.count, id: \.self) { index in
-              Rectangle()
-                .fill(IntradaColor.paperTop)
-                .frame(width: 1)
-                .offset(x: width * CGFloat(index))
-            }
-          }
-          .clipShape(Capsule())
-        }
-      case .track:
-        let currentPart = parts.firstIndex { $0 < 1 } ?? parts.count - 1
-        HStack(spacing: 0) {
-          ForEach(Array(parts.enumerated()), id: \.offset) { index, fraction in
-            part(
-              fraction, empty: index == currentPart ? IntradaColor.divider : IntradaColor.track)
-          }
-        }
-        .clipShape(Capsule())
-      }
-    }
-
-    private func part(_ fraction: Double, empty: Color) -> some View {
+    private func part(_ fraction: Double) -> some View {
       GeometryReader { geo in
         ZStack(alignment: .leading) {
-          Rectangle().fill(empty)
+          Rectangle().fill(IntradaColor.divider)
           Rectangle()
             .fill(IntradaColor.ink)
             .frame(width: geo.size.width * min(max(fraction, 0), 1))
@@ -307,34 +391,23 @@
     }
   }
 
-  /// The three marks side by side at a readable size, for the review page.
-  struct KeyShareStripMarksSketch: View {
+  /// The strip at a readable size, so the key and item gaps can be compared.
+  struct KeyShareStripSketch: View {
     private let rows: [(String, [Double])] = [
-      ("Filling", KeyShareSketch.filling.parts), ("Over", KeyShareSketch.over.parts),
-      ("Last key over", KeyShareSketch.lastOver.parts),
-    ]
-    private let marks: [(String, KeyShareSketch.Mark)] = [
-      ("Gaps", .gaps), ("Ticks", .ticks), ("Lighter track", .track),
+      ("Filling", KeyShareSketch.filling.parts), ("Share up", KeyShareSketch.over.parts),
+      ("Last key", KeyShareSketch.lastKey.parts),
     ]
 
     var body: some View {
-      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-        ForEach(marks, id: \.0) { name, mark in
-          VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-            Text(name)
-              .font(IntradaFont.badge)
-              .foregroundStyle(IntradaColor.ink)
-            ForEach(rows, id: \.0) { label, parts in
-              HStack(spacing: IntradaSpacing.cardCompact) {
-                Text(label)
-                  .font(IntradaFont.small)
-                  .foregroundStyle(IntradaColor.inkSecondary)
-                  .frame(width: 90, alignment: .leading)
-                SketchSplitProgress(
-                  items: KeyShareSketch.items, current: KeyShareSketch.currentItem,
-                  parts: parts, mark: mark)
-              }
-            }
+      VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+        ForEach(rows, id: \.0) { label, parts in
+          HStack(spacing: IntradaSpacing.cardCompact) {
+            Text(label)
+              .font(IntradaFont.small)
+              .foregroundStyle(IntradaColor.inkSecondary)
+              .frame(width: 90, alignment: .leading)
+            SketchSplitProgress(
+              items: KeyShareSketch.items, current: KeyShareSketch.currentItem, parts: parts)
           }
         }
       }
@@ -344,7 +417,7 @@
     }
   }
 
-  #Preview("Gaps, over") {
-    KeySharePlayerSketch(mark: .gaps, state: KeyShareSketch.over)
+  #Preview("Hint, share up") {
+    KeySharePlayerSketch(look: .hint, state: KeyShareSketch.over)
   }
 #endif
