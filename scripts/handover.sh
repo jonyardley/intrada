@@ -6,7 +6,7 @@
 # throughout, and friction is why it has not held.
 #
 # Everything printed is read from git and GitHub. The opener names no model
-# or effort: the new session opens on .claude/settings.json.
+# or effort: the new session opens on Jon's global user settings.
 # Nothing is invented: a fact that cannot be read is named as unreadable
 # rather than guessed at, since an opener that lies costs more than one that
 # is short.
