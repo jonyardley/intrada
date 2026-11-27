@@ -87,6 +87,41 @@ pub struct BuildingSetlistView {
     pub summary: String,
     /// "Start session · 10 min", or "Start session".
     pub start_title: String,
+    /// The plan against today's length (#3009); `None` without a length.
+    pub fit: Option<FitView>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct FitView {
+    /// Timed rows only, each to the nearest whole minute.
+    pub used_mins: u32,
+    pub length_mins: u16,
+    pub state: FitState,
+    /// "72 of 60 min", then ", plus 2 untimed" when any row has no minutes.
+    pub summary: String,
+    pub offers: Vec<FitOffer>,
+    /// "12 min over", "45 min left" or "Fits exactly".
+    pub state_line: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum FitState {
+    Under,
+    Exact,
+    Over,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum FitOffer {
+    FillWithSuggestions,
+    StretchToFit,
+    TrimToFit,
+    DropLastItem,
 }
 
 /// What an entry's plan can name: its item's variations.

@@ -250,6 +250,59 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(try bridge.rendered().practiceDefaults.sessionLengthMins, 25)
   }
 
+  /// The fit view and its three events cross the bincode wire (#846, #3009).
+  func testRealBridgeTrimToFitBringsThePlanBackToTheLength() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    for title in ["Scales", "Sonata"] {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: .exercise, composer: nil, key: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    }
+    let ids = try bridge.rendered().items.map(\.id)
+    XCTAssertEqual(ids.count, 2)
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.setSessionLength(lengthMins: 60)))
+    for (id, secs) in zip(ids, [UInt32(3600), 720]) {
+      _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+      let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.last?.id)
+      _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: secs)))
+    }
+
+    let over = try XCTUnwrap(try bridge.rendered().buildingSetlist?.fit)
+    XCTAssertEqual(
+      over,
+      FitView(
+        usedMins: 72, lengthMins: 60, state: .over, summary: "72 of 60 min",
+        offers: [.trimToFit, .dropLastItem], stateLine: "12 min over"))
+
+    _ = try bridge.update(.session(.trimToFit))
+    let fitted = try XCTUnwrap(try bridge.rendered().buildingSetlist?.fit)
+    XCTAssertEqual(fitted.usedMins, 60)
+    XCTAssertEqual(fitted.state, FitState.exact)
+    XCTAssertEqual(fitted.stateLine, "Fits exactly")
+    XCTAssertEqual(fitted.offers, [FitOffer]())
+
+    _ = try bridge.update(.session(.dropLastItem))
+    let dropped = try XCTUnwrap(try bridge.rendered().buildingSetlist)
+    XCTAssertEqual(dropped.entries.map(\.itemId), [ids[0]])
+    XCTAssertEqual(dropped.fit?.usedMins, 50)
+    XCTAssertEqual(dropped.fit?.stateLine, "10 min left")
+
+    _ = try bridge.update(.session(.stretchToFit))
+    XCTAssertEqual(try bridge.rendered().buildingSetlist?.fit?.usedMins, 60)
+
+    _ = try bridge.update(.session(.setSessionLength(lengthMins: 80)))
+    _ = try bridge.update(.session(.fillWithSuggestions(now: "2026-10-02T09:00:00Z")))
+    let filled = try XCTUnwrap(try bridge.rendered().buildingSetlist)
+    XCTAssertEqual(filled.entries.map(\.itemId), ids)
+    XCTAssertEqual(filled.fit?.usedMins, 70)
+    XCTAssertNil(try bridge.rendered().error)
+  }
+
   func testRealBridgeATimedSessionSendsItsEnd() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)

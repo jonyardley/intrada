@@ -41,6 +41,7 @@ struct ScoreStepper: View {
   @State private var draft = ""
   @State private var scoreBeforeTyping: Int?
   @State private var lastSent: Int?
+  @State private var heldScore: Int?
   @FocusState private var typingFocused: Bool
 
   init(
@@ -71,11 +72,17 @@ struct ScoreStepper: View {
 
   var body: some View {
     HStack(spacing: 0) {
-      TempoStepButton(systemImage: "minus", label: "Lower", isEnabled: canLower) {
+      TempoStepButton(
+        systemImage: "minus", label: "Lower", isEnabled: canLower,
+        onHold: { held(by: -1, first: $0) }
+      ) {
         ringTapped(by: -1)
       }
       valueColumn
-      TempoStepButton(systemImage: "plus", label: "Higher", isEnabled: canRaise) {
+      TempoStepButton(
+        systemImage: "plus", label: "Higher", isEnabled: canRaise,
+        onHold: { held(by: 1, first: $0) }
+      ) {
         ringTapped(by: 1)
       }
     }
@@ -198,14 +205,40 @@ struct ScoreStepper: View {
 
   /// A ring tap while typing steps from the typed number and ends the typing,
   /// so one write lands instead of the draft overwriting the step on Done.
-  private func ringTapped(by steps: Int) {
-    guard typingFocused else { return onChange(stepped(by: steps)) }
-    let next = stepped(by: steps, fromDraft: draft, saved: scoreBeforeTyping ?? score)
-    scoreBeforeTyping = nil
-    lastSent = nil
-    draft = ""
-    typingFocused = false
+  @discardableResult
+  private func ringTapped(by steps: Int) -> Int {
+    let next =
+      typingFocused
+      ? stepped(by: steps, fromDraft: draft, saved: scoreBeforeTyping ?? score)
+      : stepped(by: steps)
+    if typingFocused {
+      scoreBeforeTyping = nil
+      lastSent = nil
+      draft = ""
+      typingFocused = false
+    }
     onChange(next)
+    return next
+  }
+
+  /// The caller's `score` is the one from when the press began, so a hold
+  /// steps from its own last value rather than waiting for the caller's.
+  private func held(by steps: Int, first: Bool) -> Bool {
+    if first, typingFocused {
+      heldScore = ringTapped(by: steps)
+      return true
+    }
+    guard let next = heldStep(by: steps, from: first ? score : heldScore ?? score) else {
+      return false
+    }
+    heldScore = next
+    onChange(next)
+    return true
+  }
+
+  func heldStep(by steps: Int, from held: Int) -> Int? {
+    let next = clamped(held + steps * step)
+    return next == held ? nil : next
   }
 
   func stepped(by steps: Int, fromDraft text: String, saved: Int) -> Int {

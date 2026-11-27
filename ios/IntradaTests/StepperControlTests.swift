@@ -159,6 +159,30 @@ struct StepperControlTests {
     #expect(length(5).stepped(by: steps, fromDraft: draft, saved: 20) == expected)
   }
 
+  @Test func aHeldRingStepsFromItsLastStepAndStopsAtTheRangeEnd() {
+    var held = 105
+    var sent: [Int] = []
+    while let next = length(105).heldStep(by: 1, from: held) {
+      sent.append(next)
+      held = next
+    }
+    #expect(sent == [110, 115, 120])
+  }
+
+  @Test func aHeldRingAtTheRangeEndSendsNothing() {
+    #expect(length(5).heldStep(by: -1, from: 5) == nil)
+    #expect(length(120).heldStep(by: 1, from: 120) == nil)
+  }
+
+  @Test func holdingWaitsAMomentThenSpeedsUp() {
+    #expect(HoldRepeat.firstDelay > HoldRepeat.delay(afterSteps: 1))
+    #expect(
+      HoldRepeat.delay(afterSteps: 1) > HoldRepeat.delay(afterSteps: HoldRepeat.stepsBeforeFast))
+    #expect(
+      HoldRepeat.delay(afterSteps: HoldRepeat.stepsBeforeFast)
+        == HoldRepeat.delay(afterSteps: HoldRepeat.stepsBeforeFast + 20))
+  }
+
   @Test(arguments: [(1, "1 minute"), (25, "25 minutes")])
   func aSessionLengthIsSpokenInMinutes(minutes: Int, spoken: String) {
     #expect(SessionLengthControl.spokenMinutes(minutes) == spoken)

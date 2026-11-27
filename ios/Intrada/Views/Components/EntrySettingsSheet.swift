@@ -152,14 +152,26 @@ struct EntrySettingsSheet: View {
               entryId: entry.id, durationSecs: on ? UInt32(plannedMinutes * 60) : nil)))
       }
       if hasPlannedDuration {
-        Stepper(value: $plannedMinutes, in: durationRange) {
-          Text("\(plannedMinutes) min").font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
-        }
+        ScoreStepper(
+          score: plannedMinutes, caption: .unit("min"), range: durationRange,
+          figure: IntradaFont.timer(32), typing: true,
+          accessibilityLabel: "Planned duration", accessibilityValue: "\(plannedMinutes) minutes"
+        ) { plannedMinutes = $0 }
+        .frame(maxWidth: .infinity)
         .onChange(of: plannedMinutes) { _, value in
           guard hasPlannedDuration else { return }
           store.send(
             .session(.setEntryDuration(entryId: entry.id, durationSecs: UInt32(value * 60))))
         }
+      }
+      if let fit = store.viewModel?.buildingSetlist?.fit {
+        MinutesUsedMeter(
+          summary: fit.summary, stateLine: fit.stateLine, usedMins: Int(fit.usedMins),
+          lengthMins: Int(fit.lengthMins),
+          state: fit.state
+        )
+        .padding(.top, IntradaSpacing.cardCompact)
+        .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
       }
     }
     .fieldCardSurface()
@@ -181,6 +193,7 @@ struct EntrySettingsSheet: View {
     .buttonStyle(.plain)
     .foregroundStyle(IntradaColor.danger)
     .cardSurface(cornerRadius: IntradaRadius.card)
+    .accessibilityIdentifier("entrySettings.remove")
   }
 }
 

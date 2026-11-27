@@ -33,15 +33,17 @@ final class SessionBuilderUITests: XCTestCase {
     notAdded.firstMatch.tap()
     app.control("sheet.done", spoken: "Done").tap()
 
-    // Both land as standalone rows, each with a remove button spoken "Remove <title>".
-    let removes = app.rows("builder.remove", spokenContaining: "Remove ")
-    XCTAssertTrue(removes.firstMatch.waitForExistence(timeout: 5), "queued items")
-    XCTAssertEqual(removes.count, 2, "two items queued")
+    // Both land as standalone rows; a row opens its card, whose Remove takes it out.
+    let rows = app.descendants(matching: .any).matching(identifier: "builder.row")
+    XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5), "queued items")
+    XCTAssertEqual(rows.count, 2, "two items queued")
 
-    removes.firstMatch.tap()
-    XCTAssertEqual(
-      app.rows("builder.remove", spokenContaining: "Remove ").count, 1,
+    rows.firstMatch.staticTexts.firstMatch.tap()
+    app.control("entrySettings.remove", spoken: "Remove from this session").tap()
+    XCTAssertTrue(
+      rows.element(boundBy: 1).waitForNonExistence(timeout: 5),
       "one item remains after removing from the queue")
+    XCTAssertEqual(rows.count, 1, "one item remains after removing from the queue")
 
     let cancel = app.control("builder.cancel", spoken: "Cancel")
     cancel.tap()
