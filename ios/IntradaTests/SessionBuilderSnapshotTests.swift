@@ -109,11 +109,11 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
 
   private static let overFit = FitView(
     usedMins: 22, lengthMins: 20, state: .over, summary: "22 of 20 min, plus 1 untimed",
-    offers: [.trimToFit, .dropLastItem])
+    offers: [.trimToFit, .dropLastItem], stateLine: "2 min over")
 
   private static let underFit = FitView(
     usedMins: 22, lengthMins: 45, state: .under, summary: "22 of 45 min, plus 1 untimed",
-    offers: [.fillWithSuggestions, .stretchToFit])
+    offers: [.fillWithSuggestions, .stretchToFit], stateLine: "23 min left")
 
   func testSessionBuilderOverLength() {
     let store = Store.previewBuildingPlanned(lengthMins: 20, fit: Self.overFit)

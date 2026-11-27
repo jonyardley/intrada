@@ -612,9 +612,7 @@ struct SessionBuilderScreen: View {
     case .stretchToFit: event = .session(.stretchToFit)
     case .fillWithSuggestions:
       event = .session(.fillWithSuggestions(now: SessionClock.nowRFC3339()))
-    case .dropLastItem:
-      guard let last = entries.last else { return }
-      event = .session(.removeFromSetlist(entryId: last.id))
+    case .dropLastItem: event = .session(.dropLastItem)
     }
     store.send(event, onSuccess: .impact)
   }
