@@ -3,49 +3,37 @@
   import SwiftUI
 
   struct OverrunSketch {
-    enum Look: CaseIterable { case sunken, card, plain }
+    enum Option { case switchRow, lineUnderSave, playerOnly }
 
     struct Notice {
-      let headline: String
-      let detail: String
-      let canKeep: Bool
+      let switchDetail: String
+      let switchOffDetail: String
+      let underSave: String
+      let keepLabel: String
     }
 
     static let two = Notice(
-      headline: "You spent 4 minutes longer on scales.",
-      detail: "To finish on time, Bach and Clair de lune lose 2 minutes each.",
-      canKeep: true)
-
-    static let one = Notice(
-      headline: "You spent 4 minutes longer on scales.",
-      detail: "To finish on time, Bach loses 4 minutes.",
-      canKeep: true)
-
-    static let many = Notice(
-      headline: "You spent 4 minutes longer on Hanon No. 1 in C major, hands together.",
-      detail:
-        "To finish on time, Bach Prelude in C, Clair de lune and Chopin Nocturne in E flat lose 4 minutes between them.",
-      canKeep: true)
+      switchDetail: "Bach and Clair de lune now 3\u{00A0}minutes each",
+      switchOffDetail: "Ends 4\u{00A0}minutes late",
+      underSave: "Bach and Clair de lune now 3\u{00A0}minutes each",
+      keepLabel: "Keep 5\u{00A0}min")
 
     static let squeezed = Notice(
-      headline: "You spent 12 minutes longer on scales.",
-      detail: "To finish on time, Bach and Clair de lune drop to 1 minute each.",
-      canKeep: true)
+      switchDetail: "Bach and Clair de lune now 1\u{00A0}minute each",
+      switchOffDetail: "Ends 12\u{00A0}minutes late",
+      underSave: "Bach and Clair de lune now 1\u{00A0}minute each",
+      keepLabel: "Keep 5\u{00A0}min")
 
-    static let kept = Notice(
-      headline: "You spent 4 minutes longer on scales.",
-      detail: "Bach and Clair de lune keep their full times. You will finish about 4 minutes late.",
-      canKeep: false)
-
+    static let switchTitle = "Finish on time"
     static let overLabel = "4 min over"
-    static let overDetail = "The rest will be shortened"
   }
 
   // ── Item complete, drawn from its public parts with fixture values ──
 
   struct OverrunSheetSketch: View {
-    var look: OverrunSketch.Look = .sunken
+    var option: OverrunSketch.Option = .switchRow
     var notice: OverrunSketch.Notice = OverrunSketch.two
+    var shortenOn = true
 
     var body: some View {
       ZStack(alignment: .bottom) {
@@ -64,11 +52,6 @@
 
             HairlineDivider().padding(.top, IntradaSpacing.section)
 
-            if look != .plain {
-              OverrunNoticeSketch(look: look, notice: notice)
-                .padding(.top, IntradaSpacing.section)
-            }
-
             VStack(alignment: .leading, spacing: 0) {
               StepperRow {
                 StepperRowLabel("Confidence")
@@ -85,6 +68,20 @@
                 TempoDrag(value: .constant(104), step: 2, band: 40...208)
               }
               .padding(.top, IntradaSpacing.controlGap)
+
+              if option == .switchRow {
+                HairlineDivider().padding(.top, IntradaSpacing.controlGap)
+                VStack(alignment: .leading, spacing: 0) {
+                  SwitchRow(
+                    title: OverrunSketch.switchTitle, isOn: .constant(shortenOn),
+                    identifier: "reflection.shorten")
+                  Text(shortenOn ? notice.switchDetail : notice.switchOffDetail)
+                    .font(IntradaFont.small)
+                    .foregroundStyle(IntradaColor.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, IntradaSpacing.controlGap)
+              }
             }
             .padding(.top, IntradaSpacing.section)
 
@@ -99,17 +96,17 @@
             }
             .padding(.top, IntradaSpacing.controlGap)
 
-            if look == .plain {
-              OverrunNoticeSketch(look: look, notice: notice)
-                .padding(.top, IntradaSpacing.card)
-            }
-
             BrandBarButton {
             } label: {
               Text("Save & continue")
               Image(systemName: "arrow.right")
             }
             .padding(.top, IntradaSpacing.card)
+
+            if option == .lineUnderSave {
+              UnderSaveLineSketch(notice: notice)
+                .padding(.top, IntradaSpacing.controlGap)
+            }
 
             Button("Skip") {}
               .font(IntradaFont.bodyMedium)
@@ -124,116 +121,116 @@
     }
   }
 
-  struct OverrunNoticeSketch: View {
-    let look: OverrunSketch.Look
+  struct UnderSaveLineSketch: View {
     let notice: OverrunSketch.Notice
 
     var body: some View {
-      switch look {
-      case .sunken:
-        HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
-          clockIcon.padding(.top, IntradaSpacing.xxSmall)
-          VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
-            words
-            keepButton(underlined: true)
-          }
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: IntradaSpacing.controlGap) {
+          words
+          keep
         }
-        .padding(.horizontal, IntradaSpacing.cardCompact)
-        .padding(.top, IntradaSpacing.cardCompact)
-        .padding(.bottom, notice.canKeep ? 0 : IntradaSpacing.cardCompact)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-          IntradaColor.surfaceSunken, in: RoundedRectangle(cornerRadius: IntradaRadius.card))
-      case .card:
-        HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
-          clockIcon.padding(.top, IntradaSpacing.xxSmall)
-          VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
-            words
-            keepButton(underlined: false)
-          }
+        VStack(spacing: 0) {
+          words.multilineTextAlignment(.center)
+          keep
         }
-        .padding(.horizontal, IntradaSpacing.cardCompact)
-        .padding(.top, IntradaSpacing.cardCompact)
-        .padding(.bottom, notice.canKeep ? 0 : IntradaSpacing.cardCompact)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface(cornerRadius: IntradaRadius.card)
-      case .plain:
-        VStack(spacing: IntradaSpacing.xxSmall) {
-          Text(notice.headline)
-            .font(IntradaFont.label)
-            .foregroundStyle(IntradaColor.ink)
-          Text(notice.detail)
-            .font(IntradaFont.secondary)
-            .foregroundStyle(IntradaColor.inkSecondary)
-          keepButton(underlined: false)
-        }
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
       }
-    }
-
-    private var clockIcon: some View {
-      Image(systemName: "clock")
-        .iconSize(.inline)
-        .foregroundStyle(IntradaColor.inkSecondary)
-        .accessibilityHidden(true)
+      .frame(maxWidth: .infinity)
     }
 
     private var words: some View {
-      VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
-        Text(notice.headline)
-          .font(IntradaFont.label)
-          .foregroundStyle(IntradaColor.ink)
-        Text(notice.detail)
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      .fixedSize(horizontal: false, vertical: true)
+      Text(notice.underSave)
+        .font(IntradaFont.secondary)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
-    @ViewBuilder private func keepButton(underlined: Bool) -> some View {
-      if notice.canKeep {
-        Button {
-        } label: {
-          Text("Keep their full times").underline(underlined)
-        }
-        .font(IntradaFont.button)
-        .foregroundStyle(IntradaColor.ink)
+    private var keep: some View {
+      Button(notice.keepLabel) {}
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.inkSecondary)
         .frame(minHeight: 44)
+    }
+  }
+
+  // ── The player's top, with the real band and the over-time line ──
+
+  struct OverrunPlayerSketch: View {
+    var body: some View {
+      PlayerFrameSketch(
+        remaining: 17 * 60 + 40, position: "Focus · 1 of 3", filled: 1, kind: .exercise,
+        title: "Major scales", next: "Then Bach, now 3 min"
+      ) {
+        Text(OverrunSketch.overLabel)
+          .font(IntradaFont.secondary)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .frame(maxWidth: .infinity)
+          .padding(.top, IntradaSpacing.controlGap)
+      } ring: {
+        RingStandInSketch(figure: "+4:00", caption: "of 5:00")
+      } underRing: {
+        EmptyView()
       }
     }
   }
 
-  // ── The player's top, with the real band and the over-time strip ──
+  // ── Option C: the next item's player carries the shorter time ──
 
-  struct OverrunPlayerSketch: View {
-    var look: OverrunSketch.Look = .sunken
+  struct OverrunNextPlayerSketch: View {
+    var body: some View {
+      PlayerFrameSketch(
+        remaining: 6 * 60, position: "Focus · 2 of 3", filled: 1, kind: .piece,
+        title: "Bach", next: "Then Clair de lune, now 3 min"
+      ) {
+        EmptyView()
+      } ring: {
+        RingStandInSketch(figure: "3:00", caption: "now 3 min, was 5")
+      } underRing: {
+        Button("Keep 5 min") {}
+          .font(IntradaFont.button)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .frame(minHeight: 44)
+          .padding(.top, IntradaSpacing.controlGap)
+      }
+    }
+  }
+
+  struct PlayerFrameSketch<Strip: View, Ring: View, UnderRing: View>: View {
+    let remaining: Int
+    let position: String
+    let filled: Int
+    let kind: ItemKind
+    let title: String
+    let next: String
+    @ViewBuilder let strip: Strip
+    @ViewBuilder let ring: Ring
+    @ViewBuilder let underRing: UnderRing
 
     var body: some View {
       ZStack {
         PaperBackground()
         VStack(spacing: 0) {
           SessionOrientationBand(
-            session: .remaining(17 * 60 + 40), positionLabel: "Focus · 1 of 3",
-            types: [.exercise, .piece, .piece], filled: 1
+            session: .remaining(remaining), positionLabel: position,
+            types: [.exercise, .piece, .piece], filled: filled
           ) {
             Image(systemName: "ellipsis")
               .iconSize(.control)
               .foregroundStyle(IntradaColor.inkSecondary)
               .frame(width: 44, height: 44)
           }
-          OverrunStripSketch(look: look)
-            .padding(.top, IntradaSpacing.controlGap)
+          strip
           Spacer(minLength: IntradaSpacing.card)
           VStack(spacing: IntradaSpacing.controlGap) {
-            TypeBadge(kind: .exercise)
-            Text("Major scales")
+            TypeBadge(kind: kind)
+            Text(title)
               .font(IntradaFont.pageTitle)
               .foregroundStyle(IntradaColor.ink)
           }
-          ringStandIn.padding(.top, IntradaSpacing.section)
+          ring.padding(.top, IntradaSpacing.section)
+          underRing
           Spacer(minLength: IntradaSpacing.card)
-          Text("Then Bach, now 3 min")
+          Text(next)
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .padding(.bottom, IntradaSpacing.section)
@@ -242,63 +239,21 @@
         .padding(.top, IntradaSpacing.card)
       }
     }
+  }
 
-    private var ringStandIn: some View {
+  struct RingStandInSketch: View {
+    let figure: String
+    let caption: String
+
+    var body: some View {
       ZStack {
         Circle().stroke(IntradaColor.ink, lineWidth: 12)
         VStack(spacing: IntradaSpacing.xxSmall) {
-          Text("+4:00").font(IntradaFont.figureLarge).foregroundStyle(IntradaColor.ink)
-          Text("of 5:00").font(IntradaFont.secondary).foregroundStyle(IntradaColor.inkSecondary)
+          Text(figure).font(IntradaFont.figureLarge).foregroundStyle(IntradaColor.ink)
+          Text(caption).font(IntradaFont.secondary).foregroundStyle(IntradaColor.inkSecondary)
         }
       }
       .frame(width: 210, height: 210)
-    }
-  }
-
-  struct OverrunStripSketch: View {
-    let look: OverrunSketch.Look
-
-    var body: some View {
-      switch look {
-      case .sunken:
-        HStack(spacing: IntradaSpacing.controlGap) {
-          clockIcon
-          Text(OverrunSketch.overLabel)
-            .font(IntradaFont.smallMedium)
-            .foregroundStyle(IntradaColor.ink)
-          Spacer(minLength: IntradaSpacing.controlGap)
-          Text(OverrunSketch.overDetail)
-            .font(IntradaFont.small)
-            .foregroundStyle(IntradaColor.inkSecondary)
-        }
-        .padding(.horizontal, IntradaSpacing.cardCompact)
-        .padding(.vertical, IntradaSpacing.controlGap)
-        .background(
-          IntradaColor.surfaceSunken, in: RoundedRectangle(cornerRadius: IntradaRadius.card))
-      case .card:
-        HStack(spacing: IntradaSpacing.controlGap) {
-          clockIcon
-          Text("\(OverrunSketch.overLabel). \(OverrunSketch.overDetail).")
-            .font(IntradaFont.body)
-            .foregroundStyle(IntradaColor.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, IntradaSpacing.cardCompact)
-        .padding(.vertical, IntradaSpacing.cardCompact)
-        .cardSurface(cornerRadius: IntradaRadius.card)
-      case .plain:
-        Text(OverrunSketch.overLabel)
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
-          .frame(maxWidth: .infinity)
-      }
-    }
-
-    private var clockIcon: some View {
-      Image(systemName: "clock")
-        .iconSize(.inline)
-        .foregroundStyle(IntradaColor.inkSecondary)
-        .accessibilityHidden(true)
     }
   }
 #endif

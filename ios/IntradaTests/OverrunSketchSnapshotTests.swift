@@ -5,10 +5,10 @@ import XCTest
 @testable import Intrada
 
 final class OverrunSketchSnapshotTests: SnapshotTestCase {
-  private func sheet(_ notice: OverrunSketch.Notice)
-    -> UIViewController
-  {
-    host(OverrunSheetSketch(look: .plain, notice: notice))
+  private func sheet(
+    _ option: OverrunSketch.Option, _ notice: OverrunSketch.Notice = OverrunSketch.two
+  ) -> UIViewController {
+    host(OverrunSheetSketch(option: option, notice: notice))
   }
 
   private var largestText: Snapshotting<UIViewController, UIImage> {
@@ -20,15 +20,32 @@ final class OverrunSketchSnapshotTests: SnapshotTestCase {
       })
   }
 
-  func testSheetTwo() { assertSnapshot(of: sheet(OverrunSketch.two), as: config) }
-  func testSheetOne() { assertSnapshot(of: sheet(OverrunSketch.one), as: config) }
-  func testSheetMany() { assertSnapshot(of: sheet(OverrunSketch.many), as: config) }
-  func testSheetSqueezed() { assertSnapshot(of: sheet(OverrunSketch.squeezed), as: config) }
-  func testSheetKept() { assertSnapshot(of: sheet(OverrunSketch.kept), as: config) }
-  func testSheetLargestText() { assertSnapshot(of: sheet(OverrunSketch.many), as: largestText) }
+  func testASwitchTwo() { assertSnapshot(of: sheet(.switchRow), as: config) }
+  func testASwitchSqueezed() {
+    assertSnapshot(of: sheet(.switchRow, OverrunSketch.squeezed), as: config)
+  }
+  func testASwitchOff() {
+    assertSnapshot(
+      of: host(OverrunSheetSketch(option: .switchRow, shortenOn: false)), as: config)
+  }
+  func testASwitchLargestText() { assertSnapshot(of: sheet(.switchRow), as: largestText) }
 
-  func testPlayer() { assertSnapshot(of: host(OverrunPlayerSketch(look: .plain)), as: config) }
+  func testBUnderSaveTwo() { assertSnapshot(of: sheet(.lineUnderSave), as: config) }
+  func testBUnderSaveSqueezed() {
+    assertSnapshot(of: sheet(.lineUnderSave, OverrunSketch.squeezed), as: config)
+  }
+  func testBUnderSaveLargestText() {
+    assertSnapshot(of: sheet(.lineUnderSave), as: largestText)
+  }
+
+  func testCSheetUnchanged() { assertSnapshot(of: sheet(.playerOnly), as: config) }
+  func testCNextPlayer() { assertSnapshot(of: host(OverrunNextPlayerSketch()), as: config) }
+  func testCNextPlayerLargestText() {
+    assertSnapshot(of: host(OverrunNextPlayerSketch()), as: largestText)
+  }
+
+  func testPlayer() { assertSnapshot(of: host(OverrunPlayerSketch()), as: config) }
   func testPlayerLargestText() {
-    assertSnapshot(of: host(OverrunPlayerSketch(look: .plain)), as: largestText)
+    assertSnapshot(of: host(OverrunPlayerSketch()), as: largestText)
   }
 }
