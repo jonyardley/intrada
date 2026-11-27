@@ -107,6 +107,32 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
+  private static let overFit = FitView(
+    usedMins: 22, lengthMins: 20, state: .over, summary: "22 of 20 min, plus 1 untimed",
+    offers: [.trimToFit, .dropLastItem])
+
+  private static let underFit = FitView(
+    usedMins: 22, lengthMins: 45, state: .under, summary: "22 of 45 min, plus 1 untimed",
+    offers: [.fillWithSuggestions, .stretchToFit])
+
+  func testSessionBuilderOverLength() {
+    let store = Store.previewBuildingPlanned(lengthMins: 20, fit: Self.overFit)
+    assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
+  }
+
+  func testSessionBuilderUnderLength() {
+    let store = Store.previewBuildingPlanned(lengthMins: 45, fit: Self.underFit)
+    assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
+  }
+
+  func testEntrySettingsSheetMinutesUsed() throws {
+    let store = Store.previewBuildingPlanned(lengthMins: 20, fit: Self.overFit)
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
+      as: tallFormConfig)
+  }
+
   func testEntrySettingsSheetWithAnAim() throws {
     let store = Store.previewBuildingPlanned()
     let limits = try XCTUnwrap(store.viewModel?.limits)

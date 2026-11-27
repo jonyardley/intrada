@@ -328,6 +328,7 @@ struct SessionBuilderScreen: View {
           planLine(entry)
         }
         Spacer(minLength: IntradaSpacing.controlGap)
+        if !isEditing { opensCard(entry) }
       }
       .accessibilityElement(children: .combine)
       .lastTimeAction(lastTime(entry)) { applyLastTime(entry) }
@@ -337,23 +338,9 @@ struct SessionBuilderScreen: View {
       .accessibilityAction(named: "Settings") {
         configuringEntry = EntrySettingsTarget(id: entry.id, entry: entry)
       }
+      .accessibilityAction(named: "Remove") { removeUnit(block) }
       .accessibilityAction(named: "Move up") { moveUnit(block, by: -1) }
       .accessibilityAction(named: "Move down") { moveUnit(block, by: 1) }
-      if !isEditing {
-        Button {
-          removeUnit(block)
-        } label: {
-          Image(systemName: "xmark").font(IntradaFont.secondary).foregroundStyle(
-            IntradaColor.inkFaintIcon
-          )
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .hitTargetCompensation()
-        .accessibilityLabel("Remove \(entry.itemTitle)")
-        .accessibilityIdentifier("builder.remove")
-      }
     }
     .padding(IntradaSpacing.cardCompact)
     .contentShape(Rectangle())
@@ -440,6 +427,7 @@ struct SessionBuilderScreen: View {
             planLine(entry)
           }
           Spacer(minLength: 0)
+          if !isEditing { opensCard(entry) }
         }
         .accessibilityElement(children: .combine)
         .lastTimeAction(lastTime(entry)) { applyLastTime(entry) }
@@ -449,6 +437,7 @@ struct SessionBuilderScreen: View {
         .accessibilityAction(named: "Settings") {
           configuringEntry = EntrySettingsTarget(id: entry.id, entry: entry)
         }
+        .accessibilityAction(named: "Remove") { removeEntry(entry) }
         .accessibilityAction(named: "Move up") {
           moveExercise(entry, toLocal: localIndex - 1, in: block)
         }
@@ -480,6 +469,20 @@ struct SessionBuilderScreen: View {
       .buttonStyle(.plain)
     }
     .cardSegment(.bottom)
+  }
+
+  private func opensCard(_ entry: SetlistEntryView) -> some View {
+    HStack(spacing: IntradaSpacing.small) {
+      Text(entry.plannedDurationDisplay ?? "No time")
+        .font(IntradaFont.secondary)
+        .monospacedDigit()
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .fixedSize()
+      Image(systemName: "chevron.right")
+        .iconSize(.caption, weight: .semibold)
+        .foregroundStyle(IntradaColor.inkFaintIcon)
+        .accessibilityHidden(true)
+    }
   }
 
   // ── Plan (#2249, #2303, #2315) ──────────────────────────────────────
@@ -549,21 +552,43 @@ struct SessionBuilderScreen: View {
   // `buildingSetlist` goes nil (this screen auto-pops) and `activeSession` goes
   // non-nil (RootView presents the player). State-driven — no local nav flag.
   private var startBar: some View {
-    BrandBarButton {
-      store.send(.session(.startSession(now: SessionClock.nowRFC3339())))
-    } label: {
-      Image(systemName: "play.fill")
-      Text(setlist?.startTitle ?? "Start session")
+    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+      if let fit = setlist?.fit {
+        MinutesUsedMeter(
+          summary: fit.summary, usedMins: Int(fit.usedMins), lengthMins: Int(fit.lengthMins),
+          state: fit.state)
+        if !fit.offers.isEmpty { fitOffers(fit.offers) }
+      }
+      BrandBarButton {
+        store.send(.session(.startSession(now: SessionClock.nowRFC3339())))
+      } label: {
+        Image(systemName: "play.fill")
+        Text(setlist?.startTitle ?? "Start session")
+      }
+      .accessibilityIdentifier("builder.start")
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("Start session")
+      .accessibilityValue(setlist?.summary ?? "")
     }
-    .accessibilityIdentifier("builder.start")
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.cardCompact)
     .padding(.bottom, IntradaSpacing.section)
     .background(IntradaColor.paperTop)
     .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Start session")
-    .accessibilityValue(setlist?.summary ?? "")
+  }
+
+  private func fitOffers(_ offers: [FitOffer]) -> some View {
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: IntradaSpacing.controlGap) { offerButtons(offers) }
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) { offerButtons(offers) }
+    }
+  }
+
+  private func offerButtons(_ offers: [FitOffer]) -> some View {
+    ForEach(offers, id: \.self) { offer in
+      OutlineButton(title: offer.title) { apply(offer) }
+        .accessibilityIdentifier("builder.offer")
+    }
   }
 
   // ── Actions ──────────────────────────────────────────────────────────
@@ -578,6 +603,20 @@ struct SessionBuilderScreen: View {
 
   private func removeEntry(_ entry: SetlistEntryView) {
     store.send(.session(.removeFromSetlist(entryId: entry.id)), onSuccess: .impact)
+  }
+
+  private func apply(_ offer: FitOffer) {
+    let event: Event
+    switch offer {
+    case .trimToFit: event = .session(.trimToFit)
+    case .stretchToFit: event = .session(.stretchToFit)
+    case .fillWithSuggestions:
+      event = .session(.fillWithSuggestions(now: SessionClock.nowRFC3339()))
+    case .dropLastItem:
+      guard let last = entries.last else { return }
+      event = .session(.removeFromSetlist(entryId: last.id))
+    }
+    store.send(event, onSuccess: .impact)
   }
 
   private func deleteRows(at offsets: IndexSet) {
@@ -666,6 +705,17 @@ extension View {
   /// glyph, so small controls meet the HIG minimum without shifting the row.
   fileprivate func hitTargetCompensation() -> some View {
     padding(-10)
+  }
+}
+
+extension FitOffer {
+  fileprivate var title: String {
+    switch self {
+    case .trimToFit: "Trim to fit"
+    case .dropLastItem: "Drop last item"
+    case .fillWithSuggestions: "Fill with suggestions"
+    case .stretchToFit: "Stretch to fit"
+    }
   }
 }
 

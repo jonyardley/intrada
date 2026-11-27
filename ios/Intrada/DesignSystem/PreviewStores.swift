@@ -417,7 +417,9 @@
     /// (#2249, #2315). `first` replaces the first row, for the sheet.
     static func previewBuildingPlanned(
       _ first: SetlistEntryView = .previewPlannedPiece,
-      entryKeys: [EntryKeysView] = []
+      entryKeys: [EntryKeysView] = [],
+      lengthMins: UInt16 = 30,
+      fit: FitView? = nil
     ) -> Store {
       let entries: [SetlistEntryView] = [first, .previewLastTimePiece, .previewExercise]
       return Store(
@@ -433,8 +435,8 @@
                 related: [], takenElsewhere: [], caption: $1,
                 plannedDisplay: $0.plannedDurationDisplay, relatedLabel: "piece only")
             },
-            totalDurationDisplay: "22m 0s", totalDurationSummary: "22 min", lengthMins: 30,
-            lengthSummary: "22 of 30 min planned",
+            totalDurationDisplay: "22m 0s", totalDurationSummary: "22 min", lengthMins: lengthMins,
+            lengthSummary: "22 of \(lengthMins) min planned",
             entryVariations: [EntryVariationsView(entryId: first.id, variations: [])],
             lastTimes: [
               LastTimeView(
@@ -443,7 +445,7 @@
             ],
             entryKeys: entryKeys,
             summary: "22 min \u{B7} 3 items",
-            startTitle: "Start session \u{B7} 22 min", fit: nil)))
+            startTitle: "Start session \u{B7} 22 min", fit: fit)))
     }
 
     /// Player Focus: a piece mid-session.
