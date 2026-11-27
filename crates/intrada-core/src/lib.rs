@@ -2,6 +2,7 @@ pub mod analytics;
 pub mod app;
 pub mod domain;
 pub mod error;
+pub(crate) mod fit;
 pub mod model;
 pub mod persistence;
 pub mod plan;

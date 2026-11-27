@@ -305,6 +305,108 @@ pub(super) fn set_session_length(
     crux_core::render::render()
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Fitting {
+    Trim,
+    Stretch,
+}
+
+const FIT_NEEDS_BUILDING: &str = "A plan can only be fitted while building";
+const FIT_NEEDS_LENGTH: &str = "Set a session length first";
+
+pub(super) fn fit_to_length(model: &mut Model, fitting: Fitting) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref mut building) = model.session_status else {
+        model.raise_error(FIT_NEEDS_BUILDING.to_string());
+        return crux_core::render::render();
+    };
+    let Some(length) = building.length_mins.map(u32::from) else {
+        model.raise_error(FIT_NEEDS_LENGTH.to_string());
+        return crux_core::render::render();
+    };
+    let minutes = crate::fit::row_minutes(&building.entries);
+    let used: u32 = minutes.iter().flatten().sum();
+    let applies = match fitting {
+        Fitting::Trim => used > length,
+        Fitting::Stretch => used < length,
+    };
+    if applies {
+        let scaled = crate::fit::scale_to(&minutes, length);
+        for (entry, mins) in building.entries.iter_mut().zip(scaled) {
+            if let Some(mins) = mins {
+                entry.plan.duration_secs = Some(mins * 60);
+            }
+        }
+    }
+    model.last_error = None;
+    crux_core::render::render()
+}
+
+pub(super) fn drop_last_item(model: &mut Model) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref mut building) = model.session_status else {
+        model.raise_error(FIT_NEEDS_BUILDING.to_string());
+        return crux_core::render::render();
+    };
+    let keep = building.entries.len() - crate::fit::last_unit(&building.entries).len();
+    building.entries.truncate(keep);
+    reindex_entries(&mut building.entries);
+    model.last_error = None;
+    crux_core::render::render()
+}
+
+pub(super) fn fill_with_suggestions(
+    model: &mut Model,
+    now: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref building) = model.session_status else {
+        model.raise_error(FIT_NEEDS_BUILDING.to_string());
+        return crux_core::render::render();
+    };
+    if building.length_mins.is_none() {
+        model.raise_error(FIT_NEEDS_LENGTH.to_string());
+        return crux_core::render::render();
+    }
+    let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
+    let fresh;
+    let cached = match &model.projections {
+        Some(p) if p.key == crate::view::cache::ProjectionKey::of(model, clock) => p,
+        _ => {
+            fresh = crate::view::cache::build(model, clock);
+            &fresh
+        }
+    };
+    let picked: Vec<(String, String, ItemKind, Option<Key>, u32)> =
+        crate::fit::suggestions_for(building, &cached.library, &cached.practice_records, clock)
+            .into_iter()
+            .map(|(view, minutes)| {
+                let key = model
+                    .items
+                    .iter()
+                    .find(|i| i.id == view.id)
+                    .and_then(opening_key);
+                (
+                    view.id.clone(),
+                    view.title.clone(),
+                    view.item_type.clone(),
+                    key,
+                    minutes,
+                )
+            })
+            .collect();
+
+    let SessionStatus::Building(ref mut building) = model.session_status else {
+        model.raise_error("Internal error: expected Building state".to_string());
+        return crux_core::render::render();
+    };
+    for (id, title, kind, key, minutes) in picked {
+        let mut entry = create_entry(&id, &title, kind, building.entries.len());
+        entry.plan.key = key;
+        entry.plan.duration_secs = Some(minutes * 60);
+        building.entries.push(entry);
+    }
+    model.last_error = None;
+    crux_core::render::render()
+}
+
 fn set_planned(
     model: &mut Model,
     entry_id: &str,

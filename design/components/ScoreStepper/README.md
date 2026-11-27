@@ -32,7 +32,7 @@ Nudges a number up or down from where it starts, with minus and plus in thin rin
 
 - Minus and plus move the number by the step (one for a score) and play the selection haptic. From a typed number off the step, such as 17 with a step of 5, plus gives 22: the stepper adds and clamps and never snaps.
 - At the bottom of the range minus is disabled, at the top plus is; the glyph turns `inkFainter` and the ring stays, so the control keeps its shape.
-- No hold to repeat: the whole range is nine taps.
+- Holding minus or plus repeats the step after a moment, then faster, with the selection haptic on each step, and stops at the range end. Letting go after a hold adds no extra step. The metronome's rings do not repeat.
 - For a score the number itself does nothing when tapped. Leaving a key's score unchanged keeps last time's score on save (decided on #3004), so no tap is needed to agree with it.
 - With typing on, a tap on the number opens the number pad in its place, with Done on the keyboard bar, as `DragValue` does. Each keystroke sends the typed number clamped to the range, so Start tapped while typing plays it; an empty entry changes nothing. A tap on minus or plus while typing ends the typing and steps from the typed number, or from the number before typing when the entry is empty.
 

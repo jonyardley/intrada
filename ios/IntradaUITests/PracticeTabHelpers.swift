@@ -6,22 +6,27 @@ let contendedTimeout: TimeInterval = 30
 
 extension XCUIApplication {
   /// A seeded library always fills a plan (#3007), and Change opens the
-  /// builder holding it, so the rows come out one by one for a blank builder.
+  /// builder holding it, so the rows come out one by one, each through its
+  /// card, for a blank builder.
   @MainActor
   func openEmptyBuilder(file: StaticString = #filePath, line: UInt = #line) {
     control("practice.plan.change", spoken: "Change", timeout: 10, file: file, line: line).tap()
-    let removes = rows("builder.remove", spokenContaining: "Remove ")
+    let planRows = descendants(matching: .any).matching(identifier: "builder.row")
     XCTAssertTrue(
-      removes.firstMatch.waitForExistence(timeout: 10), "the plan's rows in the builder",
+      planRows.firstMatch.waitForExistence(timeout: 10), "the plan's rows in the builder",
       file: file, line: line)
-    for _ in 0..<removes.count where removes.firstMatch.exists {
-      let before = removes.count
-      removes.firstMatch.tap()
+    for _ in 0..<planRows.count where planRows.firstMatch.exists {
+      let before = planRows.count
+      // The row's centre can hold its Last time chip, which a tap applies instead.
+      planRows.firstMatch.staticTexts.firstMatch.tap()
+      control(
+        "entrySettings.remove", spoken: "Remove from this session", file: file, line: line
+      ).tap()
       XCTAssertTrue(
-        removes.element(boundBy: before - 1).waitForNonExistence(timeout: 5), "a row removed",
+        planRows.element(boundBy: before - 1).waitForNonExistence(timeout: 5), "a row removed",
         file: file, line: line)
     }
-    XCTAssertFalse(removes.firstMatch.exists, "an empty builder", file: file, line: line)
+    XCTAssertFalse(planRows.firstMatch.exists, "an empty builder", file: file, line: line)
   }
 
   /// The shortest route to the focus player: one seeded library item in a

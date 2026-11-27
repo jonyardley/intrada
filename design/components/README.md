@@ -55,3 +55,5 @@ not exist. Rows without a link are still to be written.
 | [ConsistencyBars](ConsistencyBars/README.md) | Minutes practised each week, as bars |
 | [FormField](FormField/README.md) | A labelled text field in a form |
 | [ProfileBadge](ProfileBadge/README.md) | The musician's instrument, the way into their profile |
+| [OutlineButton](OutlineButton/README.md) | A small outlined offer under the content it changes |
+| [MinutesUsedMeter](MinutesUsedMeter/README.md) | Minutes used against the session length, in words and as a bar |

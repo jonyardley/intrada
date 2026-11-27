@@ -14,7 +14,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
           entries: [], itemCount: 0, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
           lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-          summary: "0 items", startTitle: "Start session")))
+          summary: "0 items", startTitle: "Start session", fit: nil)))
     assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
   }
 
@@ -54,7 +54,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
           entries: [.previewExercise], itemCount: 1, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
           lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-          summary: "1 item", startTitle: "Start session")))
+          summary: "1 item", startTitle: "Start session", fit: nil)))
     assertSnapshot(
       of: host(AddToSessionSheet(), store: store),
       as: .image(
@@ -105,6 +105,32 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     assertSnapshot(
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingPlanned()),
       as: config)
+  }
+
+  private static let overFit = FitView(
+    usedMins: 22, lengthMins: 20, state: .over, summary: "22 of 20 min, plus 1 untimed",
+    offers: [.trimToFit, .dropLastItem], stateLine: "2 min over")
+
+  private static let underFit = FitView(
+    usedMins: 22, lengthMins: 45, state: .under, summary: "22 of 45 min, plus 1 untimed",
+    offers: [.fillWithSuggestions, .stretchToFit], stateLine: "23 min left")
+
+  func testSessionBuilderOverLength() {
+    let store = Store.previewBuildingPlanned(lengthMins: 20, fit: Self.overFit)
+    assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
+  }
+
+  func testSessionBuilderUnderLength() {
+    let store = Store.previewBuildingPlanned(lengthMins: 45, fit: Self.underFit)
+    assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
+  }
+
+  func testEntrySettingsSheetMinutesUsed() throws {
+    let store = Store.previewBuildingPlanned(lengthMins: 20, fit: Self.overFit)
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
+      as: tallFormConfig)
   }
 
   func testEntrySettingsSheetWithAnAim() throws {

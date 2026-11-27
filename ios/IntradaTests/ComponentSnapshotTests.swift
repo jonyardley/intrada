@@ -418,6 +418,37 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(steppers), as: config)
   }
 
+  func testOutlineButton() {
+    let buttons = ZStack {
+      PaperBackground()
+      HStack(spacing: IntradaSpacing.controlGap) {
+        OutlineButton(title: "Fill with suggestions") {}
+        OutlineButton(title: "Stretch to fit") {}
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(buttons), as: config)
+  }
+
+  func testMinutesUsedMeter() {
+    let meters = ZStack {
+      PaperBackground()
+      VStack(spacing: IntradaSpacing.section) {
+        MinutesUsedMeter(
+          summary: "72 of 60 min", stateLine: "12 min over", usedMins: 72, lengthMins: 60,
+          state: .over)
+        MinutesUsedMeter(
+          summary: "15 of 60 min, plus 2 untimed", stateLine: "45 min left", usedMins: 15,
+          lengthMins: 60, state: .under)
+        MinutesUsedMeter(
+          summary: "60 of 60 min", stateLine: "Fits exactly", usedMins: 60, lengthMins: 60,
+          state: .exact)
+      }
+      .padding(IntradaSpacing.section)
+    }
+    assertSnapshot(of: host(meters), as: config)
+  }
+
   func testTempoDrag() {
     let limits = LimitsView.preview
     let band = limits.clickBand(unit: 4)
