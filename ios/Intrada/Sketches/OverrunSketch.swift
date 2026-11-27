@@ -68,14 +68,18 @@
               .padding(.top, IntradaSpacing.controlGap)
 
               HairlineDivider().padding(.top, IntradaSpacing.controlGap)
-              VStack(alignment: .leading, spacing: 0) {
-                SwitchRow(
-                  title: OverrunSketch.switchTitle, isOn: .constant(shortenOn),
-                  identifier: "reflection.shorten")
-                Text(shortenOn ? notice.onDetail : notice.offDetail)
-                  .font(IntradaFont.small)
-                  .foregroundStyle(IntradaColor.inkSecondary)
-                  .fixedSize(horizontal: false, vertical: true)
+              StepperRow {
+                StepperRowLabel(
+                  OverrunSketch.switchTitle,
+                  detail: shortenOn ? notice.onDetail : notice.offDetail
+                )
+                .fixedSize(horizontal: false, vertical: true)
+              } stepper: {
+                Toggle(OverrunSketch.switchTitle, isOn: .constant(shortenOn))
+                  .labelsHidden()
+                  .fixedSize()
+                  .tint(IntradaColor.accent)
+                  .accessibilityIdentifier("reflection.shorten")
               }
               .padding(.top, IntradaSpacing.controlGap)
             }
