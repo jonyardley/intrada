@@ -32,4 +32,17 @@ final class MinutesUsedSketchSnapshotTests: SnapshotTestCase {
       of: host(MinutesUsedBuilderSketch(fit: .over).environment(\.dynamicTypeSize, .xxxLarge)),
       as: config)
   }
+
+  func testRowsOpenSheet() {
+    assertSnapshot(
+      of: host(MinutesUsedBuilderSketch(fit: .over, opensSheet: true)), as: config)
+  }
+
+  func testEntrySheetStepper() {
+    assertSnapshot(of: host(MinutesUsedEntrySheetSketch()), as: config)
+  }
+
+  func testEntrySheetStepperWithFit() {
+    assertSnapshot(of: host(MinutesUsedEntrySheetSketch(showsFit: true)), as: config)
+  }
 }

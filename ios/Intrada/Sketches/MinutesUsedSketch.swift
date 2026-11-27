@@ -46,6 +46,7 @@
   struct MinutesUsedBuilderSketch: View {
     var fit: MinutesUsedSketch.Fit = .over
     var stepper: MinutesUsedSketch.StepperPlace = .none
+    var opensSheet = false
 
     private var rows: [MinutesUsedSketch.Row] { MinutesUsedSketch.rows(for: fit) }
     private var used: Int { rows.compactMap(\.minutes).reduce(0, +) }
@@ -118,11 +119,23 @@
           case .below: EmptyView()
           case .none: minutesFigure(row)
           }
-          Image(systemName: "xmark").font(IntradaFont.secondary)
-            .foregroundStyle(IntradaColor.inkFaintIcon)
-            .frame(width: 44, height: 44)
-            .accessibilityLabel("Remove \(row.title)")
+          if opensSheet {
+            Image(systemName: "chevron.right")
+              .iconSize(.caption, weight: .semibold)
+              .foregroundStyle(IntradaColor.inkFaintIcon)
+              .frame(minHeight: 44)
+              .accessibilityHidden(true)
+          } else {
+            Image(systemName: "xmark").font(IntradaFont.secondary)
+              .foregroundStyle(IntradaColor.inkFaintIcon)
+              .frame(width: 44, height: 44)
+              .accessibilityLabel("Remove \(row.title)")
+          }
         }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: opensSheet ? .combine : .contain)
+        .accessibilityAddTraits(opensSheet ? .isButton : [])
+        .accessibilityHint(opensSheet ? "Opens settings" : "")
         if stepper == .below {
           HStack {
             Text("Minutes").font(IntradaFont.secondary).foregroundStyle(IntradaColor.inkSecondary)
@@ -172,6 +185,38 @@
       .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
     }
 
+    private var fitLine: some View {
+      MinutesUsedFitLine(used: used, length: length, untimed: untimed)
+    }
+
+    private var offers: some View {
+      let titles =
+        isOver ? ["Trim to fit", "Drop last item"] : ["Fill with suggestions", "Stretch to fit"]
+      return ViewThatFits(in: .horizontal) {
+        HStack(spacing: IntradaSpacing.section) { offerButtons(titles) }
+        VStack(alignment: .leading, spacing: 0) { offerButtons(titles) }
+      }
+    }
+
+    @ViewBuilder private func offerButtons(_ titles: [String]) -> some View {
+      ForEach(titles, id: \.self) { title in
+        Button(title) {}
+          .font(IntradaFont.label)
+          .foregroundStyle(IntradaColor.accent)
+          .frame(minHeight: 44)
+          .contentShape(Rectangle())
+          .fixedSize()
+      }
+    }
+  }
+
+  struct MinutesUsedFitLine: View {
+    let used: Int
+    let length: Int
+    var untimed = 0
+
+    private var isOver: Bool { used > length }
+
     private var usedText: String {
       let base = "\(used) of \(length) min"
       return untimed > 0 ? "\(base), plus \(untimed) untimed" : base
@@ -181,7 +226,7 @@
       isOver ? "\(used - length) min over" : "\(length - used) min left"
     }
 
-    private var fitLine: some View {
+    var body: some View {
       ViewThatFits(in: .horizontal) {
         HStack(alignment: .firstTextBaseline) {
           usedLabel
@@ -215,25 +260,101 @@
       }
       .foregroundStyle(isOver ? IntradaColor.danger : IntradaColor.inkSecondary)
     }
+  }
 
-    private var offers: some View {
-      let titles =
-        isOver ? ["Trim to fit", "Drop last item"] : ["Fill with suggestions", "Stretch to fit"]
-      return ViewThatFits(in: .horizontal) {
-        HStack(spacing: IntradaSpacing.section) { offerButtons(titles) }
-        VStack(alignment: .leading, spacing: 0) { offerButtons(titles) }
+  // ── The item's edit sheet ────────────────────────────────────────────
+
+  /// `EntrySettingsSheet` section for section, with `ScoreStepper` in place
+  /// of the plain stepper.
+  struct MinutesUsedEntrySheetSketch: View {
+    var showsFit = false
+
+    private let minutes = 15
+    private var used: Int {
+      MinutesUsedSketch.rows(for: .over).compactMap(\.minutes).reduce(0, +)
+    }
+    private var length: Int { MinutesUsedSketch.lengthMins }
+
+    var body: some View {
+      BottomSheet(title: "Bach Prelude in C") {
+        ScrollView {
+          VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+            FieldCard("Aim") {
+              TextField(
+                "What are you aiming for on this one?",
+                text: .constant("Even quavers in the left hand"), axis: .vertical
+              )
+              .lineLimit(2...4)
+              .font(IntradaFont.body)
+              .foregroundStyle(IntradaColor.ink)
+            }
+            keyRow
+            FieldCard("Variation") {
+              HStack {
+                Text("No variation").font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                  .imageScale(.small)
+                  .foregroundStyle(IntradaColor.inkFaintIcon)
+              }
+            }
+            durationSection
+            removeButton
+          }
+          .padding(IntradaSpacing.card)
+        }
       }
     }
 
-    @ViewBuilder private func offerButtons(_ titles: [String]) -> some View {
-      ForEach(titles, id: \.self) { title in
-        Button(title) {}
-          .font(IntradaFont.label)
-          .foregroundStyle(IntradaColor.accent)
-          .frame(minHeight: 44)
-          .contentShape(Rectangle())
-          .fixedSize()
+    private var keyRow: some View {
+      HStack(spacing: IntradaSpacing.cardCompact) {
+        FieldLabel("Key")
+        Spacer(minLength: IntradaSpacing.controlGap)
+        Text("C major").font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
+        Image(systemName: "chevron.right")
+          .iconSize(.caption, weight: .semibold)
+          .foregroundStyle(IntradaColor.inkFaintIcon)
       }
+      .frame(minHeight: 44)
+      .fieldCardSurface()
+    }
+
+    private var durationSection: some View {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        SwitchRow(
+          title: "Planned duration", isOn: .constant(true),
+          identifier: "entrySettings.plannedDuration")
+        ScoreStepper(
+          score: minutes, caption: .unit("min"), range: 1...60,
+          figure: IntradaFont.timer(32), typing: true,
+          accessibilityLabel: "Planned duration", accessibilityValue: "\(minutes) minutes"
+        ) { _ in }
+        .frame(maxWidth: .infinity)
+        if showsFit {
+          VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+            MinutesUsedFitLine(used: used, length: length)
+            MinutesUsedBar(used: used, length: length)
+          }
+          .padding(.top, IntradaSpacing.cardCompact)
+          .overlay(alignment: .top) {
+            Rectangle().fill(IntradaColor.hairline).frame(height: 1)
+          }
+        }
+      }
+      .fieldCardSurface()
+    }
+
+    private var removeButton: some View {
+      Button(role: .destructive) {
+      } label: {
+        Text("Remove from this session")
+          .font(IntradaFont.bodyMedium)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, IntradaSpacing.cardCompact)
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(IntradaColor.danger)
+      .cardSurface(cornerRadius: IntradaRadius.card)
     }
   }
 
