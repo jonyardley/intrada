@@ -1,10 +1,11 @@
 import SharedTypes
 import SwiftUI
 
-/// Minutes used against the session length: the core's summary, how far over
-/// or under in words, and a bar with the share past the length in `danger`.
+/// Minutes used against the session length: the core's summary and state line,
+/// and a bar with the share past the length in `danger`.
 struct MinutesUsedMeter: View {
   let summary: String
+  let stateLine: String
   let usedMins: Int
   let lengthMins: Int
   let state: FitState
@@ -27,14 +28,6 @@ struct MinutesUsedMeter: View {
     }
   }
 
-  private var stateText: String {
-    switch state {
-    case .over: "\(usedMins - lengthMins) min over"
-    case .under: "\(lengthMins - usedMins) min left"
-    case .exact: "Fits exactly"
-    }
-  }
-
   private var isOver: Bool { state == .over }
 
   private var summaryLabel: some View {
@@ -51,7 +44,7 @@ struct MinutesUsedMeter: View {
           .iconSize(.badge, weight: .semibold)
           .accessibilityHidden(true)
       }
-      Text(stateText)
+      Text(stateLine)
         .font(isOver ? IntradaFont.label : IntradaFont.secondary)
         .monospacedDigit()
     }
@@ -87,10 +80,15 @@ private struct MinutesUsedTrack: View {
 #if DEBUG
   #Preview("Minutes used meter") {
     VStack(spacing: IntradaSpacing.section) {
-      MinutesUsedMeter(summary: "72 of 60 min", usedMins: 72, lengthMins: 60, state: .over)
       MinutesUsedMeter(
-        summary: "15 of 60 min, plus 2 untimed", usedMins: 15, lengthMins: 60, state: .under)
-      MinutesUsedMeter(summary: "60 of 60 min", usedMins: 60, lengthMins: 60, state: .exact)
+        summary: "72 of 60 min", stateLine: "12 min over", usedMins: 72, lengthMins: 60,
+        state: .over)
+      MinutesUsedMeter(
+        summary: "15 of 60 min, plus 2 untimed", stateLine: "45 min left", usedMins: 15,
+        lengthMins: 60, state: .under)
+      MinutesUsedMeter(
+        summary: "60 of 60 min", stateLine: "Fits exactly", usedMins: 60, lengthMins: 60,
+        state: .exact)
     }
     .padding(IntradaSpacing.section)
     .background(IntradaColor.paperTop)

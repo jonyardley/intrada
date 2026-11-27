@@ -555,7 +555,8 @@ struct SessionBuilderScreen: View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       if let fit = setlist?.fit {
         MinutesUsedMeter(
-          summary: fit.summary, usedMins: Int(fit.usedMins), lengthMins: Int(fit.lengthMins),
+          summary: fit.summary, stateLine: fit.stateLine, usedMins: Int(fit.usedMins),
+          lengthMins: Int(fit.lengthMins),
           state: fit.state)
         if !fit.offers.isEmpty { fitOffers(fit.offers) }
       }

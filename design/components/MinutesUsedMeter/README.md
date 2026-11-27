@@ -22,10 +22,10 @@ Minutes used against the session length, in words and as a bar.
 ## Content
 
 - The core's summary on the left, such as "72 of 60 min, plus 2 untimed", in `IntradaFont.label` and `ink`.
-- On the right, the state in words. Over: "12 min over" in `danger`, `IntradaFont.label`, with a warning glyph. Under: "45 min left" in `inkSecondary`, `IntradaFont.secondary`. Exact: "Fits exactly" in the same.
+- On the right, the core's state line. Over: "12 min over" in `danger`, `IntradaFont.label`, with a warning glyph. Under: "45 min left" in `inkSecondary`, `IntradaFont.secondary`. Exact: "Fits exactly" in the same.
 - The two lines stack when they do not fit side by side.
 - The bar is 6 points tall on `track`: the minutes up to the length in `ink`, and past it a separate `danger` stretch after a small gap. The bar's full width is the larger of the used minutes and the length.
-- The summary, the minutes and the state all come from the core's fit view; the meter does no sums beyond the words.
+- The summary, the state line, the minutes and the state all come from the core's fit view; the meter writes no words and does no sums beyond the bar's proportion.
 
 ## Accessibility
 
@@ -37,8 +37,8 @@ Minutes used against the session length, in words and as a bar.
 ```swift
 if let fit = setlist.fit {
   MinutesUsedMeter(
-    summary: fit.summary, usedMins: Int(fit.usedMins), lengthMins: Int(fit.lengthMins),
-    state: fit.state)
+    summary: fit.summary, stateLine: fit.stateLine, usedMins: Int(fit.usedMins),
+    lengthMins: Int(fit.lengthMins), state: fit.state)
 }
 ```
 

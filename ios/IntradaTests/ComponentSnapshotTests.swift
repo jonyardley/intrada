@@ -434,10 +434,15 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     let meters = ZStack {
       PaperBackground()
       VStack(spacing: IntradaSpacing.section) {
-        MinutesUsedMeter(summary: "72 of 60 min", usedMins: 72, lengthMins: 60, state: .over)
         MinutesUsedMeter(
-          summary: "15 of 60 min, plus 2 untimed", usedMins: 15, lengthMins: 60, state: .under)
-        MinutesUsedMeter(summary: "60 of 60 min", usedMins: 60, lengthMins: 60, state: .exact)
+          summary: "72 of 60 min", stateLine: "12 min over", usedMins: 72, lengthMins: 60,
+          state: .over)
+        MinutesUsedMeter(
+          summary: "15 of 60 min, plus 2 untimed", stateLine: "45 min left", usedMins: 15,
+          lengthMins: 60, state: .under)
+        MinutesUsedMeter(
+          summary: "60 of 60 min", stateLine: "Fits exactly", usedMins: 60, lengthMins: 60,
+          state: .exact)
       }
       .padding(IntradaSpacing.section)
     }

@@ -166,7 +166,8 @@ struct EntrySettingsSheet: View {
       }
       if let fit = store.viewModel?.buildingSetlist?.fit {
         MinutesUsedMeter(
-          summary: fit.summary, usedMins: Int(fit.usedMins), lengthMins: Int(fit.lengthMins),
+          summary: fit.summary, stateLine: fit.stateLine, usedMins: Int(fit.usedMins),
+          lengthMins: Int(fit.lengthMins),
           state: fit.state
         )
         .padding(.top, IntradaSpacing.cardCompact)
