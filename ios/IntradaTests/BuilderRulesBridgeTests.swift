@@ -46,7 +46,7 @@ struct BuilderRulesBridgeTests {
     let tags: [String] = try entry(bridge).planTags
     #expect(tags == ["Dotted"])
     let block: SetlistBlockView = try #require(building.blocks.first)
-    #expect(block.caption == "Piece \u{B7} 12 min")
+    #expect(block.caption == "Piece")
     #expect(block.plannedDisplay == "12 min")
     #expect(block.relatedLabel == "piece only")
     #expect(block.durationDisplay == "12 min")

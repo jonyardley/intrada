@@ -527,13 +527,13 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
 
 fn block_caption(block: &SetlistBlockView) -> String {
     let lead = match (&block.group_id, block.related_count) {
-        (None, _) => Some(
-            match block.entries.first().map(|e| &e.item_type) {
+        (None, _) => {
+            return match block.entries.first().map(|e| &e.item_type) {
                 Some(ItemKind::Exercise) => "Exercise",
                 _ => "Piece",
             }
-            .to_string(),
-        ),
+            .to_string();
+        }
         (Some(_), 0) => None,
         (Some(_), n) => Some(format!("{n} related, then piece")),
     };
@@ -1017,7 +1017,7 @@ mod tests {
             (
                 "a standalone piece with time",
                 vec![planned("p", Piece, None, Some(600))],
-                "Piece \u{b7} 10 min",
+                "Piece",
                 Some("10 min"),
                 "piece only",
             ),
@@ -1031,7 +1031,7 @@ mod tests {
             (
                 "a standalone piece planned in seconds",
                 vec![planned("p", Piece, None, Some(90))],
-                "Piece \u{b7} 1m 30s",
+                "Piece",
                 Some("1m 30s"),
                 "piece only",
             ),

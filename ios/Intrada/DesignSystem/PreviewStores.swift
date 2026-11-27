@@ -428,7 +428,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: entries,
             itemCount: 3,
-            blocks: zip(entries, ["Piece \u{B7} 12 min", "Piece \u{B7} 10 min", "Exercise"]).map {
+            blocks: zip(entries, ["Piece", "Piece", "Exercise"]).map {
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0,
                 durationDisplay: $0.plannedDurationDisplay ?? "", entries: [$0], piece: nil,
