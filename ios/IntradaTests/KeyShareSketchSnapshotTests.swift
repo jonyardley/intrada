@@ -5,49 +5,52 @@ import XCTest
 @testable import Intrada
 
 final class KeyShareSketchSnapshotTests: SnapshotTestCase {
-  private func shot(_ look: KeyShareSketch.Look, _ state: KeyShareSketch.State)
+  private func shot(_ count: KeyShareSketch.Count, _ state: KeyShareSketch.State)
     -> UIViewController
   {
-    host(KeySharePlayerSketch(look: look, state: state))
+    host(KeySharePlayerSketch(count: count, state: state))
   }
 
-  func testHintFilling() { assertSnapshot(of: shot(.hint, KeyShareSketch.filling), as: config) }
-  func testHintShareUp() { assertSnapshot(of: shot(.hint, KeyShareSketch.over), as: config) }
-  func testHintLastKey() { assertSnapshot(of: shot(.hint, KeyShareSketch.lastKey), as: config) }
-  func testHintOneKey() { assertSnapshot(of: shot(.hint, KeyShareSketch.oneKey), as: config) }
-  func testHintUntimed() { assertSnapshot(of: shot(.hint, KeyShareSketch.untimed), as: config) }
-
-  func testBesideFilling() {
-    assertSnapshot(of: shot(.beside, KeyShareSketch.filling), as: config)
-  }
-  func testBesideShareUp() { assertSnapshot(of: shot(.beside, KeyShareSketch.over), as: config) }
-  func testBesideLastKey() {
-    assertSnapshot(of: shot(.beside, KeyShareSketch.lastKey), as: config)
-  }
-  func testBesideOneKey() { assertSnapshot(of: shot(.beside, KeyShareSketch.oneKey), as: config) }
-  func testBesideUntimed() {
-    assertSnapshot(of: shot(.beside, KeyShareSketch.untimed), as: config)
+  func testChipFilling() { assertSnapshot(of: shot(.chip, KeyShareSketch.filling), as: config) }
+  func testChipShareUp() { assertSnapshot(of: shot(.chip, KeyShareSketch.over), as: config) }
+  func testChipLastKey() { assertSnapshot(of: shot(.chip, KeyShareSketch.lastKey), as: config) }
+  func testChipOneKey() { assertSnapshot(of: shot(.chip, KeyShareSketch.oneKey), as: config) }
+  func testChipVariations() {
+    assertSnapshot(of: shot(.chip, KeyShareSketch.variations), as: config)
   }
 
-  func testRingFilling() { assertSnapshot(of: shot(.ring, KeyShareSketch.filling), as: config) }
-  func testRingShareUp() { assertSnapshot(of: shot(.ring, KeyShareSketch.over), as: config) }
-  func testRingLastKey() { assertSnapshot(of: shot(.ring, KeyShareSketch.lastKey), as: config) }
-  func testRingOneKey() { assertSnapshot(of: shot(.ring, KeyShareSketch.oneKey), as: config) }
-  func testRingUntimed() { assertSnapshot(of: shot(.ring, KeyShareSketch.untimed), as: config) }
+  func testUnderChipFilling() {
+    assertSnapshot(of: shot(.underChip, KeyShareSketch.filling), as: config)
+  }
+  func testUnderChipShareUp() {
+    assertSnapshot(of: shot(.underChip, KeyShareSketch.over), as: config)
+  }
+  func testUnderChipLastKey() {
+    assertSnapshot(of: shot(.underChip, KeyShareSketch.lastKey), as: config)
+  }
+  func testUnderChipOneKey() {
+    assertSnapshot(of: shot(.underChip, KeyShareSketch.oneKey), as: config)
+  }
+  func testUnderChipVariations() {
+    assertSnapshot(of: shot(.underChip, KeyShareSketch.variations), as: config)
+  }
+
+  func testBandFilling() { assertSnapshot(of: shot(.band, KeyShareSketch.filling), as: config) }
+  func testBandShareUp() { assertSnapshot(of: shot(.band, KeyShareSketch.over), as: config) }
+  func testBandLastKey() { assertSnapshot(of: shot(.band, KeyShareSketch.lastKey), as: config) }
+  func testBandOneKey() { assertSnapshot(of: shot(.band, KeyShareSketch.oneKey), as: config) }
+  func testBandVariations() {
+    assertSnapshot(of: shot(.band, KeyShareSketch.variations), as: config)
+  }
 
   func testLargestTextShareUp() {
     assertSnapshot(
-      of: shot(.hint, KeyShareSketch.over),
+      of: shot(.band, KeyShareSketch.over),
       as: .image(
         on: .iPhone13, perceptualPrecision: 0.98,
         traits: UITraitCollection { traits in
           traits.displayScale = 2
           traits.preferredContentSizeCategory = .extraExtraExtraLarge
         }))
-  }
-
-  func testStrip() {
-    assertSnapshot(
-      of: KeyShareStripSketch(), as: .image(precision: 0.99, traits: .init(displayScale: 3)))
   }
 }
