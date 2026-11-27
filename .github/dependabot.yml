@@ -15,7 +15,7 @@ updates:
           - "crux*"
     ignore:
       # Manually pinned to versions other tooling dictates — never auto-bump:
-      #   facet  -> must match crux_core's `facet =0.44` pin (typegen reflection)
+      #   facet  -> must match crux_core's `facet =0.46.5` pin (typegen reflection)
       #   uniffi -> must match cargo-swift's bundled bindgen (=0.29.4 guard in
       #             intrada-ffi/src/lib.rs). Both broke main when bumped (#966/#968).
       - dependency-name: "facet"
