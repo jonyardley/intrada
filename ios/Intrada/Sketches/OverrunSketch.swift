@@ -160,12 +160,12 @@
       case .plain:
         VStack(spacing: IntradaSpacing.xxSmall) {
           Text(notice.headline)
-            .font(IntradaFont.smallMedium)
+            .font(IntradaFont.label)
             .foregroundStyle(IntradaColor.ink)
           Text(notice.detail)
-            .font(IntradaFont.small)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
-          keepButton(underlined: true)
+          keepButton(underlined: false)
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
@@ -287,8 +287,8 @@
         .padding(.vertical, IntradaSpacing.cardCompact)
         .cardSurface(cornerRadius: IntradaRadius.card)
       case .plain:
-        Text("\(OverrunSketch.overLabel) · \(OverrunSketch.overDetail.lowercased())")
-          .font(IntradaFont.small)
+        Text(OverrunSketch.overLabel)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .frame(maxWidth: .infinity)
       }
