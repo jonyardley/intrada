@@ -4,7 +4,7 @@
 just = "1"
 xcodegen = "2"
 oxipng = "10"
-# fastlane (TestFlight lane) needs Ruby >= 3; system Ruby 2.6 is too old.
+# fastlane (TestFlight lane) needs Ruby >= 3.2; system Ruby 2.6 is too old.
 ruby = "3.4"
 "cargo:cargo-nextest" = "0.9"
 # Hygiene gates (just hygiene / CI Security & hygiene job). Keep the typos

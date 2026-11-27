@@ -570,8 +570,8 @@ ios-gen slices="all":
 
 # Build a signed Release .ipa and upload it to TestFlight (internal testing).
 # Mirrors the release-testflight.yml CI lane for local debugging, bar CI's
-# phone-only core (all slices here). Needs Ruby >=3
-# (system Ruby 2.6 is too old — use rbenv) + the ASC_*/MATCH_* env set, and a
+# phone-only core (all slices here). Needs Ruby >= 3.2
+# (system Ruby 2.6 is too old, so use mise) + the ASC_*/MATCH_* env set, and a
 # one-time `fastlane match appstore` bootstrap. See SETUP.md's TestFlight section (#784, #984).
 [doc("Build a signed Release app and upload it to TestFlight")]
 [group('iOS')]
