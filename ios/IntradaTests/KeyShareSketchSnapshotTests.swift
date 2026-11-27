@@ -45,7 +45,7 @@ final class KeyShareSketchSnapshotTests: SnapshotTestCase {
 
   func testLargestTextShareUp() {
     assertSnapshot(
-      of: shot(.band, KeyShareSketch.over),
+      of: shot(.underChip, KeyShareSketch.over),
       as: .image(
         on: .iPhone13, perceptualPrecision: 0.98,
         traits: UITraitCollection { traits in
