@@ -321,6 +321,15 @@ mod tests {
     }
 
     #[test]
+    fn drop_is_offered_when_a_related_exercise_ends_the_block() {
+        let [related, piece] = block("g1", Some(30), Some(40));
+        let entries = [piece, related];
+        assert_eq!(last_unit(&entries).len(), 2);
+        let fit = fit_view(&entries, Some(60), true).expect("fit");
+        assert_eq!(fit.offers, [FitOffer::TrimToFit, FitOffer::DropLastItem]);
+    }
+
+    #[test]
     fn drop_is_not_offered_when_the_last_unit_frees_no_timed_minutes() {
         let fit = fit_view(&[entry(Some(70)), entry(None)], Some(60), true).expect("fit");
         assert_eq!(fit.offers, [FitOffer::TrimToFit]);

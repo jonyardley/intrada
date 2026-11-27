@@ -139,6 +139,10 @@ fn stretch_stops_at_sixty_minutes_a_row() {
     send(&mut m, SessionEvent::StretchToFit);
 
     assert_eq!(planned(&m), [row("a", Some(60))]);
+    assert_eq!(
+        fit(&m).expect("fit").offers,
+        [FitOffer::FillWithSuggestions]
+    );
 }
 
 #[test]
