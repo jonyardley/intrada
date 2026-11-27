@@ -203,6 +203,11 @@ impl SetlistEntry {
         self.plays.iter().find(|p| p.id == id)
     }
 
+    /// A grouped piece leaves only with its block.
+    pub fn removable(&self) -> bool {
+        !(self.plan.item_type == ItemKind::Piece && self.plan.group_id.is_some())
+    }
+
     pub fn open_play(&self) -> Option<&Play> {
         self.plays.last()
     }

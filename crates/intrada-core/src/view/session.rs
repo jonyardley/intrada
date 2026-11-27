@@ -230,7 +230,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .duration_secs
             .map(|secs| format_planned_duration(u64::from(secs))),
         group_id: entry.plan.group_id.clone(),
-        removable: !(entry.plan.item_type == ItemKind::Piece && entry.plan.group_id.is_some()),
+        removable: entry.removable(),
         planned_variation_ids: entry.plan.variation_ids.clone(),
         planned_label: labels.plan(entry),
         plays: entry

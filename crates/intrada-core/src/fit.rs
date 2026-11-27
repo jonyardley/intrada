@@ -149,7 +149,16 @@ pub(crate) fn fit_view(
         .flatten()
         .collect(),
         FitState::Exact => Vec::new(),
-        FitState::Over => vec![FitOffer::TrimToFit, FitOffer::DropLastItem],
+        FitState::Over => [
+            Some(FitOffer::TrimToFit),
+            entries
+                .last()
+                .is_some_and(SetlistEntry::removable)
+                .then_some(FitOffer::DropLastItem),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
     };
     let mut summary = format!("{used_mins} of {length} min");
     if untimed > 0 {
@@ -264,6 +273,31 @@ mod tests {
         assert_eq!(fit.used_mins, 72);
         assert_eq!(fit.length_mins, 60);
         assert_eq!(fit.state, FitState::Over);
+        assert_eq!(fit.offers, [FitOffer::TrimToFit, FitOffer::DropLastItem]);
+    }
+
+    #[test]
+    fn drop_is_not_offered_when_the_last_row_is_a_grouped_piece() {
+        let mut related = entry(Some(30));
+        related.plan.item_type = ItemKind::Exercise;
+        related.plan.group_id = Some("g1".to_string());
+        let mut piece = entry(Some(40));
+        piece.plan.group_id = Some("g1".to_string());
+
+        let fit = fit_view(&[related, piece], Some(60), true).expect("fit");
+        assert_eq!(fit.state, FitState::Over);
+        assert_eq!(fit.offers, [FitOffer::TrimToFit]);
+    }
+
+    #[test]
+    fn drop_is_offered_when_the_last_row_is_a_related_exercise() {
+        let mut piece = entry(Some(40));
+        piece.plan.group_id = Some("g1".to_string());
+        let mut related = entry(Some(30));
+        related.plan.item_type = ItemKind::Exercise;
+        related.plan.group_id = Some("g1".to_string());
+
+        let fit = fit_view(&[piece, related], Some(60), true).expect("fit");
         assert_eq!(fit.offers, [FitOffer::TrimToFit, FitOffer::DropLastItem]);
     }
 
