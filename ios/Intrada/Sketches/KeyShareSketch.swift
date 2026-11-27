@@ -128,14 +128,14 @@
     private var title: String {
       switch move {
       case .nextKey(let name, _): "Move to \(name)"
-      case .finish: "Finish this item"
+      case .finish: "Finish exercise"
       }
     }
 
     private var spoken: String {
       switch move {
       case .nextKey(let name, _): "Move to \(name)"
-      case .finish: "Finish this item, then \(KeyShareSketch.nextItem)"
+      case .finish: "Finish exercise, then \(KeyShareSketch.nextItem)"
       }
     }
 
@@ -185,26 +185,33 @@
       }
     }
 
-    // Look B: pause in the middle, a two line text control where skip sits today.
+    // Look B: a two line text control left of pause, away from where skip sits today.
     @ViewBuilder private var besideLook: some View {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
-        pause
-        Button {
-        } label: {
-          VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
-            Text(besideCaption)
-              .font(IntradaFont.small)
-              .foregroundStyle(IntradaColor.inkSecondary)
-            Text(besideName)
-              .font(shareUp ? IntradaFont.label : IntradaFont.secondary)
-              .foregroundStyle(tint)
+      HStack(spacing: 0) {
+        HStack(spacing: 0) {
+          Spacer(minLength: 0)
+          Button {
+          } label: {
+            VStack(alignment: .trailing, spacing: IntradaSpacing.xxSmall) {
+              Text(besideCaption)
+                .font(IntradaFont.small)
+                .foregroundStyle(IntradaColor.inkSecondary)
+              Text(besideName)
+                .font(shareUp ? IntradaFont.label : IntradaFont.secondary)
+                .foregroundStyle(tint)
+            }
+            .multilineTextAlignment(.trailing)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
           }
-          .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-          .contentShape(Rectangle())
+          .buttonStyle(PressRebound())
+          .accessibilityLabel(spoken)
         }
-        .buttonStyle(PressRebound())
-        .accessibilityLabel(spoken)
+        .frame(maxWidth: .infinity)
+        .padding(.trailing, IntradaSpacing.section)
+        pause
+        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+          .padding(.leading, IntradaSpacing.section)
       }
       if case .finish = move {
         afterLine
@@ -221,7 +228,7 @@
     private var besideName: String {
       switch move {
       case .nextKey(let name, _): name
-      case .finish: "Finish item"
+      case .finish: "Finish exercise"
       }
     }
 
