@@ -60,7 +60,6 @@ struct TempoStepButton: View {
   }
 }
 
-/// How long a held ring waits before it repeats, and between repeats.
 enum HoldRepeat {
   static let firstDelay: Duration = .milliseconds(400)
   static let stepsBeforeFast = 6
