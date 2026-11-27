@@ -101,6 +101,8 @@ pub struct FitView {
     /// "72 of 60 min", then ", plus 2 untimed" when any row has no minutes.
     pub summary: String,
     pub offers: Vec<FitOffer>,
+    /// "12 min over", "45 min left" or "Fits exactly".
+    pub state_line: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -112,7 +114,6 @@ pub enum FitState {
     Over,
 }
 
-/// Drop last item sends `RemoveFromSetlist` with the last entry's id.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]

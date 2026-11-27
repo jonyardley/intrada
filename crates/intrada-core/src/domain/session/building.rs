@@ -341,6 +341,18 @@ pub(super) fn fit_to_length(model: &mut Model, fitting: Fitting) -> Command<Effe
     crux_core::render::render()
 }
 
+pub(super) fn drop_last_item(model: &mut Model) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref mut building) = model.session_status else {
+        model.raise_error(FIT_NEEDS_BUILDING.to_string());
+        return crux_core::render::render();
+    };
+    let keep = building.entries.len() - crate::fit::last_unit(&building.entries).len();
+    building.entries.truncate(keep);
+    reindex_entries(&mut building.entries);
+    model.last_error = None;
+    crux_core::render::render()
+}
+
 pub(super) fn fill_with_suggestions(
     model: &mut Model,
     now: DateTime<Utc>,

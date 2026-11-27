@@ -1,6 +1,5 @@
-//! The builder's plan against today's length (#3009): how much it uses, what
-//! it offers, the one scaling trim and stretch share, and the ranked items
-//! that fill what is left. Pure and clock-injected.
+//! The builder's plan against today's length (#3009): minutes used, offers,
+//! the scaling trim and stretch share, and what fill would add.
 
 use std::cmp::Reverse;
 
@@ -25,9 +24,7 @@ fn used(minutes: &[Option<u32>]) -> u32 {
     minutes.iter().flatten().sum()
 }
 
-/// Every timed row scaled by one factor in whole minutes, each kept within a
-/// row's limits. Rounding error goes to the longest rows first; when the
-/// limits stop the total reaching `length_mins`, it ends as close as it can.
+/// Rounding error goes to the longest rows first, within each row's limits.
 pub(crate) fn scale_to(minutes: &[Option<u32>], length_mins: u32) -> Vec<Option<u32>> {
     let total = u64::from(used(minutes));
     if total == 0 {
@@ -77,9 +74,7 @@ pub(crate) fn scale_to(minutes: &[Option<u32>], length_mins: u32) -> Vec<Option<
     scaled
 }
 
-/// In ranked order, the items not already planned, each at its usual minutes
-/// within a row's limits, taken while it fits `room_mins`. What does not fit
-/// is skipped, as `plan::fill` does.
+/// What does not fit `room_mins` is skipped, as `plan::fill` does.
 pub(crate) fn fill_suggestions<'a>(
     ranked: impl IntoIterator<Item = &'a LibraryItemView>,
     planned_ids: &[&str],
@@ -123,6 +118,21 @@ pub(crate) fn suggestions_for<'a>(
     fill_suggestions(ranked.iter().map(|r| r.item), &planned, room)
 }
 
+/// The trailing run of one group, or the last entry alone.
+pub(crate) fn last_unit(entries: &[SetlistEntry]) -> &[SetlistEntry] {
+    let Some(last) = entries.last() else {
+        return entries;
+    };
+    let start = match last.plan.group_id.as_deref() {
+        Some(group) => entries
+            .iter()
+            .rposition(|e| e.plan.group_id.as_deref() != Some(group))
+            .map_or(0, |i| i + 1),
+        None => entries.len() - 1,
+    };
+    &entries[start..]
+}
+
 /// `None` without a length.
 pub(crate) fn fit_view(
     entries: &[SetlistEntry],
@@ -133,7 +143,10 @@ pub(crate) fn fit_view(
     let minutes = row_minutes(entries);
     let used_mins = used(&minutes);
     let untimed = minutes.iter().filter(|m| m.is_none()).count();
-    let has_timed = minutes.len() > untimed;
+    let timed = || minutes.iter().flatten();
+    let can_stretch = timed().any(|&m| m < MAX_ROW_MINS);
+    let can_trim = timed().any(|&m| m > MIN_ROW_MINS);
+    let can_drop = used(&row_minutes(last_unit(entries))) > 0;
 
     let state = match used_mins.cmp(&u32::from(length)) {
         std::cmp::Ordering::Less => FitState::Under,
@@ -143,18 +156,15 @@ pub(crate) fn fit_view(
     let offers = match state {
         FitState::Under => [
             can_fill.then_some(FitOffer::FillWithSuggestions),
-            has_timed.then_some(FitOffer::StretchToFit),
+            can_stretch.then_some(FitOffer::StretchToFit),
         ]
         .into_iter()
         .flatten()
         .collect(),
         FitState::Exact => Vec::new(),
         FitState::Over => [
-            Some(FitOffer::TrimToFit),
-            entries
-                .last()
-                .is_some_and(SetlistEntry::removable)
-                .then_some(FitOffer::DropLastItem),
+            can_trim.then_some(FitOffer::TrimToFit),
+            can_drop.then_some(FitOffer::DropLastItem),
         ]
         .into_iter()
         .flatten()
@@ -165,12 +175,19 @@ pub(crate) fn fit_view(
         summary.push_str(&format!(", plus {untimed} untimed"));
     }
 
+    let state_line = match state {
+        FitState::Over => format!("{} min over", used_mins - u32::from(length)),
+        FitState::Under => format!("{} min left", u32::from(length) - used_mins),
+        FitState::Exact => "Fits exactly".to_string(),
+    };
+
     Some(FitView {
         used_mins,
         length_mins: length,
         state,
         summary,
         offers,
+        state_line,
     })
 }
 
@@ -196,6 +213,12 @@ mod tests {
 
         let even = scale_to(&[Some(7), Some(7), Some(7)], 10);
         assert_eq!(even, [Some(4), Some(3), Some(3)]);
+    }
+
+    #[test]
+    fn rounding_error_goes_to_the_longest_row_wherever_it_sits() {
+        let stretched = scale_to(&[Some(3), Some(5), Some(10)], 20);
+        assert_eq!(stretched, [Some(3), Some(5), Some(12)]);
     }
 
     #[test]
@@ -276,29 +299,44 @@ mod tests {
         assert_eq!(fit.offers, [FitOffer::TrimToFit, FitOffer::DropLastItem]);
     }
 
-    #[test]
-    fn drop_is_not_offered_when_the_last_row_is_a_grouped_piece() {
-        let mut related = entry(Some(30));
+    fn block(
+        group: &str,
+        exercise_mins: Option<u32>,
+        piece_mins: Option<u32>,
+    ) -> [SetlistEntry; 2] {
+        let mut related = entry(exercise_mins);
         related.plan.item_type = ItemKind::Exercise;
-        related.plan.group_id = Some("g1".to_string());
-        let mut piece = entry(Some(40));
-        piece.plan.group_id = Some("g1".to_string());
+        related.plan.group_id = Some(group.to_string());
+        let mut piece = entry(piece_mins);
+        piece.plan.group_id = Some(group.to_string());
+        [related, piece]
+    }
 
+    #[test]
+    fn drop_is_offered_when_the_last_unit_is_a_block() {
+        let [related, piece] = block("g1", Some(30), Some(40));
         let fit = fit_view(&[related, piece], Some(60), true).expect("fit");
         assert_eq!(fit.state, FitState::Over);
+        assert_eq!(fit.offers, [FitOffer::TrimToFit, FitOffer::DropLastItem]);
+    }
+
+    #[test]
+    fn drop_is_not_offered_when_the_last_unit_frees_no_timed_minutes() {
+        let fit = fit_view(&[entry(Some(70)), entry(None)], Some(60), true).expect("fit");
+        assert_eq!(fit.offers, [FitOffer::TrimToFit]);
+
+        let [related, piece] = block("g1", None, None);
+        let fit = fit_view(&[entry(Some(70)), related, piece], Some(60), true).expect("fit");
         assert_eq!(fit.offers, [FitOffer::TrimToFit]);
     }
 
     #[test]
-    fn drop_is_offered_when_the_last_row_is_a_related_exercise() {
-        let mut piece = entry(Some(40));
-        piece.plan.group_id = Some("g1".to_string());
-        let mut related = entry(Some(30));
-        related.plan.item_type = ItemKind::Exercise;
-        related.plan.group_id = Some("g1".to_string());
-
-        let fit = fit_view(&[piece, related], Some(60), true).expect("fit");
-        assert_eq!(fit.offers, [FitOffer::TrimToFit, FitOffer::DropLastItem]);
+    fn the_last_unit_is_the_trailing_run_of_one_group() {
+        let [related, piece] = block("g1", Some(5), Some(10));
+        let entries = [entry(Some(3)), related, piece];
+        assert_eq!(last_unit(&entries).len(), 2);
+        assert_eq!(last_unit(&entries[..1]).len(), 1);
+        assert!(last_unit(&[]).is_empty());
     }
 
     #[test]
@@ -320,6 +358,34 @@ mod tests {
         let untimed = fit_view(&[entry(None), entry(None)], Some(60), false).expect("fit");
         assert_eq!(untimed.summary, "0 of 60 min, plus 2 untimed");
         assert!(untimed.offers.is_empty());
+    }
+
+    #[test]
+    fn stretch_is_not_offered_when_every_timed_row_is_at_sixty() {
+        let fit = fit_view(&[entry(Some(60)), entry(None)], Some(120), false).expect("fit");
+        assert_eq!(fit.state, FitState::Under);
+        assert!(fit.offers.is_empty());
+
+        let fit = fit_view(&[entry(Some(45))], Some(120), false).expect("fit");
+        assert_eq!(fit.offers, [FitOffer::StretchToFit]);
+    }
+
+    #[test]
+    fn trim_is_not_offered_when_every_timed_row_is_at_one() {
+        let rows = [entry(Some(1)), entry(Some(1)), entry(Some(1))];
+        let fit = fit_view(&rows, Some(2), true).expect("fit");
+        assert_eq!(fit.state, FitState::Over);
+        assert_eq!(fit.offers, [FitOffer::DropLastItem]);
+    }
+
+    #[test]
+    fn the_state_line_says_how_far_over_or_under_in_words() {
+        let over = fit_view(&[entry(Some(72))], Some(60), true).expect("fit");
+        assert_eq!(over.state_line, "12 min over");
+        let under = fit_view(&[entry(Some(15))], Some(60), true).expect("fit");
+        assert_eq!(under.state_line, "45 min left");
+        let exact = fit_view(&[entry(Some(60))], Some(60), true).expect("fit");
+        assert_eq!(exact.state_line, "Fits exactly");
     }
 
     #[test]

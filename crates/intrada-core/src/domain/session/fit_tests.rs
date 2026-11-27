@@ -164,6 +164,58 @@ fn fill_adds_nothing_when_nothing_fits_and_is_then_not_offered() {
     assert_eq!(planned(&m), [row("a", Some(10))]);
 }
 
+fn group_last_two_as_a_block(m: &mut Model) {
+    let SessionStatus::Building(b) = &mut m.session_status else {
+        panic!("not building");
+    };
+    let n = b.entries.len();
+    for e in &mut b.entries[n - 2..] {
+        e.plan.group_id = Some("g1".to_string());
+    }
+    b.entries[n - 1].plan.item_type = ItemKind::Piece;
+}
+
+#[test]
+fn drop_last_item_drops_the_whole_block_when_the_last_row_is_a_grouped_piece() {
+    let mut m = building(Some(30));
+    add_timed(&mut m, "a", Some(20));
+    add_timed(&mut m, "b", Some(10));
+    add_timed(&mut m, "c", Some(15));
+    group_last_two_as_a_block(&mut m);
+
+    assert_eq!(
+        fit(&m).expect("fit").offers,
+        [FitOffer::TrimToFit, FitOffer::DropLastItem]
+    );
+
+    send(&mut m, SessionEvent::DropLastItem);
+
+    assert_eq!(m.last_error, None);
+    assert_eq!(planned(&m), [row("a", Some(20))]);
+    assert_eq!(entries(&m)[0].position, 0);
+}
+
+#[test]
+fn drop_last_item_drops_a_standalone_last_row() {
+    let mut m = building(Some(20));
+    add_timed(&mut m, "a", Some(20));
+    add_timed(&mut m, "b", Some(10));
+
+    send(&mut m, SessionEvent::DropLastItem);
+
+    assert_eq!(planned(&m), [row("a", Some(20))]);
+}
+
+#[test]
+fn drop_last_item_leaves_an_empty_plan_alone() {
+    let mut m = building(Some(20));
+
+    send(&mut m, SessionEvent::DropLastItem);
+
+    assert_eq!(m.last_error, None);
+    assert!(planned(&m).is_empty());
+}
+
 #[test]
 fn without_a_length_there_is_no_fit_and_the_events_are_refused() {
     let mut m = building(None);
@@ -186,6 +238,7 @@ fn without_a_length_there_is_no_fit_and_the_events_are_refused() {
 fn the_fit_events_are_refused_outside_the_builder() {
     let mut m = Model::default();
     for event in [
+        SessionEvent::DropLastItem,
         SessionEvent::TrimToFit,
         SessionEvent::StretchToFit,
         SessionEvent::FillWithSuggestions { now: now() },
@@ -204,6 +257,7 @@ fn the_fit_events_are_refused_outside_the_builder() {
 fn the_fit_events_and_view_round_trip_on_ffi_bincode_wire() {
     assert_round_trips(Event::Session(SessionEvent::TrimToFit));
     assert_round_trips(Event::Session(SessionEvent::StretchToFit));
+    assert_round_trips(Event::Session(SessionEvent::DropLastItem));
     assert_round_trips(Event::Session(SessionEvent::FillWithSuggestions {
         now: now(),
     }));
@@ -224,5 +278,6 @@ fn the_fit_events_and_view_round_trip_on_ffi_bincode_wire() {
         state: FitState::Over,
         summary: "72 of 60 min, plus 2 untimed".to_string(),
         offers: vec![FitOffer::TrimToFit, FitOffer::DropLastItem],
+        state_line: "12 min over".to_string(),
     });
 }

@@ -764,6 +764,9 @@ pub enum SessionEvent {
     FillWithSuggestions {
         now: DateTime<Utc>,
     },
+    /// Remove the last unit: its whole block, or the last entry alone.
+    /// Building only.
+    DropLastItem,
 }
 
 mod active;
@@ -983,5 +986,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::TrimToFit => building::fit_to_length(model, Fitting::Trim),
         SessionEvent::StretchToFit => building::fit_to_length(model, Fitting::Stretch),
         SessionEvent::FillWithSuggestions { now } => building::fill_with_suggestions(model, now),
+        SessionEvent::DropLastItem => building::drop_last_item(model),
     }
 }
