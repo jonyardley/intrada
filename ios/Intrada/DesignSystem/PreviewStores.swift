@@ -278,7 +278,10 @@
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-            summary: "2 items", startTitle: "Start session", fit: nil)))
+            summary: "2 items", startTitle: "Start session",
+            fit: FitView(
+              usedMins: 0, lengthMins: 30, state: .under, summary: "0 of 30 min, plus 2 untimed",
+              offers: [.fillWithSuggestions], stateLine: "30 min left"))))
     }
 
     static var previewBuildingEmpty: Store {
@@ -289,7 +292,10 @@
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: nil, entryVariations: [], lastTimes: [], entryKeys: [],
-            summary: "0 items", startTitle: "Start session", fit: nil)))
+            summary: "0 items", startTitle: "Start session",
+            fit: FitView(
+              usedMins: 0, lengthMins: 30, state: .under, summary: "0 of 30 min",
+              offers: [.fillWithSuggestions], stateLine: "30 min left"))))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -354,7 +360,10 @@
             lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
             entryKeys: [],
             summary: "12 min \u{B7} 2 blocks \u{B7} 4 items",
-            startTitle: "Start session \u{B7} 12 min", fit: nil)))
+            startTitle: "Start session \u{B7} 12 min",
+            fit: FitView(
+              usedMins: 12, lengthMins: 30, state: .under, summary: "12 of 30 min",
+              offers: [.fillWithSuggestions, .stretchToFit], stateLine: "18 min left"))))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
