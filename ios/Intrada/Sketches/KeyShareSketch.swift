@@ -3,71 +3,51 @@
   import SwiftUI
 
   struct KeyShareSketch {
-    enum Look { case canvas, stepped, quiet }
-
-    struct Share {
-      let key: String
-      let fraction: Double
-    }
+    enum Look { case card, inline }
 
     struct State {
+      let title: String
       let keyLabel: String
       let keyChoices: Int
       let itemElapsed: Int
       let itemPlanned: Int
-      let shares: [Share]
-      let current: Int
+      let shares: [Double]
       let shareLine: String
       let shareSide: String
       let next: String?
-      let nextLine: String?
-      let isOver: Bool
     }
 
     static let filling = State(
-      keyLabel: "C major", keyChoices: 3, itemElapsed: 110, itemPlanned: 540,
-      shares: [
-        Share(key: "C major", fraction: 110.0 / 180), Share(key: "G major", fraction: 0),
-        Share(key: "D major", fraction: 0),
-      ],
-      current: 0, shareLine: "C major, 1:50 of 3:00", shareSide: "3 min each",
-      next: nil, nextLine: nil, isOver: false)
+      title: "Major scales", keyLabel: "C major", keyChoices: 3,
+      itemElapsed: 110, itemPlanned: 540, shares: [110.0 / 180, 0, 0],
+      shareLine: "C major, 1:50 of 3:00", shareSide: "3 minutes each", next: nil)
 
     static let over = State(
-      keyLabel: "C major", keyChoices: 3, itemElapsed: 185, itemPlanned: 540,
-      shares: [
-        Share(key: "C major", fraction: 1), Share(key: "G major", fraction: 0),
-        Share(key: "D major", fraction: 0),
-      ],
-      current: 0, shareLine: "C major, 3:05 of 3:00", shareSide: "Still timing C",
-      next: "Next: G major", nextLine: "C major's share is up. Tap to move on.", isOver: true)
+      title: "Major scales", keyLabel: "C major", keyChoices: 3,
+      itemElapsed: 185, itemPlanned: 540, shares: [1, 0, 0],
+      shareLine: "C major, 3:05 of 3:00", shareSide: "Still timing C", next: "Next: G major")
 
     static let lastOver = State(
-      keyLabel: "D major", keyChoices: 3, itemElapsed: 550, itemPlanned: 540,
-      shares: [
-        Share(key: "C major", fraction: 1), Share(key: "G major", fraction: 1),
-        Share(key: "D major", fraction: 1),
-      ],
-      current: 2, shareLine: "D major, 3:10 of 3:00", shareSide: "Still timing D",
-      next: nil, nextLine: nil, isOver: true)
+      title: "Major scales", keyLabel: "D major", keyChoices: 3,
+      itemElapsed: 550, itemPlanned: 540, shares: [1, 1, 1],
+      shareLine: "D major, 3:10 of 3:00", shareSide: "Still timing D", next: nil)
 
     static let oneKey = State(
-      keyLabel: "C major", keyChoices: 1, itemElapsed: 110, itemPlanned: 540,
-      shares: [], current: 0, shareLine: "", shareSide: "",
-      next: nil, nextLine: nil, isOver: false)
+      title: "Major scales", keyLabel: "C major", keyChoices: 1,
+      itemElapsed: 110, itemPlanned: 540, shares: [],
+      shareLine: "", shareSide: "", next: nil)
 
     static let longest = State(
-      keyLabel: "F sharp major", keyChoices: 2, itemElapsed: 605, itemPlanned: 1200,
-      shares: [Share(key: "F sharp major", fraction: 1), Share(key: "B major", fraction: 0)],
-      current: 0, shareLine: "F sharp major, 10:05 of 10:00", shareSide: "Still timing F sharp",
-      next: "Next: B major", nextLine: "F sharp major's share is up. Tap to move on.",
-      isOver: true)
+      title: "Scales in thirds and sixths", keyLabel: "B♭ melodic minor", keyChoices: 2,
+      itemElapsed: 605, itemPlanned: 1200, shares: [1, 0],
+      shareLine: "B♭ melodic minor, 10:05 of 10:00", shareSide: "Still timing B♭",
+      next: "Next: E♭ melodic minor")
   }
 
   // ── The player, drawn from its public parts with fixture values ──
 
   struct KeySharePlayerSketch: View {
-    var look: KeyShareSketch.Look = .canvas
+    var look: KeyShareSketch.Look = .card
     var state: KeyShareSketch.State = KeyShareSketch.filling
 
     var body: some View {
@@ -85,13 +65,16 @@
             })
           Spacer(minLength: IntradaSpacing.card)
           centerInfo
-          SketchTimerRing(
-            elapsed: state.itemElapsed, planned: state.itemPlanned,
-            size: state.next == nil ? 200 : 180
-          )
-          .padding(.top, IntradaSpacing.section)
+          SketchTimerRing(elapsed: state.itemElapsed, planned: state.itemPlanned)
+            .padding(.top, IntradaSpacing.section)
           if state.shares.count > 1 {
             shareBar.padding(.top, IntradaSpacing.cardCompact)
+            if look == .card {
+              nextCard
+                .padding(.top, IntradaSpacing.cardCompact)
+                .opacity(state.next == nil ? 0 : 1)
+                .accessibilityHidden(state.next == nil)
+            }
           }
           ClickControl(
             bpm: 96, step: 2, band: 40...208, isRunning: false, unavailable: false,
@@ -110,9 +93,10 @@
     private var centerInfo: some View {
       VStack(spacing: IntradaSpacing.controlGap) {
         TypeBadge(kind: .exercise)
-        Text("Major scales")
+        Text(state.title)
           .font(IntradaFont.pageTitle)
           .foregroundStyle(IntradaColor.ink)
+          .multilineTextAlignment(.center)
         if state.keyChoices > 1 {
           SketchKeyChip(label: state.keyLabel)
         } else {
@@ -125,124 +109,111 @@
 
     // ── The share bar ──
 
-    @ViewBuilder private var shareBar: some View {
+    private var shareBar: some View {
       VStack(alignment: .leading, spacing: IntradaSpacing.small) {
-        switch look {
-        case .canvas:
-          SketchShareStrip(shares: state.shares, height: 6)
-        case .stepped:
-          SegmentedProgress(
-            count: state.shares.count, filled: state.current + 1, label: state.shareLine)
-        case .quiet:
-          SketchShareStrip(shares: state.shares, height: 4)
-        }
+        SketchShareStrip(shares: state.shares, height: look == .card ? 6 : 4)
         ViewThatFits(in: .horizontal) {
           HStack {
             shareLineText
             Spacer(minLength: IntradaSpacing.controlGap)
-            shareSideText
+            shareSide
           }
           VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
             shareLineText
-            shareSideText
+            shareSide
           }
         }
       }
-      .accessibilityElement(children: .combine)
     }
 
     private var shareLineText: some View {
       Text(state.shareLine)
-        .font(IntradaFont.small)
+        .font(IntradaFont.secondary)
         .monospacedDigit()
         .foregroundStyle(IntradaColor.ink)
     }
 
-    private var shareSideText: some View {
-      Text(state.shareSide)
-        .font(IntradaFont.small)
-        .foregroundStyle(IntradaColor.inkSecondary)
+    @ViewBuilder private var shareSide: some View {
+      if look == .inline, let next = state.next {
+        Button {
+        } label: {
+          HStack(spacing: IntradaSpacing.xSmall) {
+            Text(next)
+              .font(IntradaFont.label)
+            Image(systemName: "arrow.right")
+              .iconSize(.inline, weight: .semibold)
+              .accessibilityHidden(true)
+          }
+          .foregroundStyle(IntradaColor.ink)
+          .frame(minHeight: 44)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(PressRebound())
+        .accessibilityHint("Moves on to the next key")
+      } else {
+        Text(state.shareSide)
+          .font(IntradaFont.secondary)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
     }
 
-    // ── Bottom: the Next card, then the transport ──
+    private var nextCard: some View {
+      Button {
+      } label: {
+        HStack(spacing: IntradaSpacing.cardCompact) {
+          Text(state.next ?? " ")
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          Image(systemName: "arrow.right")
+            .iconSize(.inline, weight: .semibold)
+            .foregroundStyle(IntradaColor.ink)
+            .accessibilityHidden(true)
+        }
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.vertical, IntradaSpacing.cardCompact)
+        .frame(minHeight: 48)
+        .fixedSize(horizontal: false, vertical: true)
+        .cardSurface()
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(PressRebound())
+      .accessibilityHint("Moves on to the next key")
+    }
+
+    // ── Bottom: the transport ──
 
     private var controls: some View {
       VStack(spacing: IntradaSpacing.cardCompact) {
-        if let next = state.next {
-          nextCard(next)
-            .padding(.bottom, IntradaSpacing.controlGap)
-        }
         HStack(spacing: IntradaSpacing.section + IntradaSpacing.controlGap) {
           TransportButton(systemImage: "play.fill", prominence: .primary, label: "Next item") {}
           TransportButton(
             systemImage: "forward.end", prominence: .secondary, label: "Skip this item"
           ) {}
         }
-        Text("Next · Bach Prelude in C")
+        Text("Then Bach Prelude in C")
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       .padding(.bottom, IntradaSpacing.card)
-    }
-
-    @ViewBuilder private func nextCard(_ next: String) -> some View {
-      Button {
-      } label: {
-        HStack(spacing: IntradaSpacing.cardCompact) {
-          switch look {
-          case .canvas, .stepped:
-            VStack(alignment: .leading, spacing: IntradaSpacing.xxSmall) {
-              Text(next)
-                .font(IntradaFont.cardTitle)
-                .foregroundStyle(IntradaColor.ink)
-              if let line = state.nextLine {
-                Text(line)
-                  .font(IntradaFont.small)
-                  .foregroundStyle(IntradaColor.inkSecondary)
-                  .fixedSize(horizontal: false, vertical: true)
-              }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-          case .quiet:
-            Text(next)
-              .font(IntradaFont.bodyMedium)
-              .foregroundStyle(IntradaColor.ink)
-              .frame(maxWidth: .infinity, alignment: .leading)
-          }
-          Image(systemName: "arrow.right")
-            .iconSize(.control)
-            .foregroundStyle(IntradaColor.ink)
-            .accessibilityHidden(true)
-        }
-        .padding(.horizontal, IntradaSpacing.card)
-        .padding(.vertical, look == .quiet ? IntradaSpacing.cardCompact : IntradaSpacing.controlGap)
-        .frame(minHeight: look == .quiet ? 48 : 56)
-        .fixedSize(horizontal: false, vertical: true)
-        .cardSurface()
-        .cardShadow()
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(PressRebound())
-      .accessibilityElement(children: .combine)
-      .accessibilityHint("Moves on to the next key")
     }
   }
 
   /// One segment per key, the current one part filled: a time, unlike
   /// `SegmentedProgress`, which only steps.
   struct SketchShareStrip: View {
-    let shares: [KeyShareSketch.Share]
+    let shares: [Double]
     let height: CGFloat
 
     var body: some View {
       HStack(spacing: IntradaSpacing.segmentGap) {
-        ForEach(Array(shares.enumerated()), id: \.offset) { _, share in
+        ForEach(Array(shares.enumerated()), id: \.offset) { _, fraction in
           GeometryReader { geo in
             ZStack(alignment: .leading) {
               Capsule().fill(IntradaColor.track)
               Capsule()
                 .fill(IntradaColor.ink)
-                .frame(width: geo.size.width * min(max(share.fraction, 0), 1))
+                .frame(width: geo.size.width * min(max(fraction, 0), 1))
             }
           }
           .frame(height: height)
@@ -250,6 +221,7 @@
         }
       }
       .frame(height: height)
+      .accessibilityHidden(true)
     }
   }
 
@@ -274,11 +246,10 @@
     }
   }
 
-  /// A copy of the player's private `TimerRing`.
+  /// A copy of the player's private `TimerRing` at its usual 200 points.
   struct SketchTimerRing: View {
     let elapsed: Int
     let planned: Int
-    let size: CGFloat
 
     private var fraction: Double {
       planned > 0 ? min(Double(elapsed) / Double(planned), 1) : 0
@@ -296,7 +267,7 @@
         .padding(IntradaSpacing.card + IntradaSpacing.xxSmall)
         VStack(spacing: IntradaSpacing.xSmall) {
           Text(SessionClock.clockDisplay(elapsed))
-            .font(IntradaFont.timer(size < 200 ? 40 : 48))
+            .font(IntradaFont.timer(48))
             .monospacedDigit()
             .foregroundStyle(IntradaColor.ink)
           Text("of \(SessionClock.clockDisplay(planned))")
@@ -304,11 +275,11 @@
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
-      .frame(width: size, height: size)
+      .frame(width: 200, height: 200)
     }
   }
 
-  #Preview("Canvas, over") {
-    KeySharePlayerSketch(look: .canvas, state: KeyShareSketch.over)
+  #Preview("Inline, over") {
+    KeySharePlayerSketch(look: .inline, state: KeyShareSketch.over)
   }
 #endif
