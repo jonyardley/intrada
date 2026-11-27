@@ -69,11 +69,11 @@ are in [`worktrees.md`](worktrees.md).
 
 | You are | Do |
 |---|---|
-| Opening a session | The model and effort `.claude/settings.json` opens it on |
+| Opening a session | The model and effort Jon's global user settings open it on |
 | Reaching work on the sensitive surfaces | Stay on the opening level, which is the role table's; never ask Jon to type `/effort`, and never a new chat |
 | Handing work down | Settled work goes to a subagent (step 5); a new chat only frees the session (#1836) |
 
-A session opens on `.claude/settings.json`. Every spawn's model and effort
+A session opens on Jon's global user settings. Every spawn's model and effort
 come from the role table in
 `~/.claude/CLAUDE.md` (Subagents, review and lane size), named on each Agent
 call; this repo keeps no levels of its own. Review
